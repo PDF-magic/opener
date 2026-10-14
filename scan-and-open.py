@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
+from contextlib import contextmanager
 import os
 from pathlib import Path
+import sqlite3
 import subprocess
 import sys
 import time
@@ -11,6 +13,8 @@ DATABASE = INSTALL_DIR / 'signatures'
 STAMP = DATABASE / 'last-successful-update'
 MAX_DATABASE_AGE = 48 * 60 * 60
 MAX_FILE_SIZE = 512 * 1024 * 1024
+CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
+CACHE_TTL = 90 * 24 * 60 * 60
 
 
 def scanner_path():
@@ -32,26 +36,75 @@ def check_database():
 
 
 def fingerprint(path):
-    # Detect replacement or modification while a scan is running, including bundle contents.
+    # Hash the full byte stream, including embedded PDF metadata. Never rely on
+    # filename, size, modification time, or Finder metadata for cache validity.
     import hashlib
     digest = hashlib.sha256()
-    paths = sorted(path.rglob('*')) if path.is_dir() else [path]
+    is_bundle = path.is_dir()
+    digest.update(b'bundle-v1\0' if is_bundle else b'file-v1\0')
+    paths = sorted(path.rglob('*')) if is_bundle else [path]
     for entry in paths:
-        digest.update(os.fsencode(str(entry)))
+        # Include relative bundle paths, but let renamed identical files share a cache entry.
+        if is_bundle:
+            digest.update(os.fsencode(str(entry.relative_to(path))) + b'\0')
         if entry.is_symlink():
-            digest.update(os.fsencode(os.readlink(entry)))
-            if path.is_dir() and not entry.resolve().is_relative_to(path):
+            digest.update(b'link\0' + os.fsencode(os.readlink(entry)) + b'\0')
+            if is_bundle and not entry.resolve().is_relative_to(path):
                 raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
-            if entry.stat().st_size > MAX_FILE_SIZE:
+            size = entry.stat().st_size
+            if size > MAX_FILE_SIZE:
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
+            digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
             with entry.open('rb') as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b''):
                     digest.update(chunk)
-        elif not entry.is_dir():
+        elif entry.is_dir():
+            digest.update(b'directory\0')
+        else:
             raise RuntimeError('Only regular files and application bundles can be scanned.')
     return digest.digest()
 
+
+@contextmanager
+def cache_connection():
+    # Cache only a digest and verified scan timestamp in a private local database.
+    CACHE_DB.parent.mkdir(parents=True, exist_ok=True)
+    CACHE_DB.touch(mode=0o600, exist_ok=True)
+    CACHE_DB.chmod(0o600)
+    connection = sqlite3.connect(str(CACHE_DB), timeout=5)
+    try:
+        connection.execute('CREATE TABLE IF NOT EXISTS clean_scans '
+                           '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL)')
+        with connection:
+            yield connection
+    finally:
+        connection.close()
+
+
+def cached_clean(digest):
+    try:
+        with cache_connection() as connection:
+            row = connection.execute('SELECT scanned_at FROM clean_scans WHERE digest = ?',
+                                     (digest.hex(),)).fetchone()
+        age = time.time() - row[0] if row else -1
+        return 0 <= age < CACHE_TTL
+    except (OSError, sqlite3.Error, TypeError, ValueError):
+        # Bad or unavailable caches never provide a clean verdict.
+        return False
+
+
+def remember_clean(digest):
+    try:
+        with cache_connection() as connection:
+            now = time.time()
+            connection.execute('DELETE FROM clean_scans WHERE scanned_at < ?',
+                               (now - CACHE_TTL,))
+            connection.execute('INSERT OR REPLACE INTO clean_scans (digest, scanned_at) VALUES (?, ?)',
+                               (digest.hex(), now))
+    except (OSError, sqlite3.Error):
+        # Failure to save the cache does not invalidate a successful scan.
+        pass
 
 def remove_quarantine(path):
     if path.is_dir():
@@ -67,27 +120,31 @@ def scan_and_open(item, scanner):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     before = fingerprint(path)
-    try:
-        scan = subprocess.run([
-            scanner, '--database=' + str(DATABASE), '--recursive',
-            '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
-            '--alert-exceeds-max=yes', '--alert-encrypted=yes',
-            '--max-filesize=512M', '--max-scansize=1024M',
-            '--max-scantime=0', '--no-summary', '--', str(path)
-        ], capture_output=True, text=True, timeout=180)
-    except subprocess.TimeoutExpired:
-        raise RuntimeError('The malware scan timed out; opening was stopped.')
-    if scan.returncode == 1:
-        raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
-    if scan.returncode != 0:
-        raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
-    # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
-    lines = scan.stdout.splitlines()
-    if not any(line.endswith(': OK') for line in lines) or any(
-            not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-        raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+    hit = cached_clean(before)
+    if not hit:
+        try:
+            scan = subprocess.run([
+                scanner, '--database=' + str(DATABASE), '--recursive',
+                '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
+                '--alert-exceeds-max=yes', '--alert-encrypted=yes',
+                '--max-filesize=512M', '--max-scansize=1024M',
+                '--max-scantime=0', '--no-summary', '--', str(path)
+            ], capture_output=True, text=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError('The malware scan timed out; opening was stopped.')
+        if scan.returncode == 1:
+            raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
+        if scan.returncode != 0:
+            raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+        # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
+        lines = scan.stdout.splitlines()
+        if not any(line.endswith(': OK') for line in lines) or any(
+                not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
+            raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
     if before != fingerprint(path):
-        raise RuntimeError('The file changed during its scan; opening was stopped. Try again.')
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    if not hit:
+        remember_clean(before)
     remove_quarantine(path)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
