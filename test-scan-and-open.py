@@ -83,11 +83,52 @@ class ScanGateTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'incomplete'):
                 opener.check_database()
 
-    def test_oversized_file_blocks_before_scanning(self):
+    def test_large_pdf_has_no_configured_scan_size_limit(self):
+        # Simulate an oversized PDF without allocating a large test file.
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener, 'MAX_FILE_SIZE', 1), \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner')
+        command = run.call_args_list[0].args[0]
+        self.assertIn('--max-filesize=0', command)
+        self.assertIn('--max-scansize=0', command)
+        self.assertIn('--alert-exceeds-max=yes', command)
+        self.assertEqual(run.call_args_list[0].kwargs['timeout'], opener.PDF_SCAN_TIMEOUT)
+        self.assertEqual(run.call_count, 2)
+
+    def test_pdf_engine_size_limit_still_blocks(self):
+        self.assert_blocked(subprocess.CompletedProcess(
+            [], 1, 'file: Heuristics.Limits.Exceeded.MaxFileSize FOUND', ''))
+
+    def test_oversized_non_pdf_blocks_before_scanning(self):
+        document = self.file.with_suffix('.txt')
+        document.write_bytes(self.file.read_bytes())
         with patch.object(opener, 'MAX_FILE_SIZE', 1), patch.object(opener.subprocess, 'run') as run:
             with self.assertRaisesRegex(RuntimeError, '512 MB'):
-                opener.scan_and_open(str(self.file), '/scanner')
+                opener.scan_and_open(str(document), '/scanner')
             run.assert_not_called()
+
+    def test_nested_pdf_in_app_bundle_still_has_size_limit(self):
+        bundle = Path(self.temp.name) / 'Example.app'
+        bundle.mkdir()
+        (bundle / 'large.pdf').write_bytes(self.file.read_bytes())
+        with patch.object(opener, 'MAX_FILE_SIZE', 1), patch.object(opener.subprocess, 'run') as run:
+            with self.assertRaisesRegex(RuntimeError, '512 MB'):
+                opener.scan_and_open(str(bundle), '/scanner')
+            run.assert_not_called()
+
+    def test_non_pdf_keeps_existing_clamav_size_limits(self):
+        document = self.file.with_suffix('.txt')
+        document.write_bytes(self.file.read_bytes())
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(document), '/scanner')
+        command = run.call_args_list[0].args[0]
+        self.assertIn('--max-filesize=512M', command)
+        self.assertIn('--max-scansize=1024M', command)
+        self.assertEqual(run.call_args_list[0].kwargs['timeout'], 180)
 
     def test_missing_scanner_blocks_before_modifying_any_file(self):
         with patch.object(opener, 'scanner_path', side_effect=RuntimeError('unavailable')), \

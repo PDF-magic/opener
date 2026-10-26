@@ -11,6 +11,7 @@ DATABASE = INSTALL_DIR / 'signatures'
 STAMP = DATABASE / 'last-successful-update'
 MAX_DATABASE_AGE = 48 * 60 * 60
 MAX_FILE_SIZE = 512 * 1024 * 1024
+PDF_SCAN_TIMEOUT = 30 * 60
 
 
 def scanner_path():
@@ -43,7 +44,8 @@ def fingerprint(path):
             if path.is_dir() and not entry.resolve().is_relative_to(path):
                 raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
-            if entry.stat().st_size > MAX_FILE_SIZE:
+            if entry.stat().st_size > MAX_FILE_SIZE and (
+                    path.is_dir() or path.suffix.lower() != '.pdf'):
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
             with entry.open('rb') as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b''):
@@ -67,14 +69,22 @@ def scan_and_open(item, scanner):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     before = fingerprint(path)
+    is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    if is_pdf:
+        # Avoid arbitrary opener/ClamAV configuration caps for large PDFs.
+        # ClamAV still has an internal per-file limit (~2 GB); keep alerting on it.
+        size_options = ('--max-filesize=0', '--max-scansize=0')
+    else:
+        size_options = ('--max-filesize=512M', '--max-scansize=1024M')
     try:
         scan = subprocess.run([
             scanner, '--database=' + str(DATABASE), '--recursive',
             '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
             '--alert-exceeds-max=yes', '--alert-encrypted=yes',
-            '--max-filesize=512M', '--max-scansize=1024M',
+            *size_options,
             '--max-scantime=0', '--no-summary', '--', str(path)
-        ], capture_output=True, text=True, timeout=180)
+        ], capture_output=True, text=True,
+            timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
     except subprocess.TimeoutExpired:
         raise RuntimeError('The malware scan timed out; opening was stopped.')
     if scan.returncode == 1:
