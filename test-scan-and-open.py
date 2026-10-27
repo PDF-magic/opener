@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+import threading
 import os
 from pathlib import Path
 import subprocess
@@ -34,6 +35,122 @@ class ScanGateTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             remove.assert_not_called()
             self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
+
+    def run_parallel_scans(self, change_waiter=False, fail_first=False):
+        another = self.file.with_name('same-content-different-path.pdf')
+        another.write_bytes(self.file.read_bytes())
+        first_running = threading.Event()
+        waiter_cache_miss = threading.Event()
+        release_first = threading.Event()
+        outcomes = {}
+        calls = []
+        command_lock = threading.Lock()
+        original_cache_lookup = opener.cached_clean
+
+        def cached_clean(digest):
+            hit = original_cache_lookup(digest)
+            if threading.current_thread().name == 'waiter' and not hit:
+                waiter_cache_miss.set()
+            return hit
+
+        def run(command, **kwargs):
+            with command_lock:
+                calls.append(command)
+                scan_number = sum(c[0] == '/scanner' for c in calls)
+            if command[0] == '/scanner' and scan_number == 1:
+                first_running.set()
+                if not release_first.wait(10):
+                    raise RuntimeError('Test scanner was not released')
+                if fail_first:
+                    return subprocess.CompletedProcess(command, 1, 'file: Malware FOUND', '')
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+
+        def worker(path):
+            try:
+                opener.scan_and_open(str(path), '/scanner')
+                outcomes[threading.current_thread().name] = 'opened'
+            except (OSError, RuntimeError) as error:
+                outcomes[threading.current_thread().name] = str(error)
+
+        with patch.object(opener, 'cached_clean', side_effect=cached_clean), \
+                patch.object(opener.subprocess, 'run', side_effect=run), \
+                patch.object(opener, 'remove_quarantine'):
+            first = threading.Thread(target=worker, args=(self.file,), name='first')
+            waiter = threading.Thread(target=worker, args=(another,), name='waiter')
+            try:
+                first.start()
+                self.assertTrue(first_running.wait(10), 'Initial scan never started')
+                waiter.start()
+                self.assertTrue(waiter_cache_miss.wait(10), 'Waiter never saw a cache miss')
+                if change_waiter:
+                    another.write_bytes(b'%PDF-1.4\\nchanged while waiting')
+            finally:
+                release_first.set()
+                if first.ident is not None:
+                    first.join(timeout=10)
+                if waiter.ident is not None:
+                    waiter.join(timeout=10)
+        self.assertFalse(first.is_alive(), 'First scan did not terminate')
+        self.assertFalse(waiter.is_alive(), 'Waiting scan did not terminate')
+        return outcomes, [call[0] for call in calls]
+
+    def test_identical_content_concurrent_requests_share_only_one_scan(self):
+        outcomes, calls = self.run_parallel_scans()
+        self.assertEqual(outcomes, {'first': 'opened', 'waiter': 'opened'})
+        self.assertEqual(calls.count('/scanner'), 1)
+        self.assertEqual(calls.count('/usr/bin/open'), 2)
+
+    def test_waiter_detects_file_changed_while_another_scan_runs(self):
+        outcomes, calls = self.run_parallel_scans(change_waiter=True)
+        self.assertEqual(outcomes.get('first'), 'opened')
+        self.assertIn('changed', outcomes.get('waiter', ''))
+        self.assertEqual(calls.count('/scanner'), 1)
+        self.assertEqual(calls.count('/usr/bin/open'), 1)
+
+    def test_infected_active_scan_does_not_supply_reusable_verdict(self):
+        outcomes, calls = self.run_parallel_scans(fail_first=True)
+        self.assertIn('Malware', outcomes.get('first', ''))
+        self.assertEqual(outcomes.get('waiter'), 'opened')
+        self.assertEqual(calls.count('/scanner'), 2)
+        self.assertEqual(calls.count('/usr/bin/open'), 1)
+
+    def test_failed_lock_acquisition_fails_closed(self):
+        with patch.object(opener, 'active_scan_lock', side_effect=OSError('lock denied')), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaises(OSError):
+                opener.scan_and_open(str(self.file), '/scanner')
+            run.assert_not_called()
+            remove.assert_not_called()
+
+    def test_active_scan_lock_applies_across_processes(self):
+        marker = Path(self.temp.name) / 'acquired'
+        child = """import importlib.util, pathlib, sys
+spec = importlib.util.spec_from_file_location('scan_gate', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.CACHE_DB = pathlib.Path(sys.argv[2])
+print('ready', flush=True)
+with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
+    pathlib.Path(sys.argv[4]).write_text('acquired')
+"""
+        digest = opener.cache_key(opener.fingerprint(self.file), True)
+        with opener.active_scan_lock(digest):
+            process = subprocess.Popen(
+                [sys.executable, '-c', child, str(Path(__file__).with_name('scan-and-open.py')),
+                 str(opener.CACHE_DB), digest.hex(), str(marker)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                self.assertEqual(process.stdout.readline().strip(), 'ready')
+                self.assertFalse(marker.exists())
+                self.assertIsNone(process.poll(), 'Child must block on active scan lock')
+            except BaseException:
+                process.kill()
+                process.communicate(timeout=5)
+                raise
+        stdout, stderr = process.communicate(timeout=10)
+        self.assertEqual(process.returncode, 0, stderr)
+        self.assertTrue(marker.exists())
 
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
@@ -159,7 +276,6 @@ class ScanGateTests(unittest.TestCase):
             opener.scan_and_open(str(document), '/scanner')
         self.assertEqual(run.call_count, 1)
         self.assertEqual(run.call_args.args[0][0], '/usr/bin/open')
-
 
     def test_byte_identical_replacement_during_scan_is_blocked(self):
         original = self.file.read_bytes()

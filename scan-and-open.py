@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+import fcntl
 import hashlib
 import os
 from pathlib import Path
 import sqlite3
+import stat
 import stat
 import subprocess
 import sys
@@ -18,6 +20,42 @@ MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
+MAX_CONCURRENT_SCANS = 2
+
+
+@contextmanager
+def scan_slot():
+    """Wait for one of two cross-process slots shared by Finder and the native app.
+
+    Advisory locks are held on open file descriptors, so an interrupted process
+    automatically releases its slot. No file names, paths, or scan results are logged.
+    """
+    slot_dir = CACHE_DB.parent / 'scan-slots'
+    slot_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if (slot_dir.is_symlink() or not slot_dir.is_dir()
+            or slot_dir.stat().st_uid != os.getuid()):
+        raise RuntimeError('The scan queue is unavailable; opening was stopped.')
+    while True:
+        for index in range(MAX_CONCURRENT_SCANS):
+            lock_path = slot_dir / f'slot-{index}.lock'
+            flags = os.O_CREAT | os.O_RDWR | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0)
+            fd = os.open(lock_path, flags, 0o600)
+            try:
+                info = os.fstat(fd)
+                if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+                    raise RuntimeError('The scan queue is unavailable; opening was stopped.')
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    continue
+                try:
+                    yield
+                finally:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                return
+            finally:
+                os.close(fd)
+        time.sleep(0.05)
 
 
 def scanner_path():
@@ -122,6 +160,24 @@ def cache_connection():
         connection.close()
 
 
+@contextmanager
+def active_scan_lock(digest):
+    # Lock stripes are keyed by the policy-specific digest and stay bounded.
+    # Never unlink a lock file: a waiting process may still hold its inode.
+    CACHE_DB.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = CACHE_DB.with_name(CACHE_DB.name + '.scan-lock-' + digest.hex()[:4])
+    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
+
+
 def cached_clean(digest):
     try:
         with cache_connection() as connection:
@@ -155,7 +211,7 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def scan_and_open(item, scanner):
+def _scan_and_open(item, scanner):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
@@ -165,44 +221,56 @@ def scan_and_open(item, scanner):
     if file_identity(path) != identity:
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
-    hit = cached_clean(cache_id)
-    if not hit:
-        if is_pdf:
-            # The engine still alerts on its internal file-size limit (~2 GB).
-            size_options = ('--max-filesize=0', '--max-scansize=0')
-        else:
-            size_options = ('--max-filesize=512M', '--max-scansize=1024M')
-        try:
-            scan = subprocess.run([
-                scanner, '--database=' + str(DATABASE), '--recursive',
-                '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
-                '--alert-exceeds-max=yes', '--alert-encrypted=yes',
-                *size_options,
-                '--max-scantime=0', '--no-summary', '--', str(path)
-            ], capture_output=True, text=True,
-                timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
-        except subprocess.TimeoutExpired:
-            raise RuntimeError('The malware scan timed out; opening was stopped.')
-        if scan.returncode == 1:
-            raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
-        if scan.returncode != 0:
-            raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
-        # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
-        lines = scan.stdout.splitlines()
-        if not any(line.endswith(': OK') for line in lines) or any(
-                not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-            raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+    # Do not serialize an already cached clean hit. For a miss, a cross-process
+    # lock prevents another identical-content request from racing its scan.
+    if not cached_clean(cache_id):
+        with active_scan_lock(cache_id):
+            # Recheck after waiting: the selected file may have changed.
+            verify_file_integrity(path, before, identity)
+            # Only a completed clean result under this exact policy is reusable.
+            if not cached_clean(cache_id):
+                if is_pdf:
+                    # The engine still alerts on its internal file-size limit (~2 GB).
+                    size_options = ('--max-filesize=0', '--max-scansize=0')
+                else:
+                    size_options = ('--max-filesize=512M', '--max-scansize=1024M')
+                try:
+                    scan = subprocess.run([
+                        scanner, '--database=' + str(DATABASE), '--recursive',
+                        '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
+                        '--alert-exceeds-max=yes', '--alert-encrypted=yes',
+                        *size_options,
+                        '--max-scantime=0', '--no-summary', '--', str(path)
+                    ], capture_output=True, text=True,
+                        timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError('The malware scan timed out; opening was stopped.')
+                if scan.returncode == 1:
+                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
+                if scan.returncode != 0:
+                    raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
+                lines = scan.stdout.splitlines()
+                if not any(line.endswith(': OK') for line in lines) or any(
+                        not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
+                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                verify_file_integrity(path, before, identity)
+                remember_clean(cache_id)
     verify_file_integrity(path, before, identity)
-    if not hit:
-        remember_clean(cache_id)
     remove_quarantine(path)
-    # Removing quarantine changes ctime on macOS, but must not modify the
-    # source bytes, inode identities, file types, sizes, or modification times.
+    # Removing quarantine can legitimately change ctime but not the source
+    # bytes, inode identities, file types, sizes or modification times.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
         command += ['-b', 'com.brave.Browser']
     subprocess.run(command + [str(path)], check=True)
+
+
+def scan_and_open(item, scanner):
+    # Both Finder and the native PDF opener must respect the same process-wide cap.
+    with scan_slot():
+        return _scan_and_open(item, scanner)
 
 
 def main(items):
