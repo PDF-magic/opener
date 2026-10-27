@@ -22,6 +22,9 @@ jobs:
         run: python3 test-app-name.py
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
+      - name: Verify cancellation and scanner process-group cleanup
+        timeout-minutes: 2
+        run: python3 test-cancellation.py -v
       - name: Verify detection and opening decisions are separate
         run: python3 test-detection-policy.py -v
       - name: Verify browser-independent scan engine and launch defaults
@@ -57,6 +60,9 @@ jobs:
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
+      - name: Verify native Cancel stops active and queued requests
+        timeout-minutes: 2
+        run: python3 test-native-cancellation.py
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: python3 test-scan-resource-cleanup.py

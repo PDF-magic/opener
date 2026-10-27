@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from functools import wraps
 from dataclasses import dataclass
 from dataclasses import dataclass
 import fcntl
 import hashlib
 from file_launcher import intended_destination, launch_clean_file
 import os
+import signal
 import re
 from pathlib import Path
 from typing import Optional
@@ -14,6 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
+import threading
 import time
 
 INSTALL_DIR = Path.home() / 'Library/Application Support/Studio/allow-and-open'
@@ -129,6 +132,84 @@ def validate_scan_request(item):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     return path
+
+
+NATIVE_CANCELLATION = 'PDF_MAGIC_NATIVE_CANCEL'
+
+
+class ScanCancelled(RuntimeError):
+    """A cancelled request must never permit an open or process the next file."""
+
+
+def native_cancellation_enabled():
+    return os.environ.get(NATIVE_CANCELLATION) == '1'
+
+
+def _cancel_signal(signum, frame):
+    raise ScanCancelled('The scan was cancelled; opening was stopped.')
+
+
+@contextmanager
+def cancellation_signals():
+    if not native_cancellation_enabled():
+        yield
+        return
+    if threading.current_thread() is not threading.main_thread():
+        raise RuntimeError('Native cancellation requires the main thread.')
+    tracked = (signal.SIGINT, signal.SIGTERM)
+    previous = {sig: signal.getsignal(sig) for sig in tracked}
+    try:
+        for sig in tracked:
+            signal.signal(sig, _cancel_signal)
+        yield
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def terminate_scanner_children(process):
+    # An isolated session lets us stop a scanner and its descendants without
+    # signalling the PDF opener or other concurrent scan processes.
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.communicate(timeout=2)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.communicate()
+    else:
+        # A direct scanner may exit while its child processes remain alive.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def run_scan_command(command, timeout):
+    if not native_cancellation_enabled():
+        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except BaseException:
+        # Includes cancellation and timeouts: never leave scanner children alive.
+        terminate_scanner_children(process)
+        raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def cancellable_scan(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        with cancellation_signals():
+            return function(*args, **kwargs)
+    return wrapper
 
 
 def scanner_path():
@@ -448,14 +529,13 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 else:
                     size_options = ('--max-filesize=512M', '--max-scansize=1024M')
                 try:
-                    scan = subprocess.run([
+                    scan = run_scan_command([
                         scanner, '--database=' + str(DATABASE), '--recursive',
                         '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
                         '--alert-exceeds-max=yes', '--alert-encrypted=yes',
                         *size_options,
                         '--max-scantime=0', '--no-summary', '--', str(path)
-                    ], capture_output=True, text=True,
-                        timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                    ], timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 detection = capture_detection(scan)
@@ -484,6 +564,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     return scan_result
 
 
+@cancellable_scan
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     # Reject unsupported requests before allocating shared scanner queue slots.
     path = supported_request_path(item)
@@ -531,6 +612,9 @@ def main(items):
         try:
             record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             scan_and_open(item, scanner)
+        except ScanCancelled:
+            print('The scan was cancelled; opening was stopped.', file=sys.stderr)
+            return 1
         except (OSError, RuntimeError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
             print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
