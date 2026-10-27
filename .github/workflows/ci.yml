@@ -40,3 +40,6 @@ jobs:
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
+      - name: Verify per-request timestamps and duplicate suppression
+        timeout-minutes: 5
+        run: python3 test-request-timestamp.py

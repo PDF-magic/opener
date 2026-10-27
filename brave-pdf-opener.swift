@@ -1,5 +1,10 @@
 import AppKit
 
+// A request's arrival time is distinct from its eventual clean-scan cache time.
+struct ScanRequest {
+    let requestTimestamp: Date
+}
+
 // Render bundled reading artwork locally, with orbiting magic sparkles.
 final class TwilightReadingView: NSView {
     private var timer: Timer?
@@ -59,6 +64,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var running = Set<String>()
     // Retain the path supplied by Finder separately from the resolved scan target.
     private var requestedPaths = [String: String]()
+    // Session-only metadata keyed by canonical path; duplicate events keep the first time.
+    private(set) var scanRequests = [String: ScanRequest]()
     private var panel: NSPanel?
     private var filename: NSTextField?
 
@@ -167,6 +174,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
             guard received.insert(path).inserted else { continue }
             requestedPaths[path] = requestedPath
+            scanRequests[path] = ScanRequest(requestTimestamp: Date())
             pending.insert(path)
             queued.append(path)
             showProgress()
