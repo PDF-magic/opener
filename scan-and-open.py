@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from scan_results import ScanResult
 import hashlib
 import os
 from pathlib import Path
@@ -122,6 +123,14 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
+def blocked_scan(message, result):
+    # Preserve the existing exception contract while exposing structured
+    # detection metadata to callers without saving file paths in the cache.
+    failure = RuntimeError(message)
+    failure.scan_result = result
+    raise failure
+
+
 def scan_and_open(item, scanner):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
@@ -130,6 +139,7 @@ def scan_and_open(item, scanner):
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
     hit = cached_clean(cache_id)
+    result = ScanResult()
     if not hit:
         if is_pdf:
             # The engine still alerts on its internal file-size limit (~2 GB).
@@ -147,15 +157,16 @@ def scan_and_open(item, scanner):
                 timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
         except subprocess.TimeoutExpired:
             raise RuntimeError('The malware scan timed out; opening was stopped.')
+        result = ScanResult.from_clamav_output(scan.stdout)
         if scan.returncode == 1:
-            raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
+            blocked_scan('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip(), result)
         if scan.returncode != 0:
-            raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+            blocked_scan('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip(), result)
         # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
         lines = scan.stdout.splitlines()
         if not any(line.endswith(': OK') for line in lines) or any(
                 not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-            raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+            blocked_scan('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip(), result)
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     if not hit:
@@ -165,6 +176,7 @@ def scan_and_open(item, scanner):
     if path.suffix.lower() == '.pdf':
         command += ['-b', 'com.brave.Browser']
     subprocess.run(command + [str(path)], check=True)
+    return result
 
 
 def main(items):

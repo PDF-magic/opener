@@ -35,6 +35,47 @@ class ScanGateTests(unittest.TestCase):
             remove.assert_not_called()
             self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
 
+    def test_detected_signatures_are_exposed_on_blocked_scan_result(self):
+        output = (
+            f'{self.file}: Eicar-Test-Signature FOUND\n'
+            f'{self.file}: Win.Trojan.Agent-123 FOUND\n'
+            f'{self.file}: Eicar-Test-Signature FOUND\n'
+        )
+        scan = subprocess.CompletedProcess([], 1, output, '')
+        with patch.object(opener.subprocess, 'run', return_value=scan) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaises(RuntimeError) as failure:
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(failure.exception.scan_result.detection_names,
+                         ('Eicar-Test-Signature', 'Win.Trojan.Agent-123'))
+        self.assertEqual(run.call_count, 1)
+        quarantine.assert_not_called()
+        self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
+        self.assertFalse(opener.CACHE_DB.exists())
+
+    def test_scan_errors_keep_detection_names_without_opening(self):
+        output = f'{self.file}: Win.Test.Sample FOUND\n'
+        for returncode in (0, 2):
+            with self.subTest(returncode=returncode):
+                scan = subprocess.CompletedProcess([], returncode, output, '')
+                with patch.object(opener.subprocess, 'run', return_value=scan), \
+                        patch.object(opener, 'remove_quarantine') as quarantine:
+                    with self.assertRaises(RuntimeError) as failure:
+                        opener.scan_and_open(str(self.file), '/scanner')
+                self.assertEqual(failure.exception.scan_result.detection_names,
+                                 ('Win.Test.Sample',))
+                quarantine.assert_not_called()
+
+    def test_clean_and_cached_scans_report_no_detections(self):
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=scan) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(self.file), '/scanner')
+            cached = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(first.detection_names, ())
+        self.assertEqual(cached.detection_names, ())
+        self.assertEqual(sum(call.args[0][0] == '/scanner' for call in run.call_args_list), 1)
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 
