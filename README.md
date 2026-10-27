@@ -88,6 +88,23 @@ python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
+## Inspect the registered macOS PDF handler
+
+To see which application macOS currently has registered as the default for
+PDF documents, reinstall to deploy the read-only helper and run:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/identify-pdf-handler"
+```
+
+The command prints the **bundle identifier** returned by macOS Launch Services
+for the PDF content type (for example, `local.studio.brave-pdf-opener` if
+PDF Magic Opener is the current handler, or `com.apple.Preview`).
+If no handler can be identified, it prints a fixed error and exits unsuccessfully
+rather than guessing. This reports the **system PDF association**, not the
+separately configured app that receives clean PDFs or the default web browser.
+It neither changes file associations nor opens any file or application.
+
 ## PDF target application
 
 The PDF target is a macOS application **bundle identifier**, not a shell
