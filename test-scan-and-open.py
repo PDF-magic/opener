@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -34,6 +35,58 @@ class ScanGateTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             remove.assert_not_called()
             self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
+
+    def test_scanner_failures_do_not_expose_source_details(self):
+        private = str(self.file)
+        marker = 'PRIVATE_SOURCE_DETAIL'
+        cases = (
+            subprocess.CompletedProcess([], 1, f'{private}: {marker} FOUND', ''),
+            subprocess.CompletedProcess([], 2, '', f'Cannot scan {private}: {marker}'),
+            subprocess.CompletedProcess([], 0, f'{private}: OK', f'Warning: {marker}'),
+            subprocess.CompletedProcess([], 0, f'{private}: {marker} skipped', ''),
+        )
+        for completed in cases:
+            with self.subTest(returncode=completed.returncode, stdout=completed.stdout):
+                with patch.object(opener.subprocess, 'run', return_value=completed), \
+                        patch.object(opener, 'remove_quarantine') as quarantine:
+                    with self.assertRaises(RuntimeError) as failure:
+                        opener.scan_and_open(str(self.file), '/scanner')
+                self.assertNotIn(private, str(failure.exception))
+                self.assertNotIn(self.file.name, str(failure.exception))
+                self.assertNotIn(marker, str(failure.exception))
+                quarantine.assert_not_called()
+
+    def test_request_diagnostics_redact_filenames_and_untrusted_exceptions(self):
+        errors = (
+            RuntimeError('The file changed while checking it; opening was stopped. Try again.'),
+            RuntimeError(f'Secret value from {self.file}'),
+            OSError(f'Permission denied: {self.file}'),
+            subprocess.CalledProcessError(1, ['/usr/bin/open', str(self.file)]),
+        )
+        output = io.StringIO()
+        with patch.object(opener, 'scanner_path', return_value='/scanner'), \
+                patch.object(opener, 'check_database'), \
+                patch.object(opener, 'scan_and_open', side_effect=errors) as scan, \
+                patch('sys.stderr', output):
+            self.assertEqual(opener.main([str(self.file)] * len(errors)), 1)
+        self.assertEqual(scan.call_count, len(errors))
+        diagnostics = output.getvalue()
+        self.assertIn('Scan request 1: The file changed', diagnostics)
+        self.assertEqual(diagnostics.count('The request could not be processed'), 3)
+        self.assertIn('Scan request 4:', diagnostics)
+        self.assertNotIn(str(self.file), diagnostics)
+        self.assertNotIn(self.file.name, diagnostics)
+        self.assertNotIn('Secret value', diagnostics)
+
+    def test_clean_cache_never_persists_source_name_or_path(self):
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=completed), \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner')
+        data = opener.CACHE_DB.read_bytes()
+        self.assertIn(b'clean_scans', data)
+        self.assertNotIn(os.fsencode(str(self.file)), data)
+        self.assertNotIn(os.fsencode(self.file.name), data)
 
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
