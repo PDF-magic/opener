@@ -22,6 +22,10 @@ jobs:
         run: python3 test-app-name.py
       - name: Run scan-gate tests
         run: python3 test-scan-and-open.py
+      - name: Verify file lifecycle state transitions
+        run: python3 test-file-lifecycle.py
+      - name: Verify cross-process scan concurrency
+        run: python3 test-scan-concurrency.py
 
   macos-build:
     runs-on: macos-latest
@@ -31,6 +35,9 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Verify duplicate-open handling and queued native scans
+        timeout-minutes: 5
+        run: python3 test-brave-pdf-opener.py
       - name: Verify per-request timestamps and duplicate suppression
         timeout-minutes: 5
         run: python3 test-request-timestamp.py
