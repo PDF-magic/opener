@@ -70,14 +70,22 @@ let launched = launch(
 )
 precondition(launched, "The native launcher must start the stopped application")
 
+// Launch Services may canonicalize /var to /private/var on macOS.
+// Compare the filesystem target, not the alias spelling.
+func matchesRequestedPDF(_ path: String?) -> Bool {
+    guard let path = path else { return false }
+    return URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        == URL(fileURLWithPath: pdf).standardizedFileURL.resolvingSymlinksInPath().path
+}
 let deadline = Date().addingTimeInterval(20)
 var received: String?
 while Date() < deadline {
     received = try? String(contentsOfFile: marker, encoding: .utf8)
-    if received == pdf { break }
+    if matchesRequestedPDF(received) { break }
     Thread.sleep(forTimeInterval: 0.1)
 }
-precondition(received == pdf, "The newly launched app must receive the selected PDF (actual: \(received ?? "none"))")
+precondition(matchesRequestedPDF(received),
+             "The newly launched app must receive the selected PDF")
 let running = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
 precondition(!running.isEmpty, "The target application must be running after cold launch")
 for application in running { _ = application.terminate() }
@@ -150,7 +158,7 @@ class BrowserColdStartTests(unittest.TestCase):
                 "macOS cold-start harness failed:\n" + result.stdout + result.stderr,
             )
             self.assertIn("PASS: a stopped, verified app launched", result.stdout)
-            self.assertEqual(receipt.read_text(), str(pdf))
+            self.assertEqual(Path(receipt.read_text()).resolve(), pdf.resolve())
 
 
 if __name__ == "__main__":
