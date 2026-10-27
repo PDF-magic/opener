@@ -108,6 +108,20 @@ Chrome must be installed and registered with macOS as a PDF-capable application.
 The launcher verifies the selected bundle and PDF registration before opening,
 and never substitutes another browser when verification fails.
 
+To open scanned PDFs in **Chromium** (the open-source browser, distinct from
+Google Chrome), select its macOS bundle identifier:
+
+```sh
+printf '%s\n' 'org.chromium.Chromium' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Chromium must be installed and registered as a PDF-capable application with
+macOS. The existing launcher verifies that specific bundle, then passes the
+unchanged local PDF to Chromium only after ClamAV and file-integrity checks
+succeed. A missing or unregistered Chromium installation blocks opening rather
+than falling back to Chrome, Brave, or another browser. Existing user selections
+are not overwritten.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
