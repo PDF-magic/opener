@@ -853,6 +853,90 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         run.assert_not_called()
         remove.assert_not_called()
 
+    def test_signature_version_is_attached_to_clean_scan_result(self):
+        db = Path(self.temp.name) / 'signatures'
+        db.mkdir()
+        (db / 'main.cvd').write_bytes(b'ClamAV-VDB:build:62:rest'.ljust(512, b' '))
+        (db / 'daily.cld').write_bytes(b'ClamAV-VDB:build:28123:rest'.ljust(512, b' '))
+        (db / 'bytecode.cvd').write_bytes(b'ClamAV-VDB:build:335:rest'.ljust(512, b' '))
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            result = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertIsInstance(result, opener.CleanScanResult)
+        self.assertEqual(result.signature_database_version,
+                         'main=62,daily=28123,bytecode=335')
+        self.assertEqual(run.call_count, 2)
+
+    def test_cached_result_retains_original_signature_revision(self):
+        db = Path(self.temp.name) / 'signatures'
+        db.mkdir()
+        (db / 'main.cvd').write_bytes(b'ClamAV-VDB:build:62:rest')
+        daily = db / 'daily.cld'
+        daily.write_bytes(b'ClamAV-VDB:build:28123:rest')
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(self.file), '/scanner')
+            daily.write_bytes(b'ClamAV-VDB:build:28124:rest')
+            cached = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(first.signature_database_version, 'main=62,daily=28123')
+        self.assertEqual(cached.signature_database_version, 'main=62,daily=28123')
+        self.assertEqual(sum(call.args[0][0] == '/scanner' for call in run.call_args_list), 1)
+
+    def test_legacy_cached_result_preserves_clean_status_without_inventing_version(self):
+        digest = opener.cache_key(opener.fingerprint(self.file), True)
+        with sqlite3.connect(opener.CACHE_DB) as connection:
+            connection.execute('CREATE TABLE clean_scans '
+                               '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL)')
+            connection.execute('INSERT INTO clean_scans VALUES (?, ?)', (digest.hex(), time.time()))
+        with patch.object(opener.subprocess, 'run',
+                          return_value=subprocess.CompletedProcess([], 0, '', '')) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            result = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertIsNone(result.signature_database_version)
+        self.assertEqual(run.call_count, 1)
+        # The cache must bypass ClamAV, independent of the configured launch helper.
+        self.assertNotEqual(run.call_args.args[0][0], '/scanner')
+        self.assertEqual(run.call_args.args[0][-1], str(self.file))
+        with sqlite3.connect(opener.CACHE_DB) as connection:
+            columns = [row[1] for row in connection.execute('PRAGMA table_info(clean_scans)')]
+        self.assertIn('signature_database_version', columns)
+
+    def test_missing_or_malformed_version_is_not_claimed_as_known(self):
+        db = Path(self.temp.name) / 'signatures'
+        db.mkdir()
+        (db / 'main.cvd').write_bytes(b'ClamAV-VDB:build:not-a-version:rest')
+        (db / 'daily.cvd').write_bytes(b'ClamAV-VDB:build:28123:rest')
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
+                patch.object(opener.subprocess, 'run', return_value=completed), \
+                patch.object(opener, 'remove_quarantine'):
+            result = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertIsNone(result.signature_database_version)
+
+    def test_signature_update_during_scan_cannot_mislabel_result(self):
+        db = Path(self.temp.name) / 'signatures'
+        db.mkdir()
+        (db / 'main.cvd').write_bytes(b'ClamAV-VDB:build:62:rest')
+        daily = db / 'daily.cld'
+        daily.write_bytes(b'ClamAV-VDB:build:28123:rest')
+        def run(command, **kwargs):
+            if command[0] == '/scanner':
+                daily.write_bytes(b'ClamAV-VDB:build:28124:rest')
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
+                patch.object(opener.subprocess, 'run', side_effect=run), \
+                patch.object(opener, 'remove_quarantine'):
+            result = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertIsNone(result.signature_database_version)
+
     def test_missing_scanner_blocks_before_modifying_any_file(self):
         with patch.object(opener, 'scanner_path', side_effect=RuntimeError('unavailable')), \
                 patch.object(opener, 'scan_and_open') as scan, patch('sys.stderr'):
