@@ -15,7 +15,7 @@ if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! 
 fi
 
 mkdir -p "$install_dir/signatures"
-cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/update-malware-signatures.sh" "$install_dir/"
+cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/file_launcher.py" "$script_dir/update-malware-signatures.sh" "$install_dir/"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
 python3 - "$install_dir" <<'CONFIG'
 import sys

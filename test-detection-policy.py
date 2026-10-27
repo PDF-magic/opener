@@ -44,6 +44,7 @@ class DetectionDecisionTests(unittest.TestCase):
         self.assertIsInstance(decision, opener.OpeningDecision)
         self.assertFalse(decision.allowed)
         self.assertEqual(evidence, opener.capture_detection(raw))
+        self.assertNotIn('Malware FOUND', decision.reason)
 
     def test_policy_preserves_exact_previous_scanner_gate(self):
         cases = (

@@ -1,5 +1,10 @@
 import AppKit
 
+// A request's arrival time is distinct from its eventual clean-scan cache time.
+struct ScanRequest {
+    let requestTimestamp: Date
+}
+
 // Render bundled reading artwork locally, with orbiting magic sparkles.
 final class TwilightReadingView: NSView {
     private var timer: Timer?
@@ -50,12 +55,27 @@ final class TwilightReadingView: NSView {
     }
 }
 
+// Clean up scan stderr pipes even if launching or reading from the scanner fails.
+func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows -> Result {
+    let errors = Pipe()
+    defer {
+        errors.fileHandleForReading.closeFile()
+        errors.fileHandleForWriting.closeFile()
+    }
+    return try operation(errors)
+}
+
 final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
+    private let maxConcurrentScans = 2
+    private var queued = [String]()
+    private var running = Set<String>()
     // Retain the path supplied by Finder separately from the resolved scan target.
     private var requestedPaths = [String: String]()
+    // Session-only metadata keyed by canonical path; duplicate events keep the first time.
+    private(set) var scanRequests = [String: ScanRequest]()
     private var panel: NSPanel?
     private var filename: NSTextField?
 
@@ -105,52 +125,73 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         panel?.orderFrontRegardless()
     }
 
-    func application(_ application: NSApplication, open urls: [URL]) {
+    private func startQueuedScans() {
+        // All queue mutations happen on the application's main thread.
+        while running.count < maxConcurrentScans && !queued.isEmpty {
+            let path = queued.removeFirst()
+            running.insert(path)
+            startScan(path)
+        }
+    }
+
+    private func startScan(_ path: String) {
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
+        DispatchQueue.global(qos: .userInitiated).async {
+    let failure = withScanErrorPipe { errors -> String? in
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [script.path, path]
+        process.standardError = errors
+        process.standardOutput = FileHandle.nullDevice
+        do {
+            try process.run()
+            // Release the parent write end before waiting for the child's output.
+            errors.fileHandleForWriting.closeFile()
+            let output = errors.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            if process.terminationStatus != 0 {
+                return String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
+            }
+        } catch {
+            return error.localizedDescription
+        }
+        return nil
+    }
+DispatchQueue.main.async {
+                self.running.remove(path)
+                self.pending.remove(path)
+                self.requestedPaths.removeValue(forKey: path)
+                // Release capacity and start the next queued document even after a failure.
+                self.startQueuedScans()
+                if self.pending.isEmpty { self.panel?.orderOut(nil) }
+                else { self.showProgress() }
+                if let failure = failure {
+                    NSApp.activate(ignoringOtherApps: true)
+                    let alert = NSAlert()
+                    alert.alertStyle = .warning
+                    alert.messageText = "Opening stopped"
+                    alert.informativeText = failure
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+                if self.pending.isEmpty { NSApp.terminate(nil) }
+            }
+        }
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             let requestedPath = url.path
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
             guard received.insert(path).inserted else { continue }
             requestedPaths[path] = requestedPath
+            scanRequests[path] = ScanRequest(requestTimestamp: Date())
             pending.insert(path)
+            queued.append(path)
             showProgress()
-            DispatchQueue.global(qos: .userInitiated).async {
-                let process = Process()
-                let errors = Pipe()
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = [script.path, path]
-                process.standardError = errors
-                process.standardOutput = FileHandle.nullDevice
-                var message: String?
-                do {
-                    try process.run()
-                    let output = errors.fileHandleForReading.readDataToEndOfFile()
-                    process.waitUntilExit()
-                    if process.terminationStatus != 0 {
-                        message = String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
-                    }
-                } catch {
-                    message = error.localizedDescription
-                }
-                let failure = message
-                DispatchQueue.main.async {
-                    self.pending.remove(path)
-                    if self.pending.isEmpty { self.panel?.orderOut(nil) }
-                    else { self.showProgress() }
-                    if let failure = failure {
-                        NSApp.activate(ignoringOtherApps: true)
-                        let alert = NSAlert()
-                        alert.alertStyle = .warning
-                        alert.messageText = "Opening stopped"
-                        alert.informativeText = failure
-                        alert.addButton(withTitle: "OK")
-                        alert.runModal()
-                    }
-                    if self.pending.isEmpty { NSApp.terminate(nil) }
-                }
-            }
         }
+        startQueuedScans()
     }
 }
 
