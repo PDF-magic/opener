@@ -49,7 +49,8 @@ struct PDFHandlerHistoryTests {
         }), "A symlink must not count as a saved preference")
         precondition(readPreviousPDFHandler(at: link.path) == nil,
                      "Stored state must not be read through a symlink")
-        precondition(try String(contentsOf: victim, encoding: .utf8) == "UNTOUCHED",
+        let victimContents = try String(contentsOf: victim, encoding: .utf8)
+        precondition(victimContents == "UNTOUCHED",
                      "Unrelated files must not be overwritten")
 
         let invalid = root.appendingPathComponent("invalid.txt")
