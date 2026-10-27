@@ -123,6 +123,38 @@ The saved preference remains on disk so a retry is possible after a failure.
 automatically pass through PDF Magic Opener's malware scan gate.** The separate
 post-scan browser preference is unchanged.
 
+## Test Finder's Open command
+
+On a Mac with PDF Magic Opener installed and already registered as the **macOS
+default PDF handler**, first choose a **known-clean, non-sensitive local test
+PDF**. Run this optional interactive integration check:
+
+```sh
+python3 test-finder-open.py --live "/absolute/path/to/harmless-test.pdf"
+```
+
+This test invokes Finder's actual **Open** command via the separately bundled
+AppleScript (`tell application id "com.apple.finder"`), not `/usr/bin/open` or
+a direct call to the native application's delegate. It checks that the request
+arrives through the existing scan gate and is attributed to Finder using the
+anonymous origin flags already recorded by the installed opener. Observe the
+usual scanning progress and the subsequent browser handoff or a legitimate
+blocked-scan warning as appropriate; the test **does not** treat the request
+record as proof of a clean verdict or successful browser rendering.
+
+This live mode requires an interactive macOS login session and permission
+for Terminal or the invoking application to automate Finder. If macOS asks for
+Automation access, approve it in the normal system prompt; denied access is a
+test failure, not a reason to bypass consent. It refuses to run unless the
+read-only macOS PDF-handler lookup reports PDF Magic Opener as the default.
+The test never sets the default application, changes user preferences, deletes
+quarantine, or bypasses ClamAV. It leaves your supplied test PDF in place.
+
+CI compiles the Finder AppleScript on macOS and checks these safeguards and
+invocation semantics with deterministic tests. GitHub-hosted CI does **not**
+invoke Finder interactively because Automation consent cannot be silently
+granted; use the `--live` command above for a genuine Finder integration run.
+
 ## Inspect the registered macOS PDF handler
 
 To see which application macOS currently has registered as the default for

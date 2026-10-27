@@ -194,6 +194,11 @@ jobs:
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: python3 test-scan-resource-cleanup.py
+      - name: Compile Finder Open AppleScript and test the safe integration harness
+        timeout-minutes: 2
+        run: |
+          /usr/bin/osacompile -o "$RUNNER_TEMP/FinderOpen.scpt" test-finder-open.applescript
+          python3 test-finder-open.py -v
       - name: Verify native open-event origin classification
         run: python3 test-native-request-origin.py
       - name: Verify per-request timestamps and duplicate suppression
