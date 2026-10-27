@@ -58,6 +58,8 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Recursive launch protection:** PDF Magic Opener is the scan gate, not a PDF destination. The configured PDF target cannot be its own bundle identifier. Both Python handoff and native macOS launching independently reject that destination; the native helper also refuses a PDF without an explicitly selected target, since the system default PDF handler may point back to PDF Magic Opener. Default-handler launches that would resolve back to the opener are refused. Other installed PDF destinations, user preferences, and non-PDF default handlers are unchanged.
 
+**Incomplete cloud downloads:** Before hashing or scanning a PDF, the macOS launcher checks native download-state metadata. Cloud-only iCloud placeholders, PDFs still downloading, and files whose local availability cannot be verified do **not** launch a browser. The scan gate rechecks availability after scanning (including cache hits) and immediately before the native macOS launch to detect cloud eviction. Finder-style `.pdf.icloud` placeholder paths are rejected without scanning. Reopen the requested PDF once it has fully downloaded locally; the opener does not download it, wait indefinitely, or alter the configured PDF target. Reinstall to deploy the updated native helper.
+
 **Native application launching:** After the scan gate approves a file, verifies unchanged contents, and completes quarantine handling, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
@@ -119,6 +121,20 @@ preflight accepts only the installed Arc bundle with a working executable and
 a valid Browser Company signature (team S6N382Y83G); missing or untrusted
 installations stop opening. The ClamAV and quarantine checks still run, and
 Brave remains the default unless the user explicitly selects Arc.
+
+To open scanned PDFs in **Chromium** (the open-source browser, distinct from
+Google Chrome), select its macOS bundle identifier:
+
+```sh
+printf '%s\n' 'org.chromium.Chromium' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Chromium must be installed and registered as a PDF-capable application with
+macOS. The existing launcher verifies that specific bundle, then passes the
+unchanged local PDF to Chromium only after ClamAV and file-integrity checks
+succeed. A missing or unregistered Chromium installation blocks opening rather
+than falling back to Chrome, Brave, or another browser. Existing user selections
+are not overwritten.
 
 To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
 

@@ -9,6 +9,7 @@ import os
 import re
 import stat
 import subprocess
+import sys
 
 PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
 PDF_OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
@@ -33,6 +34,31 @@ def verify_launch_target(path, target_app=None):
         raise RuntimeError("The selected application is not registered to open PDFs; opening was stopped.")
 
 NATIVE_LAUNCHER = Path(__file__).with_name("launch-scanned-file")
+
+
+def verify_local_file_available(path):
+    """Reject PDFs whose cloud download is incomplete before scanning or opening.
+
+    Query native macOS file metadata without reading bytes or triggering downloads.
+    Non-PDF requests preserve their existing launch behavior.
+    """
+    path = Path(path)
+    if path.suffix.lower() != ".pdf" or sys.platform != "darwin":
+        return
+    try:
+        completed = subprocess.run(
+            [str(NATIVE_LAUNCHER), "--check-local", str(path)],
+            capture_output=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RuntimeError(
+            "The requested PDF is not available locally; opening was stopped."
+        ) from error
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "The requested PDF is not available locally; opening was stopped."
+        )
+
 TARGET_APP_CONFIG = Path.home() / "Library/Application Support/Studio/allow-and-open/target-app.txt"
 
 

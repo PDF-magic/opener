@@ -138,7 +138,6 @@ struct PDFTargetVerificationTests {
             application: arc, bundleIdentifier: "company.thebrowser.Browser",
             verifySignature: { _ in true }
         ), "Arc without an executable must be rejected")
-        print("PASS: verified Arc PDF target and fail-closed impostor handling.")
         // A local Firefox fixture allows independent trust verification even
         // when Firefox is absent from the macOS CI runner.
         let firefox = temporaryRoot.appendingPathComponent("Firefox.app", isDirectory: true)
@@ -189,6 +188,7 @@ struct PDFTargetVerificationTests {
             application: firefox, bundleIdentifier: "org.mozilla.firefox",
             verifySignature: { _ in true }
         ), "Firefox without an executable must be denied")
-        print("PASS: registered PDF handlers, trusted Safari/Arc, and Mozilla Firefox.")
+        print("PASS: verified Arc PDF target and fail-closed impostor handling.")
+        print("PASS: registered PDF handlers and verified Safari-only exception.")
     }
 }
