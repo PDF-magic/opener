@@ -119,6 +119,12 @@ jobs:
           if "$RUNNER_TEMP/MakePDFMagicDefault" unexpected-argument; then exit 1; fi
       - name: Compile PDF handler utility
         run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Identify the current macOS PDF handler without modifying it
+        run: |
+          xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
+          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
+          "$RUNNER_TEMP/TestPDFHandler"
+          if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
@@ -153,6 +159,9 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift test-default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
+      - name: Verify PDF handoff to an already-running browser process
+        timeout-minutes: 3
+        run: python3 test-browser-already-running.py -v
       - name: Verify bundle-identifier resolution and app existence
         run: python3 test-bundle-target.py
       - name: Verify duplicate-open handling and queued native scans

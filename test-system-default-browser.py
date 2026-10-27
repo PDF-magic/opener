@@ -92,6 +92,25 @@ class SystemDefaultBrowserTests(unittest.TestCase):
                 run.assert_called_once()
                 quarantine.assert_not_called()
 
+    def test_missing_system_default_browser_displays_recovery_instructions(self):
+        from io import StringIO
+
+        diagnostics = StringIO()
+        with patch.object(scanner, "scanner_path", return_value="/scanner"), \
+                patch.object(scanner, "check_database"), \
+                patch.object(scanner.subprocess, "run",
+                             side_effect=FileNotFoundError("/private/secret/resolver")) as run, \
+                patch.object(scanner, "remove_quarantine") as quarantine, \
+                patch("sys.stderr", diagnostics):
+            self.assertEqual(scanner.main([str(self.document)]), 1)
+        self.assertIn("default browser is unavailable", diagnostics.getvalue())
+        self.assertIn("System Settings", diagnostics.getvalue())
+        self.assertIn("target-app.txt", diagnostics.getvalue())
+        self.assertNotIn("/private/secret", diagnostics.getvalue())
+        self.assertNotIn(str(self.document), diagnostics.getvalue())
+        run.assert_called_once()
+        quarantine.assert_not_called()
+
     def test_unsupported_default_browser_never_reaches_launch(self):
         commands = []
 
