@@ -124,6 +124,26 @@ rather than guessing. This reports the **system PDF association**, not the
 separately configured app that receives clean PDFs or the default web browser.
 It neither changes file associations nor opens any file or application.
 
+### Current default PDF-handler status
+
+To display whether **PDF Magic Opener** is the current default for PDF files,
+and which application is registered if it is not, run:
+
+```sh
+python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"
+```
+
+Reinstall to deploy this command. The installer also prints the current status
+after macOS completes any required default-handler confirmation. A successful
+lookup reports the current application bundle identifier; an unavailable or
+unverifiable association produces a fixed error and an unsuccessful exit rather
+than a guessed status.
+
+The command **only reads** the macOS PDF association using the separately
+installed `identify-pdf-handler` helper. It does not open a PDF, change the
+default PDF association, change the browser receiving scanned PDFs, or modify
+user preferences.
+
 ## PDF target application
 
 For a comparison of viewer capabilities, browser-specific settings, and
