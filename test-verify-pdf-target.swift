@@ -71,6 +71,74 @@ struct PDFTargetVerificationTests {
             application: safari, bundleIdentifier: "com.apple.Safari",
             verifySignature: { _ in true }
         ), "Safari without an executable must be denied")
+        // Arc is not necessarily registered as a PDF handler. Check only the
+        // expected, executable and developer-signed Arc bundle is exempt.
+        let arc = temporaryRoot.appendingPathComponent("Arc.app", isDirectory: true)
+        let arcMacOS = arc.appendingPathComponent("Contents/MacOS", isDirectory: true)
+        try! fileManager.createDirectory(at: arcMacOS, withIntermediateDirectories: true)
+        let arcInfo: [String: Any] = [
+            "CFBundleIdentifier": "company.thebrowser.Browser",
+            "CFBundleExecutable": "Arc",
+            "CFBundlePackageType": "APPL",
+        ]
+        let arcPlist = try! PropertyListSerialization.data(
+            fromPropertyList: arcInfo, format: .xml, options: 0
+        )
+        try! arcPlist.write(to: arc.appendingPathComponent("Contents/Info.plist"))
+        let arcExecutable = arcMacOS.appendingPathComponent("Arc")
+        try! "#!/bin/sh\nexit 0\n".write(to: arcExecutable,
+                                        atomically: true, encoding: .utf8)
+        try! fileManager.setAttributes([.posixPermissions: 0o755],
+                                       ofItemAtPath: arcExecutable.path)
+        precondition(!targetSupportsPDF(application: arc, registeredPDFHandlers: []),
+                     "Arc fixture must use the unregistered PDF path")
+        precondition(trustedArcPDFTarget(
+            application: arc, bundleIdentifier: "company.thebrowser.Browser",
+            verifySignature: { _ in true }
+        ), "Signed Arc with an executable should be allowed")
+        precondition(!trustedArcPDFTarget(
+            application: arc, bundleIdentifier: "company.thebrowser.Browser",
+            verifySignature: { _ in false }
+        ), "Unsigned Arc impostors must be rejected")
+        precondition(!trustedArcPDFTarget(
+            application: arc, bundleIdentifier: "com.brave.Browser",
+            verifySignature: { _ in true }
+        ), "Other browsers cannot inherit Arc's exception")
+        precondition(!trustedArcPDFTarget(
+            application: nil, bundleIdentifier: "company.thebrowser.Browser",
+            verifySignature: { _ in true }
+        ), "Missing Arc application must be rejected")
+        precondition(!trustedArcPDFTarget(
+            application: notAnApp, bundleIdentifier: "company.thebrowser.Browser",
+            verifySignature: { _ in true }
+        ), "A document must not impersonate Arc")
+        let fakeArc = temporaryRoot.appendingPathComponent("FakeArc.app", isDirectory: true)
+        let fakeMacOS = fakeArc.appendingPathComponent("Contents/MacOS", isDirectory: true)
+        try! fileManager.createDirectory(at: fakeMacOS, withIntermediateDirectories: true)
+        let fakeInfo: [String: Any] = [
+            "CFBundleIdentifier": "com.example.fakeArc",
+            "CFBundleExecutable": "Arc",
+            "CFBundlePackageType": "APPL",
+        ]
+        let fakePlist = try! PropertyListSerialization.data(
+            fromPropertyList: fakeInfo, format: .xml, options: 0
+        )
+        try! fakePlist.write(to: fakeArc.appendingPathComponent("Contents/Info.plist"))
+        let fakeExecutable = fakeMacOS.appendingPathComponent("Arc")
+        try! "#!/bin/sh\nexit 0\n".write(to: fakeExecutable,
+                                        atomically: true, encoding: .utf8)
+        try! fileManager.setAttributes([.posixPermissions: 0o755],
+                                       ofItemAtPath: fakeExecutable.path)
+        precondition(!trustedArcPDFTarget(
+            application: fakeArc, bundleIdentifier: "company.thebrowser.Browser",
+            verifySignature: { _ in true }
+        ), "Mismatched Arc bundle identity must be rejected")
+        try! fileManager.removeItem(at: arcExecutable)
+        precondition(!trustedArcPDFTarget(
+            application: arc, bundleIdentifier: "company.thebrowser.Browser",
+            verifySignature: { _ in true }
+        ), "Arc without an executable must be rejected")
+        print("PASS: verified Arc PDF target and fail-closed impostor handling.")
         // A local Firefox fixture allows independent trust verification even
         // when Firefox is absent from the macOS CI runner.
         let firefox = temporaryRoot.appendingPathComponent("Firefox.app", isDirectory: true)
@@ -121,6 +189,6 @@ struct PDFTargetVerificationTests {
             application: firefox, bundleIdentifier: "org.mozilla.firefox",
             verifySignature: { _ in true }
         ), "Firefox without an executable must be denied")
-        print("PASS: registered PDF handlers and trusted Safari/Firefox exceptions.")
+        print("PASS: registered PDF handlers, trusted Safari/Arc, and Mozilla Firefox.")
     }
 }

@@ -45,6 +45,37 @@ func trustedSafariPDFTarget(
     return verifySignature(application)
 }
 
+// Arc displays PDFs through its built-in Chromium viewer even if macOS
+// does not list it as a PDF document handler. Do not trust bundle names alone:
+// verify the installed Arc executable and the Browser Company's signing team.
+func browserCompanySignedArc(at application: URL) -> Bool {
+    var code: SecStaticCode?
+    var requirement: SecRequirement?
+    guard SecStaticCodeCreateWithPath(application as CFURL, SecCSFlags(), &code) == errSecSuccess,
+          let code = code,
+          SecRequirementCreateWithString(
+              "anchor apple generic and identifier \"company.thebrowser.Browser\" and certificate leaf[subject.OU] = \"S6N382Y83G\"" as CFString,
+              SecCSFlags(), &requirement
+          ) == errSecSuccess,
+          let requirement = requirement else { return false }
+    return SecStaticCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess
+}
+
+func trustedArcPDFTarget(
+    application: URL?,
+    bundleIdentifier: String,
+    verifySignature: (URL) -> Bool = browserCompanySignedArc
+) -> Bool {
+    guard bundleIdentifier == "company.thebrowser.Browser",
+          let application = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          application.pathExtension.lowercased() == "app",
+          let bundle = Bundle(url: application),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
+    return verifySignature(application)
+}
+
 // Standard Firefox releases contain a PDF viewer even when Launch Services
 // does not advertise PDF support. The exception requires Mozilla's actual
 // Developer ID signature, not just a spoofable bundle identifier.
@@ -83,6 +114,7 @@ func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
         application: application,
         registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
     ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
+      || trustedArcPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || trustedFirefoxPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 
