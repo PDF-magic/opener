@@ -110,7 +110,7 @@ def cache_key(digest, is_pdf):
 
 @contextmanager
 def cache_connection():
-    # Cache only a digest and verified scan timestamp in a private local database.
+    # Cache only digests, scan times, and optional database revisions, never file paths.
     CACHE_DB.parent.mkdir(parents=True, exist_ok=True)
     CACHE_DB.touch(mode=0o600, exist_ok=True)
     CACHE_DB.chmod(0o600)
