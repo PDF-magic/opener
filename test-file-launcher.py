@@ -18,6 +18,9 @@ class FileLauncherTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        setting = patch('file_launcher.TARGET_APP_CONFIG', self.root / 'target-app.txt')
+        setting.start()
+        self.addCleanup(setting.stop)
 
     def test_pdf_uses_existing_brave_destination_even_with_uppercase_extension(self):
         pdf = self.root / "a document.PDF"
@@ -54,9 +57,10 @@ class FileLauncherTests(unittest.TestCase):
         source = (ROOT / "scan-and-open.py").read_text()
         self.assertNotIn("com.brave.Browser", source)
         self.assertNotIn("PDF_DEFAULT_BUNDLE_ID", source)
-        self.assertIn("launch_clean_file(path)", source)
+        self.assertIn("launch_clean_file(path, target_app=target_app)", source)
+        self.assertIn("target_app = pdf_target_application() if is_pdf else None", source)
         self.assertLess(source.index("remove_quarantine(path)\n    # The scan engine"),
-                        source.index("launch_clean_file(path)"))
+                        source.index("launch_clean_file(path, target_app=target_app)"))
 
     def test_installer_deploys_launch_module_with_scanner(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()

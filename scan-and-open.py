@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 import fcntl
 import hashlib
-from file_launcher import launch_clean_file
+from file_launcher import launch_clean_file, pdf_target_application
 import os
 from pathlib import Path
 import sqlite3
@@ -184,6 +184,7 @@ def _scan_and_open(item, scanner):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    target_app = pdf_target_application() if is_pdf else None
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
     # Do not serialize an already cached clean hit. For a miss, a cross-process
@@ -227,7 +228,7 @@ def _scan_and_open(item, scanner):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     remove_quarantine(path)
     # The scan engine does not select an application or browser.
-    launch_clean_file(path)
+    launch_clean_file(path, target_app=target_app)
 
 
 def scan_and_open(item, scanner):

@@ -2,7 +2,7 @@
 
 Safe & reliable document launcher for macOS.
 
-Scan PDFs locally with ClamAV before opening them in Brave, with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
+Scan PDFs locally with ClamAV before opening them in a configurable application (Brave by default), with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
 
 ## Art
 
@@ -16,7 +16,7 @@ Install local malware scanning for the existing **Allow and Open** Finder action
 bash install-allow-and-open.sh
 ```
 
-Double-click PDFs to scan them locally with ClamAV and open them in Brave. A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to Brave. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
+Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
@@ -50,9 +50,29 @@ Verify the scan gate with:
 
 ```sh
 python3 test-scan-and-open.py
+python3 test-target-app.py
 python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
+
+## PDF target application
+
+The PDF target is a macOS application **bundle identifier**, not a shell
+command or executable path. The default is `com.brave.Browser`. After
+installing, edit
+`~/Library/Application Support/Studio/allow-and-open/target-app.txt` to use a
+different installed application; for example, Preview:
+
+```sh
+printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+The setting survives reinstallations. An absent setting falls back to Brave
+for existing installations; an invalid, unreadable or symlinked setting stops
+PDF opening instead of silently choosing an application. The setting affects
+only PDF files; other files and application bundles keep their macOS default
+behavior. Scanning, signature freshness, content verification, quarantine,
+and clean-scan caching still gate every PDF before launch.
 
 ## File lifecycle contract
 
@@ -90,12 +110,13 @@ ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
 | `set-brave-pdf-default.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |
+| `test-target-app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
 | `test-scan-concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
 | `test-brave-pdf-opener.py` | Verify native progress visibility and duplicate-open handling |
 
-The installer requires an existing **Allow and Open** Quick Action at `~/Library/Services/Allow and Open.workflow` and Brave Browser. Run the commands above from this repository's root.
+The installer requires an existing **Allow and Open** Quick Action at `~/Library/Services/Allow and Open.workflow`; Brave Browser is needed when using the default target. Run the commands above from this repository's root.
 
-For compatibility with existing installations, runtime scripts and signatures remain in `~/Library/Application Support/Studio/allow-and-open`, logs remain in `~/Library/Logs/Studio`, and the app and LaunchAgent keep their `local.studio` identifiers. The installer safely relocates a verified legacy `Open PDFs in Brave.app` bundle to `PDF Magic Opener.app` when upgrading. This change names the application; Brave remains the PDF destination until browser selection is implemented.
+For compatibility with existing installations, runtime scripts and signatures remain in `~/Library/Application Support/Studio/allow-and-open`, logs remain in `~/Library/Logs/Studio`, and the app and LaunchAgent keep their `local.studio` identifiers. The installer safely relocates a verified legacy `Open PDFs in Brave.app` bundle to `PDF Magic Opener.app` when upgrading. The configurable PDF handoff preserves the established application identity and scan controls.
 
 ## License
 
