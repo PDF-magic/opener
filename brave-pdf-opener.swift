@@ -112,6 +112,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var cancelledRequests = Set<String>()
     // Retain the path supplied by Finder separately from the resolved scan target.
     private var requestedPaths = [String: String]()
+    // Keep macOS-granted access alive while an external-volume PDF is queued or scanned.
+    // Ordinary unscoped file URLs require no explicit release.
+    private var securityScopedDocuments = [String: URL]()
     // Keep the macOS open-event sender for each queued request.
     private var requestOrigins = [String: String]()
     // Session-only metadata keyed by canonical path; duplicate events keep the first time.
@@ -128,6 +131,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             try? lifetime.fileHandleForWriting.close()
         }
         scanLifetimes.removeAll()
+        for url in securityScopedDocuments.values {
+            url.stopAccessingSecurityScopedResource()
+        }
+        securityScopedDocuments.removeAll()
     }
 
 
@@ -145,6 +152,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             requestedPaths.removeValue(forKey: path)
             requestOrigins.removeValue(forKey: path)
             scanRequests.removeValue(forKey: path)
+            if let url = securityScopedDocuments.removeValue(forKey: path) {
+                url.stopAccessingSecurityScopedResource()
+            }
         }
         queued.removeAll()
         processLock.lock()
@@ -270,6 +280,9 @@ DispatchQueue.main.async {
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
                 self.requestOrigins.removeValue(forKey: path)
+                if let url = self.securityScopedDocuments.removeValue(forKey: path) {
+                    url.stopAccessingSecurityScopedResource()
+                }
                 // Release capacity and start the next queued document even after a failure.
                 self.startQueuedScans()
                 self.processLock.lock()
@@ -295,9 +308,17 @@ DispatchQueue.main.async {
         let origin = currentRequestSource()
         for url in urls {
             guard !terminating else { break }
+            guard url.isFileURL else { continue }
+            // Retain the original URL's security scope, if provided by macOS.
+            // Resolving symlinks produces a separate URL without that grant.
+            let hasSecurityScope = url.startAccessingSecurityScopedResource()
             let requestedPath = url.path
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
-            guard received.insert(path).inserted else { continue }
+            guard received.insert(path).inserted else {
+                if hasSecurityScope { url.stopAccessingSecurityScopedResource() }
+                continue
+            }
+            if hasSecurityScope { securityScopedDocuments[path] = url }
             requestedPaths[path] = requestedPath
             requestOrigins[path] = origin
             scanRequests[path] = ScanRequest(requestTimestamp: Date())
