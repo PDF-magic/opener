@@ -25,6 +25,7 @@ CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 SCAN_REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
+REQUESTING_APPLICATION_ENV = 'PDF_MAGIC_REQUESTING_APPLICATION'
 
 # Only these fixed, path-free errors may appear in scan diagnostics.
 # Unexpected system or scanner exceptions may contain private source paths.
@@ -262,6 +263,28 @@ def record_scan_destination(destination):
         raise RuntimeError('Unable to record the scan destination; opening was stopped.') from error
 
 
+def record_scan_request(application):
+    """Record the requesting entry point separately from intended destinations."""
+    if not application or len(application) > 128 or any(char in application for char in '\r\n\0'):
+        raise ValueError('Invalid requesting application name.')
+    SCAN_REQUEST_DB.parent.mkdir(parents=True, exist_ok=True)
+    if SCAN_REQUEST_DB.is_symlink() or (SCAN_REQUEST_DB.exists() and not SCAN_REQUEST_DB.is_file()):
+        raise RuntimeError('The scan-request database must be a regular file, not a symbolic link.')
+    SCAN_REQUEST_DB.touch(mode=0o600, exist_ok=True)
+    SCAN_REQUEST_DB.chmod(0o600)
+    connection = sqlite3.connect(str(SCAN_REQUEST_DB), timeout=5)
+    try:
+        with connection:
+            connection.execute('CREATE TABLE IF NOT EXISTS scan_request_applications '
+                               '(id INTEGER PRIMARY KEY, requested_at REAL NOT NULL, '
+                               'requesting_application TEXT NOT NULL)')
+            connection.execute('INSERT INTO scan_request_applications '
+                               '(requested_at, requesting_application) VALUES (?, ?)',
+                               (time.time(), application))
+    finally:
+        connection.close()
+
+
 def remove_quarantine(path):
     if path.is_dir():
         subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
@@ -416,8 +439,9 @@ def main(items):
         return 1
     for index, item in valid_items:
         try:
+            record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             scan_and_open(item, scanner)
-        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        except (OSError, RuntimeError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
             print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
     return result
