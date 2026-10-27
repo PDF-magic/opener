@@ -178,6 +178,27 @@ fall back to another app. Opera GX is a separate application and is not
 covered by this Opera-specific exception. ClamAV scanning and the existing
 file-integrity and quarantine checks always precede launching.
 
+An optional **fallback PDF application** can be configured separately. For
+example, use Preview only if the selected browser cannot be verified or fails
+to launch after a successful scan:
+
+```sh
+printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/fallback-app.txt"
+```
+
+The fallback must be an installed, independently verified PDF-capable macOS
+application, specified by bundle identifier (not a command, executable, or
+`system-default-browser` shortcut). If the fallback setting is missing,
+there is **no automatic fallback**; a malformed or symlinked setting blocks
+PDF opening. A fallback is never attempted after detection, scan errors,
+an unavailable cloud file, failed integrity checks, or quarantine errors.
+On a failed preferred-app launch, the fallback must already have passed PDF
+capability verification before quarantine removal, and the file is rechecked
+before its second launch attempt. The request audit retains the preferred
+destination and adds a fallback destination entry when used. Existing
+settings survive reinstallations unchanged. Non-PDF documents and application
+bundles are unaffected.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
