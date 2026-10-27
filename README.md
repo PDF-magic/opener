@@ -111,7 +111,7 @@ and never substitutes another browser when verification fails.
 To open verified PDFs in **Vivaldi**, select its application bundle identifier:
 
 ```sh
-printf '%s\\n' 'com.vivaldi.Vivaldi' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+printf '%s\n' 'com.vivaldi.Vivaldi' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
 Vivaldi has a built-in PDF viewer but may not register with Launch Services as
