@@ -102,6 +102,27 @@ class TargetApplicationTests(unittest.TestCase):
                              for call in run.call_args_list))
         quarantine.assert_not_called()
 
+    def test_safari_launch_preserves_selected_bundle_and_scanner_gate(self):
+        self.config.write_text('com.apple.Safari\n')
+        self.assertEqual(launcher.pdf_target_application(), 'com.apple.Safari')
+        inspected = []
+
+        def preflight(path, target_app=None):
+            inspected.append((path, target_app))
+
+        with patch.object(opener, 'verify_launch_target', side_effect=preflight):
+            run, quarantine = self.scan_clean()
+
+        self.assertEqual(inspected, [(self.document, 'com.apple.Safari')])
+        self.assertEqual(run.call_args.args[0],
+                         [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
+                          'com.apple.Safari', str(self.document)])
+        self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            chosen = db.execute('SELECT intended_destination_application FROM scan_requests').fetchone()
+        self.assertEqual(chosen, ('com.apple.Safari',))
+        quarantine.assert_called_once()
+
     def test_preflight_and_launch_keep_original_target_if_preference_changes(self):
         self.config.write_text('com.apple.Preview\n')
         seen = []
@@ -145,14 +166,16 @@ class TargetApplicationTests(unittest.TestCase):
             launcher.pdf_target_application()
 
     def test_malware_never_opens_configured_application(self):
-        self.config.write_text('com.apple.Preview\n')
         detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
-        with patch.object(opener.subprocess, 'run', return_value=detected) as run, \
-                patch.object(opener, 'remove_quarantine') as quarantine:
-            with self.assertRaisesRegex(RuntimeError, 'Malware'):
-                opener.scan_and_open(str(self.document), '/scanner')
-        self.assertEqual(run.call_count, 1)
-        quarantine.assert_not_called()
+        for target in ('com.apple.Preview', 'com.apple.Safari'):
+            with self.subTest(target=target):
+                self.config.write_text(target + '\n')
+                with patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                        patch.object(opener, 'remove_quarantine') as quarantine:
+                    with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                        opener.scan_and_open(str(self.document), '/scanner')
+                self.assertEqual(run.call_count, 1)
+                quarantine.assert_not_called()
 
     def test_non_pdf_uses_system_default_regardless_of_setting(self):
         other = self.config.with_name('notes.txt')
