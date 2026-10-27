@@ -36,6 +36,8 @@ chmod 755 "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/resolve-default-browser"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
 chmod 755 "$install_dir/identify-pdf-handler"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
+chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 python3 - "$install_dir" <<'CONFIG'
 import sys
@@ -148,5 +150,8 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
+# Capture the original macOS association only once, immediately before changing
+# it. An unknown/unsafe backup stops installation rather than losing the prior default.
+"$install_dir/pdf-handler-history" record "$install_dir/previous-pdf-handler.txt"
 /usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
