@@ -155,6 +155,22 @@ invocation semantics with deterministic tests. GitHub-hosted CI does **not**
 invoke Finder interactively because Automation consent cannot be silently
 granted; use the `--live` command above for a genuine Finder integration run.
 
+## Offer to restore PDF Magic Opener as the default PDF handler
+
+An interactive installation offers to restore PDF Magic Opener when another
+application is registered as the macOS PDF default. Answer `y` or `yes`
+to approve; declining or running noninteractively preserves the current
+association. Missing, malformed, or unreadable default-handler information
+never triggers an automatic change.
+
+Only after consent does the installer securely preserve the previous PDF
+handler once, then invoke the verified PDF association setter. Unsafe
+previous-handler storage stops the change. No prompt is needed when PDF Magic
+Opener is already the default. Re-run the installer if another app takes over.
+
+The selected **post-scan browser** (`target-app.txt`), other file associations,
+malware scanning, integrity verification, and quarantine controls are unchanged.
+
 ## Inspect the registered macOS PDF handler
 
 To see which application macOS currently has registered as the default for

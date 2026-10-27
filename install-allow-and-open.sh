@@ -162,10 +162,11 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
-# Capture the original macOS association only once, immediately before changing
-# it. An unknown/unsafe backup stops installation rather than losing the prior default.
-"$install_dir/pdf-handler-history" record "$install_dir/previous-pdf-handler.txt"
-/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
-# Display the effective association after macOS confirms the change.
+# Only after explicit consent, preserve the user's previous PDF handler before
+# running the verified setter; refusal never changes the association.
+python3 "$script_dir/offer-restore-pdf-handler.py" \
+    "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app" \
+    "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
+# Display the effective association whether restoration was accepted or not.
 python3 "$install_dir/pdf-handler-status.py"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
