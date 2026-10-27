@@ -22,6 +22,8 @@ jobs:
         run: python3 test-app-name.py
       - name: Run scan-gate tests
         run: python3 test-scan-and-open.py
+      - name: Verify browser-independent scan engine and launch defaults
+        run: python3 test-file-launcher.py
       - name: Verify file lifecycle state transitions
         run: python3 test-file-lifecycle.py
       - name: Verify cross-process scan concurrency
@@ -38,3 +40,6 @@ jobs:
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
+      - name: Verify per-request timestamps and duplicate suppression
+        timeout-minutes: 5
+        run: python3 test-request-timestamp.py

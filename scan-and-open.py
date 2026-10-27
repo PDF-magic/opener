@@ -3,10 +3,10 @@
 from contextlib import contextmanager
 import fcntl
 import hashlib
+from file_launcher import launch_clean_file
 import os
 from pathlib import Path
 import sqlite3
-import stat
 import stat
 import subprocess
 import sys
@@ -258,13 +258,10 @@ def _scan_and_open(item, scanner):
                 remember_clean(cache_id)
     verify_file_integrity(path, before, identity)
     remove_quarantine(path)
-    # Removing quarantine can legitimately change ctime but not the source
-    # bytes, inode identities, file types, sizes or modification times.
+    # Quarantine changes ctime, but may not change source bytes or identity.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
-    command = ['/usr/bin/open']
-    if path.suffix.lower() == '.pdf':
-        command += ['-b', 'com.brave.Browser']
-    subprocess.run(command + [str(path)], check=True)
+    # The scan engine does not select an application or browser.
+    launch_clean_file(path)
 
 
 def scan_and_open(item, scanner):
