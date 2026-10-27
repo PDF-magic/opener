@@ -55,15 +55,19 @@ class FileLauncherTests(unittest.TestCase):
         self.assertNotIn("com.brave.Browser", source)
         self.assertNotIn("PDF_DEFAULT_BUNDLE_ID", source)
         self.assertIn("launch_clean_file(path)", source)
-        self.assertLess(source.index("remove_quarantine(path)\n    # The scan engine"),
-                        source.index("launch_clean_file(path)"))
+        quarantine = source.index("    remove_quarantine(path)\n")
+        final_check = source.index(
+            "    verify_file_integrity(path, before, identity, allow_ctime_change=True)",
+            quarantine)
+        launch = source.index("    launch_clean_file(path)", final_check)
+        self.assertLess(quarantine, final_check)
+        self.assertLess(final_check, launch)
 
     def test_native_workspace_api_routing(self):
         swift = (ROOT / "launch-scanned-file.swift").read_text()
-        self.assertIn("NSWorkspace", swift)
-        self.assertIn("workspace.open([target], withApplicationAt:", swift)
-        self.assertIn("workspace.openApplication(at: target", swift)
-        self.assertIn("workspace.open(target)", swift)
+        for name in ("NSWorkspace", "workspace.open([target], withApplicationAt:",
+                     "workspace.openApplication(at: target", "workspace.open(target)"):
+            self.assertIn(name, swift)
 
     def test_installer_deploys_launch_module_with_scanner(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()

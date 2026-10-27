@@ -382,6 +382,67 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             self.assertEqual(opener.main(['', str(self.file), str(self.file.with_name('missing.pdf'))]), 1)
             scan.assert_called_once_with(str(self.file), '/scanner')
 
+    def test_unsupported_request_representations_fail_before_scanning(self):
+        unsupported = (
+            None, 42, b'not-a-path',
+            'https://example.org/document.pdf',
+            'smb://files.example.org/document.pdf',
+            self.file.as_uri(),
+        )
+        with patch.object(opener, 'fingerprint') as fingerprint, \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            for item in unsupported:
+                with self.subTest(item=item):
+                    with self.assertRaisesRegex(RuntimeError, 'Unsupported scan request type'):
+                        opener.scan_and_open(item, '/scanner')
+        fingerprint.assert_not_called()
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_invalid_request_rejected_before_scan_queue_allocation(self):
+        with patch.object(opener, 'scan_slot', side_effect=AssertionError('queue should not open')):
+            with self.assertRaisesRegex(RuntimeError, 'Unsupported scan request type'):
+                opener.scan_and_open('https://example.org/report.pdf', '/scanner')
+
+    def test_unsupported_filesystem_entry_types_fail_before_scanning(self):
+        directory = Path(self.temp.name) / 'ordinary-folder'
+        directory.mkdir()
+        fifo = Path(self.temp.name) / 'named-pipe'
+        os.mkfifo(fifo)
+        with patch.object(opener, 'fingerprint') as fingerprint, \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            for item in (directory, fifo):
+                with self.subTest(item=item):
+                    with self.assertRaisesRegex(RuntimeError, 'Unsupported scan request type'):
+                        opener.scan_and_open(item, '/scanner')
+        fingerprint.assert_not_called()
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_supported_local_path_objects_and_symlinks_still_open(self):
+        alias = Path(self.temp.name) / 'selected alias.pdf'
+        alias.symlink_to(self.file)
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'), \
+                patch.object(opener, 'launch_clean_file') as launch:
+            opener.scan_and_open(alias, '/scanner')
+        self.assertEqual(run.call_count, 1)
+        launch.assert_called_once_with(self.file)
+
+    def test_main_reports_unsupported_request_object_without_crashing(self):
+        with patch.object(opener, 'scanner_path', return_value='/scanner'), \
+                patch.object(opener, 'check_database'), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch('sys.stderr') as stderr:
+            self.assertEqual(opener.main([None]), 1)
+        run.assert_not_called()
+        self.assertIn('Scan request 1:', stderr.write.call_args_list[0].args[0])
+        self.assertNotIn('None', stderr.write.call_args_list[0].args[0])
+
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 
@@ -591,6 +652,92 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             opener.scan_and_open(str(document), '/scanner')
         self.assertEqual(run.call_count, 1)
         self.assertEqual(run.call_args.args[0][0], str(NATIVE_LAUNCHER))
+
+    def test_byte_identical_replacement_during_scan_is_blocked(self):
+        original = self.file.read_bytes()
+        def scan(command, **kwargs):
+            saved = self.file.with_suffix('.backup')
+            self.file.rename(saved)
+            self.file.write_bytes(original)
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', side_effect=scan) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
+        self.assertEqual(self.file.read_bytes(), original)
+
+    def test_change_during_quarantine_removal_blocks_opening(self):
+        def remove(path):
+            self.file.write_bytes(b'%PDF-1.4\\nChanged after scan')
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine', side_effect=remove):
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][0], '/scanner')
+
+    def test_cached_file_changed_during_quarantine_is_not_opened(self):
+        digest = opener.cache_key(opener.fingerprint(self.file), True)
+        opener.remember_clean(digest)
+        def remove(path):
+            self.file.write_bytes(b'%PDF-1.4\\nChanged on cache hit')
+        with patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine', side_effect=remove):
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        run.assert_not_called()
+
+    def test_bundle_member_replaced_with_identical_bytes_is_blocked(self):
+        bundle = Path(self.temp.name) / 'Example.app'
+        bundle.mkdir()
+        nested = bundle / 'Contents'
+        nested.mkdir()
+        member = nested / 'payload.txt'
+        member.write_bytes(b'original bytes')
+        def scan(command, **kwargs):
+            member.rename(nested / 'old-payload.txt')
+            member.write_bytes(b'original bytes')
+            (nested / 'old-payload.txt').unlink()
+            return subprocess.CompletedProcess(command, 0, str(bundle) + ': OK', '')
+        with patch.object(opener.subprocess, 'run', side_effect=scan) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                opener.scan_and_open(str(bundle), '/scanner')
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
+
+    def test_quarantine_metadata_only_change_preserves_clean_open(self):
+        contents = self.file.read_bytes()
+        def remove(path):
+            old = self.file.stat()
+            # Removing quarantine can change ctime without changing bytes.
+            os.utime(self.file, ns=(old.st_atime_ns, old.st_mtime_ns))
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine', side_effect=remove):
+            opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[-1].args[0][0], str(NATIVE_LAUNCHER))
+        self.assertEqual(self.file.read_bytes(), contents)
+
+    def test_byte_identical_replacement_during_initial_hash_is_blocked(self):
+        original_fingerprint = opener.fingerprint
+        def changed_during_fingerprint(path):
+            result = original_fingerprint(path)
+            saved = self.file.with_suffix('.backup')
+            self.file.rename(saved)
+            self.file.write_bytes(saved.read_bytes())
+            return result
+        with patch.object(opener, 'fingerprint', side_effect=changed_during_fingerprint), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        run.assert_not_called()
+        remove.assert_not_called()
 
     def test_missing_scanner_blocks_before_modifying_any_file(self):
         with patch.object(opener, 'scanner_path', side_effect=RuntimeError('unavailable')), \
