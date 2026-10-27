@@ -44,6 +44,8 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 **Launch errors:** After successful malware and integrity checks, `scan_and_open` creates an immutable `CleanScanResult(status="clean", from_cache=...)` independent of launching. A failed destination launch still reports an error and a nonzero CLI exit status, but raises `LaunchFailedError` with the completed `scan_result` attached for callers. The verified 90-day clean scan cache remains valid, subject to existing signature freshness, file integrity and expiry checks, so retrying an unsuccessful launch does not automatically rescan. Incomplete or blocked scans never produce a clean result.
 
+**Unavailable selected PDF application:** When a configured browser is missing or cannot open PDFs, the macOS opener displays an `Opening stopped` warning explaining that the selected PDF application is unavailable or not PDF-capable. Install the selected application or change `~/Library/Application Support/Studio/allow-and-open/target-app.txt` to an installed PDF-capable application. If the opt-in system-default-browser choice cannot be resolved, check the default browser in macOS System Settings. If the native verification tool is unavailable, reinstall PDF Magic Opener. A browser that disappears after verification results in a separate explanation that scanning succeeded but launching failed. Diagnostics never reveal document paths, never silently switch browsers, and never bypass malware scanning or quarantine checks.
+
 **PDF application support:** Before releasing quarantine or opening a verified clean PDF, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
 
 **Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
@@ -73,7 +75,7 @@ bash update-malware-signatures.sh
 The installer keeps the original workflow beside `document.wflow` as `document.wflow.before-brave`. To restore direct Brave opening without this scan gate:
 
 ```sh
-swift set-brave-pdf-default.swift
+swift set-pdf-default-handler.swift
 ```
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
@@ -294,7 +296,7 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |
 | `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
-| `set-brave-pdf-default.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
+| `set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |
 | `test-target-app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
 | `test-scan-concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
