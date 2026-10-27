@@ -109,14 +109,25 @@ rather than guessing. This reports the **system PDF association**, not the
 separately configured app that receives clean PDFs or the default web browser.
 It neither changes file associations nor opens any file or application.
 
-**Browser closed at launch:** The native macOS helper uses an application-specific
-`NSWorkspace.open` call, which starts the chosen browser if it is not already
-running. The macOS CI job checks this cold-start behavior with a temporary,
-ad-hoc-signed PDF-viewer app bundle and a local test PDF, verifying that the
-app was stopped, was launched, and received the same PDF file (including macOS
-canonical aliases such as `/var` and `/private/var`). The fixture does not
-claim that every third-party browser was installed or visually rendered the
-PDF. It does not alter user browser settings or the scan gate.
+### Current default PDF-handler status
+
+To display whether **PDF Magic Opener** is the current default for PDF files,
+and which application is registered if it is not, run:
+
+```sh
+python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"
+```
+
+Reinstall to deploy this command. The installer also prints the current status
+after macOS completes any required default-handler confirmation. A successful
+lookup reports the current application bundle identifier; an unavailable or
+unverifiable association produces a fixed error and an unsuccessful exit rather
+than a guessed status.
+
+The command **only reads** the macOS PDF association using the separately
+installed `identify-pdf-handler` helper. It does not open a PDF, change the
+default PDF association, change the browser receiving scanned PDFs, or modify
+user preferences.
 
 ## PDF target application
 
