@@ -41,6 +41,8 @@ chmod 755 "$install_dir/identify-pdf-handler"
 # Read-only detector reuses the same Launch Services lookup; it never resets associations.
 /usr/bin/xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING -O "$script_dir/identify-pdf-handler.swift" "$script_dir/detect-pdf-handler-change.swift" -o "$install_dir/detect-pdf-handler-change"
 chmod 755 "$install_dir/detect-pdf-handler-change"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
+chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 python3 - "$install_dir" <<'CONFIG'
 import sys
@@ -160,6 +162,9 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
+# Capture the original macOS association only once, immediately before changing
+# it. An unknown/unsafe backup stops installation rather than losing the prior default.
+"$install_dir/pdf-handler-history" record "$install_dir/previous-pdf-handler.txt"
 /usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
 # Display the effective association after macOS confirms the change.
 python3 "$install_dir/pdf-handler-status.py"
