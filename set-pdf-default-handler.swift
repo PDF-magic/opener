@@ -9,7 +9,7 @@ guard let brave = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "co
 let handler = CommandLine.arguments.count > 1 ? URL(fileURLWithPath: CommandLine.arguments[1]) : brave
 NSWorkspace.shared.setDefaultApplication(at: handler, toOpen: .pdf) { error in
     if let error = error {
-        fputs("Could not set Brave as the PDF default: \(error.localizedDescription)\n", stderr)
+        fputs("Could not set the PDF default handler: \(error.localizedDescription)\n", stderr)
         exit(1)
     }
     print("PDF opening uses \(handler.lastPathComponent).")

@@ -20,6 +20,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh
       - name: Verify application naming and migration
         run: python3 test-app-name.py
+      - name: Verify generic PDF default-handler utility naming
+        run: python3 test-pdf-default-handler-name.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
       - name: Verify cancellation and scanner process-group cleanup
@@ -106,7 +108,7 @@ jobs:
       - name: Compile native PDF opener
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
-        run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
+        run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
       - name: Compile and verify PDF-capable selection including Arc and Opera signatures
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"

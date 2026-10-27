@@ -73,7 +73,7 @@ bash update-malware-signatures.sh
 The installer keeps the original workflow beside `document.wflow` as `document.wflow.before-brave`. To restore direct Brave opening without this scan gate:
 
 ```sh
-swift set-brave-pdf-default.swift
+swift set-pdf-default-handler.swift
 ```
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
@@ -262,7 +262,7 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |
 | `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
-| `set-brave-pdf-default.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
+| `set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |
 | `test-target-app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
 | `test-scan-concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
