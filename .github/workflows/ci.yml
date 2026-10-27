@@ -20,8 +20,23 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh
       - name: Verify application naming and migration
         run: python3 test-app-name.py
-      - name: Run scan-gate tests
-        run: python3 test-scan-and-open.py
+      - name: Run scan-gate and request-metadata tests
+        run: python3 test-scan-and-open.py -v
+      - name: Verify detection and opening decisions are separate
+        run: python3 test-detection-policy.py -v
+      - name: Verify browser-independent scan engine and launch defaults
+        run: python3 test-file-launcher.py
+      - name: Verify clean scan results survive launch failures
+        run: python3 test-launch-results.py -v
+      - name: Verify scan-request application attribution
+        run: python3 test-scan-request.py
+      - name: Verify file lifecycle state transitions
+        run: python3 test-file-lifecycle.py
+      - name: Verify cross-process scan concurrency
+        run: python3 test-scan-concurrency.py
+
+      - name: Verify scan result contract
+        run: python3 test-scan-results.py
 
   macos-build:
     runs-on: macos-latest
@@ -31,3 +46,18 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Compile and smoke-test NSWorkspace launcher
+        run: |
+          xcrun swiftc -warnings-as-errors launch-scanned-file.swift -o "$RUNNER_TEMP/LaunchScannedFile"
+          if "$RUNNER_TEMP/LaunchScannedFile"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.brave.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+      - name: Verify duplicate-open handling and queued native scans
+        timeout-minutes: 5
+        run: python3 test-brave-pdf-opener.py
+      - name: Verify scan subprocess resources are cleaned on failure
+        timeout-minutes: 5
+        run: python3 test-scan-resource-cleanup.py
+      - name: Verify per-request timestamps and duplicate suppression
+        timeout-minutes: 5
+        run: python3 test-request-timestamp.py
