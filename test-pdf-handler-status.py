@@ -75,13 +75,14 @@ class PDFHandlerStatusTests(unittest.TestCase):
                 self.assertEqual(status.main(["--change-default"]), 2)
         run.assert_not_called()
 
-    def test_installer_displays_status_after_mac_confirmation(self):
+    def test_installer_displays_status_after_optional_restoration_offer(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
-        setter = installer.index('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"')
+        offer = installer.index('python3 "$script_dir/offer-restore-pdf-handler.py"')
         reporter = installer.index('python3 "$install_dir/pdf-handler-status.py"')
-        self.assertGreater(reporter, setter)
+        self.assertGreater(reporter, offer)
+        self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)
 
     def test_documentation_and_ci_explain_read_only_status(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
