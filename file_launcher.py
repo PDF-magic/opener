@@ -76,6 +76,7 @@ def verify_local_file_available(path):
         )
 
 TARGET_APP_CONFIG = Path.home() / "Library/Application Support/Studio/allow-and-open/target-app.txt"
+FALLBACK_APP_CONFIG = TARGET_APP_CONFIG.with_name("fallback-app.txt")
 
 
 def _valid_bundle_identifier(selected):
@@ -123,6 +124,34 @@ def pdf_target_application():
     if len(value) > 256 or not _valid_bundle_identifier(selected):
         raise RuntimeError("Invalid PDF target application bundle identifier; opening was stopped.")
     return selected
+
+
+def pdf_fallback_application(primary=None):
+    """Read an optional, explicit fallback PDF bundle ID without following symlinks.
+
+    A missing setting means no fallback; an invalid existing setting blocks
+    opening instead of silently changing the user's application policy.
+    """
+    try:
+        descriptor = os.open(FALLBACK_APP_CONFIG, os.O_RDONLY | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise RuntimeError("Cannot read the PDF fallback setting; opening was stopped.") from error
+    try:
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise RuntimeError("The PDF fallback setting must be a regular file.")
+            value = stream.read(257)
+    except OSError as error:
+        raise RuntimeError("Cannot read the PDF fallback setting; opening was stopped.") from error
+    try:
+        selected = value.decode("ascii").strip()
+    except UnicodeDecodeError:
+        selected = ""
+    if len(value) > 256 or not _valid_bundle_identifier(selected):
+        raise RuntimeError("Invalid PDF fallback application bundle identifier; opening was stopped.")
+    return None if selected == primary else selected
 
 
 def intended_destination(path):

@@ -87,6 +87,8 @@ jobs:
         run: python3 test-browser-pdf-behavior.py
       - name: Verify browser PDF viewer comparison documentation
         run: python3 test-browser-viewer-docs.py -v
+      - name: Verify optional PDF fallback selection and safety
+        run: python3 test-fallback-app.py -v
       - name: Verify clean scan results survive launch failures
         run: python3 test-launch-results.py -v
       - name: Verify scan-request origin records
