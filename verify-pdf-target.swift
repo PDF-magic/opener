@@ -1,4 +1,5 @@
 import AppKit
+import Security
 import UniformTypeIdentifiers
 
 // Compare the selected application to Launch Services' registered PDF handlers.
@@ -14,32 +15,75 @@ func targetSupportsPDF(application: URL?, registeredPDFHandlers: [URL]) -> Bool 
     }
 }
 
-// Firefox can render local PDFs but is not necessarily registered with
-// Launch Services as a PDF handler. Permit this one known viewer only after
-// verifying that the selected bundle is the installed, executable Firefox app.
-// All other destinations must remain registered PDF handlers.
-func verifiedFirefoxPDFViewer(bundleIdentifier: String, application: URL?) -> Bool {
-    guard bundleIdentifier == "org.mozilla.firefox",
-          let target = application?.standardizedFileURL.resolvingSymlinksInPath(),
-          target.pathExtension.lowercased() == "app" else { return false }
+// Safari can render local PDFs without advertising itself as a PDF document
+// handler. Only the genuine Apple-signed Safari bundle may use this exception.
+func appleSignedSafari(at application: URL) -> Bool {
+    var code: SecStaticCode?
+    var requirement: SecRequirement?
+    guard SecStaticCodeCreateWithPath(application as CFURL, SecCSFlags(), &code) == errSecSuccess,
+          let code = code,
+          SecRequirementCreateWithString(
+              "anchor apple and identifier \"com.apple.Safari\"" as CFString,
+              SecCSFlags(), &requirement
+          ) == errSecSuccess,
+          let requirement = requirement else { return false }
+    return SecStaticCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess
+}
 
-    var isDirectory: ObjCBool = false
-    guard FileManager.default.fileExists(atPath: target.path, isDirectory: &isDirectory),
-          isDirectory.boolValue,
-          let bundle = Bundle(url: target),
+func trustedSafariPDFTarget(
+    application: URL?,
+    bundleIdentifier: String,
+    verifySignature: (URL) -> Bool = appleSignedSafari
+) -> Bool {
+    guard bundleIdentifier == "com.apple.Safari",
+          let application = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          application.pathExtension.lowercased() == "app",
+          let bundle = Bundle(url: application),
           bundle.bundleIdentifier == bundleIdentifier,
           let executable = bundle.executableURL,
           FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
-    return true
+    return verifySignature(application)
+}
+
+// Standard Firefox releases contain a PDF viewer even when Launch Services
+// does not advertise PDF support. The exception requires Mozilla's actual
+// Developer ID signature, not just a spoofable bundle identifier.
+func mozillaSignedFirefox(at application: URL) -> Bool {
+    var code: SecStaticCode?
+    var requirement: SecRequirement?
+    guard SecStaticCodeCreateWithPath(application as CFURL, SecCSFlags(), &code) == errSecSuccess,
+          let code = code,
+          SecRequirementCreateWithString(
+              "anchor apple generic and identifier \"org.mozilla.firefox\" and certificate leaf[subject.OU] = \"43AQ936H96\"" as CFString,
+              SecCSFlags(), &requirement
+          ) == errSecSuccess,
+          let requirement = requirement else { return false }
+    return SecStaticCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess
+}
+
+func trustedFirefoxPDFTarget(
+    application: URL?,
+    bundleIdentifier: String,
+    verifySignature: (URL) -> Bool = mozillaSignedFirefox
+) -> Bool {
+    guard bundleIdentifier == "org.mozilla.firefox",
+          let application = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          application.pathExtension.lowercased() == "app",
+          let bundle = Bundle(url: application),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
+    return verifySignature(application)
 }
 
 func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
     let workspace = NSWorkspace.shared
-    let selected = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier)
+    let application = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier)
     return targetSupportsPDF(
-        application: selected,
+        application: application,
         registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
-    ) || verifiedFirefoxPDFViewer(bundleIdentifier: bundleIdentifier, application: selected)
+    ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
+      || trustedFirefoxPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 
 #if !PDF_TARGET_TESTING
@@ -50,7 +94,7 @@ struct VerifyPDFTarget {
               !CommandLine.arguments[1].isEmpty,
               applicationSupportsPDF(bundleIdentifier: CommandLine.arguments[1]) else {
             // Intentionally omit application and document paths from diagnostics.
-            fputs("The selected application could not be verified to open PDFs.\n", stderr)
+            fputs("The selected application cannot be verified to open PDFs.\n", stderr)
             exit(1)
         }
     }
