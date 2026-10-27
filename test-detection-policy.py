@@ -54,6 +54,19 @@ class DetectionDecisionTests(unittest.TestCase):
         self.assertEqual(evidence, opener.capture_detection(raw))
         self.assertNotIn('Malware FOUND', decision.reason)
 
+    def test_detection_names_propagate_to_opening_decision(self):
+        raw = result(1, '/private/path: Eicar-Test-Signature FOUND\n'
+                        '/private/path: Win.Trojan.Agent FOUND\n')
+        evidence = opener.capture_detection(raw)
+        decision = opener.decide_opening(evidence)
+        self.assertEqual(evidence.detection_names,
+                         ('Eicar-Test-Signature', 'Win.Trojan.Agent'))
+        self.assertEqual(decision.detection_names, evidence.detection_names)
+        self.assertFalse(decision.allowed)
+        self.assertNotIn('/private/path', decision.reason)
+        self.assertEqual(opener.decide_opening(opener.capture_detection(
+            result(0, 'file: OK'))).detection_names, ())
+
     def test_policy_preserves_exact_previous_scanner_gate(self):
         cases = (
             (0, 'file: OK', '', True),

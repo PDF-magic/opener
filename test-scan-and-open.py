@@ -450,6 +450,33 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertNotIn('None', stderr.write.call_args_list[0].args[0])
 
 
+    def test_blocked_scan_attaches_distinct_detection_names(self):
+        output = (f'{self.file}: Eicar-Test-Signature FOUND\n'
+                  f'{self.file}: Win.Trojan.Agent-123 FOUND\n'
+                  f'{self.file}: Eicar-Test-Signature FOUND\n')
+        detected = subprocess.CompletedProcess([], 1, output, '')
+        with patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaises(RuntimeError) as failure:
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(failure.exception.scan_result.detection_names,
+                         ('Eicar-Test-Signature', 'Win.Trojan.Agent-123'))
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
+        self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
+        with opener.sqlite3.connect(opener.CACHE_DB) as connection:
+            self.assertEqual(connection.execute('SELECT COUNT(*) FROM clean_scans').fetchone()[0], 0)
+
+    def test_failed_scan_keeps_available_detection_names(self):
+        detected = subprocess.CompletedProcess(
+            [], 2, f'{self.file}: Win.Test.Sample FOUND\n', '')
+        with patch.object(opener.subprocess, 'run', return_value=detected), \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaises(RuntimeError) as failure:
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(failure.exception.scan_result.detection_names, ('Win.Test.Sample',))
+        quarantine.assert_not_called()
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 
