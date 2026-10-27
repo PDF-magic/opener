@@ -24,6 +24,8 @@ Completed clean scans are cached locally for **90 days from the last successful 
 
 **Security trade-off:** newly published ClamAV signatures will not rescan unchanged content that is already cached clean until the 90-day period expires. Delete `clean-scan-cache.sqlite3` while the opener is not running to force a new scan of every file. Caching does not make a clean verdict a guarantee of safety.
 
+For future browser integrations, the scan gate accepts `--browser-download-id <identifier> <file-path>` to attach an optional, session-only browser download identifier to an individual scan request. Finder and native PDF opens continue to pass paths alone, and no browser identifier is automatically inferred, logged, or stored. The identifier does not alter scanning or caching decisions.
+
 The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. To update manually:
 
 ```sh

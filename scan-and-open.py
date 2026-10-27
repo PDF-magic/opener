@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+from typing import NamedTuple, Optional
 
 INSTALL_DIR = Path.home() / 'Library/Application Support/Studio/allow-and-open'
 DATABASE = INSTALL_DIR / 'signatures'
@@ -17,6 +18,25 @@ MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
+
+
+class ScanRequest(NamedTuple):
+    """One scan request; download identifiers are optional and session-only."""
+    path: str
+    browser_download_identifier: Optional[str] = None
+
+
+def parse_scan_requests(args):
+    """Allow an explicit browser identifier without changing normal file arguments."""
+    if args and args[0] == '--browser-download-id':
+        if len(args) != 3:
+            raise ValueError('A browser download ID requires one identifier and one file path.')
+        identifier = args[1]
+        if (not identifier or len(identifier) > 256 or
+                any(ord(char) < 32 or ord(char) == 127 for char in identifier)):
+            raise ValueError('The browser download ID must be a nonempty printable identifier.')
+        return [ScanRequest(args[2], identifier)]
+    return [ScanRequest(path) for path in args]
 
 
 def scanner_path():
@@ -123,7 +143,8 @@ def remove_quarantine(path):
 
 
 def scan_and_open(item, scanner):
-    path = Path(item).expanduser().resolve(strict=True)
+    requested_path = item.path if isinstance(item, ScanRequest) else item
+    path = Path(requested_path).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
@@ -176,13 +197,19 @@ def main(items):
         return 1
     result = 0
     for item in items:
+        request = item if isinstance(item, ScanRequest) else ScanRequest(item)
         try:
-            scan_and_open(item, scanner)
+            scan_and_open(request, scanner)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
-            print(f'{Path(item).name}: {error}', file=sys.stderr)
+            print(f'{Path(request.path).name}: {error}', file=sys.stderr)
             result = 1
     return result
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    try:
+        requests = parse_scan_requests(sys.argv[1:])
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(2)
+    sys.exit(main(requests))
