@@ -41,6 +41,8 @@ jobs:
         run: python3 test-pdf-filename-paths.py -v
       - name: Verify configurable PDF target application and Arc scan gating
         run: python3 test-target-app.py
+      - name: Verify Microsoft Edge PDF launch routing and fail-closed behavior
+        run: python3 test-edge-target.py -v
       - name: Verify Chromium PDF launching and fail-closed preflight
         run: python3 test-chromium-launch.py -v
       - name: Verify clean scan results survive launch failures
@@ -67,7 +69,7 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
-      - name: Verify PDF handlers and signed Safari, Arc, and Firefox
+      - name: Verify signed Safari, Arc, and Firefox PDF targets
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
