@@ -65,6 +65,8 @@ the current scanner's exit codes, quarantine handling, or opening behavior.
 | `fileTooLarge` | The input exceeded a configured or scanner-enforced size limit. |
 | `cancelled` | The scan request was cancelled before completion. |
 
+Detected ClamAV signature identifiers are attached to the in-memory `ScanResult.detection_names` tuple. Multiple unique `FOUND` signatures are retained in scanner order, without the scanned file paths; blocked scans expose their result through `error.scan_result`. Cached or clean scans return an empty tuple. This metadata never permits opening by itself and is not stored in the clean-scan cache.
+
 **Fail-closed contract:** only `clean` may permit further opening processing;
 every other result blocks opening and leaves quarantine in place. A cancellation,
 scan error, or partial scan must never be treated as `clean`.
