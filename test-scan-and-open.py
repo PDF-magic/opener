@@ -152,6 +152,27 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(process.returncode, 0, stderr)
         self.assertTrue(marker.exists())
 
+    def test_native_termination_prevents_any_scan(self):
+        cancelled = threading.Event()
+        cancelled.set()
+        with patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'exited'):
+                opener.scan_and_open(str(self.file), '/scanner', cancelled=cancelled)
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_native_termination_prevents_cached_open(self):
+        opener.remember_clean(opener.cache_key(opener.fingerprint(self.file), True))
+        cancelled = threading.Event()
+        cancelled.set()
+        with patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'exited'):
+                opener.scan_and_open(str(self.file), '/scanner', cancelled=cancelled)
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 

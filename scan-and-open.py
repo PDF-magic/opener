@@ -6,10 +6,12 @@ import hashlib
 from file_launcher import launch_clean_file
 import os
 from pathlib import Path
+import signal
 import sqlite3
 import stat
 import subprocess
 import sys
+import threading
 import time
 
 INSTALL_DIR = Path.home() / 'Library/Application Support/Studio/allow-and-open'
@@ -24,7 +26,7 @@ MAX_CONCURRENT_SCANS = 2
 
 
 @contextmanager
-def scan_slot():
+def scan_slot(cancelled=None):
     """Wait for one of two cross-process slots shared by Finder and the native app.
 
     Advisory locks are held on open file descriptors, so an interrupted process
@@ -36,6 +38,7 @@ def scan_slot():
             or slot_dir.stat().st_uid != os.getuid()):
         raise RuntimeError('The scan queue is unavailable; opening was stopped.')
     while True:
+        require_live_app(cancelled)
         for index in range(MAX_CONCURRENT_SCANS):
             lock_path = slot_dir / f'slot-{index}.lock'
             flags = os.O_CREAT | os.O_RDWR | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0)
@@ -179,7 +182,67 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def _scan_and_open(item, scanner):
+def watch_parent_lifetime():
+    """Detect EOF on the pipe retained by the native PDF app."""
+    if os.environ.get('PDF_MAGIC_PARENT_LIFETIME') != '1':
+        return None
+    cancelled = threading.Event()
+
+    def watch():
+        try:
+            sys.stdin.buffer.read(1)
+        except (OSError, ValueError):
+            pass
+        cancelled.set()
+
+    threading.Thread(target=watch, name='app-lifetime', daemon=True).start()
+    return cancelled
+
+
+def require_live_app(cancelled):
+    if cancelled is not None and cancelled.is_set():
+        raise RuntimeError('PDF Magic Opener exited during the scan; opening was stopped.')
+
+
+def run_scan(command, timeout, cancelled):
+    """Only native-owned scans need a cancellable, process-group-owned child."""
+    if cancelled is None:
+        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+
+    require_live_app(cancelled)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, start_new_session=True)
+    try:
+        deadline = time.monotonic() + timeout
+        while True:
+            require_live_app(cancelled)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            try:
+                stdout, stderr = process.communicate(timeout=min(remaining, 0.1))
+                require_live_app(cancelled)
+                return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+            except subprocess.TimeoutExpired:
+                continue
+    finally:
+        if process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                process.communicate(timeout=1)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.communicate()
+
+
+def _scan_and_open(item, scanner, cancelled=None):
+    require_live_app(cancelled)
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
@@ -201,14 +264,13 @@ def _scan_and_open(item, scanner):
                 else:
                     size_options = ('--max-filesize=512M', '--max-scansize=1024M')
                 try:
-                    scan = subprocess.run([
+                    scan = run_scan([
                         scanner, '--database=' + str(DATABASE), '--recursive',
                         '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
                         '--alert-exceeds-max=yes', '--alert-encrypted=yes',
                         *size_options,
                         '--max-scantime=0', '--no-summary', '--', str(path)
-                    ], capture_output=True, text=True,
-                        timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                    ], timeout=PDF_SCAN_TIMEOUT if is_pdf else 180, cancelled=cancelled)
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 if scan.returncode == 1:
@@ -222,21 +284,26 @@ def _scan_and_open(item, scanner):
                     raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
                 if before != fingerprint(path):
                     raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+                require_live_app(cancelled)
                 remember_clean(cache_id)
+    require_live_app(cancelled)
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    require_live_app(cancelled)
     remove_quarantine(path)
     # The scan engine does not select an application or browser.
+    require_live_app(cancelled)
     launch_clean_file(path)
 
 
-def scan_and_open(item, scanner):
+def scan_and_open(item, scanner, cancelled=None):
     # Both Finder and the native PDF opener must respect the same process-wide cap.
-    with scan_slot():
-        return _scan_and_open(item, scanner)
+    with scan_slot(cancelled=cancelled):
+        return _scan_and_open(item, scanner, cancelled=cancelled)
 
 
 def main(items):
+    cancelled = watch_parent_lifetime()
     try:
         scanner = scanner_path()
         check_database()
@@ -246,7 +313,7 @@ def main(items):
     result = 0
     for item in items:
         try:
-            scan_and_open(item, scanner)
+            scan_and_open(item, scanner, cancelled=cancelled)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             print(f'{Path(item).name}: {error}', file=sys.stderr)
             result = 1
