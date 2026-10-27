@@ -321,6 +321,65 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertNotIn(os.fsencode(str(self.file)), data)
         self.assertNotIn(os.fsencode(self.file.name), data)
 
+    def test_valid_requests_accept_files_apps_and_file_aliases(self):
+        bundle = Path(self.temp.name) / 'Example.app'
+        bundle.mkdir()
+        alias = Path(self.temp.name) / 'selected alias.pdf'
+        alias.symlink_to(self.file)
+        for selection, expected in (
+                (str(self.file), self.file),
+                (self.file, self.file),
+                (str(bundle), bundle),
+                (str(alias), self.file)):
+            with self.subTest(selection=selection):
+                self.assertEqual(opener.validate_scan_request(selection), expected)
+
+    def test_invalid_requests_stop_before_any_scan_side_effects(self):
+        broken = Path(self.temp.name) / 'broken.pdf'
+        broken.symlink_to(Path(self.temp.name) / 'missing.pdf')
+        invalid = (
+            '', None, b'bytes.pdf', 'bad\0path.pdf',
+            Path(self.temp.name), Path(self.temp.name) / 'missing.pdf',
+            broken,
+        )
+        with patch.object(opener, 'fingerprint') as fingerprint, \
+                patch.object(opener, 'cached_clean') as cache, \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            for selection in invalid:
+                with self.subTest(selection=repr(selection)):
+                    with self.assertRaises((OSError, RuntimeError)):
+                        opener.scan_and_open(selection, '/scanner')
+            fingerprint.assert_not_called()
+            cache.assert_not_called()
+            run.assert_not_called()
+            quarantine.assert_not_called()
+
+    def test_empty_request_batch_is_an_error_without_scanner_setup(self):
+        with patch.object(opener, 'scanner_path') as scanner, \
+                patch.object(opener, 'check_database') as signatures, \
+                patch.object(opener, 'scan_and_open') as scan, patch('sys.stderr'):
+            self.assertEqual(opener.main([]), 1)
+            scanner.assert_not_called()
+            signatures.assert_not_called()
+            scan.assert_not_called()
+
+    def test_invalid_batch_items_do_not_initialize_scanner(self):
+        with patch.object(opener, 'scanner_path') as scanner, \
+                patch.object(opener, 'check_database') as signatures, \
+                patch.object(opener, 'scan_and_open') as scan, patch('sys.stderr'):
+            self.assertEqual(opener.main(['', str(self.file.with_name('missing.pdf'))]), 1)
+            scanner.assert_not_called()
+            signatures.assert_not_called()
+            scan.assert_not_called()
+
+    def test_batch_checks_each_request_and_processes_only_valid_ones(self):
+        with patch.object(opener, 'scanner_path', return_value='/scanner'), \
+                patch.object(opener, 'check_database'), \
+                patch.object(opener, 'scan_and_open') as scan, patch('sys.stderr'):
+            self.assertEqual(opener.main(['', str(self.file), str(self.file.with_name('missing.pdf'))]), 1)
+            scan.assert_called_once_with(str(self.file), '/scanner')
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 
