@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from file_launcher import NATIVE_LAUNCHER
+
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
     'scan_and_open', Path(__file__).with_name('scan-and-open.py'))
@@ -104,7 +106,7 @@ class DetectionDecisionTests(unittest.TestCase):
                 patch.object(opener, 'remove_quarantine',
                              side_effect=lambda path: events.append('quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(events, ['/scanner', 'quarantine', '/usr/bin/open'])
+        self.assertEqual(events, ['/scanner', 'quarantine', str(NATIVE_LAUNCHER)])
 
     def test_cached_clean_result_does_not_bypass_changed_file(self):
         opener.remember_clean(opener.cache_key(opener.fingerprint(self.file), True))
