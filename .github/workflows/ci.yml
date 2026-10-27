@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scanner-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check shell syntax
+        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh
+      - name: Verify application naming and migration
+        run: python3 test-app-name.py
+      - name: Run scan-gate tests
+        run: python3 test-scan-and-open.py
+
+  macos-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile native PDF opener
+        run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
+      - name: Compile PDF handler utility
+        run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
