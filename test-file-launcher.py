@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target
+from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target, verify_local_file_available
 
 
 ROOT = Path(__file__).resolve().parent
@@ -42,6 +42,32 @@ class FileLauncherTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "cannot launch itself"):
                 launch_clean_file(pdf, target_app=PDF_OPENER_BUNDLE_ID)
         run.assert_not_called()
+
+    def test_macos_download_preflight_rejects_pending_pdf(self):
+        pdf = self.root / "not yet downloaded.PDF"
+        with patch("file_launcher.sys.platform", "darwin"), \
+             patch("file_launcher.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 1)) as run:
+            with self.assertRaisesRegex(RuntimeError, "not available locally"):
+                verify_local_file_available(pdf)
+        run.assert_called_once_with(
+            [str(NATIVE_LAUNCHER), "--check-local", str(pdf)],
+            capture_output=True, timeout=10
+        )
+
+    def test_macos_download_preflight_allows_local_pdf(self):
+        with patch("file_launcher.sys.platform", "darwin"), \
+             patch("file_launcher.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 0)) as run:
+            verify_local_file_available(self.root / "downloaded.pdf")
+        self.assertEqual(run.call_count, 1)
+
+    def test_macos_download_preflight_fails_closed_when_helper_missing(self):
+        with patch("file_launcher.sys.platform", "darwin"), \
+             patch("file_launcher.subprocess.run",
+                   side_effect=FileNotFoundError("not installed")):
+            with self.assertRaisesRegex(RuntimeError, "not available locally"):
+                verify_local_file_available(self.root / "cloud.pdf")
 
     def test_non_pdf_uses_system_default_application(self):
         document = self.root / "file with spaces.txt"

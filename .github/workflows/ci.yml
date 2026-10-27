@@ -33,12 +33,16 @@ jobs:
         run: python3 test-file-launcher.py
       - name: Verify PDF scan gates on external-drive paths
         run: python3 test-external-drives.py -v
+      - name: Verify download-availability launch gate
+        run: python3 test-download-availability.py -v
       - name: Verify locally accessible iCloud Drive PDFs
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
         run: python3 test-pdf-filename-paths.py -v
       - name: Verify configurable PDF target application and Arc scan gating
         run: python3 test-target-app.py
+      - name: Verify Chromium PDF launching and fail-closed preflight
+        run: python3 test-chromium-launch.py -v
       - name: Verify clean scan results survive launch failures
         run: python3 test-launch-results.py -v
       - name: Verify scan-request origin records
@@ -78,8 +82,14 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.brave.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id org.chromium.Chromium "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.apple.Safari "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id company.thebrowser.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
+          "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
+          if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+      - name: Verify native PDF cloud download-state decisions
+        run: python3 test-native-file-availability.py
       - name: Verify bundle-identifier resolution and app existence
         run: python3 test-bundle-target.py
       - name: Verify duplicate-open handling and queued native scans
