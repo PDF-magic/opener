@@ -113,6 +113,12 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Verify previous PDF-handler backup and safe restoration
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING pdf-handler-history.swift test-pdf-handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
+          "$RUNNER_TEMP/TestPDFHandlerHistory"
+          if "$RUNNER_TEMP/PDFHandlerHistory" >/dev/null 2>&1; then exit 1; fi
       - name: Identify the current macOS PDF handler without modifying it
         run: |
           xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
