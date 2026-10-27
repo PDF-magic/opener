@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import hashlib
 import os
 from pathlib import Path
+from typing import Optional
 import sqlite3
 import subprocess
 import sys
@@ -24,10 +25,13 @@ CACHE_TTL = 90 * 24 * 60 * 60
 class ScanRequest:
     # A filename extension is a declared type, not proof of the file's contents.
     file_type: str
+    # Capture caller selection as metadata; it never changes scan enforcement.
+    protection_level: Optional[str] = None
 
     @classmethod
-    def from_path(cls, path):
-        return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown')
+    def from_path(cls, path, protection_level=None):
+        return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown',
+                   protection_level=protection_level)
 
 
 def scanner_path():
@@ -133,11 +137,11 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def scan_and_open(item, scanner):
+def scan_and_open(item, scanner, *, protection_level=None):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
-    request = ScanRequest.from_path(path)
+    request = ScanRequest.from_path(path, protection_level=protection_level)
     is_pdf = path.is_file() and request.file_type == 'pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
