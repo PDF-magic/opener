@@ -17,7 +17,6 @@ func pdfDefaultHandlerChangeVerified(
     return currentBundleIdentifier() == selectedIdentifier
 }
 
-#if !PDF_DEFAULT_HANDLER_TESTING
 guard let brave = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.brave.Browser") else {
     fputs("Brave Browser is not installed.\n", stderr)
     exit(1)
@@ -37,4 +36,3 @@ NSWorkspace.shared.setDefaultApplication(at: handler, toOpen: .pdf) { error in
     exit(0)
 }
 RunLoop.main.run()
-#endif

@@ -114,9 +114,7 @@ jobs:
       - name: Compile PDF handler utility
         run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
       - name: Verify that PDF default-handler updates take effect
-        run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_HANDLER_TESTING set-pdf-default-handler.swift test-pdf-default-handler.swift -o "$RUNNER_TEMP/TestSetPDFHandler"
-          "$RUNNER_TEMP/TestSetPDFHandler"
+        run: python3 test-pdf-default-handler.py -v
       - name: Identify the current macOS PDF handler without modifying it
         run: |
           xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
