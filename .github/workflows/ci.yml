@@ -26,6 +26,8 @@ jobs:
         run: python3 test-detection-policy.py -v
       - name: Verify browser-independent scan engine and launch defaults
         run: python3 test-file-launcher.py
+      - name: Verify clean scan results survive launch failures
+        run: python3 test-launch-results.py -v
       - name: Verify scan-request application attribution
         run: python3 test-scan-request.py
       - name: Verify file lifecycle state transitions
