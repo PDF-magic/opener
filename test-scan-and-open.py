@@ -35,6 +35,62 @@ class ScanGateTests(unittest.TestCase):
             remove.assert_not_called()
             self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
 
+    def test_unsupported_request_representations_fail_before_scanning(self):
+        unsupported = (
+            None, 42, b'not-a-path',
+            'https://example.org/document.pdf',
+            'smb://files.example.org/document.pdf',
+            self.file.as_uri(),
+        )
+        with patch.object(opener, 'fingerprint') as fingerprint, \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            for item in unsupported:
+                with self.subTest(item=item):
+                    with self.assertRaisesRegex(RuntimeError, 'Unsupported scan request type'):
+                        opener.scan_and_open(item, '/scanner')
+        fingerprint.assert_not_called()
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_unsupported_filesystem_entry_types_fail_before_scanning(self):
+        directory = Path(self.temp.name) / 'ordinary-folder'
+        directory.mkdir()
+        fifo = Path(self.temp.name) / 'named-pipe'
+        os.mkfifo(fifo)
+        with patch.object(opener, 'fingerprint') as fingerprint, \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            for item in (directory, fifo):
+                with self.subTest(item=item):
+                    with self.assertRaisesRegex(RuntimeError, 'Unsupported scan request type'):
+                        opener.scan_and_open(item, '/scanner')
+        fingerprint.assert_not_called()
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_supported_local_path_objects_and_symlinks_still_open(self):
+        alias = Path(self.temp.name) / 'selected alias.pdf'
+        alias.symlink_to(self.file)
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(alias, '/scanner')
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args.args[0], [
+            '/usr/bin/open', '-b', 'com.brave.Browser', str(self.file)
+        ])
+
+    def test_main_reports_unsupported_request_object_without_crashing(self):
+        with patch.object(opener, 'scanner_path', return_value='/scanner'), \
+                patch.object(opener, 'check_database'), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch('sys.stderr') as stderr:
+            self.assertEqual(opener.main([None]), 1)
+        run.assert_not_called()
+        self.assertIn('Unsupported scan request type', stderr.write.call_args_list[0].args[0])
+
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 

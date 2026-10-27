@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 import hashlib
 import os
+import re
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -122,10 +123,26 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def scan_and_open(item, scanner):
-    path = Path(item).expanduser().resolve(strict=True)
+def supported_request_path(item):
+    """Resolve only supported local-file and application-bundle requests."""
+    if not isinstance(item, (str, os.PathLike)):
+        raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
+    try:
+        raw_path = os.fspath(item)
+    except TypeError:
+        raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
+    # The command-line and Finder handoffs accept paths, not URLs. Never turn
+    # a network/file URI into a relative filesystem path by accident.
+    if not isinstance(raw_path, str) or re.match(r'^[A-Za-z][A-Za-z0-9+.-]*:(?://|/)', raw_path):
+        raise RuntimeError('Unsupported scan request type: URL requests are not supported.')
+    path = Path(raw_path).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
-        raise RuntimeError('Select a file or application, rather than a folder.')
+        raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
+    return path
+
+
+def scan_and_open(item, scanner):
+    path = supported_request_path(item)
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
@@ -179,7 +196,8 @@ def main(items):
         try:
             scan_and_open(item, scanner)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
-            print(f'{Path(item).name}: {error}', file=sys.stderr)
+            label = Path(item).name if isinstance(item, (str, Path)) else type(item).__name__
+            print(f'{label}: {error}', file=sys.stderr)
             result = 1
     return result
 
