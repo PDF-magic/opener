@@ -51,7 +51,9 @@ class ScanGateTests(unittest.TestCase):
         self.assertEqual(run.call_count, 1)
         quarantine.assert_not_called()
         self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
-        self.assertFalse(opener.CACHE_DB.exists())
+        with opener.sqlite3.connect(opener.CACHE_DB) as connection:
+            count = connection.execute('SELECT COUNT(*) FROM clean_scans').fetchone()[0]
+        self.assertEqual(count, 0)
 
     def test_scan_errors_keep_detection_names_without_opening(self):
         output = f'{self.file}: Win.Test.Sample FOUND\n'
