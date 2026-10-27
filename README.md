@@ -131,6 +131,24 @@ installed `identify-pdf-handler` helper. It does not open a PDF, change the
 default PDF association, change the browser receiving scanned PDFs, or modify
 user preferences.
 
+## Make PDF Magic Opener the default PDF application
+
+After installing, double-click **Make PDF Magic Opener Default.command** in
+`~/Applications` to explicitly make PDF Magic Opener the macOS PDF handler.
+You can also invoke that same user action from Terminal:
+
+```sh
+bash "$HOME/Applications/Make PDF Magic Opener Default.command"
+```
+
+This action verifies the installed PDF Magic Opener application's identity,
+executable, and PDF support before asking macOS to change the association.
+It reports an error if the application is missing or macOS refuses the change.
+It does not open any PDF, run a scan, or modify your selected post-scan browser
+(`target-app.txt`). It runs **only when invoked**, not whenever a PDF opens.
+Installation still registers the opener as before; this action allows you to
+restore it later if another application takes over.
+
 ## PDF target application
 
 For a comparison of viewer capabilities, browser-specific settings, and
