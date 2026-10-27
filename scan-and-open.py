@@ -250,7 +250,7 @@ def record_scan_request(application):
         raise ValueError('Invalid requesting application name.')
     SCAN_REQUEST_DB.parent.mkdir(parents=True, exist_ok=True)
     if SCAN_REQUEST_DB.is_symlink() or (SCAN_REQUEST_DB.exists() and not SCAN_REQUEST_DB.is_file()):
-        raise RuntimeError('The scan-request database must be a regular file, not a link.')
+        raise RuntimeError('The scan-request database must be a regular file, not a symbolic link.')
     SCAN_REQUEST_DB.touch(mode=0o600, exist_ok=True)
     SCAN_REQUEST_DB.chmod(0o600)
     connection = sqlite3.connect(str(SCAN_REQUEST_DB), timeout=5)
