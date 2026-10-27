@@ -81,8 +81,8 @@ func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
     return targetSupportsPDF(
         application: application,
         registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
-    ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
-        || trustedOperaPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
+    ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier) ||
+        trustedOperaPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 
 #if !PDF_TARGET_TESTING

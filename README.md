@@ -112,7 +112,7 @@ To open approved PDFs in **Opera** (the standard macOS release), select
 its bundle identifier without changing the system's default browser:
 
 ```sh
-printf '%s\\n' 'com.operasoftware.Opera' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+printf '%s\n' 'com.operasoftware.Opera' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
 Opera must be installed. The launcher accepts a registered PDF-capable Opera
