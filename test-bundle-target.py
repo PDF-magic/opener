@@ -35,6 +35,9 @@ class BundleTargetTests(unittest.TestCase):
             make_app("Installed", "com.example.verified")
             make_app("WrongIdentity", "com.example.unrelated")
             make_app("MissingExecutable", "com.example.verified", False)
+            make_app("PDFOpener", "local.studio.brave-pdf-opener")
+            pdf = root / "local document.PDF"
+            pdf.write_bytes(b"%PDF-1.4\\n")
             source = Path(__file__).with_name("launch-scanned-file.swift").read_text()
             prelude, marker, _ = source.partition(
                 "guard launch(Array(CommandLine.arguments.dropFirst())) else {"
@@ -58,7 +61,15 @@ precondition(resolveTargetApplication(bundleIdentifier: wanted,
                                       lookup: { _ in nil }) == nil)
 precondition(resolveTargetApplication(bundleIdentifier: "",
                                       lookup: fakeLookup("Installed")) == nil)
-print("Bundle-ID resolution and existence checks passed")
+// The scan gate may register itself as a PDF handler; never hand it the
+// approved PDF again, even when asked to do so by bundle identifier.
+precondition(resolveTargetApplication(bundleIdentifier: "local.studio.brave-pdf-opener",
+                                      lookup: fakeLookup("PDFOpener")) == nil)
+// Direct launcher invocations must not fall back to the system PDF handler,
+// which macOS may have set to PDF Magic Opener itself.
+let pdf = root.appendingPathComponent("local document.PDF")
+precondition(launch([pdf.path]) == false)
+print("Bundle-ID resolution and non-recursive PDF launch checks passed")
 """
             file = root / "test.swift"
             file.write_text(harness)

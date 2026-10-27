@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
+PDF_OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
 PDF_TARGET_VERIFIER = Path(__file__).with_name("verify-pdf-target")
 
 
@@ -19,9 +20,12 @@ def verify_launch_target(path, target_app=None):
     """Require Launch Services PDF capability for the selected application."""
     if Path(path).suffix.lower() != ".pdf":
         return
+    selected = target_app if target_app is not None else intended_destination(path)
+    if selected == PDF_OPENER_BUNDLE_ID:
+        raise RuntimeError("PDF Magic Opener cannot launch itself; opening was stopped.")
     try:
         completed = subprocess.run(
-            [str(PDF_TARGET_VERIFIER), target_app if target_app is not None else intended_destination(path)],
+            [str(PDF_TARGET_VERIFIER), selected],
             capture_output=True, timeout=10,
         )
     except (OSError, subprocess.SubprocessError) as error:
@@ -79,7 +83,7 @@ def pdf_target_application():
         selected = ""
     if (len(value) > 256 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}", selected)
             or "." not in selected or ".." in selected
-            or selected == "local.studio.brave-pdf-opener"):
+            or selected == PDF_OPENER_BUNDLE_ID):
         raise RuntimeError("Invalid PDF target application bundle identifier; opening was stopped.")
     return selected
 
@@ -99,5 +103,8 @@ def launch_clean_file(path, target_app=None):
     path = Path(path)
     command = [str(NATIVE_LAUNCHER)]
     if path.suffix.lower() == ".pdf":
-        command.extend(["--bundle-id", target_app if target_app is not None else pdf_target_application()])
+        selected = target_app if target_app is not None else pdf_target_application()
+        if selected == PDF_OPENER_BUNDLE_ID:
+            raise RuntimeError("PDF Magic Opener cannot launch itself; opening was stopped.")
+        command.extend(["--bundle-id", selected])
     subprocess.run([*command, str(path)], check=True)

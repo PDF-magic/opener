@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='studio-opener-test-') as directory:
     # The runner need not mount physical media: macOS passes both as file URLs.
     external = root / 'Volumes' / 'External SSD' / 'Quarterly report – 2026.PDF'
     external.parent.mkdir(parents=True)
-    others = [external] + [root / f'document-{index}.pdf' for index in range(1, 3)]
+    others = [external, root / 'document-1.pdf', root / '報告 #3 & 100% (final).pdf']
     for other in others:
         other.touch()
     assert 'startAccessingSecurityScopedResource()' in source
