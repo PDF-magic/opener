@@ -28,6 +28,8 @@ jobs:
         run: python3 test-file-launcher.py
       - name: Verify clean scan results survive launch failures
         run: python3 test-launch-results.py -v
+      - name: Verify scan-request origin records
+        run: python3 test-scan-request-origin.py
       - name: Verify scan-request application attribution
         run: python3 test-scan-request.py
       - name: Verify file lifecycle state transitions
@@ -58,6 +60,8 @@ jobs:
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: python3 test-scan-resource-cleanup.py
+      - name: Verify native open-event origin classification
+        run: python3 test-native-request-origin.py
       - name: Verify per-request timestamps and duplicate suppression
         timeout-minutes: 5
         run: python3 test-request-timestamp.py
