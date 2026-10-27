@@ -31,6 +31,13 @@ class ScanGateTests(unittest.TestCase):
         cache = patch.object(opener, 'CACHE_DB', Path(self.temp.name) / 'clean-cache.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
+        native = patch.object(opener, 'verify_launch_target')
+        native.start()
+        self.addCleanup(native.stop)
+        version = patch.object(opener.subprocess, 'check_output',
+                               side_effect=FileNotFoundError)
+        version.start()
+        self.addCleanup(version.stop)
         audit = patch.object(opener, 'SCAN_REQUEST_DB',
                              Path(self.temp.name) / 'scan-requests.sqlite3')
         audit.start()
@@ -566,6 +573,113 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         run.assert_not_called()
         quarantine.assert_not_called()
 
+    def test_scan_results_record_actual_scanner_version_and_cache_it(self):
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=scan) as run, \
+                patch.object(opener.subprocess, 'check_output',
+                             return_value='ClamAV 1.4.2/27800/Tue Oct 27') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(self.file), '/scanner')
+            cached = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(first, opener.CleanScanResult(status='clean', scanner_version='1.4.2', from_cache=False))
+        self.assertEqual(cached, opener.CleanScanResult(status='clean', scanner_version='1.4.2', from_cache=True))
+        version.assert_called_once_with(
+            ['/scanner', '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
+        self.assertEqual(sum(call.args[0][0] == '/scanner' for call in run.call_args_list), 1)
+        with sqlite3.connect(opener.CACHE_DB) as connection:
+            row = connection.execute(
+                'SELECT scanner_version FROM clean_scans').fetchone()
+        self.assertEqual(row, ('1.4.2',))
+
+    def test_non_pdf_cache_preserves_original_engine_version(self):
+        document = self.file.with_suffix('.txt')
+        document.write_bytes(b'non-pdf data')
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=scan), \
+                patch.object(opener.subprocess, 'check_output',
+                             return_value='ClamAV 1.5.0/27800') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(document), '/scanner')
+            second = opener.scan_and_open(str(document), '/scanner')
+        self.assertEqual(first.scanner_version, '1.5.0')
+        self.assertFalse(first.from_cache)
+        self.assertEqual(second.scanner_version, '1.5.0')
+        self.assertTrue(second.from_cache)
+        version.assert_called_once()
+
+    def test_legacy_cache_keeps_clean_verdict_without_invented_version(self):
+        digest = opener.cache_key(opener.fingerprint(self.file), True)
+        with sqlite3.connect(opener.CACHE_DB) as connection:
+            connection.execute('CREATE TABLE clean_scans '
+                               '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL)')
+            connection.execute('INSERT INTO clean_scans VALUES (?, ?)',
+                               (digest.hex(), time.time()))
+        with patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'scan_engine_version') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            result = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(result, opener.CleanScanResult(status='clean', scanner_version=None, from_cache=True))
+        version.assert_not_called()
+        self.assertEqual(run.call_count, 1)
+        # The launch executable is selected by file_launcher, not the cache.
+        self.assertNotEqual(run.call_args.args[0][0], '/scanner')
+
+    def test_unavailable_or_unrecognized_version_is_not_misreported(self):
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        for response in (subprocess.TimeoutExpired('/scanner', 5), 'unexpected scanner output'):
+            with self.subTest(response=response):
+                self.file.write_bytes(self.file.read_bytes() + b'changed')
+                with patch.object(opener.subprocess, 'run', return_value=scan), \
+                        patch.object(opener.subprocess, 'check_output') as version, \
+                        patch.object(opener, 'remove_quarantine'):
+                    if isinstance(response, Exception):
+                        version.side_effect = response
+                    else:
+                        version.return_value = response
+                    result = opener.scan_and_open(str(self.file), '/scanner')
+                self.assertEqual(result.scanner_version, None)
+                self.assertFalse(result.from_cache)
+
+    def test_blocked_scan_does_not_produce_version_metadata(self):
+        detection = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=detection), \
+                patch.object(opener, 'scan_engine_version') as version, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        version.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_cached_clean_pdf_rejects_unsupported_destination(self):
+        opener.remember_clean(opener.cache_key(opener.fingerprint(self.file), True))
+        with patch.object(opener, 'verify_launch_target',
+                          side_effect=RuntimeError('Target application unsupported')), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'unsupported'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_malware_prevents_pdf_destination_preflight(self):
+        detected = subprocess.CompletedProcess([], 1, 'test: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=detected), \
+                patch.object(opener, 'remove_quarantine'):
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        opener.verify_launch_target.assert_not_called()
+
+    def test_clean_pdf_checks_destination_before_quarantine(self):
+        events = []
+        done = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=done), \
+                patch.object(opener, 'verify_launch_target',
+                             side_effect=lambda path: events.append('checked')), \
+                patch.object(opener, 'remove_quarantine',
+                             side_effect=lambda path: events.append('quarantine')):
+            opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(events, ['checked', 'quarantine'])
+
     def test_missing_or_stale_signatures_block_before_scanning(self):
         database = Path(self.temp.name) / 'database'
         database.mkdir()
@@ -746,7 +860,8 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         (db / 'daily.cld').write_bytes(b'ClamAV-VDB:build:28123:rest'.ljust(512, b' '))
         (db / 'bytecode.cvd').write_bytes(b'ClamAV-VDB:build:335:rest'.ljust(512, b' '))
         completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
-        with patch.object(opener, 'DATABASE', db), \
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
                 patch.object(opener.subprocess, 'run', return_value=completed) as run, \
                 patch.object(opener, 'remove_quarantine'):
             result = opener.scan_and_open(str(self.file), '/scanner')
@@ -762,7 +877,8 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         daily = db / 'daily.cld'
         daily.write_bytes(b'ClamAV-VDB:build:28123:rest')
         completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
-        with patch.object(opener, 'DATABASE', db), \
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
                 patch.object(opener.subprocess, 'run', return_value=completed) as run, \
                 patch.object(opener, 'remove_quarantine'):
             first = opener.scan_and_open(str(self.file), '/scanner')
@@ -797,7 +913,8 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         (db / 'main.cvd').write_bytes(b'ClamAV-VDB:build:not-a-version:rest')
         (db / 'daily.cvd').write_bytes(b'ClamAV-VDB:build:28123:rest')
         completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
-        with patch.object(opener, 'DATABASE', db), \
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
                 patch.object(opener.subprocess, 'run', return_value=completed), \
                 patch.object(opener, 'remove_quarantine'):
             result = opener.scan_and_open(str(self.file), '/scanner')
@@ -813,7 +930,8 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             if command[0] == '/scanner':
                 daily.write_bytes(b'ClamAV-VDB:build:28124:rest')
             return subprocess.CompletedProcess(command, 0, 'file: OK', '')
-        with patch.object(opener, 'DATABASE', db), \
+        with patch.object(opener, 'scan_engine_version', return_value=None), \
+                patch.object(opener, 'DATABASE', db), \
                 patch.object(opener.subprocess, 'run', side_effect=run), \
                 patch.object(opener, 'remove_quarantine'):
             result = opener.scan_and_open(str(self.file), '/scanner')

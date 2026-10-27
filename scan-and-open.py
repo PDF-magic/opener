@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from functools import wraps
 from dataclasses import dataclass
 from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import intended_destination, launch_clean_file
+from file_launcher import intended_destination, launch_clean_file, verify_launch_target
 import os
+import signal
 import re
 from pathlib import Path
 from typing import Optional
@@ -14,6 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
+import threading
 import time
 
 INSTALL_DIR = Path.home() / 'Library/Application Support/Studio/allow-and-open'
@@ -40,6 +43,7 @@ SAFE_SCAN_FAILURES = frozenset((
     'The malware scan could not finish; opening was stopped.',
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
+    'The clean scan cache could not be verified; opening was stopped.',
 ))
 
 
@@ -50,6 +54,7 @@ class CleanScanResult:
 
     status: str
     from_cache: bool
+    scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
 
 
@@ -128,6 +133,84 @@ def validate_scan_request(item):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     return path
+
+
+NATIVE_CANCELLATION = 'PDF_MAGIC_NATIVE_CANCEL'
+
+
+class ScanCancelled(RuntimeError):
+    """A cancelled request must never permit an open or process the next file."""
+
+
+def native_cancellation_enabled():
+    return os.environ.get(NATIVE_CANCELLATION) == '1'
+
+
+def _cancel_signal(signum, frame):
+    raise ScanCancelled('The scan was cancelled; opening was stopped.')
+
+
+@contextmanager
+def cancellation_signals():
+    if not native_cancellation_enabled():
+        yield
+        return
+    if threading.current_thread() is not threading.main_thread():
+        raise RuntimeError('Native cancellation requires the main thread.')
+    tracked = (signal.SIGINT, signal.SIGTERM)
+    previous = {sig: signal.getsignal(sig) for sig in tracked}
+    try:
+        for sig in tracked:
+            signal.signal(sig, _cancel_signal)
+        yield
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def terminate_scanner_children(process):
+    # An isolated session lets us stop a scanner and its descendants without
+    # signalling the PDF opener or other concurrent scan processes.
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.communicate(timeout=2)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.communicate()
+    else:
+        # A direct scanner may exit while its child processes remain alive.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def run_scan_command(command, timeout):
+    if not native_cancellation_enabled():
+        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except BaseException:
+        # Includes cancellation and timeouts: never leave scanner children alive.
+        terminate_scanner_children(process)
+        raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def cancellable_scan(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        with cancellation_signals():
+            return function(*args, **kwargs)
+    return wrapper
 
 
 def read_signature_database_version():
@@ -254,9 +337,12 @@ def cache_connection():
     try:
         connection.execute('CREATE TABLE IF NOT EXISTS clean_scans '
                            '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL, '
-                           'signature_database_version TEXT)')
-        columns = {row[1] for row in connection.execute('PRAGMA table_info(clean_scans)')}
-        if 'signature_database_version' not in columns:
+                           'scanner_version TEXT, signature_database_version TEXT)')
+        if 'scanner_version' not in {
+                column[1] for column in connection.execute('PRAGMA table_info(clean_scans)')}:
+            connection.execute('ALTER TABLE clean_scans ADD COLUMN scanner_version TEXT')
+        if 'signature_database_version' not in {
+                row[1] for row in connection.execute('PRAGMA table_info(clean_scans)')}:
             connection.execute('ALTER TABLE clean_scans ADD COLUMN signature_database_version TEXT')
         with connection:
             yield connection
@@ -282,27 +368,27 @@ def active_scan_lock(digest):
         os.close(descriptor)
 
 
-def cached_result(digest):
-    """Return clean cached provenance without using newer installed revisions."""
+def cached_scan(digest):
     try:
         with cache_connection() as connection:
             row = connection.execute(
-                'SELECT scanned_at, signature_database_version FROM clean_scans WHERE digest = ?',
+                'SELECT scanned_at, scanner_version, signature_database_version FROM clean_scans WHERE digest = ?',
                 (digest.hex(),)).fetchone()
         age = time.time() - row[0] if row else -1
         if 0 <= age < CACHE_TTL:
-            return CleanScanResult(status='clean', from_cache=True,
-                                   signature_database_version=row[1])
+            return CleanScanResult(status="clean", from_cache=True, scanner_version=row[1],
+                                   signature_database_version=row[2])
     except (OSError, sqlite3.Error, TypeError, ValueError):
+        # Bad or unavailable caches never provide a clean verdict.
         pass
     return None
 
 
 def cached_clean(digest):
-    return cached_result(digest) is not None
+    return cached_scan(digest) is not None
 
 
-def remember_clean(digest, signature_database_version=None):
+def remember_clean(digest, scanner_version=None, signature_database_version=None):
     try:
         with cache_connection() as connection:
             now = time.time()
@@ -310,11 +396,25 @@ def remember_clean(digest, signature_database_version=None):
                                (now - CACHE_TTL,))
             connection.execute(
                 'INSERT OR REPLACE INTO clean_scans '
-                '(digest, scanned_at, signature_database_version) VALUES (?, ?, ?)',
-                (digest.hex(), now, signature_database_version))
+                '(digest, scanned_at, scanner_version, signature_database_version) '
+                'VALUES (?, ?, ?, ?)',
+                (digest.hex(), now, scanner_version, signature_database_version))
     except (OSError, sqlite3.Error):
         # Failure to save the cache does not invalidate a successful scan.
         pass
+
+
+def scan_engine_version(scanner):
+    """Return ClamAV's engine version, not its signature database revision."""
+    try:
+        output = subprocess.check_output(
+            [scanner, '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.match(
+        r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
+        output.strip())
+    return match.group(1) if match else None
 
 
 def record_scan_destination(destination):
@@ -449,6 +549,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
     performed_scan = False
+    scanner_version = None
     signature_version = None
     # Do not serialize an already cached clean hit. For a miss, a cross-process
     # lock prevents another identical-content request from racing its scan.
@@ -465,14 +566,13 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 else:
                     size_options = ('--max-filesize=512M', '--max-scansize=1024M')
                 try:
-                    scan = subprocess.run([
+                    scan = run_scan_command([
                         scanner, '--database=' + str(DATABASE), '--recursive',
                         '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
                         '--alert-exceeds-max=yes', '--alert-encrypted=yes',
                         *size_options,
                         '--max-scantime=0', '--no-summary', '--', str(path)
-                    ], capture_output=True, text=True,
-                        timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                    ], timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 detection = capture_detection(scan)
@@ -484,15 +584,18 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                                      if signature_version_before == signature_version_after else None)
                 verify_file_integrity(path, before, identity)
                 performed_scan = True
-                remember_clean(cache_id, signature_version)
+                scanner_version = scan_engine_version(scanner)
+                remember_clean(cache_id, scanner_version, signature_version)
     verify_file_integrity(path, before, identity)
     # Preserve the completed scan outcome before attempting to launch the file.
-    cached_metadata = cached_result(cache_id) if not performed_scan else None
-    scan_result = CleanScanResult(
-        status='clean', from_cache=not performed_scan,
-        signature_database_version=(signature_version if performed_scan else
-                                    cached_metadata.signature_database_version
-                                    if cached_metadata is not None else None))
+    scan_result = (CleanScanResult(status='clean', from_cache=False,
+                                   scanner_version=scanner_version,
+                                   signature_database_version=signature_version)
+                   if performed_scan else cached_scan(cache_id))
+    if scan_result is None:
+        raise RuntimeError('The clean scan cache could not be verified; opening was stopped.')
+    # Verify PDF destination capability before releasing quarantine.
+    verify_launch_target(path)
     remove_quarantine(path)
     # Quarantine removal changes ctime, but source bytes and identities must remain intact.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
@@ -504,6 +607,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     return scan_result
 
 
+@cancellable_scan
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     # Reject unsupported requests before allocating shared scanner queue slots.
     path = supported_request_path(item)
@@ -551,6 +655,9 @@ def main(items):
         try:
             record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             scan_and_open(item, scanner)
+        except ScanCancelled:
+            print('The scan was cancelled; opening was stopped.', file=sys.stderr)
+            return 1
         except (OSError, RuntimeError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
             print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1

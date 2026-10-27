@@ -26,6 +26,12 @@ class LaunchResultTests(unittest.TestCase):
                              Path(self.temp.name) / "clean-scan-cache.sqlite3")
         cache.start()
         self.addCleanup(cache.stop)
+        native = patch.object(opener, "verify_launch_target")
+        native.start()
+        self.addCleanup(native.stop)
+        version = patch.object(opener, 'scan_engine_version', return_value=None)
+        version.start()
+        self.addCleanup(version.stop)
 
     def test_launch_failure_keeps_completed_result_and_cache(self):
         raw = subprocess.CompletedProcess([], 0, "file: OK", "")

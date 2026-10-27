@@ -8,6 +8,23 @@ from pathlib import Path
 import subprocess
 
 PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
+PDF_TARGET_VERIFIER = Path(__file__).with_name("verify-pdf-target")
+
+
+def verify_launch_target(path):
+    """Require Launch Services PDF capability for the selected application."""
+    if Path(path).suffix.lower() != ".pdf":
+        return
+    try:
+        completed = subprocess.run(
+            [str(PDF_TARGET_VERIFIER), intended_destination(path)],
+            capture_output=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RuntimeError("PDF application support could not be verified; opening was stopped.") from error
+    if completed.returncode != 0:
+        raise RuntimeError("The selected application is not registered to open PDFs; opening was stopped.")
+
 NATIVE_LAUNCHER = Path(__file__).with_name("launch-scanned-file")
 
 
