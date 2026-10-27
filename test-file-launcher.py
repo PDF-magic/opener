@@ -7,7 +7,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target, verify_local_file_available
+from file_launcher import (NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID,
+                           PDF_TARGET_VERIFIER, PDF_TARGET_UNAVAILABLE_MESSAGE,
+                           PDF_TARGET_VERIFICATION_MESSAGE, launch_clean_file,
+                           verify_launch_target, verify_local_file_available)
 
 
 ROOT = Path(__file__).resolve().parent
@@ -131,6 +134,26 @@ class FileLauncherTests(unittest.TestCase):
                 with patch("file_launcher.subprocess.run", **kwargs):
                     with self.assertRaisesRegex(RuntimeError, "opening was stopped"):
                         verify_launch_target(self.root / "document.pdf")
+
+    def test_missing_pdf_browser_explains_how_to_change_selection(self):
+        path = self.root / "private-name.pdf"
+        with patch("file_launcher.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 1, b"",
+                                                             b"/private/secret/file.pdf")):
+            with self.assertRaises(RuntimeError) as raised:
+                verify_launch_target(path, target_app="com.example.Uninstalled")
+        self.assertEqual(str(raised.exception), PDF_TARGET_UNAVAILABLE_MESSAGE)
+        self.assertIn("target-app.txt", str(raised.exception))
+        self.assertNotIn(str(path), str(raised.exception))
+        self.assertNotIn("/private/secret", str(raised.exception))
+
+    def test_missing_verification_helper_has_safe_reinstall_guidance(self):
+        with patch("file_launcher.subprocess.run",
+                   side_effect=FileNotFoundError("/private/secret/verifier")):
+            with self.assertRaises(RuntimeError) as raised:
+                verify_launch_target(self.root / "document.pdf")
+        self.assertEqual(str(raised.exception), PDF_TARGET_VERIFICATION_MESSAGE)
+        self.assertNotIn("/private/secret", str(raised.exception))
 
     def test_pinned_preflight_uses_supplied_bundle_identifier(self):
         target = self.root / "file.pdf"
