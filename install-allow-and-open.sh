@@ -34,6 +34,8 @@ chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatur
 chmod 755 "$install_dir/launch-scanned-file"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/resolve-default-browser.swift" -o "$install_dir/resolve-default-browser"
 chmod 755 "$install_dir/resolve-default-browser"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
+chmod 755 "$install_dir/identify-pdf-handler"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 python3 - "$install_dir" <<'CONFIG'
 import sys
@@ -146,5 +148,5 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
-/usr/bin/swift "$script_dir/set-brave-pdf-default.swift" "$app"
+/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."

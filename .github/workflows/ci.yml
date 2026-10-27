@@ -20,6 +20,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh
       - name: Verify application naming and migration
         run: python3 test-app-name.py
+      - name: Verify generic PDF default-handler utility naming
+        run: python3 test-pdf-default-handler-name.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
       - name: Verify cancellation and scanner process-group cleanup
@@ -83,6 +85,10 @@ jobs:
         env:
           PDF_MAGIC_TEST_BROWSER: arc
         run: python3 test-browser-pdf-behavior.py
+      - name: Verify browser PDF viewer comparison documentation
+        run: python3 test-browser-viewer-docs.py -v
+      - name: Verify optional PDF fallback selection and safety
+        run: python3 test-fallback-app.py -v
       - name: Verify clean scan results survive launch failures
         run: python3 test-launch-results.py -v
       - name: Verify scan-request origin records
@@ -106,8 +112,14 @@ jobs:
       - name: Compile native PDF opener
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
-        run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
-      - name: Compile and verify PDF-capable selection including Arc and Opera signatures
+        run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Identify the current macOS PDF handler without modifying it
+        run: |
+          xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
+          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
+          "$RUNNER_TEMP/TestPDFHandler"
+          if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
+      - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
@@ -115,6 +127,9 @@ jobs:
           if "$RUNNER_TEMP/VerifyPDFTarget" >/dev/null 2>&1; then exit 1; fi
           if [ -d /Applications/Safari.app ]; then
             "$RUNNER_TEMP/VerifyPDFTarget" com.apple.Safari
+          fi
+          if [ -d /Applications/Firefox.app ]; then
+            "$RUNNER_TEMP/VerifyPDFTarget" org.mozilla.firefox
           fi
       - name: Compile and smoke-test NSWorkspace launcher
         run: |
@@ -126,6 +141,7 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.apple.Safari "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id company.thebrowser.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.operasoftware.Opera "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id org.mozilla.firefox "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
@@ -137,6 +153,9 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift test-default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
+      - name: Verify PDF handoff to an already-running browser process
+        timeout-minutes: 3
+        run: python3 test-browser-already-running.py -v
       - name: Verify PDF launch starts a stopped browser application
         timeout-minutes: 3
         run: python3 test-browser-cold-start.py -v

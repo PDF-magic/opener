@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify configurable PDF destination without relaxing the scan gate."""
 import importlib.util
+from io import StringIO
 import sqlite3
 from pathlib import Path
 import subprocess
@@ -269,6 +270,28 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[0][0], '/scanner')
         quarantine.assert_not_called()
 
+    def test_firefox_target_is_pinned_through_pdf_verification_and_launch(self):
+        self.config.write_text('org.mozilla.firefox\n')
+        verified = []
+
+        def verify(path, target_app=None):
+            verified.append((path, target_app))
+
+        with patch.object(opener, 'verify_launch_target', side_effect=verify):
+            run, quarantine = self.scan_clean()
+        self.assertEqual(verified, [(self.document, 'org.mozilla.firefox')])
+        self.assertEqual(
+            run.call_args.args[0],
+            [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
+             'org.mozilla.firefox', str(self.document)],
+        )
+        self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
+        quarantine.assert_called_once()
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            destination = db.execute(
+                'SELECT intended_destination_application FROM scan_requests').fetchone()
+        self.assertEqual(destination, ('org.mozilla.firefox',))
+
     def test_preflight_and_launch_keep_original_target_if_preference_changes(self):
         self.config.write_text('com.apple.Preview\n')
         seen = []
@@ -287,6 +310,35 @@ class TargetApplicationTests(unittest.TestCase):
              'com.apple.Preview', str(self.document)],
         )
         quarantine.assert_called_once()
+
+    def test_missing_browser_displays_safe_guidance_without_launch(self):
+        self.config.write_text('com.example.Uninstalled\n')
+        commands = []
+
+        def execute(command, *args, **kwargs):
+            commands.append(command)
+            if command[0] == str(launcher.PDF_TARGET_VERIFIER):
+                return subprocess.CompletedProcess(command, 1, b'',
+                                                   b'/private/secret/document.pdf')
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+
+        diagnostics = StringIO()
+        with patch.object(opener, 'scanner_path', return_value='/scanner'), \
+                patch.object(opener, 'check_database'), \
+                patch.object(opener.subprocess, 'run', side_effect=execute), \
+                patch.object(opener, 'remove_quarantine') as quarantine, \
+                patch('sys.stderr', diagnostics):
+            self.assertEqual(opener.main([str(self.document)]), 1)
+        self.assertIn('selected PDF application is unavailable', diagnostics.getvalue())
+        self.assertIn('target-app.txt', diagnostics.getvalue())
+        self.assertNotIn('/private/secret', diagnostics.getvalue())
+        self.assertNotIn(str(self.document), diagnostics.getvalue())
+        self.assertTrue(any(command[0] == '/scanner' for command in commands))
+        self.assertTrue(any(command[0] == str(launcher.PDF_TARGET_VERIFIER)
+                            for command in commands))
+        self.assertFalse(any(command[0] == str(launcher.NATIVE_LAUNCHER)
+                             for command in commands))
+        quarantine.assert_not_called()
 
     def test_invalid_settings_fail_before_scan_or_quarantine_changes(self):
         for content in ('', 'Preview', '--evil', 'com.apple.Preview\nother',

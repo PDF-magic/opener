@@ -44,6 +44,8 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 **Launch errors:** After successful malware and integrity checks, `scan_and_open` creates an immutable `CleanScanResult(status="clean", from_cache=...)` independent of launching. A failed destination launch still reports an error and a nonzero CLI exit status, but raises `LaunchFailedError` with the completed `scan_result` attached for callers. The verified 90-day clean scan cache remains valid, subject to existing signature freshness, file integrity and expiry checks, so retrying an unsuccessful launch does not automatically rescan. Incomplete or blocked scans never produce a clean result.
 
+**Unavailable selected PDF application:** When a configured browser is missing or cannot open PDFs, the macOS opener displays an `Opening stopped` warning explaining that the selected PDF application is unavailable or not PDF-capable. Install the selected application or change `~/Library/Application Support/Studio/allow-and-open/target-app.txt` to an installed PDF-capable application. If the opt-in system-default-browser choice cannot be resolved, check the default browser in macOS System Settings. If the native verification tool is unavailable, reinstall PDF Magic Opener. A browser that disappears after verification results in a separate explanation that scanning succeeded but launching failed. Diagnostics never reveal document paths, never silently switch browsers, and never bypass malware scanning or quarantine checks.
+
 **PDF application support:** Before releasing quarantine or opening a verified clean PDF, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
 
 **Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
@@ -60,6 +62,8 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Incomplete cloud downloads:** Before hashing or scanning a PDF, the macOS launcher checks native download-state metadata. Cloud-only iCloud placeholders, PDFs still downloading, and files whose local availability cannot be verified do **not** launch a browser. The scan gate rechecks availability after scanning (including cache hits) and immediately before the native macOS launch to detect cloud eviction. Finder-style `.pdf.icloud` placeholder paths are rejected without scanning. Reopen the requested PDF once it has fully downloaded locally; the opener does not download it, wait indefinitely, or alter the configured PDF target. Reinstall to deploy the updated native helper.
 
+**Already-running browsers:** If the selected PDF browser is already open, macOS receives the approved file through the same explicit `NSWorkspace` application handoff, rather than launching a second browser by design. The macOS CI regression uses a temporary browser-like `.app` and verifies the open event reaches its existing process. This does not bypass malware scanning, change application preferences, or require a real browser installation.
+
 **Native application launching:** After the scan gate approves a file, verifies unchanged contents, and completes quarantine handling, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
@@ -73,7 +77,7 @@ bash update-malware-signatures.sh
 The installer keeps the original workflow beside `document.wflow` as `document.wflow.before-brave`. To restore direct Brave opening without this scan gate:
 
 ```sh
-swift set-brave-pdf-default.swift
+swift set-pdf-default-handler.swift
 ```
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
@@ -88,15 +92,36 @@ python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
+## Inspect the registered macOS PDF handler
+
+To see which application macOS currently has registered as the default for
+PDF documents, reinstall to deploy the read-only helper and run:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/identify-pdf-handler"
+```
+
+The command prints the **bundle identifier** returned by macOS Launch Services
+for the PDF content type (for example, `local.studio.brave-pdf-opener` if
+PDF Magic Opener is the current handler, or `com.apple.Preview`).
+If no handler can be identified, it prints a fixed error and exits unsuccessfully
+rather than guessing. This reports the **system PDF association**, not the
+separately configured app that receives clean PDFs or the default web browser.
+It neither changes file associations nor opens any file or application.
+
 **Browser closed at launch:** The native macOS helper uses an application-specific
 `NSWorkspace.open` call, which starts the chosen browser if it is not already
 running. The macOS CI job checks this cold-start behavior with a temporary,
 ad-hoc-signed PDF-viewer app bundle and a local test PDF, verifying that the
-app was stopped, was launched, and received the original PDF path. The fixture
-does not claim that every third-party browser was installed or visually
-rendered the PDF. It does not alter user browser settings or the scan gate.
+app was stopped, was launched, and received the same PDF file (including macOS
+canonical aliases such as `/var` and `/private/var`). The fixture does not
+claim that every third-party browser was installed or visually rendered the
+PDF. It does not alter user browser settings or the scan gate.
 
 ## PDF target application
+
+For a comparison of viewer capabilities, browser-specific settings, and
+launch requirements, see [Browser PDF viewer differences](docs/browser-pdf-viewers.md).
 
 The PDF target is a macOS application **bundle identifier**, not a shell
 command or executable path. The default is `com.brave.Browser`. After
@@ -186,6 +211,39 @@ fall back to another app. Opera GX is a separate application and is not
 covered by this Opera-specific exception. ClamAV scanning and the existing
 file-integrity and quarantine checks always precede launching.
 
+To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
+
+```sh
+printf '%s\n' 'org.mozilla.firefox' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Firefox has a built-in PDF viewer but may not register itself as a PDF handler
+with macOS. The launcher accepts an installed Firefox application only when
+its bundle identity, executable, and Mozilla Developer ID signature are verified; other applications must
+still be registered PDF handlers. The usual ClamAV, quarantine, and
+file-integrity checks still apply before Firefox is launched.
+
+An optional **fallback PDF application** can be configured separately. For
+example, use Preview only if the selected browser cannot be verified or fails
+to launch after a successful scan:
+
+```sh
+printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/fallback-app.txt"
+```
+
+The fallback must be an installed, independently verified PDF-capable macOS
+application, specified by bundle identifier (not a command, executable, or
+`system-default-browser` shortcut). If the fallback setting is missing,
+there is **no automatic fallback**; a malformed or symlinked setting blocks
+PDF opening. A fallback is never attempted after detection, scan errors,
+an unavailable cloud file, failed integrity checks, or quarantine errors.
+On a failed preferred-app launch, the fallback must already have passed PDF
+capability verification before quarantine removal, and the file is rechecked
+before its second launch attempt. The request audit retains the preferred
+destination and adds a fallback destination entry when used. Existing
+settings survive reinstallations unchanged. Non-PDF documents and application
+bundles are unaffected.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
@@ -270,7 +328,7 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |
 | `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
-| `set-brave-pdf-default.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
+| `set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |
 | `test-target-app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
 | `test-scan-concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
