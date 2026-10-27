@@ -52,7 +52,9 @@ struct MakePDFMagicDefault {
             application: app,
             register: { application, finish in
                 NSWorkspace.shared.setDefaultApplication(
-                    at: application, toOpen: UTType.pdf, completionHandler: finish)
+                    at: application, toOpen: UTType.pdf) { error in
+                    finish(error)
+                }
             },
             completion: { success in
                 if success {
