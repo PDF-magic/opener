@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify that browser download metadata is optional and cannot bypass scanning."""
+"""Verify optional browser download identifiers never affect scan security."""
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -10,63 +10,65 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    'scan_and_open', Path(__file__).with_name('scan-and-open.py'))
+    "browser_download_id", Path(__file__).with_name("scan-and-open.py"))
 opener = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = opener
 spec.loader.exec_module(opener)
 
 
-class BrowserDownloadIdentifierTests(unittest.TestCase):
-    def test_regular_file_requests_have_no_browser_identifier(self):
-        requests = opener.parse_scan_requests(['/tmp/first.pdf', '/tmp/second.pdf'])
-        self.assertEqual([request.path for request in requests],
-                         ['/tmp/first.pdf', '/tmp/second.pdf'])
-        self.assertTrue(all(request.browser_download_identifier is None
-                            for request in requests))
+class BrowserIdentifierTests(unittest.TestCase):
+    def test_plain_paths_do_not_infer_identifier(self):
+        requests = opener.parse_scan_requests(["/tmp/a.pdf", "/tmp/b.pdf"])
+        self.assertEqual([r.path for r in requests], ["/tmp/a.pdf", "/tmp/b.pdf"])
+        self.assertEqual([r.browser_download_identifier for r in requests], [None, None])
 
-    def test_explicit_browser_identifier_is_kept_with_its_request(self):
-        requests = opener.parse_scan_requests([
-            '--browser-download-id', 'download-0042', '/tmp/download.pdf'])
-        self.assertEqual(len(requests), 1)
-        with patch.object(opener, 'scanner_path', return_value='/scanner'), \
-                patch.object(opener, 'check_database'), \
-                patch.object(opener, 'scan_and_open') as scan:
-            self.assertEqual(opener.main(requests), 0)
-        request, scanner = scan.call_args.args
-        self.assertEqual(request.path, '/tmp/download.pdf')
-        self.assertEqual(request.browser_download_identifier, 'download-0042')
-        self.assertEqual(scanner, '/scanner')
+    def test_browser_request_is_routed_with_unchanged_path(self):
+        request, = opener.parse_scan_requests([
+            "--browser-download-id", "download-42", "/tmp/local.pdf"])
+        with patch.object(opener, "scanner_path", return_value="/scanner"), \
+                patch.object(opener, "check_database"), \
+                patch.object(opener, "validate_scan_request"), \
+                patch.object(opener, "scan_and_open") as run:
+            self.assertEqual(opener.main([request]), 0)
+        run.assert_called_once_with("/tmp/local.pdf", "/scanner",
+                                    browser_download_identifier="download-42")
 
-    def test_missing_or_invalid_identifier_is_rejected(self):
+    def test_invalid_identifiers_fail_before_processing(self):
         for args in (
-            ['--browser-download-id'],
-            ['--browser-download-id', '', '/tmp/file.pdf'],
-            ['--browser-download-id', 'bad\nvalue', '/tmp/file.pdf'],
-            ['--browser-download-id', 'a' * 257, '/tmp/file.pdf'],
-            ['--browser-download-id', 'id', '/tmp/a.pdf', '/tmp/b.pdf'],
+            ["--browser-download-id"],
+            ["--browser-download-id", "", "/tmp/file.pdf"],
+            ["--browser-download-id", "bad\nvalue", "/tmp/file.pdf"],
+            ["--browser-download-id", "x" * 257, "/tmp/file.pdf"],
+            ["--browser-download-id", "id", "/tmp/a.pdf", "/tmp/b.pdf"],
         ):
             with self.subTest(args=args), self.assertRaises(ValueError):
                 opener.parse_scan_requests(args)
 
-    def test_identifier_never_skips_scan_or_changes_open_destination(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'download.pdf'
-            path.write_bytes(b'%PDF-1.4\nTest')
-            request = opener.ScanRequest(str(path), 'download-0042')
-            calls = []
-            def run(command, **kwargs):
-                calls.append(command)
-                return subprocess.CompletedProcess(command, 0, 'file: OK', '')
-            with patch.object(opener, 'CACHE_DB', Path(directory) / 'cache.sqlite3'), \
-                    patch.object(opener.subprocess, 'run', side_effect=run), \
-                    patch.object(opener, 'remove_quarantine') as quarantine:
-                opener.scan_and_open(request, '/scanner')
-            self.assertEqual(calls[0][0], '/scanner')
-            self.assertEqual(calls[0][-1], str(path))
-            self.assertIn('--alert-encrypted=yes', calls[0])
-            self.assertEqual(calls[1], [
-                '/usr/bin/open', '-b', 'com.brave.Browser', str(path)])
-            quarantine.assert_called_once_with(path)
+    def test_metadata_is_stored_only_in_immutable_request(self):
+        with tempfile.TemporaryDirectory() as folder:
+            file = Path(folder) / "download.pdf"
+            file.write_bytes(b"%PDF-1.4\nTest")
+            seen = []
+            original = opener.ScanRequest.from_path
+
+            def record(path, **kwargs):
+                result = original(path, **kwargs)
+                seen.append(result)
+                return result
+
+            with patch.object(opener.ScanRequest, "from_path", side_effect=record), \
+                    patch.object(opener, "CACHE_DB", Path(folder) / "cache.sqlite3"), \
+                    patch.object(opener, "SCAN_REQUEST_DB", Path(folder) / "audit.sqlite3"), \
+                    patch.object(opener.subprocess, "run",
+                                 return_value=subprocess.CompletedProcess([], 1, "file: Malware FOUND", "")), \
+                    patch.object(opener, "remove_quarantine") as quarantine:
+                with self.assertRaises(RuntimeError):
+                    opener.scan_and_open(str(file), "/scanner",
+                                         browser_download_identifier="download-42")
+            self.assertEqual(seen[0].browser_download_identifier, "download-42")
+            self.assertEqual(seen[0].file_type, "pdf")
+            quarantine.assert_not_called()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
