@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from dataclasses import dataclass
 import hashlib
 import os
 from pathlib import Path
@@ -17,6 +18,40 @@ MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    """Metadata about a completed, clean scan or a valid cached clean result."""
+    signature_database_version: str | None
+
+
+def read_signature_database_version():
+    """Read the ClamAV database revisions used for this scan, not the engine version.
+
+    Missing or ambiguous metadata must never be represented as a known version.
+    Signature checks and actual scanner verdicts remain authoritative.
+    """
+    versions = []
+    for name in ('main', 'daily', 'bytecode'):
+        candidates = [DATABASE / (name + suffix) for suffix in ('.cld', '.cvd')
+                      if (DATABASE / (name + suffix)).is_file()]
+        if len(candidates) > 1 or (name != 'bytecode' and not candidates):
+            return None
+        if not candidates:
+            continue
+        try:
+            with candidates[0].open('rb') as source:
+                header = source.read(512)
+        except OSError:
+            return None
+        parts = header.split(b':', 3)
+        if len(parts) < 3 or parts[0] != b'ClamAV-VDB' or not (
+                1 <= len(parts[2]) <= 10 and parts[2].isascii() and parts[2].isdigit()):
+            return None
+        versions.append(f'{name}={int(parts[2])}')
+    return ','.join(versions)
+
 
 
 def scanner_path():
@@ -82,33 +117,47 @@ def cache_connection():
     connection = sqlite3.connect(str(CACHE_DB), timeout=5)
     try:
         connection.execute('CREATE TABLE IF NOT EXISTS clean_scans '
-                           '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL)')
+                           '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL, '
+                           'signature_database_version TEXT)')
+        # Upgrade existing private caches without invalidating their clean entries.
+        columns = {row[1] for row in connection.execute('PRAGMA table_info(clean_scans)')}
+        if 'signature_database_version' not in columns:
+            connection.execute('ALTER TABLE clean_scans ADD COLUMN signature_database_version TEXT')
         with connection:
             yield connection
     finally:
         connection.close()
 
 
-def cached_clean(digest):
+def cached_result(digest):
     try:
         with cache_connection() as connection:
-            row = connection.execute('SELECT scanned_at FROM clean_scans WHERE digest = ?',
-                                     (digest.hex(),)).fetchone()
+            row = connection.execute(
+                'SELECT scanned_at, signature_database_version FROM clean_scans WHERE digest = ?',
+                (digest.hex(),)).fetchone()
         age = time.time() - row[0] if row else -1
-        return 0 <= age < CACHE_TTL
+        if 0 <= age < CACHE_TTL:
+            return ScanResult(signature_database_version=row[1])
     except (OSError, sqlite3.Error, TypeError, ValueError):
         # Bad or unavailable caches never provide a clean verdict.
-        return False
+        pass
+    return None
 
 
-def remember_clean(digest):
+def cached_clean(digest):
+    return cached_result(digest) is not None
+
+
+def remember_clean(digest, signature_database_version=None):
     try:
         with cache_connection() as connection:
             now = time.time()
             connection.execute('DELETE FROM clean_scans WHERE scanned_at < ?',
                                (now - CACHE_TTL,))
-            connection.execute('INSERT OR REPLACE INTO clean_scans (digest, scanned_at) VALUES (?, ?)',
-                               (digest.hex(), now))
+            connection.execute(
+                'INSERT OR REPLACE INTO clean_scans '
+                '(digest, scanned_at, signature_database_version) VALUES (?, ?, ?)',
+                (digest.hex(), now, signature_database_version))
     except (OSError, sqlite3.Error):
         # Failure to save the cache does not invalidate a successful scan.
         pass
@@ -129,8 +178,10 @@ def scan_and_open(item, scanner):
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
-    hit = cached_clean(cache_id)
+    previous_result = cached_result(cache_id)
+    hit = previous_result is not None
     if not hit:
+        version_before = read_signature_database_version()
         if is_pdf:
             # The engine still alerts on its internal file-size limit (~2 GB).
             size_options = ('--max-filesize=0', '--max-scansize=0')
@@ -156,15 +207,19 @@ def scan_and_open(item, scanner):
         if not any(line.endswith(': OK') for line in lines) or any(
                 not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
             raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+        # A signature update mid-scan makes the exact loaded revision uncertain.
+        version_after = read_signature_database_version()
+        scan_version = version_before if version_before == version_after else None
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     if not hit:
-        remember_clean(cache_id)
+        remember_clean(cache_id, scan_version)
     remove_quarantine(path)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
         command += ['-b', 'com.brave.Browser']
     subprocess.run(command + [str(path)], check=True)
+    return previous_result if hit else ScanResult(signature_database_version=scan_version)
 
 
 def main(items):
