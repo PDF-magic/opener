@@ -62,6 +62,8 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Incomplete cloud downloads:** Before hashing or scanning a PDF, the macOS launcher checks native download-state metadata. Cloud-only iCloud placeholders, PDFs still downloading, and files whose local availability cannot be verified do **not** launch a browser. The scan gate rechecks availability after scanning (including cache hits) and immediately before the native macOS launch to detect cloud eviction. Finder-style `.pdf.icloud` placeholder paths are rejected without scanning. Reopen the requested PDF once it has fully downloaded locally; the opener does not download it, wait indefinitely, or alter the configured PDF target. Reinstall to deploy the updated native helper.
 
+**Already-running browsers:** If the selected PDF browser is already open, macOS receives the approved file through the same explicit `NSWorkspace` application handoff, rather than launching a second browser by design. The macOS CI regression uses a temporary browser-like `.app` and verifies the open event reaches its existing process. This does not bypass malware scanning, change application preferences, or require a real browser installation.
+
 **Native application launching:** After the scan gate approves a file, verifies unchanged contents, and completes quarantine handling, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
@@ -89,6 +91,23 @@ python3 test-launch-results.py
 python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
+
+## Inspect the registered macOS PDF handler
+
+To see which application macOS currently has registered as the default for
+PDF documents, reinstall to deploy the read-only helper and run:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/identify-pdf-handler"
+```
+
+The command prints the **bundle identifier** returned by macOS Launch Services
+for the PDF content type (for example, `local.studio.brave-pdf-opener` if
+PDF Magic Opener is the current handler, or `com.apple.Preview`).
+If no handler can be identified, it prints a fixed error and exits unsuccessfully
+rather than guessing. This reports the **system PDF association**, not the
+separately configured app that receives clean PDFs or the default web browser.
+It neither changes file associations nor opens any file or application.
 
 ## PDF target application
 
@@ -194,6 +213,27 @@ with macOS. The launcher accepts an installed Firefox application only when
 its bundle identity, executable, and Mozilla Developer ID signature are verified; other applications must
 still be registered PDF handlers. The usual ClamAV, quarantine, and
 file-integrity checks still apply before Firefox is launched.
+
+An optional **fallback PDF application** can be configured separately. For
+example, use Preview only if the selected browser cannot be verified or fails
+to launch after a successful scan:
+
+```sh
+printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/fallback-app.txt"
+```
+
+The fallback must be an installed, independently verified PDF-capable macOS
+application, specified by bundle identifier (not a command, executable, or
+`system-default-browser` shortcut). If the fallback setting is missing,
+there is **no automatic fallback**; a malformed or symlinked setting blocks
+PDF opening. A fallback is never attempted after detection, scan errors,
+an unavailable cloud file, failed integrity checks, or quarantine errors.
+On a failed preferred-app launch, the fallback must already have passed PDF
+capability verification before quarantine removal, and the file is rechecked
+before its second launch attempt. The request audit retains the preferred
+destination and adds a fallback destination entry when used. Existing
+settings survive reinstallations unchanged. Non-PDF documents and application
+bundles are unaffected.
 
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops

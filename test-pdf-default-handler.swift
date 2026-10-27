@@ -14,13 +14,23 @@ struct VerifyDefaultPDFHandlerTests {
             let app = root.appendingPathComponent(name + ".app", isDirectory: true)
             let contents = app.appendingPathComponent("Contents", isDirectory: true)
             try manager.createDirectory(at: contents, withIntermediateDirectories: true)
-            var metadata: [String: Any] = ["CFBundlePackageType": "APPL"]
+            var metadata: [String: Any] = [
+                "CFBundlePackageType": "APPL",
+                "CFBundleExecutable": "Stub",
+            ]
             if let identifier = identifier {
                 metadata["CFBundleIdentifier"] = identifier
             }
             let plist = try PropertyListSerialization.data(
                 fromPropertyList: metadata, format: .xml, options: 0)
             try plist.write(to: contents.appendingPathComponent("Info.plist"))
+            let macos = contents.appendingPathComponent("MacOS", isDirectory: true)
+            try manager.createDirectory(at: macos, withIntermediateDirectories: true)
+            let executable = macos.appendingPathComponent("Stub")
+            try "#!/bin/sh\nexit 0\n".write(
+                to: executable, atomically: true, encoding: .utf8)
+            try manager.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: executable.path)
             return app
         }
 
