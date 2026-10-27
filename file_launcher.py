@@ -6,8 +6,7 @@ existing PDF-to-Brave behavior until user-configurable destinations are added.
 
 from pathlib import Path
 import subprocess
-
-PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
+from target_application import PDF_DEFAULT_BUNDLE_ID, resolve_target_application
 
 
 def intended_destination(path):
@@ -20,10 +19,16 @@ def intended_destination(path):
     return "system-default"
 
 
-def launch_clean_file(path):
-    """Launch an already-approved file with the current destination policy."""
+def prepare_launch_command(path):
+    """Verify an installed PDF target before quarantine is removed."""
     path = Path(path)
     command = ["/usr/bin/open"]
     if path.suffix.lower() == ".pdf":
-        command.extend(["-b", PDF_DEFAULT_BUNDLE_ID])
-    subprocess.run([*command, str(path)], check=True)
+        command.extend(["-a", resolve_target_application(PDF_DEFAULT_BUNDLE_ID)])
+    return (*command, str(path))
+
+
+def launch_clean_file(path, *, prepared_command=None):
+    """Launch using the previously validated target, when provided."""
+    command = prepared_command if prepared_command is not None else prepare_launch_command(path)
+    subprocess.run(list(command), check=True)

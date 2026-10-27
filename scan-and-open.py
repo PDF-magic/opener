@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import intended_destination, launch_clean_file
+from file_launcher import intended_destination, launch_clean_file, prepare_launch_command
 import os
 from pathlib import Path
 from typing import Optional
@@ -288,9 +288,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 remember_clean(cache_id)
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    # Resolve and verify the target first, including on clean cache hits.
+    command = prepare_launch_command(path)
     remove_quarantine(path)
-    # The scan engine does not select an application or browser.
-    launch_clean_file(path)
+    launch_clean_file(path, prepared_command=command)
 
 
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
