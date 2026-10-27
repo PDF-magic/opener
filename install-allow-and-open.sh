@@ -82,6 +82,7 @@ MIGRATE
 mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
 cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
 /usr/bin/xcrun swiftc -O "$script_dir/brave-pdf-opener.swift" -o "$app/Contents/MacOS/PDFOpener"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
 python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
 import plistlib
 import sys
@@ -118,6 +119,12 @@ with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.pl
     plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
+# Offer an opt-in Finder action without overwriting user-managed scripts.
+action="$HOME/Applications/Make PDF Magic Opener Default.command"
+if [ ! -e "$action" ] && [ ! -L "$action" ]; then
+    cp "$script_dir/make-pdf-magic-default.command" "$action"
+    chmod 755 "$action"
+fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
 agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
