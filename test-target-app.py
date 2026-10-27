@@ -107,8 +107,10 @@ class TargetApplicationTests(unittest.TestCase):
                 patch.object(opener, 'remove_quarantine') as quarantine:
             with self.assertRaisesRegex(RuntimeError, 'opening was stopped'):
                 opener.scan_and_open(str(self.document), '/scanner')
-        commands = [call.args[0] for call in run.call_args_list]
-                    if call.args[0] != ['/scanner', '--version']]
+        commands = [
+            call.args[0] for call in run.call_args_list
+            if call.args[0] != ['/scanner', '--version']
+        ]
         self.assertEqual(len(commands), 2)
         self.assertEqual(commands[0][0], '/scanner')
         self.assertEqual(commands[1],
