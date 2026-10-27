@@ -34,6 +34,9 @@ class BundleTargetTests(unittest.TestCase):
 
             make_app("Installed", "com.example.verified")
             make_app("WrongIdentity", "com.example.unrelated")
+            make_app("MicrosoftEdge", "com.microsoft.edgemac")
+            make_app("EdgeImpostor", "com.example.not-edge")
+            make_app("EdgeMissingExecutable", "com.microsoft.edgemac", False)
             make_app("MissingExecutable", "com.example.verified", False)
             make_app("PDFOpener", "local.studio.brave-pdf-opener")
             pdf = root / "local document.PDF"
@@ -51,6 +54,14 @@ func fakeLookup(_ app: String) -> (String) -> URL? {
 }
 precondition(resolveTargetApplication(bundleIdentifier: wanted,
                                       lookup: fakeLookup("Installed")) != nil)
+precondition(resolveTargetApplication(bundleIdentifier: "com.microsoft.edgemac",
+                                      lookup: fakeLookup("MicrosoftEdge")) != nil)
+precondition(resolveTargetApplication(bundleIdentifier: "com.microsoft.edgemac",
+                                      lookup: fakeLookup("EdgeImpostor")) == nil)
+precondition(resolveTargetApplication(bundleIdentifier: "com.microsoft.edgemac",
+                                      lookup: fakeLookup("EdgeMissingExecutable")) == nil)
+precondition(resolveTargetApplication(bundleIdentifier: "com.microsoft.edgemac",
+                                      lookup: fakeLookup("NotInstalled")) == nil)
 precondition(resolveTargetApplication(bundleIdentifier: wanted,
                                       lookup: fakeLookup("WrongIdentity")) == nil)
 precondition(resolveTargetApplication(bundleIdentifier: wanted,

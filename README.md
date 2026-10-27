@@ -143,6 +143,18 @@ only PDF files; other files and application bundles keep their macOS default
 behavior. Scanning, signature freshness, content verification, quarantine,
 and clean-scan caching still gate every PDF before launch.
 
+To open scanned PDFs in **Microsoft Edge (stable)**, select its macOS bundle identifier:
+
+```sh
+printf '%s\\n' 'com.microsoft.edgemac' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Edge must be installed and registered with macOS as a PDF-capable application.
+The existing launcher verifies its bundle identity, executable, and PDF
+registration before releasing quarantine or opening a clean file. If Edge is
+missing or unsupported, the request stops without trying another browser;
+non-PDF associations and the existing scanning safeguards are unchanged.
+
 ## File lifecycle contract
 
 A file request has seven defined, case-sensitive lifecycle states: `queued`,
