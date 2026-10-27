@@ -109,6 +109,26 @@ rather than guessing. This reports the **system PDF association**, not the
 separately configured app that receives clean PDFs or the default web browser.
 It neither changes file associations nor opens any file or application.
 
+### Current default PDF-handler status
+
+To display whether **PDF Magic Opener** is the current default for PDF files,
+and which application is registered if it is not, run:
+
+```sh
+python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"
+```
+
+Reinstall to deploy this command. The installer also prints the current status
+after macOS completes any required default-handler confirmation. A successful
+lookup reports the current application bundle identifier; an unavailable or
+unverifiable association produces a fixed error and an unsuccessful exit rather
+than a guessed status.
+
+The command **only reads** the macOS PDF association using the separately
+installed `identify-pdf-handler` helper. It does not open a PDF, change the
+default PDF association, change the browser receiving scanned PDFs, or modify
+user preferences.
+
 ## Make PDF Magic Opener the default PDF application
 
 After installing, double-click **Make PDF Magic Opener Default.command** in
@@ -231,6 +251,27 @@ with macOS. The launcher accepts an installed Firefox application only when
 its bundle identity, executable, and Mozilla Developer ID signature are verified; other applications must
 still be registered PDF handlers. The usual ClamAV, quarantine, and
 file-integrity checks still apply before Firefox is launched.
+
+An optional **fallback PDF application** can be configured separately. For
+example, use Preview only if the selected browser cannot be verified or fails
+to launch after a successful scan:
+
+```sh
+printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/fallback-app.txt"
+```
+
+The fallback must be an installed, independently verified PDF-capable macOS
+application, specified by bundle identifier (not a command, executable, or
+`system-default-browser` shortcut). If the fallback setting is missing,
+there is **no automatic fallback**; a malformed or symlinked setting blocks
+PDF opening. A fallback is never attempted after detection, scan errors,
+an unavailable cloud file, failed integrity checks, or quarantine errors.
+On a failed preferred-app launch, the fallback must already have passed PDF
+capability verification before quarantine removal, and the file is rechecked
+before its second launch attempt. The request audit retains the preferred
+destination and adds a fallback destination entry when used. Existing
+settings survive reinstallations unchanged. Non-PDF documents and application
+bundles are unaffected.
 
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops

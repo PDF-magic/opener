@@ -29,6 +29,8 @@ else:
         stream.write('com.brave.Browser\n')
 TARGET_APP
 cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/file_launcher.py" "$script_dir/scan_results.py" "$script_dir/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$install_dir/"
+# Deploy the read-only status display beside its Launch Services lookup.
+cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
 /usr/bin/xcrun swiftc -O "$script_dir/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/launch-scanned-file"
@@ -156,4 +158,6 @@ with path.open('wb') as stream:
 PY
 
 /usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
+# Display the effective association after macOS confirms the change.
+python3 "$install_dir/pdf-handler-status.py"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."

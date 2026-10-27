@@ -11,6 +11,7 @@ from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_VERIFICATION_MESSAGE,
                            intended_destination, launch_clean_file,
+                           pdf_fallback_application,
                            verify_launch_target, verify_local_file_available)
 import os
 import signal
@@ -612,6 +613,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     if is_pdf:
         verify_local_file_available(path)
     destination = intended_destination(path)
+    # The optional fallback is an explicit PDF-only preference. Validate it
+    # before any scan or quarantine mutation, and never derive it from the
+    # default PDF handler (which may recursively invoke this opener).
+    fallback = pdf_fallback_application(primary=destination) if is_pdf else None
     record_scan_destination(destination)
     identity = file_identity(path)
     before = fingerprint(path)
@@ -669,8 +674,28 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     # Cache hits are not proof the file remains downloaded locally.
     if is_pdf:
         verify_local_file_available(path)
-    # Verify PDF destination capability before releasing quarantine.
-    verify_launch_target(path, target_app=destination if is_pdf else None)
+    # Verify a destination before releasing quarantine, including a fallback.
+    # Fallback never overrides a failed scan, missing local bytes or a changed file.
+    verified_fallback = None
+    try:
+        verify_launch_target(path, target_app=destination if is_pdf else None)
+    except RuntimeError:
+        if not is_pdf or fallback is None:
+            raise
+        verify_launch_target(path, target_app=fallback)
+        destination = fallback
+        # Preserve the initial requested destination and additionally record
+        # the fallback handoff; audit failures must block opening.
+        record_scan_destination(destination)
+    else:
+        if is_pdf and fallback is not None:
+            try:
+                verify_launch_target(path, target_app=fallback)
+            except RuntimeError:
+                # A failed optional fallback must not block a verified primary.
+                pass
+            else:
+                verified_fallback = fallback
     remove_quarantine(path)
     # Quarantine removal changes ctime, but source bytes and identities must remain intact.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
@@ -680,7 +705,16 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     try:
         launch_clean_file(path, target_app=destination if is_pdf else None)
     except (OSError, subprocess.SubprocessError, RuntimeError) as error:
-        raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
+        if verified_fallback is None:
+            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
+        # Recheck the unchanged, locally available PDF before another launch.
+        verify_file_integrity(path, before, identity, allow_ctime_change=True)
+        verify_local_file_available(path)
+        record_scan_destination(verified_fallback)
+        try:
+            launch_clean_file(path, target_app=verified_fallback)
+        except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
+            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
     return scan_result
 
 
