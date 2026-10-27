@@ -99,7 +99,7 @@ printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/al
 To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
 
 ```sh
-printf '%s\\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
 Chrome must be installed and registered with macOS as a PDF-capable application.

@@ -92,7 +92,7 @@ class TargetApplicationTests(unittest.TestCase):
             if command[0] == str(launcher.PDF_TARGET_VERIFIER):
                 return subprocess.CompletedProcess(command, 1, '', 'unsupported')
             return subprocess.CompletedProcess(command, 0, 'file: OK', '')
-        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \\
+        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \
                 patch.object(opener, 'remove_quarantine') as quarantine:
             with self.assertRaisesRegex(RuntimeError, 'opening was stopped'):
                 opener.scan_and_open(str(self.document), '/scanner')
