@@ -29,6 +29,9 @@ class ScanGateTests(unittest.TestCase):
         cache = patch.object(opener, 'CACHE_DB', Path(self.temp.name) / 'clean-cache.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
+        verifier = patch.object(opener, 'verify_launch_target')
+        verifier.start()
+        self.addCleanup(verifier.stop)
         audit = patch.object(opener, 'SCAN_REQUEST_DB',
                              Path(self.temp.name) / 'scan-requests.sqlite3')
         audit.start()
@@ -502,6 +505,36 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(target.read_bytes(), b'keep me unchanged')
         run.assert_not_called()
         quarantine.assert_not_called()
+
+    def test_cached_clean_pdf_rejects_unsupported_destination(self):
+        opener.remember_clean(opener.cache_key(opener.fingerprint(self.file), True))
+        with patch.object(opener, 'verify_launch_target',
+                          side_effect=RuntimeError('Target application unsupported')), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'unsupported'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_malware_prevents_pdf_destination_preflight(self):
+        detected = subprocess.CompletedProcess([], 1, 'test: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=detected), \
+                patch.object(opener, 'remove_quarantine'):
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        opener.verify_launch_target.assert_not_called()
+
+    def test_clean_pdf_checks_destination_before_quarantine(self):
+        events = []
+        done = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=done), \
+                patch.object(opener, 'verify_launch_target',
+                             side_effect=lambda path: events.append('checked')), \
+                patch.object(opener, 'remove_quarantine',
+                             side_effect=lambda path: events.append('quarantine')):
+            opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(events, ['checked', 'quarantine'])
 
     def test_missing_or_stale_signatures_block_before_scanning(self):
         database = Path(self.temp.name) / 'database'

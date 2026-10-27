@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import intended_destination, launch_clean_file
+from file_launcher import intended_destination, launch_clean_file, verify_launch_target
 import os
 from pathlib import Path
 from typing import Optional
@@ -341,6 +341,9 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 remember_clean(cache_id)
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    # Verify the selected application's PDF capability even after a clean cache hit.
+    # A failure cannot release quarantine or open the input.
+    verify_launch_target(path)
     remove_quarantine(path)
     # The scan engine does not select an application or browser.
     launch_clean_file(path)

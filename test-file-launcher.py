@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from file_launcher import PDF_DEFAULT_BUNDLE_ID, launch_clean_file
+from file_launcher import PDF_DEFAULT_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target
 
 
 ROOT = Path(__file__).resolve().parent
@@ -58,6 +58,41 @@ class FileLauncherTests(unittest.TestCase):
         self.assertLess(source.index("remove_quarantine(path)\n    # The scan engine"),
                         source.index("launch_clean_file(path)"))
 
+    def test_registered_pdf_handler_preflight_invokes_native_verifier(self):
+        with patch("file_launcher.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 0)) as run:
+            verify_launch_target(self.root / "document.PDF")
+        run.assert_called_once_with(
+            [str(PDF_TARGET_VERIFIER), PDF_DEFAULT_BUNDLE_ID],
+            capture_output=True, timeout=10,
+        )
+
+    def test_unregistered_missing_and_timed_out_verifiers_block(self):
+        for outcome in (
+            subprocess.CompletedProcess([], 1),
+            FileNotFoundError("verifier missing"),
+            subprocess.TimeoutExpired("verifier", 10),
+        ):
+            with self.subTest(outcome=str(outcome)):
+                kwargs = ({"return_value": outcome} if isinstance(
+                    outcome, subprocess.CompletedProcess) else {"side_effect": outcome})
+                with patch("file_launcher.subprocess.run", **kwargs):
+                    with self.assertRaisesRegex(RuntimeError, "opening was stopped"):
+                        verify_launch_target(self.root / "document.pdf")
+
+    def test_non_pdf_retains_default_handler_without_verification(self):
+        for path in ("readme.txt", "Another.app"):
+            with self.subTest(path=path):
+                with patch("file_launcher.subprocess.run") as run:
+                    verify_launch_target(self.root / path)
+                run.assert_not_called()
+
+    def test_scanner_preflights_target_before_quarantine_release(self):
+        source = (ROOT / "scan-and-open.py").read_text()
+        self.assertIn("verify_launch_target(path)", source)
+        self.assertLess(source.rindex("    verify_launch_target(path)"),
+                        source.rindex("    remove_quarantine(path)"))
+
     def test_installer_deploys_launch_module_with_scanner(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()
         line = next(line for line in script.splitlines()
@@ -65,6 +100,8 @@ class FileLauncherTests(unittest.TestCase):
         self.assertIn('"$script_dir/scan-and-open.py"', line)
         self.assertIn('"$script_dir/file_launcher.py"', line)
         self.assertIn('"$install_dir/"', line)
+        self.assertIn('swiftc -O "$script_dir/verify-pdf-target.swift"', script)
+        self.assertIn('"$install_dir/verify-pdf-target"', script)
 
 
 if __name__ == "__main__":
