@@ -124,6 +124,37 @@ func trustedOperaPDFTarget(
     return verifySignature(target)
 }
 
+// Standard Firefox releases contain a PDF viewer even when Launch Services
+// does not advertise PDF support. The exception requires Mozilla's actual
+// Developer ID signature, not just a spoofable bundle identifier.
+func mozillaSignedFirefox(at application: URL) -> Bool {
+    var code: SecStaticCode?
+    var requirement: SecRequirement?
+    guard SecStaticCodeCreateWithPath(application as CFURL, SecCSFlags(), &code) == errSecSuccess,
+          let code = code,
+          SecRequirementCreateWithString(
+              "anchor apple generic and identifier \"org.mozilla.firefox\" and certificate leaf[subject.OU] = \"43AQ936H96\"" as CFString,
+              SecCSFlags(), &requirement
+          ) == errSecSuccess,
+          let requirement = requirement else { return false }
+    return SecStaticCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess
+}
+
+func trustedFirefoxPDFTarget(
+    application: URL?,
+    bundleIdentifier: String,
+    verifySignature: (URL) -> Bool = mozillaSignedFirefox
+) -> Bool {
+    guard bundleIdentifier == "org.mozilla.firefox",
+          let application = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          application.pathExtension.lowercased() == "app",
+          let bundle = Bundle(url: application),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
+    return verifySignature(application)
+}
+
 func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
     let workspace = NSWorkspace.shared
     let application = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier)
@@ -134,6 +165,7 @@ func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
       || trustedArcPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || verifiedVivaldiPDFViewer(bundleIdentifier: bundleIdentifier, application: application) ||
         trustedOperaPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
+      || trustedFirefoxPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 
 #if !PDF_TARGET_TESTING

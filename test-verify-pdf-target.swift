@@ -248,6 +248,56 @@ struct PDFTargetVerificationTests {
             application: opera, bundleIdentifier: "com.operasoftware.Opera",
             verifySignature: { _ in true }
         ), "Opera without an executable must be rejected")
+        // A local Firefox fixture allows independent trust verification even
+        // when Firefox is absent from the macOS CI runner.
+        let firefox = temporaryRoot.appendingPathComponent("Firefox.app", isDirectory: true)
+        let firefoxContents = firefox.appendingPathComponent("Contents", isDirectory: true)
+        let firefoxBin = firefoxContents.appendingPathComponent("MacOS", isDirectory: true)
+        try! fileManager.createDirectory(at: firefoxBin, withIntermediateDirectories: true)
+        let firefoxInfo: [String: Any] = [
+            "CFBundleIdentifier": "org.mozilla.firefox",
+            "CFBundleExecutable": "firefox",
+            "CFBundlePackageType": "APPL",
+        ]
+        let firefoxPlist = try! PropertyListSerialization.data(
+            fromPropertyList: firefoxInfo, format: .xml, options: 0)
+        try! firefoxPlist.write(to: firefoxContents.appendingPathComponent("Info.plist"))
+        let firefoxExecutable = firefoxBin.appendingPathComponent("firefox")
+        try! "#!/bin/sh\nexit 0\n".write(
+            to: firefoxExecutable, atomically: true, encoding: .utf8)
+        try! fileManager.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: firefoxExecutable.path)
+        precondition(!targetSupportsPDF(application: firefox, registeredPDFHandlers: []),
+                     "Firefox should exercise the unregistered PDF handler path")
+        precondition(trustedFirefoxPDFTarget(
+            application: firefox, bundleIdentifier: "org.mozilla.firefox",
+            verifySignature: { _ in true }
+        ), "Verified Mozilla Firefox must be accepted")
+        precondition(!trustedFirefoxPDFTarget(
+            application: firefox, bundleIdentifier: "org.mozilla.firefox",
+            verifySignature: { _ in false }
+        ), "Unsigned Firefox impersonators must be denied")
+        precondition(!trustedFirefoxPDFTarget(
+            application: firefox, bundleIdentifier: "com.google.Chrome",
+            verifySignature: { _ in true }
+        ), "Chrome must not inherit the Firefox exception")
+        precondition(!trustedFirefoxPDFTarget(
+            application: safari, bundleIdentifier: "org.mozilla.firefox",
+            verifySignature: { _ in true }
+        ), "Different application identities must not be treated as Firefox")
+        precondition(!trustedFirefoxPDFTarget(
+            application: nil, bundleIdentifier: "org.mozilla.firefox",
+            verifySignature: { _ in true }
+        ), "Missing Firefox installations must be denied")
+        precondition(!trustedFirefoxPDFTarget(
+            application: notAnApp, bundleIdentifier: "org.mozilla.firefox",
+            verifySignature: { _ in true }
+        ), "Files cannot impersonate Firefox bundles")
+        try! fileManager.removeItem(at: firefoxExecutable)
+        precondition(!trustedFirefoxPDFTarget(
+            application: firefox, bundleIdentifier: "org.mozilla.firefox",
+            verifySignature: { _ in true }
+        ), "Firefox without an executable must be denied")
         print("PASS: verified Arc PDF target and fail-closed impostor handling.")
         print("PASS: registered PDF handlers and verified Safari-only exception.")
     }
