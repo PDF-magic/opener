@@ -674,11 +674,11 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         done = subprocess.CompletedProcess([], 0, 'file: OK', '')
         with patch.object(opener.subprocess, 'run', return_value=done), \
                 patch.object(opener, 'verify_launch_target',
-                             side_effect=lambda path: events.append('checked')), \
+                             side_effect=lambda path, target_app=None: events.append(('checked', target_app))), \
                 patch.object(opener, 'remove_quarantine',
                              side_effect=lambda path: events.append('quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(events, ['checked', 'quarantine'])
+        self.assertEqual(events, [('checked', 'com.brave.Browser'), 'quarantine'])
 
     def test_missing_or_stale_signatures_block_before_scanning(self):
         database = Path(self.temp.name) / 'database'
