@@ -96,6 +96,16 @@ different installed application; for example, Preview:
 printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
+To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
+
+```sh
+printf '%s\\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Chrome must be installed and registered with macOS as a PDF-capable application.
+The launcher verifies the selected bundle and PDF registration before opening,
+and never substitutes another browser when verification fails.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
