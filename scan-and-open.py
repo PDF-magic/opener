@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+import fcntl
 import hashlib
 import os
 from pathlib import Path
@@ -89,6 +90,24 @@ def cache_connection():
         connection.close()
 
 
+@contextmanager
+def active_scan_lock(digest):
+    # Lock stripes are keyed by the policy-specific digest and stay bounded.
+    # Never unlink a lock file: a waiting process may still hold its inode.
+    CACHE_DB.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = CACHE_DB.with_name(CACHE_DB.name + '.scan-lock-' + digest.hex()[:4])
+    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
+
+
 def cached_clean(digest):
     try:
         with cache_connection() as connection:
@@ -129,37 +148,45 @@ def scan_and_open(item, scanner):
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
-    hit = cached_clean(cache_id)
-    if not hit:
-        if is_pdf:
-            # The engine still alerts on its internal file-size limit (~2 GB).
-            size_options = ('--max-filesize=0', '--max-scansize=0')
-        else:
-            size_options = ('--max-filesize=512M', '--max-scansize=1024M')
-        try:
-            scan = subprocess.run([
-                scanner, '--database=' + str(DATABASE), '--recursive',
-                '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
-                '--alert-exceeds-max=yes', '--alert-encrypted=yes',
-                *size_options,
-                '--max-scantime=0', '--no-summary', '--', str(path)
-            ], capture_output=True, text=True,
-                timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
-        except subprocess.TimeoutExpired:
-            raise RuntimeError('The malware scan timed out; opening was stopped.')
-        if scan.returncode == 1:
-            raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
-        if scan.returncode != 0:
-            raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
-        # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
-        lines = scan.stdout.splitlines()
-        if not any(line.endswith(': OK') for line in lines) or any(
-                not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-            raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+    # Do not serialize an already cached clean hit. For a miss, a cross-process
+    # lock prevents another identical-content request from racing its scan.
+    if not cached_clean(cache_id):
+        with active_scan_lock(cache_id):
+            # Recheck after waiting: the selected file may have changed.
+            if before != fingerprint(path):
+                raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+            # Only a completed clean result under this exact policy is reusable.
+            if not cached_clean(cache_id):
+                if is_pdf:
+                    # The engine still alerts on its internal file-size limit (~2 GB).
+                    size_options = ('--max-filesize=0', '--max-scansize=0')
+                else:
+                    size_options = ('--max-filesize=512M', '--max-scansize=1024M')
+                try:
+                    scan = subprocess.run([
+                        scanner, '--database=' + str(DATABASE), '--recursive',
+                        '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
+                        '--alert-exceeds-max=yes', '--alert-encrypted=yes',
+                        *size_options,
+                        '--max-scantime=0', '--no-summary', '--', str(path)
+                    ], capture_output=True, text=True,
+                        timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError('The malware scan timed out; opening was stopped.')
+                if scan.returncode == 1:
+                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
+                if scan.returncode != 0:
+                    raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
+                lines = scan.stdout.splitlines()
+                if not any(line.endswith(': OK') for line in lines) or any(
+                        not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
+                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                if before != fingerprint(path):
+                    raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+                remember_clean(cache_id)
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
-    if not hit:
-        remember_clean(cache_id)
     remove_quarantine(path)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
