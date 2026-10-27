@@ -104,7 +104,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         if panel == nil {
             let window = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 360, height: 300),
                                  styleMask: [.titled], backing: .buffered, defer: false)
-            window.title = "Twilight is checking your document"
+            window.title = "PDF Magic Opener — Scanning"
             window.level = .floating
             // Finder or Brave stays active while this accessory app scans.
             window.hidesOnDeactivate = false

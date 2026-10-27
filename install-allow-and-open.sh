@@ -29,18 +29,51 @@ path = Path(sys.argv[1])
 CONFIG
 bash "$install_dir/update-malware-signatures.sh"
 
-app="$HOME/Applications/Open PDFs in Brave.app"
-mkdir -p "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
-/usr/bin/xcrun swiftc -O "$script_dir/brave-pdf-opener.swift" -o "$app/Contents/MacOS/PDFOpener"
-python3 - "$app" "$install_dir" <<'CONFIG'
+app_name="PDF Magic Opener"
+app="$HOME/Applications/$app_name.app"
+legacy_app="$HOME/Applications/Open PDFs in Brave.app"
+# Keep the established bundle ID and runtime paths while renaming the user-facing app.
+# Only move an existing installation after verifying that it belongs to this project.
+python3 - "$legacy_app" "$app" <<'MIGRATE'
 import plistlib
 import sys
 from pathlib import Path
-app, install_dir = map(Path, sys.argv[1:])
+
+legacy, destination = map(Path, sys.argv[1:])
+expected_id = 'local.studio.brave-pdf-opener'
+
+def check_bundle(path):
+    if path.is_symlink() or not path.is_dir():
+        raise SystemExit(f'Unsafe or invalid application bundle: {path}')
+    try:
+        with (path / 'Contents/Info.plist').open('rb') as stream:
+            identifier = plistlib.load(stream).get('CFBundleIdentifier')
+    except (OSError, ValueError, plistlib.InvalidFileException) as error:
+        raise SystemExit(f'Cannot verify application bundle {path}: {error}')
+    if identifier != expected_id:
+        raise SystemExit(f'Unexpected bundle identifier at {path}; refusing to overwrite or move it.')
+
+if legacy.exists() or legacy.is_symlink():
+    check_bundle(legacy)
+    if destination.exists() or destination.is_symlink():
+        raise SystemExit('Both old and new PDF opener bundles exist; resolve the duplicate before installing.')
+    legacy.rename(destination)
+elif destination.exists() or destination.is_symlink():
+    check_bundle(destination)
+MIGRATE
+mkdir -p "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+/usr/bin/xcrun swiftc -O "$script_dir/brave-pdf-opener.swift" -o "$app/Contents/MacOS/PDFOpener"
+python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
+import plistlib
+import sys
+from pathlib import Path
+app, install_dir = map(Path, sys.argv[1:3])
+app_name = sys.argv[3]
 info = {
     'CFBundleExecutable': 'PDFOpener',
     'CFBundleIdentifier': 'local.studio.brave-pdf-opener',
-    'CFBundleName': 'Open PDFs in Brave',
+    'CFBundleName': app_name,
+    'CFBundleDisplayName': app_name,
     'CFBundlePackageType': 'APPL',
     'CFBundleVersion': '1',
     'CFBundleShortVersionString': '1.0',
