@@ -1,5 +1,10 @@
 import AppKit
 
+// A request's arrival time is distinct from its eventual clean-scan cache time.
+struct ScanRequest {
+    let requestTimestamp: Date
+}
+
 // Render bundled reading artwork locally, with orbiting magic sparkles.
 final class TwilightReadingView: NSView {
     private var timer: Timer?
@@ -69,6 +74,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var running = Set<String>()
     // Retain the path supplied by Finder separately from the resolved scan target.
     private var requestedPaths = [String: String]()
+    // Session-only metadata keyed by canonical path; duplicate events keep the first time.
+    private(set) var scanRequests = [String: ScanRequest]()
     private var panel: NSPanel?
     private var filename: NSTextField?
 
@@ -131,27 +138,27 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
         DispatchQueue.global(qos: .userInitiated).async {
-            let failure = withScanErrorPipe { errors -> String? in
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = [script.path, path]
-                process.standardError = errors
-                process.standardOutput = FileHandle.nullDevice
-                do {
-                    try process.run()
-                    // Release the parent write end before waiting for the child's output.
-                    errors.fileHandleForWriting.closeFile()
-                    let output = errors.fileHandleForReading.readDataToEndOfFile()
-                    process.waitUntilExit()
-                    if process.terminationStatus != 0 {
-                        return String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
-                    }
-                } catch {
-                    return error.localizedDescription
-                }
-                return nil
+    let failure = withScanErrorPipe { errors -> String? in
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [script.path, path]
+        process.standardError = errors
+        process.standardOutput = FileHandle.nullDevice
+        do {
+            try process.run()
+            // Release the parent write end before waiting for the child's output.
+            errors.fileHandleForWriting.closeFile()
+            let output = errors.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            if process.terminationStatus != 0 {
+                return String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
             }
-            DispatchQueue.main.async {
+        } catch {
+            return error.localizedDescription
+        }
+        return nil
+    }
+DispatchQueue.main.async {
                 self.running.remove(path)
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
@@ -179,6 +186,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
             guard received.insert(path).inserted else { continue }
             requestedPaths[path] = requestedPath
+            scanRequests[path] = ScanRequest(requestTimestamp: Date())
             pending.insert(path)
             queued.append(path)
             showProgress()

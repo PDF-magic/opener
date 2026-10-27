@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 import fcntl
 import hashlib
+from file_launcher import launch_clean_file
 import os
 from pathlib import Path
 import sqlite3
@@ -225,10 +226,8 @@ def _scan_and_open(item, scanner):
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     remove_quarantine(path)
-    command = ['/usr/bin/open']
-    if path.suffix.lower() == '.pdf':
-        command += ['-b', 'com.brave.Browser']
-    subprocess.run(command + [str(path)], check=True)
+    # The scan engine does not select an application or browser.
+    launch_clean_file(path)
 
 
 def scan_and_open(item, scanner):
