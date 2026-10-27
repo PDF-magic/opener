@@ -40,6 +40,7 @@ SAFE_SCAN_FAILURES = frozenset((
     'The malware scan could not finish; opening was stopped.',
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
+    'The clean scan cache could not be verified; opening was stopped.',
 ))
 
 
@@ -50,6 +51,7 @@ class CleanScanResult:
 
     status: str
     from_cache: bool
+    scanner_version: Optional[str] = None
 
 
 class LaunchFailedError(RuntimeError):
@@ -224,7 +226,11 @@ def cache_connection():
     connection = sqlite3.connect(str(CACHE_DB), timeout=5)
     try:
         connection.execute('CREATE TABLE IF NOT EXISTS clean_scans '
-                           '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL)')
+                           '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL, '
+                           'scanner_version TEXT)')
+        if 'scanner_version' not in {
+                column[1] for column in connection.execute('PRAGMA table_info(clean_scans)')}:
+            connection.execute('ALTER TABLE clean_scans ADD COLUMN scanner_version TEXT')
         with connection:
             yield connection
     finally:
@@ -249,29 +255,51 @@ def active_scan_lock(digest):
         os.close(descriptor)
 
 
-def cached_clean(digest):
+def cached_scan(digest):
     try:
         with cache_connection() as connection:
-            row = connection.execute('SELECT scanned_at FROM clean_scans WHERE digest = ?',
-                                     (digest.hex(),)).fetchone()
+            row = connection.execute(
+                'SELECT scanned_at, scanner_version FROM clean_scans WHERE digest = ?',
+                (digest.hex(),)).fetchone()
         age = time.time() - row[0] if row else -1
-        return 0 <= age < CACHE_TTL
+        if 0 <= age < CACHE_TTL:
+            return CleanScanResult(status="clean", from_cache=True, scanner_version=row[1])
     except (OSError, sqlite3.Error, TypeError, ValueError):
         # Bad or unavailable caches never provide a clean verdict.
-        return False
+        pass
+    return None
 
 
-def remember_clean(digest):
+def cached_clean(digest):
+    return cached_scan(digest) is not None
+
+
+def remember_clean(digest, scanner_version=None):
     try:
         with cache_connection() as connection:
             now = time.time()
             connection.execute('DELETE FROM clean_scans WHERE scanned_at < ?',
                                (now - CACHE_TTL,))
-            connection.execute('INSERT OR REPLACE INTO clean_scans (digest, scanned_at) VALUES (?, ?)',
-                               (digest.hex(), now))
+            connection.execute(
+                'INSERT OR REPLACE INTO clean_scans (digest, scanned_at, scanner_version) '
+                'VALUES (?, ?, ?)', (digest.hex(), now, scanner_version))
     except (OSError, sqlite3.Error):
         # Failure to save the cache does not invalidate a successful scan.
         pass
+
+
+def scan_engine_version(scanner):
+    """Return ClamAV's engine version, not its signature database revision."""
+    try:
+        output = subprocess.check_output(
+            [scanner, '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.match(
+        r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
+        output.strip())
+    return match.group(1) if match else None
+
 
 def record_scan_destination(destination):
     """Record the intended launch target separately from clean-scan verdicts."""
@@ -405,6 +433,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
     performed_scan = False
+    scanner_version = None
     # Do not serialize an already cached clean hit. For a miss, a cross-process
     # lock prevents another identical-content request from racing its scan.
     if not cached_clean(cache_id):
@@ -435,11 +464,16 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                     raise RuntimeError(decision.reason)
                 verify_file_integrity(path, before, identity)
                 performed_scan = True
-                remember_clean(cache_id)
+                scanner_version = scan_engine_version(scanner)
+                remember_clean(cache_id, scanner_version)
     verify_file_integrity(path, before, identity)
     # Preserve the completed scan outcome before attempting to launch the file.
-    scan_result = CleanScanResult(status='clean', from_cache=not performed_scan)
-    # The application must be registered to open PDFs before quarantine is released.
+    scan_result = (CleanScanResult(status='clean', from_cache=False,
+                                   scanner_version=scanner_version)
+                   if performed_scan else cached_scan(cache_id))
+    if scan_result is None:
+        raise RuntimeError('The clean scan cache could not be verified; opening was stopped.')
+    # Verify PDF destination capability before releasing quarantine.
     verify_launch_target(path)
     remove_quarantine(path)
     # Quarantine removal changes ctime, but source bytes and identities must remain intact.
