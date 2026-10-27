@@ -31,3 +31,5 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Verify repeated double-clicks launch only one scan
+        run: python3 test-brave-pdf-opener.py
