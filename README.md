@@ -26,6 +26,8 @@ Each accepted native PDF open request also has an in-memory `ScanRequest.request
 
 For integrations that already know a download's originating URL, the Python scan request supports optional `source_url` metadata via `ScanRequest.from_path(path, source_url=...)` or `scan_and_open(path, scanner, source_url=...)`. Local Finder and native opens leave it unset. The URL is not fetched, submitted to ClamAV, logged, or persisted, and does not change the path, cache, or safety checks.
 
+Each accepted scan request records the **intended destination application** and request time in a separate local `~/Library/Application Support/Studio/allow-and-open/scan-requests.sqlite3` database (mode `0600`). PDFs target Brave (`com.brave.Browser`), opening an application bundle targets that named `.app`, and other files use the macOS default handler (`system-default` until macOS chooses an app). The record contains neither the requested file path nor file contents. If recording fails or the database path is a symlink, opening stops without bypassing scanning or removing quarantine. This request log is separate from the 90-day clean-scan cache.
+
 Completed clean scans are cached locally for **90 days from the last successful scan** in `~/Library/Application Support/Studio/allow-and-open/clean-scan-cache.sqlite3`. The cache stores only SHA-256 hashes and scan timestamps, not file contents or paths. A matching hash under the same scanning policy skips another ClamAV scan even if a document is renamed or its filesystem timestamps change; standalone PDFs use separate cache keys so earlier size-limited scans cannot substitute for unlimited scans. the hash covers the complete file bytes, **including PDF metadata embedded in the file**, or the contents and relative paths of an application bundle. File bytes and filesystem identities (including members of application bundles) are checked across hashing and scanning, then checked again after quarantine removal immediately before launch. Byte-identical replacements also block opening. Quarantine removal can change filesystem change timestamps without altering file contents; that expected change alone does not invalidate the final check. Changed contents or identities, expired records, scan failures, or an unreadable cache require a new clean scan. The 48-hour malware-signature freshness gate is still checked every time.
 
 Concurrent requests with identical bytes and the same scan policy coordinate through a local advisory lock. A waiting request rechecks its file contents and the clean-cache entry, reusing only a verified clean scan; changed files and unsuccessful scans must be checked anew or blocked. Bounded, private per-policy lock stripes remain on disk to avoid races with processes already waiting on a lock. Each request still performs its own final content check before opening.
@@ -82,6 +84,30 @@ new queued request. Self-transitions and skipped stages are invalid.
 `can_transition`, and a validating `transition_state` helper. This module
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
+
+## Scan result vocabulary (section 1.3)
+
+The canonical terminal result names are defined in `scan_results.py` as
+`ScanResultStatus`. They are stable, case-sensitive strings for callers to
+consume as scan-result reporting is added. These definitions do **not** change
+the current scanner's exit codes, quarantine handling, or opening behavior.
+
+| Result | Meaning |
+| --- | --- |
+| `clean` | All required checks completed successfully with no detected threat or blocking condition; **not** a guarantee of safety. |
+| `malwareDetected` | The scanner positively identified malware. |
+| `suspiciousStructure` | The file structure appeared suspicious or malformed, without a confirmed malware identification. |
+| `encrypted` | Encryption prevented a required inspection of the file's contents. |
+| `incompleteScan` | The scanner skipped required content or could not confirm that inspection was complete. |
+| `scanFailed` | A scanner execution, scanner prerequisite, or other scan operation failed. |
+| `scanTimedOut` | The configured time allowed for scanning expired. |
+| `fileChanged` | The input changed between verification and the end of scanning. |
+| `fileTooLarge` | The input exceeded a configured or scanner-enforced size limit. |
+| `cancelled` | The scan request was cancelled before completion. |
+
+**Fail-closed contract:** only `clean` may permit further opening processing;
+every other result blocks opening and leaves quarantine in place. A cancellation,
+scan error, or partial scan must never be treated as `clean`.
 
 ## Tooling
 

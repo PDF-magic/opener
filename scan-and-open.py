@@ -2,9 +2,10 @@
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
 from dataclasses import dataclass
+from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import launch_clean_file
+from file_launcher import intended_destination, launch_clean_file
 import os
 from pathlib import Path
 from typing import Optional
@@ -21,6 +22,7 @@ MAX_DATABASE_AGE = 48 * 60 * 60
 MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
+SCAN_REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
 
@@ -90,6 +92,20 @@ class ScanRequest:
     def from_path(cls, path, source_url=None, protection_level=None):
         return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown',
                    source_url=source_url, protection_level=protection_level)
+
+
+def validate_scan_request(item):
+    """Fail closed on invalid selections before hashing, scanning, or opening."""
+    try:
+        requested = os.fspath(item)
+    except TypeError as error:
+        raise RuntimeError('Scan request requires a file path.') from error
+    if not isinstance(requested, str) or not requested or '\0' in requested:
+        raise RuntimeError('Scan request requires a valid, nonempty file path.')
+    path = Path(requested).expanduser().resolve(strict=True)
+    if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
+        raise RuntimeError('Select a file or application, rather than a folder.')
+    return path
 
 
 def scanner_path():
@@ -236,6 +252,29 @@ def remember_clean(digest):
         # Failure to save the cache does not invalidate a successful scan.
         pass
 
+def record_scan_destination(destination):
+    """Record the intended launch target separately from clean-scan verdicts."""
+    try:
+        SCAN_REQUEST_DB.parent.mkdir(parents=True, exist_ok=True)
+        # Never follow a user-supplied symlink when preparing the audit database.
+        if SCAN_REQUEST_DB.is_symlink() or (
+                SCAN_REQUEST_DB.exists() and not SCAN_REQUEST_DB.is_file()):
+            raise OSError('The scan request database must be a regular file.')
+        SCAN_REQUEST_DB.touch(mode=0o600, exist_ok=True)
+        SCAN_REQUEST_DB.chmod(0o600)
+        with sqlite3.connect(str(SCAN_REQUEST_DB), timeout=5) as connection:
+            connection.execute(
+                'CREATE TABLE IF NOT EXISTS scan_requests ('
+                'id INTEGER PRIMARY KEY, requested_at REAL NOT NULL, '
+                'intended_destination_application TEXT NOT NULL)')
+            connection.execute(
+                'INSERT INTO scan_requests (requested_at, intended_destination_application) '
+                'VALUES (?, ?)', (time.time(), destination))
+    except (OSError, sqlite3.Error) as error:
+        # A request must not be opened if its intended destination was not recorded.
+        raise RuntimeError('Unable to record the scan destination; opening was stopped.') from error
+
+
 def remove_quarantine(path):
     if path.is_dir():
         subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
@@ -245,15 +284,59 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
+@dataclass(frozen=True)
+class ScanDetection:
+    """ClamAV evidence only; never a decision to open."""
+    exit_code: int
+    stdout: str
+    stderr: str
+
+
+@dataclass(frozen=True)
+class OpeningDecision:
+    """Scanner policy judgment before independent file-integrity/open checks."""
+    allowed: bool
+    reason: str = ''
+
+
+def capture_detection(completed_process):
+    """Record what ClamAV reported, without conferring opening permission."""
+    return ScanDetection(completed_process.returncode, completed_process.stdout,
+                         completed_process.stderr)
+
+
+def decide_opening(detection):
+    """Apply the existing fail-closed policy; never mutate the detection record.
+
+    A positive decision means only that the result passed the ClamAV gate.
+    The file must still pass an independent before/after content check before
+    quarantine is removed or an application can be launched.
+    """
+    if detection.exit_code == 1:
+        return OpeningDecision(
+            False, 'Malware or an unscannable item was detected; opening was stopped.')
+    if detection.exit_code != 0:
+        return OpeningDecision(
+            False, 'The malware scan could not finish; opening was stopped.')
+    # ClamAV can emit warnings for unreadable or skipped inputs without a
+    # detection. An explicit OK with no unexpected output is still required.
+    lines = detection.stdout.splitlines()
+    if (not any(line.endswith(': OK') for line in lines) or
+            any(not line.endswith((': OK', ': Empty file')) for line in lines) or
+            detection.stderr.strip()):
+        return OpeningDecision(
+            False, 'The malware scan did not confirm a complete scan; opening was stopped.')
+    return OpeningDecision(True)
+
+
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
-    path = Path(item).expanduser().resolve(strict=True)
-    if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
-        raise RuntimeError('Select a file or application, rather than a folder.')
+    path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
     if protection_level is not None:
         request_kwargs['protection_level'] = protection_level
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
+    record_scan_destination(intended_destination(path))
     identity = file_identity(path)
     before = fingerprint(path)
     if file_identity(path) != identity:
@@ -283,20 +366,16 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                         timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
-                if scan.returncode == 1:
-                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.')
-                if scan.returncode != 0:
-                    raise RuntimeError('The malware scan could not finish; opening was stopped.')
-                # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
-                lines = scan.stdout.splitlines()
-                if not any(line.endswith(': OK') for line in lines) or any(
-                        not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.')
+                detection = capture_detection(scan)
+                decision = decide_opening(detection)
+                if not decision.allowed:
+                    raise RuntimeError(decision.reason)
                 verify_file_integrity(path, before, identity)
                 remember_clean(cache_id)
     verify_file_integrity(path, before, identity)
     remove_quarantine(path)
-    # Quarantine removal may change ctime but not source bytes or identity.
+    # Ignore only ctime changes caused by quarantine removal; bytes, path
+    # identities, types, sizes and modification times still must match.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
     # The scan engine does not select an application or browser.
     launch_clean_file(path)
@@ -320,14 +399,30 @@ def safe_scan_failure(error):
 
 
 def main(items):
+    if not items:
+        print('No files were selected for scanning.', file=sys.stderr)
+        return 1
+
+    valid_items = []
+    result = 0
+    for index, item in enumerate(items, start=1):
+        try:
+            validate_scan_request(item)
+        except (OSError, RuntimeError) as error:
+            print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
+            result = 1
+        else:
+            valid_items.append((index, item))
+    if not valid_items:
+        return 1
+
     try:
         scanner = scanner_path()
         check_database()
     except (OSError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
         return 1
-    result = 0
-    for index, item in enumerate(items, start=1):
+    for index, item in valid_items:
         try:
             scan_and_open(item, scanner)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:

@@ -22,12 +22,17 @@ jobs:
         run: python3 test-app-name.py
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
+      - name: Verify detection and opening decisions are separate
+        run: python3 test-detection-policy.py -v
       - name: Verify browser-independent scan engine and launch defaults
         run: python3 test-file-launcher.py
       - name: Verify file lifecycle state transitions
         run: python3 test-file-lifecycle.py
       - name: Verify cross-process scan concurrency
         run: python3 test-scan-concurrency.py
+
+      - name: Verify scan result contract
+        run: python3 test-scan-results.py
 
   macos-build:
     runs-on: macos-latest
