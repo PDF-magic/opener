@@ -100,7 +100,7 @@ class FileLauncherTests(unittest.TestCase):
         self.assertIn('"$script_dir/scan-and-open.py"', line)
         self.assertIn('"$script_dir/file_launcher.py"', line)
         self.assertIn('"$install_dir/"', line)
-        self.assertIn('swiftc -O "$script_dir/verify-pdf-target.swift"', script)
+        self.assertIn('swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift"', script)
         self.assertIn('"$install_dir/verify-pdf-target"', script)
 
 
