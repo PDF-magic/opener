@@ -646,7 +646,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     if scan_result is None:
         raise RuntimeError('The clean scan cache could not be verified; opening was stopped.')
     # Verify PDF destination capability before releasing quarantine.
-    verify_launch_target(path)
+    verify_launch_target(path, target_app=destination if is_pdf else None)
     remove_quarantine(path)
     # Quarantine removal changes ctime, but source bytes and identities must remain intact.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
