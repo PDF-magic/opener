@@ -18,6 +18,11 @@ class FileLauncherTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        self.target_app = self.root / 'Brave Browser.app'
+        self.target_app.mkdir()
+        target = patch('file_launcher.resolve_target_application', return_value=str(self.target_app))
+        target.start()
+        self.addCleanup(target.stop)
 
     def test_pdf_uses_existing_brave_destination_even_with_uppercase_extension(self):
         pdf = self.root / "a document.PDF"
@@ -25,7 +30,7 @@ class FileLauncherTests(unittest.TestCase):
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(pdf)
         run.assert_called_once_with(
-            ["/usr/bin/open", "-b", PDF_DEFAULT_BUNDLE_ID, str(pdf)], check=True
+            ["/usr/bin/open", "-a", str(self.target_app), str(pdf)], check=True
         )
         self.assertEqual(PDF_DEFAULT_BUNDLE_ID, "com.brave.Browser")
 
@@ -43,6 +48,14 @@ class FileLauncherTests(unittest.TestCase):
             launch_clean_file(bundle)
         run.assert_called_once_with(["/usr/bin/open", str(bundle)], check=True)
 
+    def test_missing_pdf_application_never_launches(self):
+        with patch('file_launcher.resolve_target_application',
+                   side_effect=RuntimeError('Target application unavailable')), \
+                patch('file_launcher.subprocess.run') as run:
+            with self.assertRaisesRegex(RuntimeError, 'Target application unavailable'):
+                launch_clean_file(self.root / 'missing.pdf')
+        run.assert_not_called()
+
     def test_open_failure_is_not_swallowed(self):
         document = self.root / "file.pdf"
         with patch("file_launcher.subprocess.run",
@@ -54,9 +67,10 @@ class FileLauncherTests(unittest.TestCase):
         source = (ROOT / "scan-and-open.py").read_text()
         self.assertNotIn("com.brave.Browser", source)
         self.assertNotIn("PDF_DEFAULT_BUNDLE_ID", source)
-        self.assertIn("launch_clean_file(path)", source)
-        self.assertLess(source.index("remove_quarantine(path)\n    # The scan engine"),
-                        source.index("launch_clean_file(path)"))
+        self.assertIn("prepare_launch_command(path)", source)
+        self.assertIn("launch_clean_file(path, prepared_command=command)", source)
+        self.assertLess(source.index("command = prepare_launch_command(path)"),
+                        source.index("remove_quarantine(path)\n    launch_clean_file"))
 
     def test_installer_deploys_launch_module_with_scanner(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()
