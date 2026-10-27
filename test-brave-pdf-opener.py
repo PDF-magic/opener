@@ -8,6 +8,8 @@ source = Path(__file__).with_name('brave-pdf-opener.swift').read_text()
 classes = source.split('let app = NSApplication.shared\n')[0]
 with tempfile.TemporaryDirectory(prefix='studio-opener-test-') as directory:
     root = Path(directory)
+    (root / "twilight-reading.png").write_bytes(
+        Path(__file__).with_name("twilight-reading.png").read_bytes())
     gate = root / 'gate.sh'
     calls = root / 'calls'
     document = root / 'document.pdf'

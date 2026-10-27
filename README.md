@@ -4,6 +4,10 @@ Safe & reliable document launcher for macOS.
 
 Scan PDFs locally with ClamAV before opening them in Brave, with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
 
+## Art
+
+`twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
+
 ## Installation and usage
 
 Install local malware scanning for the existing **Allow and Open** Finder action and native PDF opening (requires Homebrew and Apple command line tools):
