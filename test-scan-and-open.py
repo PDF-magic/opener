@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+from dataclasses import FrozenInstanceError, replace
 import threading
 import os
 from pathlib import Path
@@ -151,6 +152,116 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         stdout, stderr = process.communicate(timeout=10)
         self.assertEqual(process.returncode, 0, stderr)
         self.assertTrue(marker.exists())
+
+    def test_scan_request_records_normalized_file_type(self):
+        cases = (
+            (self.file, 'pdf'),
+            (self.file.with_suffix('.txt'), 'txt'),
+            (self.file.with_name('archive.tar.gz'), 'gz'),
+            (self.file.with_name('extensionless'), 'unknown'),
+            (self.file.with_name('Example.app'), 'app'),
+        )
+        for path, expected in cases:
+            with self.subTest(path=path):
+                request = opener.ScanRequest.from_path(path)
+                self.assertEqual(request.file_type, expected)
+
+
+    def test_scan_request_has_optional_cancellation_field(self):
+        request = opener.ScanRequest.from_path(self.file)
+        self.assertIs(request.cancellation_requested, False)
+        cancelled_request = replace(request, cancellation_requested=True)
+        self.assertIs(cancelled_request.cancellation_requested, True)
+        self.assertIs(request.cancellation_requested, False)
+        self.assertEqual(cancelled_request.file_type, request.file_type)
+
+    def test_source_url_is_optional_request_metadata(self):
+        local = opener.ScanRequest.from_path(self.file)
+        origin = 'https://example.test/downloads/report.pdf?version=2'
+        sourced = opener.ScanRequest.from_path(self.file, source_url=origin)
+        self.assertIsNone(local.source_url)
+        self.assertEqual(sourced.source_url, origin)
+        self.assertEqual(sourced.file_type, local.file_type)
+        self.assertEqual(sourced.file_type, 'pdf')
+
+    def test_source_url_is_recorded_but_not_used_as_scan_target(self):
+        origin = 'https://example.test/downloads/report.pdf?version=2'
+        requests = []
+        from_path = opener.ScanRequest.from_path
+
+        def capture(path, source_url=None):
+            request = from_path(path, source_url=source_url)
+            requests.append(request)
+            return request
+
+        clean = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.ScanRequest, 'from_path', side_effect=capture), \
+                patch.object(opener.subprocess, 'run', return_value=clean) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            opener.scan_and_open(str(self.file), '/scanner', source_url=origin)
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0].source_url, origin)
+        self.assertEqual(run.call_count, 2)
+        scan_command = run.call_args_list[0].args[0]
+        self.assertEqual(scan_command[-1], str(self.file))
+        self.assertNotIn(origin, repr(run.call_args_list))
+        self.assertEqual(run.call_args_list[1].args[0][-1], str(self.file))
+        remove.assert_called_once_with(self.file)
+
+    def test_source_url_cannot_override_infected_scan(self):
+        infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=infected) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner',
+                                     source_url='https://example.test/clean.pdf')
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
+
+    def test_scan_records_file_type_before_failed_scan(self):
+        infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
+                patch.object(opener.subprocess, 'run', return_value=infected), \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        record.assert_called_once_with(self.file, source_url=None)
+        quarantine.assert_not_called()
+
+    def test_scan_request_preserves_selected_protection_level(self):
+        selected = 'custom-protection-profile'
+        request = opener.ScanRequest.from_path(self.file, protection_level=selected)
+        self.assertEqual(request.file_type, 'pdf')
+        self.assertEqual(request.protection_level, selected)
+        self.assertIsNone(opener.ScanRequest.from_path(self.file).protection_level)
+        with self.assertRaises(FrozenInstanceError):
+            request.protection_level = 'another-profile'
+
+    def test_selected_protection_level_is_recorded_before_scanning(self):
+        selected = 'custom-protection-profile'
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner', protection_level=selected)
+        record.assert_called_once_with(self.file, source_url=None, protection_level=selected)
+        self.assertEqual(run.call_count, 2)
+        scan_command = run.call_args_list[0].args[0]
+        self.assertIn('--max-filesize=0', scan_command)
+        self.assertIn('--max-scansize=0', scan_command)
+        self.assertIn('--alert-exceeds-max=yes', scan_command)
+
+    def test_selected_protection_level_never_overrides_malware_block(self):
+        selected = 'custom-protection-profile'
+        detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
+                patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner', protection_level=selected)
+        record.assert_called_once_with(self.file, source_url=None, protection_level=selected)
+        self.assertEqual(run.call_count, 1)
+        quarantine.assert_not_called()
 
     def test_valid_requests_accept_files_apps_and_file_aliases(self):
         bundle = Path(self.temp.name) / 'Example.app'
