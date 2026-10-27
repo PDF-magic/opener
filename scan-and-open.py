@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+import fcntl
 import hashlib
 import os
 from pathlib import Path
 import sqlite3
+import stat
 import subprocess
 import sys
 import time
@@ -17,6 +19,42 @@ MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
+MAX_CONCURRENT_SCANS = 2
+
+
+@contextmanager
+def scan_slot():
+    """Wait for one of two cross-process slots shared by Finder and the native app.
+
+    Advisory locks are held on open file descriptors, so an interrupted process
+    automatically releases its slot. No file names, paths, or scan results are logged.
+    """
+    slot_dir = CACHE_DB.parent / 'scan-slots'
+    slot_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if (slot_dir.is_symlink() or not slot_dir.is_dir()
+            or slot_dir.stat().st_uid != os.getuid()):
+        raise RuntimeError('The scan queue is unavailable; opening was stopped.')
+    while True:
+        for index in range(MAX_CONCURRENT_SCANS):
+            lock_path = slot_dir / f'slot-{index}.lock'
+            flags = os.O_CREAT | os.O_RDWR | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0)
+            fd = os.open(lock_path, flags, 0o600)
+            try:
+                info = os.fstat(fd)
+                if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+                    raise RuntimeError('The scan queue is unavailable; opening was stopped.')
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    continue
+                try:
+                    yield
+                finally:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                return
+            finally:
+                os.close(fd)
+        time.sleep(0.05)
 
 
 def scanner_path():
@@ -122,7 +160,7 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def scan_and_open(item, scanner):
+def _scan_and_open(item, scanner):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
@@ -165,6 +203,12 @@ def scan_and_open(item, scanner):
     if path.suffix.lower() == '.pdf':
         command += ['-b', 'com.brave.Browser']
     subprocess.run(command + [str(path)], check=True)
+
+
+def scan_and_open(item, scanner):
+    # Both Finder and the native PDF opener must respect the same process-wide cap.
+    with scan_slot():
+        return _scan_and_open(item, scanner)
 
 
 def main(items):
