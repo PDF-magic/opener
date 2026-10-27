@@ -24,6 +24,21 @@ CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
 
+# Only these fixed, path-free errors may appear in scan diagnostics.
+# Unexpected system or scanner exceptions may contain private source paths.
+SAFE_SCAN_FAILURES = frozenset((
+    'Application bundle contains a link outside the bundle; opening was stopped.',
+    'The file exceeds the 512 MB scan limit; opening was stopped.',
+    'Only regular files and application bundles can be scanned.',
+    'Select a file or application, rather than a folder.',
+    'The malware scan timed out; opening was stopped.',
+    'Malware or an unscannable item was detected; opening was stopped.',
+    'The malware scan could not finish; opening was stopped.',
+    'The malware scan did not confirm a complete scan; opening was stopped.',
+    'The file changed while checking it; opening was stopped. Try again.',
+))
+
+
 
 @contextmanager
 def scan_slot():
@@ -247,14 +262,14 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 if scan.returncode == 1:
-                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
+                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.')
                 if scan.returncode != 0:
-                    raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                    raise RuntimeError('The malware scan could not finish; opening was stopped.')
                 # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
                 lines = scan.stdout.splitlines()
                 if not any(line.endswith(': OK') for line in lines) or any(
                         not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.')
                 if before != fingerprint(path):
                     raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
                 remember_clean(cache_id)
@@ -274,23 +289,29 @@ def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                               protection_level=protection_level)
 
 
+def safe_scan_failure(error):
+    # Whitelist only messages controlled by this scanner. In particular,
+    # OSError and CalledProcessError can include absolute selected paths.
+    if type(error) is RuntimeError and str(error) in SAFE_SCAN_FAILURES:
+        return str(error)
+    return 'The request could not be processed; opening was stopped.'
+
+
 def main(items):
     if not items:
         print('No files were selected for scanning.', file=sys.stderr)
         return 1
 
-    # Preflight selections before initializing the scanner; scan_and_open
-    # revalidates immediately before processing in case a target changed.
     valid_items = []
     result = 0
-    for item in items:
+    for index, item in enumerate(items, start=1):
         try:
             validate_scan_request(item)
         except (OSError, RuntimeError) as error:
-            print(f'{item!r}: {error}', file=sys.stderr)
+            print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
         else:
-            valid_items.append(item)
+            valid_items.append((index, item))
     if not valid_items:
         return 1
 
@@ -300,11 +321,11 @@ def main(items):
     except (OSError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
         return 1
-    for item in valid_items:
+    for index, item in valid_items:
         try:
             scan_and_open(item, scanner)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
-            print(f'{Path(item).name}: {error}', file=sys.stderr)
+            print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
     return result
 
