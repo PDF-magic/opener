@@ -35,6 +35,29 @@ class ScanGateTests(unittest.TestCase):
             remove.assert_not_called()
             self.assertEqual(self.file.read_bytes(), b'%PDF-1.4\nTest document')
 
+    def test_scan_request_records_normalized_file_type(self):
+        cases = (
+            (self.file, 'pdf'),
+            (self.file.with_suffix('.txt'), 'txt'),
+            (self.file.with_name('archive.tar.gz'), 'gz'),
+            (self.file.with_name('extensionless'), 'unknown'),
+            (self.file.with_name('Example.app'), 'app'),
+        )
+        for path, expected in cases:
+            with self.subTest(path=path):
+                request = opener.ScanRequest.from_path(path)
+                self.assertEqual(request.file_type, expected)
+
+    def test_scan_records_file_type_before_failed_scan(self):
+        infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
+                patch.object(opener.subprocess, 'run', return_value=infected), \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        record.assert_called_once_with(self.file)
+        quarantine.assert_not_called()
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from dataclasses import dataclass
 import hashlib
 import os
 from pathlib import Path
@@ -17,6 +18,16 @@ MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
+
+
+@dataclass(frozen=True)
+class ScanRequest:
+    # A filename extension is a declared type, not proof of the file's contents.
+    file_type: str
+
+    @classmethod
+    def from_path(cls, path):
+        return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown')
 
 
 def scanner_path():
@@ -126,7 +137,8 @@ def scan_and_open(item, scanner):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
-    is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    request = ScanRequest.from_path(path)
+    is_pdf = path.is_file() and request.file_type == 'pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
     hit = cached_clean(cache_id)
