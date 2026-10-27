@@ -122,10 +122,22 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def scan_and_open(item, scanner):
-    path = Path(item).expanduser().resolve(strict=True)
+def validate_scan_request(item):
+    """Fail closed on invalid selections before hashing, scanning, or opening."""
+    try:
+        requested = os.fspath(item)
+    except TypeError as error:
+        raise RuntimeError('Scan request requires a file path.') from error
+    if not isinstance(requested, str) or not requested or '\0' in requested:
+        raise RuntimeError('Scan request requires a valid, nonempty file path.')
+    path = Path(requested).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
+    return path
+
+
+def scan_and_open(item, scanner):
+    path = validate_scan_request(item)
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
@@ -168,14 +180,33 @@ def scan_and_open(item, scanner):
 
 
 def main(items):
+    if not items:
+        print('No files were selected for scanning.', file=sys.stderr)
+        return 1
+
+    # Preflight every selection before initializing the scanner. Preserve the
+    # supplied paths for callers; scan_and_open validates again immediately
+    # before touching each target in case it changed during the preflight.
+    valid_items = []
+    result = 0
+    for item in items:
+        try:
+            validate_scan_request(item)
+        except (OSError, RuntimeError) as error:
+            print(f'{item!r}: {error}', file=sys.stderr)
+            result = 1
+        else:
+            valid_items.append(item)
+    if not valid_items:
+        return 1
+
     try:
         scanner = scanner_path()
         check_database()
     except (OSError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
         return 1
-    result = 0
-    for item in items:
+    for item in valid_items:
         try:
             scan_and_open(item, scanner)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
