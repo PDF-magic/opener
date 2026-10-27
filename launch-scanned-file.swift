@@ -1,6 +1,9 @@
 import AppKit
 import Foundation
 
+// This app is the scan gate, never an approved destination for its own PDFs.
+private let openerBundleIdentifier = "local.studio.brave-pdf-opener"
+
 // This helper launches only paths supplied after scanner approval.
 final class LaunchCompletion: @unchecked Sendable {
     private let lock = NSLock()
@@ -37,6 +40,7 @@ func resolveTargetApplication(
     lookup: (String) -> URL? = { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
 ) -> URL? {
     guard !bundleIdentifier.isEmpty,
+          bundleIdentifier != openerBundleIdentifier,
           let target = lookup(bundleIdentifier)?.standardizedFileURL.resolvingSymlinksInPath(),
           target.pathExtension.lowercased() == "app" else { return nil }
 
@@ -84,12 +88,23 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
         }
         return completed.waitForCompletion()
     }
+    // PDFs must have an explicit, non-opener destination. Default PDF
+    // handlers may point back to this scan gate and recursively rescan.
+    if target.pathExtension.lowercased() == "pdf" { return false }
     if isApplication {
+        // A direct .app launch must not restart the scan gate itself.
+        guard Bundle(url: target)?.bundleIdentifier != openerBundleIdentifier else { return false }
         workspace.openApplication(at: target, configuration: config) {
             application, error in
             completed.finish(application, error: error)
         }
         return completed.waitForCompletion()
+    }
+    // Protect default-handler launches too if a non-PDF type is associated
+    // with the opener; leave other system-default associations unchanged.
+    if let handler = workspace.urlForApplication(toOpen: target),
+       Bundle(url: handler)?.bundleIdentifier == openerBundleIdentifier {
+        return false
     }
     return workspace.open(target)
 }
