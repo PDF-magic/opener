@@ -176,6 +176,38 @@ def fingerprint(path):
     return digest.digest()
 
 
+def file_identity(path, include_ctime=True):
+    """Capture filesystem identity for a file and every app-bundle entry.
+
+    This complements content hashing: replacing a path with identical bytes
+    must not silently substitute a different object for the one checked.
+    Snapshots are transient and never enter the persistent clean-scan cache.
+    """
+    entries = [path] + sorted(path.rglob('*')) if path.is_dir() else [path]
+    identity = []
+    for entry in entries:
+        info = entry.lstat()
+        name = str(entry.relative_to(path)) if entry != path else ''
+        details = (name, info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode),
+                   info.st_size, info.st_mtime_ns)
+        if include_ctime:
+            details += (info.st_ctime_ns,)
+        identity.append(details)
+    return tuple(identity)
+
+
+def verify_file_integrity(path, original_digest, original_identity,
+                          allow_ctime_change=False):
+    """Revalidate bytes and filesystem identity before any launch."""
+    expected = (tuple(entry[:-1] for entry in original_identity)
+                if allow_ctime_change else original_identity)
+    def current_identity():
+        return file_identity(path, include_ctime=not allow_ctime_change)
+    if (current_identity() != expected or fingerprint(path) != original_digest
+            or current_identity() != expected):
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+
+
 def cache_key(digest, is_pdf):
     # Keep the existing 90-day cache for non-PDFs, but prevent older limited
     # PDF scans and differently configured non-PDF scans from bypassing a full PDF scan.
@@ -347,7 +379,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
     record_scan_destination(intended_destination(path))
+    identity = file_identity(path)
     before = fingerprint(path)
+    if file_identity(path) != identity:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
     performed_scan = False
     # Do not serialize an already cached clean hit. For a miss, a cross-process
@@ -355,8 +390,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     if not cached_clean(cache_id):
         with active_scan_lock(cache_id):
             # Recheck after waiting: the selected file may have changed.
-            if before != fingerprint(path):
-                raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+            verify_file_integrity(path, before, identity)
             # Only a completed clean result under this exact policy is reusable.
             if not cached_clean(cache_id):
                 if is_pdf:
@@ -379,15 +413,15 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 decision = decide_opening(detection)
                 if not decision.allowed:
                     raise RuntimeError(decision.reason)
-                if before != fingerprint(path):
-                    raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+                verify_file_integrity(path, before, identity)
                 performed_scan = True
                 remember_clean(cache_id)
-    if before != fingerprint(path):
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    verify_file_integrity(path, before, identity)
     # Preserve the completed scan outcome before attempting to launch the file.
     scan_result = CleanScanResult(status='clean', from_cache=not performed_scan)
     remove_quarantine(path)
+    # Quarantine removal changes ctime, but source bytes and identities must remain intact.
+    verify_file_integrity(path, before, identity, allow_ctime_change=True)
     # The scan engine does not select an application or browser.
     try:
         launch_clean_file(path)
