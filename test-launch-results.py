@@ -26,6 +26,10 @@ class LaunchResultTests(unittest.TestCase):
                              Path(self.temp.name) / "clean-scan-cache.sqlite3")
         cache.start()
         self.addCleanup(cache.stop)
+        # Launch result tests focus on scanner receipts, not native PDF handlers.
+        target = patch.object(opener, 'verify_launch_target')
+        target.start()
+        self.addCleanup(target.stop)
 
     def test_launch_failure_keeps_completed_result_and_cache(self):
         raw = subprocess.CompletedProcess([], 0, "file: OK", "")

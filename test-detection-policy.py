@@ -30,6 +30,10 @@ class DetectionDecisionTests(unittest.TestCase):
                              Path(self.temp.name) / 'clean.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
+        # The macOS verifier is exercised by dedicated launcher/native tests.
+        target = patch.object(opener, 'verify_launch_target')
+        target.start()
+        self.addCleanup(target.stop)
 
     def test_detection_contains_only_evidence_and_cannot_be_modified(self):
         raw = result(1, 'file: Malware FOUND')
