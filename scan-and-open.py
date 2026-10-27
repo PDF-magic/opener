@@ -5,6 +5,7 @@ import hashlib
 import os
 from pathlib import Path
 import sqlite3
+import stat
 import subprocess
 import sys
 import time
@@ -67,6 +68,38 @@ def fingerprint(path):
     return digest.digest()
 
 
+def file_identity(path, include_ctime=True):
+    """Capture filesystem identity for a file and every app-bundle entry.
+
+    This complements content hashing: replacing a path with identical bytes
+    must not silently substitute a different object for the one checked.
+    Snapshots are transient and never enter the persistent clean-scan cache.
+    """
+    entries = [path] + sorted(path.rglob('*')) if path.is_dir() else [path]
+    identity = []
+    for entry in entries:
+        info = entry.lstat()
+        name = str(entry.relative_to(path)) if entry != path else ''
+        details = (name, info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode),
+                   info.st_size, info.st_mtime_ns)
+        if include_ctime:
+            details += (info.st_ctime_ns,)
+        identity.append(details)
+    return tuple(identity)
+
+
+def verify_file_integrity(path, original_digest, original_identity,
+                          allow_ctime_change=False):
+    """Revalidate bytes and filesystem identity before any launch."""
+    expected = (tuple(entry[:-1] for entry in original_identity)
+                if allow_ctime_change else original_identity)
+    def current_identity():
+        return file_identity(path, include_ctime=not allow_ctime_change)
+    if (current_identity() != expected or fingerprint(path) != original_digest
+            or current_identity() != expected):
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+
+
 def cache_key(digest, is_pdf):
     # Keep the existing 90-day cache for non-PDFs, but prevent older limited
     # PDF scans and differently configured non-PDF scans from bypassing a full PDF scan.
@@ -127,7 +160,10 @@ def scan_and_open(item, scanner):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    identity = file_identity(path)
     before = fingerprint(path)
+    if file_identity(path) != identity:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
     hit = cached_clean(cache_id)
     if not hit:
@@ -156,11 +192,13 @@ def scan_and_open(item, scanner):
         if not any(line.endswith(': OK') for line in lines) or any(
                 not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
             raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
-    if before != fingerprint(path):
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    verify_file_integrity(path, before, identity)
     if not hit:
         remember_clean(cache_id)
     remove_quarantine(path)
+    # Removing quarantine changes ctime on macOS, but must not modify the
+    # source bytes, inode identities, file types, sizes, or modification times.
+    verify_file_integrity(path, before, identity, allow_ctime_change=True)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
         command += ['-b', 'com.brave.Browser']
