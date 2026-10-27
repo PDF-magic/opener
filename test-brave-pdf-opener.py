@@ -89,3 +89,33 @@ app.run()
     assert set(finished) == set(expected) and len(finished) == len(expected)
     assert peak == 2 and active == 0, 'Two distinct scans must overlap and all scans must finish'
     print('PASS: original alias is displayed; duplicates are suppressed; concurrent scans are bounded and queued FIFO.')
+
+    started = root / 'termination-started'
+    ended = root / 'termination-eof'
+    gate.write_text('#!/bin/bash\n'
+                    f'printf "started" > "{started}"\n'
+                    'IFS= read -r value\n'
+                    f'printf "eof" > "{ended}"\n')
+    termination_harness = classes + f'''
+let app = NSApplication.shared
+let delegate = PDFOpener()
+app.delegate = delegate
+app.setActivationPolicy(.accessory)
+DispatchQueue.main.async {{
+    delegate.application(app, open: [URL(fileURLWithPath: "{document}")])
+}}
+DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {{
+    app.terminate(nil)
+}}
+app.run()
+'''
+    swift.write_text(termination_harness)
+    subprocess.run(['/usr/bin/xcrun', 'swiftc', str(swift), '-o', str(binary)], check=True)
+    subprocess.run([str(binary)], check=True, timeout=15)
+    assert started.exists(), 'The scan child did not start before app termination'
+    import time
+    deadline = time.monotonic() + 5
+    while not ended.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert ended.exists(), 'The scan child did not receive EOF when the app terminated'
+    print('PASS: app termination closes the scan lifetime pipe.')

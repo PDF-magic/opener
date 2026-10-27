@@ -168,6 +168,20 @@ class ScanCancelled(RuntimeError):
     """A cancelled request must never permit an open or process the next file."""
 
 
+def watch_parent_lifetime():
+    """Abort a native-owned scan when its application closes its stdin pipe."""
+    if os.environ.get('PDF_MAGIC_PARENT_LIFETIME') != '1':
+        return
+    def watch():
+        try:
+            os.read(sys.stdin.fileno(), 1)
+        except (OSError, ValueError):
+            pass
+        # Existing native cancellation handlers stop ClamAV's process group.
+        os.kill(os.getpid(), signal.SIGTERM)
+    threading.Thread(target=watch, name='parent-lifetime', daemon=True).start()
+
+
 def native_cancellation_enabled():
     return os.environ.get(NATIVE_CANCELLATION) == '1'
 
@@ -666,6 +680,7 @@ def safe_scan_failure(error):
 
 
 def main(items):
+    watch_parent_lifetime()
     if not items:
         print('No files were selected for scanning.', file=sys.stderr)
         return 1

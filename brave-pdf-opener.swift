@@ -118,6 +118,18 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private(set) var scanRequests = [String: ScanRequest]()
     private var panel: NSPanel?
     private var filename: NSTextField?
+    // Hold the native scan-gate stdin writer open while its owner is alive.
+    private var scanLifetimes = [String: Pipe]()
+    private var terminating = false
+
+    func applicationWillTerminate(_ notification: Notification) {
+        terminating = true
+        for lifetime in scanLifetimes.values {
+            try? lifetime.fileHandleForWriting.close()
+        }
+        scanLifetimes.removeAll()
+    }
+
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -192,6 +204,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     private func startQueuedScans() {
+        guard !terminating else { return }
         // All queue mutations happen on the application's main thread.
         while running.count < maxConcurrentScans && !queued.isEmpty {
             let path = queued.removeFirst()
@@ -204,15 +217,19 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         let origin = requestOrigins[path] ?? "unknown"
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
+        let lifetime = Pipe()
+        scanLifetimes[path] = lifetime
         DispatchQueue.global(qos: .userInitiated).async {
             let failure = withScanErrorPipe { errors -> String? in
                 let process = Process()
+                process.standardInput = lifetime
                 process.executableURL = URL(fileURLWithPath: "/bin/bash")
                 process.arguments = [script.path, path]
                 process.standardError = errors
                 process.standardOutput = FileHandle.nullDevice
                 var environment = ProcessInfo.processInfo.environment
                 environment["PDF_MAGIC_NATIVE_CANCEL"] = "1"
+                environment["PDF_MAGIC_PARENT_LIFETIME"] = "1"
                 environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"
                 environment["PDF_MAGIC_REQUEST_ORIGIN"] = origin
                 process.environment = environment
@@ -246,6 +263,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                 return nil
             }
 DispatchQueue.main.async {
+                if let pipe = self.scanLifetimes.removeValue(forKey: path) {
+                    try? pipe.fileHandleForWriting.close()
+                }
                 self.running.remove(path)
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
@@ -274,6 +294,7 @@ DispatchQueue.main.async {
     func application(_ application: NSApplication, open urls: [URL]) {
         let origin = currentRequestSource()
         for url in urls {
+            guard !terminating else { break }
             let requestedPath = url.path
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
             guard received.insert(path).inserted else { continue }
