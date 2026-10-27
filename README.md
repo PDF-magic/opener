@@ -106,6 +106,20 @@ To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
 printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
+To follow your **macOS default web browser** automatically (instead of a fixed
+bundle identifier), opt in by writing `system-default-browser` to the same file:
+
+```sh
+printf '%s\n' 'system-default-browser' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Reinstall the opener first to deploy the browser resolver. It queries macOS'
+default handler for HTTPS URLs without opening a URL or changing the browser
+preference. Each PDF request pins the resolved application's bundle ID before
+scanning. The existing PDF-capability and installed-app checks still apply;
+an unavailable, unsupported, or self-referential default browser blocks opening
+without falling back to the default PDF handler (which may be PDF Magic Opener).
+
 Chrome must be installed and registered with macOS as a PDF-capable application.
 The launcher verifies the selected bundle and PDF registration before opening,
 and never substitutes another browser when verification fails.
