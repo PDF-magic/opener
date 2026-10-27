@@ -326,7 +326,9 @@ def supported_request_path(item):
     except TypeError:
         raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
     # The gate handles local paths only, not URL schemes or remote resources.
-    if not isinstance(raw_path, str) or re.match(r'^[A-Za-z][A-Za-z0-9+.-]*:(?://|/)', raw_path):
+    if not isinstance(raw_path, str) or not raw_path or '\0' in raw_path:
+        raise RuntimeError('Unsupported scan request type: expected a valid local path.')
+    if re.match(r'^[A-Za-z][A-Za-z0-9+.-]*:(?://|/)', raw_path):
         raise RuntimeError('Unsupported scan request type: URL requests are not supported.')
     path = Path(raw_path).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
