@@ -163,6 +163,21 @@ apps fail closed. Every PDF still requires the existing malware scan, integrity
 checks, and quarantine policy before the pinned Vivaldi destination can launch.
 This setting does not change the system's default browser or PDF association.
 
+To open approved PDFs in **Opera** (the standard macOS release), select
+its bundle identifier without changing the system's default browser:
+
+```sh
+printf '%s\n' 'com.operasoftware.Opera' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Opera must be installed. The launcher accepts a registered PDF-capable Opera
+bundle, or a verified, executable Opera bundle with Opera's genuine code
+signature when Launch Services does not list it as a PDF handler. An absent,
+impostor, unsigned, or unusable Opera installation fails closed; it does not
+fall back to another app. Opera GX is a separate application and is not
+covered by this Opera-specific exception. ClamAV scanning and the existing
+file-integrity and quarantine checks always precede launching.
+
 To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
 
 ```sh

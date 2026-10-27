@@ -94,6 +94,36 @@ func verifiedVivaldiPDFViewer(bundleIdentifier: String, application: URL?) -> Bo
     return true
 }
 
+// Opera can view local PDFs even when macOS does not advertise its PDF
+// registration. Restrict this exception to the genuine Opera-signed bundle.
+func operaSignedPDFViewer(at application: URL) -> Bool {
+    var code: SecStaticCode?
+    var requirement: SecRequirement?
+    guard SecStaticCodeCreateWithPath(application as CFURL, SecCSFlags(), &code) == errSecSuccess,
+          let code = code,
+          SecRequirementCreateWithString(
+              "anchor apple generic and identifier \"com.operasoftware.Opera\" and certificate leaf[subject.OU] = \"A2P9LX4JPN\"" as CFString,
+              SecCSFlags(), &requirement
+          ) == errSecSuccess,
+          let requirement = requirement else { return false }
+    return SecStaticCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess
+}
+
+func trustedOperaPDFTarget(
+    application: URL?,
+    bundleIdentifier: String,
+    verifySignature: (URL) -> Bool = operaSignedPDFViewer
+) -> Bool {
+    guard bundleIdentifier == "com.operasoftware.Opera",
+          let target = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          target.pathExtension.lowercased() == "app",
+          let bundle = Bundle(url: target),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
+    return verifySignature(target)
+}
+
 // Standard Firefox releases contain a PDF viewer even when Launch Services
 // does not advertise PDF support. The exception requires Mozilla's actual
 // Developer ID signature, not just a spoofable bundle identifier.
@@ -133,7 +163,8 @@ func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
         registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
     ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || trustedArcPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
-      || verifiedVivaldiPDFViewer(bundleIdentifier: bundleIdentifier, application: application)
+      || verifiedVivaldiPDFViewer(bundleIdentifier: bundleIdentifier, application: application) ||
+        trustedOperaPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || trustedFirefoxPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 

@@ -39,7 +39,7 @@ jobs:
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
         run: python3 test-pdf-filename-paths.py -v
-      - name: Verify configurable PDF target application and Arc scan gating
+      - name: Verify configurable PDF targets including Arc and Opera
         run: python3 test-target-app.py
       - name: Verify Microsoft Edge PDF launch routing and fail-closed behavior
         run: python3 test-edge-target.py -v
@@ -47,6 +47,42 @@ jobs:
         run: python3 test-chromium-launch.py -v
       - name: Verify system-default-browser selection and fail-closed handoff
         run: python3 test-system-default-browser.py -v
+      - name: Verify Brave PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: brave
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Google Chrome PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: chrome
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Mozilla Firefox PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: firefox
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Safari PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: safari
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Microsoft Edge PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: edge
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Chromium PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: chromium
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Vivaldi PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: vivaldi
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Opera PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: opera
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Arc PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: arc
+        run: python3 test-browser-pdf-behavior.py
       - name: Verify clean scan results survive launch failures
         run: python3 test-launch-results.py -v
       - name: Verify scan-request origin records
@@ -71,7 +107,7 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
-      - name: Verify signed Safari, Arc, Vivaldi and Firefox PDF targets
+      - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
@@ -92,6 +128,7 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id org.chromium.Chromium "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.apple.Safari "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id company.thebrowser.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.operasoftware.Opera "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id org.mozilla.firefox "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"

@@ -199,6 +199,55 @@ struct PDFTargetVerificationTests {
             fatalError("Could not build Vivaldi verification fixtures: \(error)")
         }
         print("PASS: verified Vivaldi PDF destination verification.")
+        // The standard Opera app has a built-in PDF viewer but may not
+        // advertise a PDF document type. This synthetic app is not signed.
+        let opera = temporaryRoot.appendingPathComponent("Opera.app", isDirectory: true)
+        let operaContents = opera.appendingPathComponent("Contents", isDirectory: true)
+        let operaBin = operaContents.appendingPathComponent("MacOS", isDirectory: true)
+        try! fileManager.createDirectory(at: operaBin, withIntermediateDirectories: true)
+        let operaInfo: [String: Any] = [
+            "CFBundleIdentifier": "com.operasoftware.Opera",
+            "CFBundleExecutable": "Opera",
+            "CFBundlePackageType": "APPL",
+        ]
+        let operaPlist = try! PropertyListSerialization.data(
+            fromPropertyList: operaInfo, format: .xml, options: 0
+        )
+        try! operaPlist.write(to: operaContents.appendingPathComponent("Info.plist"))
+        let operaExecutable = operaBin.appendingPathComponent("Opera")
+        try! "#!/bin/sh\nexit 0\n".write(
+            to: operaExecutable, atomically: true, encoding: .utf8
+        )
+        try! fileManager.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: operaExecutable.path
+        )
+        precondition(trustedOperaPDFTarget(
+            application: opera, bundleIdentifier: "com.operasoftware.Opera",
+            verifySignature: { _ in true }
+        ), "Genuine executable Opera should be eligible for its PDF exception")
+        precondition(!trustedOperaPDFTarget(
+            application: opera, bundleIdentifier: "com.operasoftware.Opera",
+            verifySignature: { _ in false }
+        ), "An untrusted Opera signature must be rejected")
+        precondition(!operaSignedPDFViewer(at: opera),
+                     "An unsigned Opera fixture must fail actual code-signing validation")
+        precondition(!trustedOperaPDFTarget(
+            application: opera, bundleIdentifier: "com.operasoftware.OperaGX",
+            verifySignature: { _ in true }
+        ), "Opera GX and other browsers must not inherit this exception")
+        precondition(!trustedOperaPDFTarget(
+            application: nil, bundleIdentifier: "com.operasoftware.Opera",
+            verifySignature: { _ in true }
+        ), "An uninstalled Opera must be rejected")
+        precondition(!trustedOperaPDFTarget(
+            application: notAnApp, bundleIdentifier: "com.operasoftware.Opera",
+            verifySignature: { _ in true }
+        ), "A non-application path must be rejected")
+        try! fileManager.removeItem(at: operaExecutable)
+        precondition(!trustedOperaPDFTarget(
+            application: opera, bundleIdentifier: "com.operasoftware.Opera",
+            verifySignature: { _ in true }
+        ), "Opera without an executable must be rejected")
         // A local Firefox fixture allows independent trust verification even
         // when Firefox is absent from the macOS CI runner.
         let firefox = temporaryRoot.appendingPathComponent("Firefox.app", isDirectory: true)
