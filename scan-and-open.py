@@ -2,6 +2,7 @@
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
 from dataclasses import dataclass
+from dataclasses import dataclass
 import fcntl
 import hashlib
 from file_launcher import intended_destination, launch_clean_file
@@ -251,6 +252,51 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
+@dataclass(frozen=True)
+class ScanDetection:
+    """ClamAV evidence only; never a decision to open."""
+    exit_code: int
+    stdout: str
+    stderr: str
+
+
+@dataclass(frozen=True)
+class OpeningDecision:
+    """Scanner policy judgment before independent file-integrity/open checks."""
+    allowed: bool
+    reason: str = ''
+
+
+def capture_detection(completed_process):
+    """Record what ClamAV reported, without conferring opening permission."""
+    return ScanDetection(completed_process.returncode, completed_process.stdout,
+                         completed_process.stderr)
+
+
+def decide_opening(detection):
+    """Apply the existing fail-closed policy; never mutate the detection record.
+
+    A positive decision means only that the result passed the ClamAV gate.
+    The file must still pass an independent before/after content check before
+    quarantine is removed or an application can be launched.
+    """
+    if detection.exit_code == 1:
+        return OpeningDecision(
+            False, 'Malware or an unscannable item was detected; opening was stopped.')
+    if detection.exit_code != 0:
+        return OpeningDecision(
+            False, 'The malware scan could not finish; opening was stopped.')
+    # ClamAV can emit warnings for unreadable or skipped inputs without a
+    # detection. An explicit OK with no unexpected output is still required.
+    lines = detection.stdout.splitlines()
+    if (not any(line.endswith(': OK') for line in lines) or
+            any(not line.endswith((': OK', ': Empty file')) for line in lines) or
+            detection.stderr.strip()):
+        return OpeningDecision(
+            False, 'The malware scan did not confirm a complete scan; opening was stopped.')
+    return OpeningDecision(True)
+
+
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
@@ -286,15 +332,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                         timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
-                if scan.returncode == 1:
-                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.')
-                if scan.returncode != 0:
-                    raise RuntimeError('The malware scan could not finish; opening was stopped.')
-                # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
-                lines = scan.stdout.splitlines()
-                if not any(line.endswith(': OK') for line in lines) or any(
-                        not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.')
+                detection = capture_detection(scan)
+                decision = decide_opening(detection)
+                if not decision.allowed:
+                    raise RuntimeError(decision.reason)
                 if before != fingerprint(path):
                     raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
                 remember_clean(cache_id)
