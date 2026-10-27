@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 from file_launcher import intended_destination, launch_clean_file
 import os
+import re
 from pathlib import Path
 from typing import Optional
 import sqlite3
@@ -25,6 +26,7 @@ CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 SCAN_REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
+REQUESTING_APPLICATION_ENV = 'PDF_MAGIC_REQUESTING_APPLICATION'
 
 # Only these fixed, path-free errors may appear in scan diagnostics.
 # Unexpected system or scanner exceptions may contain private source paths.
@@ -175,6 +177,38 @@ def fingerprint(path):
     return digest.digest()
 
 
+def file_identity(path, include_ctime=True):
+    """Capture filesystem identity for a file and every app-bundle entry.
+
+    This complements content hashing: replacing a path with identical bytes
+    must not silently substitute a different object for the one checked.
+    Snapshots are transient and never enter the persistent clean-scan cache.
+    """
+    entries = [path] + sorted(path.rglob('*')) if path.is_dir() else [path]
+    identity = []
+    for entry in entries:
+        info = entry.lstat()
+        name = str(entry.relative_to(path)) if entry != path else ''
+        details = (name, info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode),
+                   info.st_size, info.st_mtime_ns)
+        if include_ctime:
+            details += (info.st_ctime_ns,)
+        identity.append(details)
+    return tuple(identity)
+
+
+def verify_file_integrity(path, original_digest, original_identity,
+                          allow_ctime_change=False):
+    """Revalidate bytes and filesystem identity before any launch."""
+    expected = (tuple(entry[:-1] for entry in original_identity)
+                if allow_ctime_change else original_identity)
+    def current_identity():
+        return file_identity(path, include_ctime=not allow_ctime_change)
+    if (current_identity() != expected or fingerprint(path) != original_digest
+            or current_identity() != expected):
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+
+
 def cache_key(digest, is_pdf):
     # Keep the existing 90-day cache for non-PDFs, but prevent older limited
     # PDF scans and differently configured non-PDF scans from bypassing a full PDF scan.
@@ -262,6 +296,28 @@ def record_scan_destination(destination):
         raise RuntimeError('Unable to record the scan destination; opening was stopped.') from error
 
 
+def record_scan_request(application):
+    """Record the requesting entry point separately from intended destinations."""
+    if not application or len(application) > 128 or any(char in application for char in '\r\n\0'):
+        raise ValueError('Invalid requesting application name.')
+    SCAN_REQUEST_DB.parent.mkdir(parents=True, exist_ok=True)
+    if SCAN_REQUEST_DB.is_symlink() or (SCAN_REQUEST_DB.exists() and not SCAN_REQUEST_DB.is_file()):
+        raise RuntimeError('The scan-request database must be a regular file, not a symbolic link.')
+    SCAN_REQUEST_DB.touch(mode=0o600, exist_ok=True)
+    SCAN_REQUEST_DB.chmod(0o600)
+    connection = sqlite3.connect(str(SCAN_REQUEST_DB), timeout=5)
+    try:
+        with connection:
+            connection.execute('CREATE TABLE IF NOT EXISTS scan_request_applications '
+                               '(id INTEGER PRIMARY KEY, requested_at REAL NOT NULL, '
+                               'requesting_application TEXT NOT NULL)')
+            connection.execute('INSERT INTO scan_request_applications '
+                               '(requested_at, requesting_application) VALUES (?, ?)',
+                               (time.time(), application))
+    finally:
+        connection.close()
+
+
 def remove_quarantine(path):
     if path.is_dir():
         subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
@@ -316,6 +372,25 @@ def decide_opening(detection):
     return OpeningDecision(True)
 
 
+def supported_request_path(item):
+    """Reject unsupported path representations and filesystem entry types."""
+    if not isinstance(item, (str, os.PathLike)):
+        raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
+    try:
+        raw_path = os.fspath(item)
+    except TypeError:
+        raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
+    # The gate handles local paths only, not URL schemes or remote resources.
+    if not isinstance(raw_path, str) or not raw_path or '\0' in raw_path:
+        raise RuntimeError('Unsupported scan request type: expected a valid local path.')
+    if re.match(r'^[A-Za-z][A-Za-z0-9+.-]*:(?://|/)', raw_path):
+        raise RuntimeError('Unsupported scan request type: URL requests are not supported.')
+    path = Path(raw_path).expanduser().resolve(strict=True)
+    if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
+        raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
+    return path
+
+
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
@@ -325,7 +400,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     is_pdf = path.is_file() and request.file_type == 'pdf'
     destination = intended_destination(path)
     record_scan_destination(destination)
+    identity = file_identity(path)
     before = fingerprint(path)
+    if file_identity(path) != identity:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
     performed_scan = False
     # Do not serialize an already cached clean hit. For a miss, a cross-process
@@ -333,8 +411,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     if not cached_clean(cache_id):
         with active_scan_lock(cache_id):
             # Recheck after waiting: the selected file may have changed.
-            if before != fingerprint(path):
-                raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+            verify_file_integrity(path, before, identity)
             # Only a completed clean result under this exact policy is reusable.
             if not cached_clean(cache_id):
                 if is_pdf:
@@ -357,15 +434,15 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 decision = decide_opening(detection)
                 if not decision.allowed:
                     raise RuntimeError(decision.reason)
-                if before != fingerprint(path):
-                    raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+                verify_file_integrity(path, before, identity)
                 performed_scan = True
                 remember_clean(cache_id)
-    if before != fingerprint(path):
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    verify_file_integrity(path, before, identity)
     # Preserve the completed scan outcome before attempting to launch the file.
     scan_result = CleanScanResult(status='clean', from_cache=not performed_scan)
     remove_quarantine(path)
+    # Quarantine removal changes ctime, but source bytes and identities must remain intact.
+    verify_file_integrity(path, before, identity, allow_ctime_change=True)
     # The scan engine does not select an application or browser.
     try:
         launch_clean_file(path, target_app=destination if is_pdf else None)
@@ -375,11 +452,13 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
 
 
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
+    # Reject unsupported requests before allocating shared scanner queue slots.
+    path = supported_request_path(item)
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
         if source_url is None and protection_level is None:
-            return _scan_and_open(item, scanner)
-        return _scan_and_open(item, scanner, source_url=source_url,
+            return _scan_and_open(path, scanner)
+        return _scan_and_open(path, scanner, source_url=source_url,
                               protection_level=protection_level)
 
 
@@ -417,8 +496,9 @@ def main(items):
         return 1
     for index, item in valid_items:
         try:
+            record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             scan_and_open(item, scanner)
-        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        except (OSError, RuntimeError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
             print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
     return result

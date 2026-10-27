@@ -59,8 +59,13 @@ class FileLauncherTests(unittest.TestCase):
         self.assertNotIn("PDF_DEFAULT_BUNDLE_ID", source)
         self.assertIn("launch_clean_file(path, target_app=destination if is_pdf else None)", source)
         self.assertIn("destination = intended_destination(path)", source)
-        self.assertLess(source.index("remove_quarantine(path)\n    # The scan engine"),
-                        source.index("launch_clean_file(path, target_app=destination if is_pdf else None)"))
+        quarantine = source.index("    remove_quarantine(path)\n")
+        final_check = source.index(
+            "    verify_file_integrity(path, before, identity, allow_ctime_change=True)",
+            quarantine)
+        launch = source.index("    launch_clean_file(path, target_app=destination if is_pdf else None)", final_check)
+        self.assertLess(quarantine, final_check)
+        self.assertLess(final_check, launch)
 
     def test_installer_deploys_launch_module_with_scanner(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()
