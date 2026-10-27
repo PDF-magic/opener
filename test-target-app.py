@@ -67,6 +67,56 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(actual, ('com.apple.Preview',))
         quarantine.assert_called_once()
 
+    def test_vivaldi_launches_only_after_clean_scan_and_pinned_preflight(self):
+        self.config.write_text('com.vivaldi.Vivaldi\n')
+        commands = []
+        clean = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        def execute(command, **kwargs):
+            commands.append(command)
+            return clean
+        with patch.object(opener.subprocess, 'run', side_effect=execute), \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            receipt = opener.scan_and_open(str(self.document), '/scanner')
+        self.assertEqual(receipt.status, 'clean')
+        self.assertFalse(receipt.from_cache)
+        self.assertEqual(launcher.pdf_target_application(), 'com.vivaldi.Vivaldi')
+        # Scanner engine version metadata is fetched separately and must not
+        # be mistaken for the PDF capability preflight or native handoff.
+        flow = [command for command in commands if command != ['/scanner', '--version']]
+        self.assertEqual(len(flow), 3)
+        self.assertEqual(flow[0][0], '/scanner')
+        self.assertIn('--alert-encrypted=yes', flow[0])
+        self.assertEqual(flow[1], [str(launcher.PDF_TARGET_VERIFIER),
+                                   'com.vivaldi.Vivaldi'])
+        self.assertEqual(flow[2], [str(launcher.NATIVE_LAUNCHER),
+                                   '--bundle-id', 'com.vivaldi.Vivaldi',
+                                   str(self.document)])
+        quarantine.assert_called_once_with(self.document)
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            destination = db.execute(
+                'SELECT intended_destination_application FROM scan_requests').fetchone()
+        self.assertEqual(destination, ('com.vivaldi.Vivaldi',))
+
+    def test_vivaldi_unverified_destination_cannot_remove_quarantine_or_launch(self):
+        self.config.write_text('com.vivaldi.Vivaldi\n')
+        def execute(command, **kwargs):
+            if command[0] == str(launcher.PDF_TARGET_VERIFIER):
+                return subprocess.CompletedProcess(command, 1, '', 'unsupported')
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'opening was stopped'):
+                opener.scan_and_open(str(self.document), '/scanner')
+        commands = [
+            call.args[0] for call in run.call_args_list
+            if call.args[0] != ['/scanner', '--version']
+        ]
+        self.assertEqual(len(commands), 2)
+        self.assertEqual(commands[0][0], '/scanner')
+        self.assertEqual(commands[1],
+                         [str(launcher.PDF_TARGET_VERIFIER), 'com.vivaldi.Vivaldi'])
+        quarantine.assert_not_called()
+
     def test_google_chrome_launches_only_after_clean_scan_and_pdf_preflight(self):
         self.config.write_text('com.google.Chrome\n')
         run, quarantine = self.scan_clean()
