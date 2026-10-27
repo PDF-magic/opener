@@ -44,7 +44,7 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 **Launch errors:** After successful malware and integrity checks, `scan_and_open` creates an immutable `CleanScanResult(status="clean", from_cache=...)` independent of launching. A failed destination launch still reports an error and a nonzero CLI exit status, but raises `LaunchFailedError` with the completed `scan_result` attached for callers. The verified 90-day clean scan cache remains valid, subject to existing signature freshness, file integrity and expiry checks, so retrying an unsuccessful launch does not automatically rescan. Incomplete or blocked scans never produce a clean result.
 
-**PDF application support:** Before releasing quarantine or opening a verified clean PDF, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
+**PDF application support:** Before releasing quarantine or opening a verified clean PDF, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) and Opera (`com.operasoftware.Opera`) are also supported when their installed bundles and vendor signatures verify, even if they do not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
 
 **Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
 
@@ -107,6 +107,21 @@ printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/al
 Chrome must be installed and registered with macOS as a PDF-capable application.
 The launcher verifies the selected bundle and PDF registration before opening,
 and never substitutes another browser when verification fails.
+
+To open approved PDFs in **Opera** (the standard macOS release), select
+its bundle identifier without changing the system's default browser:
+
+```sh
+printf '%s\\n' 'com.operasoftware.Opera' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Opera must be installed. The launcher accepts a registered PDF-capable Opera
+bundle, or a verified, executable Opera bundle with Opera's genuine code
+signature when Launch Services does not list it as a PDF handler. An absent,
+impostor, unsigned, or unusable Opera installation fails closed; it does not
+fall back to another app. Opera GX is a separate application and is not
+covered by this Opera-specific exception. ClamAV scanning and the existing
+file-integrity and quarantine checks always precede launching.
 
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops

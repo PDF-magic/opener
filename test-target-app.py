@@ -102,6 +102,54 @@ class TargetApplicationTests(unittest.TestCase):
                              for call in run.call_args_list))
         quarantine.assert_not_called()
 
+    def test_opera_launches_only_after_clean_scan_and_pdf_preflight(self):
+        self.config.write_text('com.operasoftware.Opera\n')
+        self.assertEqual(launcher.pdf_target_application(), 'com.operasoftware.Opera')
+        run, quarantine = self.scan_clean()
+        commands = [call.args[0] for call in run.call_args_list]
+        preflight = [str(launcher.PDF_TARGET_VERIFIER), 'com.operasoftware.Opera']
+        launch = [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
+                  'com.operasoftware.Opera', str(self.document)]
+        self.assertEqual(commands[0][0], '/scanner')
+        self.assertIn('--alert-encrypted=yes', commands[0])
+        self.assertIn(preflight, commands)
+        self.assertEqual(commands[-1], launch)
+        self.assertLess(commands.index(preflight), commands.index(launch))
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            destination = db.execute(
+                'SELECT intended_destination_application FROM scan_requests'
+            ).fetchone()
+        self.assertEqual(destination, ('com.operasoftware.Opera',))
+        quarantine.assert_called_once()
+
+    def test_opera_preflight_failure_blocks_quarantine_and_launch(self):
+        self.config.write_text('com.operasoftware.Opera\n')
+
+        def execute(command, *args, **kwargs):
+            if command[0] == str(launcher.PDF_TARGET_VERIFIER):
+                return subprocess.CompletedProcess(command, 1, '', 'unsupported')
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+
+        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'opening was stopped'):
+                opener.scan_and_open(str(self.document), '/scanner')
+        self.assertTrue(any(call.args[0][0] == str(launcher.PDF_TARGET_VERIFIER)
+                            for call in run.call_args_list))
+        self.assertFalse(any(call.args[0][0] == str(launcher.NATIVE_LAUNCHER)
+                             for call in run.call_args_list))
+        quarantine.assert_not_called()
+
+    def test_opera_malware_result_never_launches(self):
+        self.config.write_text('com.operasoftware.Opera\n')
+        infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=infected) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.document), '/scanner')
+        self.assertEqual(run.call_count, 1)
+        quarantine.assert_not_called()
+
     def test_safari_launch_preserves_selected_bundle_and_scanner_gate(self):
         self.config.write_text('com.apple.Safari\n')
         self.assertEqual(launcher.pdf_target_application(), 'com.apple.Safari')

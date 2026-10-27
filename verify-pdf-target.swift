@@ -45,6 +45,36 @@ func trustedSafariPDFTarget(
     return verifySignature(application)
 }
 
+// Opera can view local PDFs even when macOS does not advertise its PDF
+// registration. Restrict this exception to the genuine Opera-signed bundle.
+func operaSignedPDFViewer(at application: URL) -> Bool {
+    var code: SecStaticCode?
+    var requirement: SecRequirement?
+    guard SecStaticCodeCreateWithPath(application as CFURL, SecCSFlags(), &code) == errSecSuccess,
+          let code = code,
+          SecRequirementCreateWithString(
+              "anchor apple generic and identifier \"com.operasoftware.Opera\" and certificate leaf[subject.OU] = \"A2P9LX4JPN\"" as CFString,
+              SecCSFlags(), &requirement
+          ) == errSecSuccess,
+          let requirement = requirement else { return false }
+    return SecStaticCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess
+}
+
+func trustedOperaPDFTarget(
+    application: URL?,
+    bundleIdentifier: String,
+    verifySignature: (URL) -> Bool = operaSignedPDFViewer
+) -> Bool {
+    guard bundleIdentifier == "com.operasoftware.Opera",
+          let target = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          target.pathExtension.lowercased() == "app",
+          let bundle = Bundle(url: target),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
+    return verifySignature(target)
+}
+
 func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
     let workspace = NSWorkspace.shared
     let application = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier)
@@ -52,6 +82,7 @@ func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
         application: application,
         registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
     ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
+        || trustedOperaPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 
 #if !PDF_TARGET_TESTING
