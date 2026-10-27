@@ -47,11 +47,12 @@ class TerminationTests(unittest.TestCase):
             'o = importlib.util.module_from_spec(spec)\n'
             'spec.loader.exec_module(o)\n'
             'o.CACHE_DB = pathlib.Path(' + repr(str(self.cache_db)) + ')\n'
+            'o.SCAN_REQUEST_DB = pathlib.Path(' + repr(str(self.root / 'audit.sqlite3')) + ')\n'
             'o.remember_clean = lambda digest: pathlib.Path(' + repr(str(self.cached)) + ').write_text("cached")\n'
             'o.remove_quarantine = lambda path: pathlib.Path(' + repr(str(self.unquarantined)) + ').write_text("removed")\n'
             'original_run = subprocess.run\n'
             'def safe_run(command, **kwargs):\n'
-            '    if command[0] == "/usr/bin/open":\n'
+            '    if command[0] == "/usr/bin/open" or str(command[0]).endswith("/launch-scanned-file"):\n'
             '        pathlib.Path(' + repr(str(self.opened)) + ').write_text("opened")\n'
             '        return subprocess.CompletedProcess(command, 0)\n'
             '    return original_run(command, **kwargs)\n'
@@ -59,7 +60,7 @@ class TerminationTests(unittest.TestCase):
             'o.scan_and_open(' + repr(str(self.document)) + ', ' + repr(str(self.scanner))
             + ', cancelled=o.watch_parent_lifetime())\n'
         )
-        env = dict(os.environ, PDF_MAGIC_PARENT_LIFETIME='1', TEST_SCAN_SLEEP=sleep)
+        env = dict(os.environ, PDF_MAGIC_PARENT_LIFETIME='1', PDF_MAGIC_NATIVE_CANCEL='1', TEST_SCAN_SLEEP=sleep)
         return subprocess.Popen(
             [sys.executable, '-c', harness], stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env)
