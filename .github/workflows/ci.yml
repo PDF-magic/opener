@@ -94,7 +94,7 @@ jobs:
         run: python3 test-native-file-availability.py
       - name: Compile and test system-default-browser resolution
         run: |
-          xcrun swiftc -warnings-as-errors resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
+          xcrun swiftc -parse-as-library -warnings-as-errors resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
           xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift test-default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
