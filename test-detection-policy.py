@@ -30,8 +30,6 @@ class DetectionDecisionTests(unittest.TestCase):
                              Path(self.temp.name) / 'clean.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
-        # The version command is metadata; scan-policy tests isolate it so
-        # command ordering assertions cover only the malware gate and launcher.
         version = patch.object(opener, 'scan_engine_version', return_value=None)
         version.start()
         self.addCleanup(version.stop)

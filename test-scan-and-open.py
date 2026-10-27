@@ -515,8 +515,8 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine'):
             first = opener.scan_and_open(str(self.file), '/scanner')
             cached = opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(first, opener.ScanResult(scanner_version='1.4.2', from_cache=False))
-        self.assertEqual(cached, opener.ScanResult(scanner_version='1.4.2', from_cache=True))
+        self.assertEqual(first, opener.CleanScanResult(status='clean', scanner_version='1.4.2', from_cache=False))
+        self.assertEqual(cached, opener.CleanScanResult(status='clean', scanner_version='1.4.2', from_cache=True))
         version.assert_called_once_with(
             ['/scanner', '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
         self.assertEqual(sum(call.args[0][0] == '/scanner' for call in run.call_args_list), 1)
@@ -549,10 +549,10 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             connection.execute('INSERT INTO clean_scans VALUES (?, ?)',
                                (digest.hex(), time.time()))
         with patch.object(opener.subprocess, 'run') as run, \
-                patch.object(opener.subprocess, 'check_output') as version, \
+                patch.object(opener, 'scan_engine_version') as version, \
                 patch.object(opener, 'remove_quarantine'):
             result = opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(result, opener.ScanResult(scanner_version=None, from_cache=True))
+        self.assertEqual(result, opener.CleanScanResult(status='clean', scanner_version=None, from_cache=True))
         version.assert_not_called()
         self.assertEqual(run.call_count, 1)
         self.assertEqual(run.call_args.args[0][0], '/usr/bin/open')
@@ -576,7 +576,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
     def test_blocked_scan_does_not_produce_version_metadata(self):
         detection = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
         with patch.object(opener.subprocess, 'run', return_value=detection), \
-                patch.object(opener.subprocess, 'check_output') as version, \
+                patch.object(opener, 'scan_engine_version') as version, \
                 patch.object(opener, 'remove_quarantine') as quarantine:
             with self.assertRaisesRegex(RuntimeError, 'Malware'):
                 opener.scan_and_open(str(self.file), '/scanner')
