@@ -61,7 +61,8 @@ if legacy.exists() or legacy.is_symlink():
 elif destination.exists() or destination.is_symlink():
     check_bundle(destination)
 MIGRATE
-mkdir -p "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
 /usr/bin/xcrun swiftc -O "$script_dir/brave-pdf-opener.swift" -o "$app/Contents/MacOS/PDFOpener"
 python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
 import plistlib
