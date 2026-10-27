@@ -111,7 +111,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                 let process = Process()
                 let errors = Pipe()
                 process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = [script.path, path]
+                process.arguments = [script.path, "--from-pdf-magic-opener", path]
                 process.standardError = errors
                 process.standardOutput = FileHandle.nullDevice
                 var message: String?

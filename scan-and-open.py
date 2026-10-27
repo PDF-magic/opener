@@ -17,6 +17,8 @@ MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
+REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
+REQUESTING_APPLICATION_ENV = 'PDF_MAGIC_REQUESTING_APPLICATION'
 
 
 def scanner_path():
@@ -113,6 +115,28 @@ def remember_clean(digest):
         # Failure to save the cache does not invalidate a successful scan.
         pass
 
+def record_scan_request(application):
+    """Record the requesting scan-gate entry point without document metadata."""
+    if not application or len(application) > 128 or any(char in application for char in '\r\n\0'):
+        raise ValueError('Invalid requesting application name.')
+    REQUEST_DB.parent.mkdir(parents=True, exist_ok=True)
+    if REQUEST_DB.is_symlink():
+        raise RuntimeError('The scan-request database must not be a symbolic link.')
+    REQUEST_DB.touch(mode=0o600, exist_ok=True)
+    REQUEST_DB.chmod(0o600)
+    connection = sqlite3.connect(str(REQUEST_DB), timeout=5)
+    try:
+        with connection:
+            connection.execute('CREATE TABLE IF NOT EXISTS scan_requests '
+                               '(id INTEGER PRIMARY KEY, requested_at REAL NOT NULL, '
+                               'requesting_application TEXT NOT NULL)')
+            connection.execute('INSERT INTO scan_requests '
+                               '(requested_at, requesting_application) VALUES (?, ?)',
+                               (time.time(), application))
+    finally:
+        connection.close()
+
+
 def remove_quarantine(path):
     if path.is_dir():
         subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
@@ -177,8 +201,9 @@ def main(items):
     result = 0
     for item in items:
         try:
+            record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             scan_and_open(item, scanner)
-        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        except (OSError, RuntimeError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
             print(f'{Path(item).name}: {error}', file=sys.stderr)
             result = 1
     return result

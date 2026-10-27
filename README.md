@@ -24,6 +24,8 @@ Completed clean scans are cached locally for **90 days from the last successful 
 
 **Security trade-off:** newly published ClamAV signatures will not rescan unchanged content that is already cached clean until the 90-day period expires. Delete `clean-scan-cache.sqlite3` while the opener is not running to force a new scan of every file. Caching does not make a clean verdict a guarantee of safety.
 
+Each attempted scan records the **requesting scan-gate application** (PDF Magic Opener or the Allow and Open Finder Quick Action) and timestamp in `~/Library/Application Support/Studio/allow-and-open/scan-requests.sqlite3`. Direct calls to `scan-and-open.py` default to **Command Line**; other integrations can set `PDF_MAGIC_REQUESTING_APPLICATION`. This identifies the scan entry point, **not** the external app that originally opened a document through macOS Launch Services. The database uses mode 0600 and holds no document paths, types, or contents. It is independent of the clean-scan cache, and logging failures stop the requested opening. Delete the request database while the opener is stopped to clear this local history.
+
 The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. To update manually:
 
 ```sh

@@ -22,6 +22,8 @@ jobs:
         run: python3 test-app-name.py
       - name: Run scan-gate tests
         run: python3 test-scan-and-open.py
+      - name: Verify scan-request application attribution
+        run: python3 test-scan-request.py
 
   macos-build:
     runs-on: macos-latest
