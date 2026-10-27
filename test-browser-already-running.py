@@ -126,8 +126,13 @@ precondition(launch(["--bundle-id", selected, pdfURL.path],
                                check=True, timeout=45)
                 self.assertTrue(self.wait_for(opened.exists, 15),
                                 "The already-running app did not receive the PDF")
-                self.assertEqual(opened.read_text().splitlines(), [str(pdf)],
-                                 "Only the selected PDF should be delivered once")
+                delivered = opened.read_text().splitlines()
+                self.assertEqual(len(delivered), 1,
+                                 "The running browser must receive exactly one PDF")
+                # macOS resolves /var to /private/var when passing a file URL
+                # through Launch Services. Compare file identities, not aliases.
+                self.assertEqual(Path(delivered[0]).resolve(), pdf.resolve(),
+                                 "The existing browser must receive the selected PDF")
                 self.assertEqual(int(running.read_text()), original_pid,
                                  "The launch must reuse the original browser process")
                 os.kill(original_pid, 0)
