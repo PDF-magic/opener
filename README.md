@@ -106,6 +106,20 @@ To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
 printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
+To follow your **macOS default web browser** automatically (instead of a fixed
+bundle identifier), opt in by writing `system-default-browser` to the same file:
+
+```sh
+printf '%s\n' 'system-default-browser' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Reinstall the opener first to deploy the browser resolver. It queries macOS'
+default handler for HTTPS URLs without opening a URL or changing the browser
+preference. Each PDF request pins the resolved application's bundle ID before
+scanning. The existing PDF-capability and installed-app checks still apply;
+an unavailable, unsupported, or self-referential default browser blocks opening
+without falling back to the default PDF handler (which may be PDF Magic Opener).
+
 Chrome must be installed and registered with macOS as a PDF-capable application.
 The launcher verifies the selected bundle and PDF registration before opening,
 and never substitutes another browser when verification fails.
@@ -136,12 +150,37 @@ succeed. A missing or unregistered Chromium installation blocks opening rather
 than falling back to Chrome, Brave, or another browser. Existing user selections
 are not overwritten.
 
+To open verified PDFs in **Vivaldi**, select its application bundle identifier:
+
+```sh
+printf '%s\n' 'com.vivaldi.Vivaldi' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Vivaldi has a built-in PDF viewer but may not register with Launch Services as
+a PDF handler. The opener accepts Vivaldi only when the selected installed app
+has the exact Vivaldi bundle identifier and an executable; missing or mismatched
+apps fail closed. Every PDF still requires the existing malware scan, integrity
+checks, and quarantine policy before the pinned Vivaldi destination can launch.
+This setting does not change the system's default browser or PDF association.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
 only PDF files; other files and application bundles keep their macOS default
 behavior. Scanning, signature freshness, content verification, quarantine,
 and clean-scan caching still gate every PDF before launch.
+
+To open scanned PDFs in **Microsoft Edge (stable)**, select its macOS bundle identifier:
+
+```sh
+printf '%s\\n' 'com.microsoft.edgemac' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Edge must be installed and registered with macOS as a PDF-capable application.
+The existing launcher verifies its bundle identity, executable, and PDF
+registration before releasing quarantine or opening a clean file. If Edge is
+missing or unsupported, the request stops without trying another browser;
+non-PDF associations and the existing scanning safeguards are unchanged.
 
 ## File lifecycle contract
 

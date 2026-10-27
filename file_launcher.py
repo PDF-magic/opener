@@ -13,6 +13,8 @@ import sys
 
 PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
 PDF_OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
+PDF_SYSTEM_DEFAULT_BROWSER = "system-default-browser"
+DEFAULT_BROWSER_RESOLVER = Path(__file__).with_name("resolve-default-browser")
 PDF_TARGET_VERIFIER = Path(__file__).with_name("verify-pdf-target")
 
 
@@ -62,8 +64,29 @@ def verify_local_file_available(path):
 TARGET_APP_CONFIG = Path.home() / "Library/Application Support/Studio/allow-and-open/target-app.txt"
 
 
+def _valid_bundle_identifier(selected):
+    return (bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}", selected))
+            and "." in selected and ".." not in selected
+            and selected != PDF_OPENER_BUNDLE_ID)
+
+
+def _resolve_default_browser():
+    """Pin the current macOS HTTPS handler to one verified destination."""
+    try:
+        completed = subprocess.run(
+            [str(DEFAULT_BROWSER_RESOLVER)],
+            capture_output=True, timeout=10, check=True,
+        )
+        selected = completed.stdout.decode("ascii").strip()
+    except (OSError, subprocess.SubprocessError, UnicodeDecodeError, AttributeError) as error:
+        raise RuntimeError("The system default browser could not be resolved; opening was stopped.") from error
+    if not _valid_bundle_identifier(selected):
+        raise RuntimeError("The system default browser is invalid; opening was stopped.")
+    return selected
+
+
 def pdf_target_application():
-    """Read the configured PDF bundle ID, falling back only when absent."""
+    """Read an explicit target or resolve the opt-in default browser once."""
     try:
         descriptor = os.open(TARGET_APP_CONFIG, os.O_RDONLY | os.O_NOFOLLOW)
     except FileNotFoundError:
@@ -81,9 +104,9 @@ def pdf_target_application():
         selected = value.decode("ascii").strip()
     except UnicodeDecodeError:
         selected = ""
-    if (len(value) > 256 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}", selected)
-            or "." not in selected or ".." in selected
-            or selected == PDF_OPENER_BUNDLE_ID):
+    if selected == PDF_SYSTEM_DEFAULT_BROWSER and len(value) <= 256:
+        return _resolve_default_browser()
+    if len(value) > 256 or not _valid_bundle_identifier(selected):
         raise RuntimeError("Invalid PDF target application bundle identifier; opening was stopped.")
     return selected
 
