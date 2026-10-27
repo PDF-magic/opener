@@ -29,6 +29,8 @@ else:
         stream.write('com.brave.Browser\n')
 TARGET_APP
 cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/file_launcher.py" "$script_dir/scan_results.py" "$script_dir/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$install_dir/"
+# Deploy the read-only status display beside its Launch Services lookup.
+cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
 /usr/bin/xcrun swiftc -O "$script_dir/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/launch-scanned-file"
@@ -36,6 +38,9 @@ chmod 755 "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/resolve-default-browser"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
 chmod 755 "$install_dir/identify-pdf-handler"
+# Read-only detector reuses the same Launch Services lookup; it never resets associations.
+/usr/bin/xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING -O "$script_dir/identify-pdf-handler.swift" "$script_dir/detect-pdf-handler-change.swift" -o "$install_dir/detect-pdf-handler-change"
+chmod 755 "$install_dir/detect-pdf-handler-change"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
 chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
@@ -86,6 +91,7 @@ MIGRATE
 mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
 cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
 /usr/bin/xcrun swiftc -O "$script_dir/brave-pdf-opener.swift" -o "$app/Contents/MacOS/PDFOpener"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
 python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
 import plistlib
 import sys
@@ -122,6 +128,12 @@ with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.pl
     plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
+# Offer an opt-in Finder action without overwriting user-managed scripts.
+action="$HOME/Applications/Make PDF Magic Opener Default.command"
+if [ ! -e "$action" ] && [ ! -L "$action" ]; then
+    cp "$script_dir/make-pdf-magic-default.command" "$action"
+    chmod 755 "$action"
+fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
 agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
@@ -154,4 +166,6 @@ PY
 # it. An unknown/unsafe backup stops installation rather than losing the prior default.
 "$install_dir/pdf-handler-history" record "$install_dir/previous-pdf-handler.txt"
 /usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
+# Display the effective association after macOS confirms the change.
+python3 "$install_dir/pdf-handler-status.py"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."

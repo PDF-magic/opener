@@ -17,11 +17,15 @@ jobs:
         with:
           python-version: "3.11"
       - name: Check shell syntax
-        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh
+        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify opt-in PDF default-handler action
+        run: python3 test-pdf-default-user-action.py -v
       - name: Verify application naming and migration
         run: python3 test-app-name.py
       - name: Verify generic PDF default-handler utility naming
         run: python3 test-pdf-default-handler-name.py -v
+      - name: Verify macOS PDF default-handler status reporting
+        run: python3 test-pdf-handler-status.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
       - name: Verify cancellation and scanner process-group cleanup
@@ -111,8 +115,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile native PDF opener
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
+      - name: Verify user-triggered PDF Magic default selection without altering CI defaults
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING make-pdf-magic-default.swift test-make-pdf-magic-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
+          "$RUNNER_TEMP/TestMakePDFMagicDefault"
+          if "$RUNNER_TEMP/MakePDFMagicDefault" unexpected-argument; then exit 1; fi
       - name: Compile PDF handler utility
         run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Verify that PDF default-handler updates take effect
+        run: python3 test-pdf-default-handler.py -v
       - name: Verify previous PDF-handler backup and safe restoration
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
@@ -125,6 +137,12 @@ jobs:
           xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
           "$RUNNER_TEMP/TestPDFHandler"
           if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
+      - name: Detect when another application becomes the PDF default
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift test-detect-pdf-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
+          "$RUNNER_TEMP/TestDetectPDFHandler"
+          if "$RUNNER_TEMP/DetectPDFHandlerChange" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
