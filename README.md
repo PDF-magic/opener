@@ -45,6 +45,10 @@ python3 test-scan-and-open.py
 python3 test-brave-pdf-opener.py
 ```
 
+## Scan-request origins
+
+Each scan request records three origin flags (Finder, browser, or other desktop application) in a separate local `scan-request-origins.jsonl` file in the same application-support directory. Finder Quick Actions label their requests explicitly; native PDF opens use the macOS open-event sender when available. Unidentified senders leave all three flags false rather than guessing. The file contains timestamps and origin flags only—never document names, paths, contents, or scan verdicts. It is separate from the clean-verdict cache and can be deleted while the opener is not running. Existing installations must rerun the installer to add Finder attribution. Origin logging is informational and cannot change whether the scanner blocks a file.
+
 ## Tooling
 
 | File | Purpose |
@@ -53,6 +57,7 @@ python3 test-brave-pdf-opener.py
 | `brave-pdf-opener.swift` | Native PDF open handler with scan progress and duplicate-open prevention |
 | `allow-and-open.sh` | Shared shell entry point for the scan gate |
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |
+| `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
 | `set-brave-pdf-default.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |

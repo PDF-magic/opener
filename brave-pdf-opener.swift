@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 // Render bundled reading artwork locally, with orbiting magic sparkles.
 final class TwilightReadingView: NSView {
@@ -48,6 +49,41 @@ final class TwilightReadingView: NSView {
             line([NSPoint(x: x, y: y - size), NSPoint(x: x, y: y + size)], pink, 1.5)
         }
     }
+}
+
+
+// Preserve the actual open-event sender when macOS supplies its process ID.
+// Do not infer an origin from the active window or the document's extension.
+func requestSource(forBundleIdentifier identifier: String?) -> String {
+    guard let identifier = identifier?.lowercased() else { return "unknown" }
+    if identifier == "com.apple.finder" { return "finder" }
+    let browsers: Set<String> = [
+        "com.apple.safari", "com.apple.safarialternate", "com.brave.browser",
+        "com.google.chrome", "com.google.chrome.canary",
+        "org.mozilla.firefox", "org.mozilla.firefoxdeveloperedition",
+        "com.microsoft.edgemac", "company.thebrowser.browser",
+        "com.vivaldi.vivaldi", "com.operasoftware.opera"
+    ]
+    if browsers.contains(identifier) { return "browser" }
+    if ["com.apple.dock", "com.apple.launchservicesd", "com.apple.loginwindow"].contains(identifier) {
+        return "unknown"
+    }
+    return "desktop-application"
+}
+
+func currentRequestSource() -> String {
+    guard let event = NSAppleEventManager.shared().currentAppleEvent else { return "unknown" }
+    for keyword in [AEKeyword(keySenderPIDAttr), AEKeyword(keyAddressAttr)] {
+        guard let bytes = event.attributeDescriptor(forKeyword: keyword)?
+                .coerce(toDescriptorType: typeKernelProcessID)?.data,
+              bytes.count == MemoryLayout<pid_t>.size else { continue }
+        let pid = bytes.withUnsafeBytes { $0.loadUnaligned(as: pid_t.self) }
+        if pid > 0 {
+            return requestSource(forBundleIdentifier:
+                NSRunningApplication(processIdentifier: pid)?.bundleIdentifier)
+        }
+    }
+    return "unknown"
 }
 
 final class PDFOpener: NSObject, NSApplicationDelegate {
@@ -100,6 +136,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        let source = currentRequestSource()
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
         for url in urls {
@@ -112,6 +149,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                 let errors = Pipe()
                 process.executableURL = URL(fileURLWithPath: "/bin/bash")
                 process.arguments = [script.path, path]
+                var environment = ProcessInfo.processInfo.environment
+                environment["PDF_MAGIC_REQUEST_ORIGIN"] = source
+                process.environment = environment
                 process.standardError = errors
                 process.standardOutput = FileHandle.nullDevice
                 var message: String?
