@@ -5,7 +5,6 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import unittest
-from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location(
@@ -18,9 +17,11 @@ class PDFDefaultRestorationTests(unittest.TestCase):
     identifier = "/installed/identify-pdf-handler"
     setter = "/source/set-pdf-default-handler.swift"
     app = "/Users/test/Applications/PDF Magic Opener.app"
+    history = "/installed/pdf-handler-history"
+    backup = "/private/previous-pdf-handler.txt"
 
     def execute(self, current="com.apple.Preview", *, interactive=True,
-                response="n", lookup_error=None):
+                response="n", lookup_error=None, history_error=None):
         calls = []
         messages = []
 
@@ -30,10 +31,12 @@ class PDFDefaultRestorationTests(unittest.TestCase):
                 if lookup_error is not None:
                     raise lookup_error
                 return subprocess.CompletedProcess(argv, 0, current + "\n", "")
+            if len(calls) == 2 and history_error is not None:
+                raise history_error
             return subprocess.CompletedProcess(argv, 0, "", "")
 
         accepted = offer.offer_restore(
-            self.identifier, self.setter, self.app, run=run,
+            self.identifier, self.setter, self.app, self.history, self.backup, run=run,
             interactive=interactive, ask=lambda question: response, say=messages.append)
         return accepted, calls, messages
 
@@ -51,8 +54,16 @@ class PDFDefaultRestorationTests(unittest.TestCase):
                 accepted, calls, _ = self.execute(response=response)
                 self.assertTrue(accepted)
                 self.assertEqual(calls[0][0], [self.identifier])
-                self.assertEqual(calls[1][0], ["/usr/bin/swift", self.setter, self.app])
-                self.assertEqual(calls[1][1], {"check": True, "timeout": 120})
+                self.assertEqual(calls[1][0],
+                                 [self.history, "record", self.backup])
+                self.assertEqual(calls[1][1], {"check": True, "timeout": 10})
+                self.assertEqual(calls[2][0], ["/usr/bin/swift", self.setter, self.app])
+                self.assertEqual(calls[2][1], {"check": True, "timeout": 120})
+
+    def test_failed_previous_handler_backup_blocks_restoration(self):
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.execute(response="yes", history_error=subprocess.CalledProcessError(
+                1, self.history))
 
     def test_already_default_never_prompts_or_sets(self):
         accepted, calls, messages = self.execute(current=offer.OPENER_ID, response="yes")
@@ -89,6 +100,7 @@ class PDFDefaultRestorationTests(unittest.TestCase):
         self.assertIn('python3 "$script_dir/offer-restore-pdf-handler.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
         self.assertIn('"$script_dir/set-pdf-default-handler.swift" "$app"', installer)
+        self.assertIn('"$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"', installer)
         self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)
         self.assertLess(installer.index('lsregister -f "$app"'),
                         installer.index('python3 "$script_dir/offer-restore-pdf-handler.py"'))

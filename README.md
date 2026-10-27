@@ -16,7 +16,9 @@ Install local malware scanning for the existing **Allow and Open** Finder action
 bash install-allow-and-open.sh
 ```
 
-Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
+Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default).
+For the Finder double-click verification procedure and its automated Launch Services
+regression test, see [Finder double-click testing](docs/finder-double-click-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
 The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
@@ -94,20 +96,48 @@ python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
-## Restore PDF Magic Opener as the default PDF handler
+## Restore the previous macOS PDF handler
 
-When the installer detects that another application is the current default for
-PDF files, it **offers to restore PDF Magic Opener**. Answer `y` or `yes`
-to approve that change; any other response keeps the existing association.
-If the installer is running non-interactively, it leaves the association
-untouched and explains how to run it interactively. An unavailable or invalid
-Launch Services handler lookup never triggers an automatic change. If PDF
-Magic Opener is already the default, no prompt or setter call is necessary.
+The installer saves the **original system PDF association** (if one is known)
+in a private, single-use-to-create file at
+`~/Library/Application Support/Studio/allow-and-open/previous-pdf-handler.txt`
+**before** selecting PDF Magic Opener as the macOS default. Reinstalling never
+overwrites a valid saved choice with PDF Magic Opener or a later preference.
+If the existing default cannot be identified, installation stops before
+changing the default; if PDF Magic Opener was already the default on the first
+recording attempt, no earlier handler can be reconstructed.
 
-Restoration affects only macOS' default PDF association; the separate app
-chosen to receive clean PDFs in `target-app.txt` remains unchanged. Re-running
-the installer gives the same restoration offer without bypassing any scanning,
-quarantine, or integrity checks.
+To restore the saved application later, explicitly run:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-history" restore \
+  "$HOME/Library/Application Support/Studio/allow-and-open/previous-pdf-handler.txt"
+```
+
+Restoration requires PDF Magic Opener to **still be the current PDF default**,
+the original application to still be installed and executable, and a valid,
+private saved identifier. It refuses to replace a different handler you chose
+in the meantime, and checks whether macOS registered the restored handler.
+The saved preference remains on disk so a retry is possible after a failure.
+**After restoration, opening PDFs by double-clicking will no longer
+automatically pass through PDF Magic Opener's malware scan gate.** The separate
+post-scan browser preference is unchanged.
+
+## Offer to restore PDF Magic Opener as the default PDF handler
+
+An interactive installation offers to restore PDF Magic Opener when another
+application is registered as the macOS PDF default. Answer `y` or `yes`
+to approve; declining or running noninteractively preserves the current
+association. Missing, malformed, or unreadable default-handler information
+never triggers an automatic change.
+
+Only after consent does the installer securely preserve the previous PDF
+handler once, then invoke the verified PDF association setter. Unsafe
+previous-handler storage stops the change. No prompt is needed when PDF Magic
+Opener is already the default. Re-run the installer if another app takes over.
+
+The selected **post-scan browser** (`target-app.txt`), other file associations,
+malware scanning, integrity verification, and quarantine controls are unchanged.
 
 ## Inspect the registered macOS PDF handler
 

@@ -9,7 +9,7 @@ OPENER_ID = "local.studio.brave-pdf-opener"
 VALID_BUNDLE = re.compile(r"[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)+")
 
 
-def offer_restore(identifier, setter, app, *, run=subprocess.run,
+def offer_restore(identifier, setter, app, history, backup, *, run=subprocess.run,
                   interactive=None, ask=input, say=print):
     """Inspect the PDF handler and require affirmative user consent to replace it."""
     try:
@@ -44,15 +44,17 @@ def offer_restore(identifier, setter, app, *, run=subprocess.run,
         say("Keeping the existing default PDF application.")
         return False
 
-    # Use the existing setter only after explicit affirmative consent, and
-    # keep the separate post-scan PDF destination preference untouched.
+    # Preserve the user's prior PDF handler only after they accept restoration.
+    # A failed or unsafe history write must block the association change.
+    run([history, "record", backup], check=True, timeout=10)
+    # Keep the separate post-scan PDF destination preference untouched.
     run(["/usr/bin/swift", setter, app], check=True, timeout=120)
     return True
 
 
 def main():
-    if len(sys.argv) != 4:
-        raise SystemExit("Expected installed handler reader, setter, and opener app.")
+    if len(sys.argv) != 6:
+        raise SystemExit("Expected handler reader, setter, opener app, history tool, and backup path.")
     offer_restore(*sys.argv[1:])
 
 

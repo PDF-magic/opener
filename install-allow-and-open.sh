@@ -41,6 +41,8 @@ chmod 755 "$install_dir/identify-pdf-handler"
 # Read-only detector reuses the same Launch Services lookup; it never resets associations.
 /usr/bin/xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING -O "$script_dir/identify-pdf-handler.swift" "$script_dir/detect-pdf-handler-change.swift" -o "$install_dir/detect-pdf-handler-change"
 chmod 755 "$install_dir/detect-pdf-handler-change"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
+chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 python3 - "$install_dir" <<'CONFIG'
 import sys
@@ -160,8 +162,11 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
+# Preserve the previous PDF handler only after the user accepts restoration.
+# The verified history record must succeed before any default association change.
 python3 "$script_dir/offer-restore-pdf-handler.py" \
-    "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app"
-# Display the effective association after the optional restoration offer.
+    "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app" \
+    "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
+# Display the effective association whether restoration was accepted or not.
 python3 "$install_dir/pdf-handler-status.py"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
