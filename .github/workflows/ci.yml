@@ -22,6 +22,8 @@ jobs:
         run: python3 test-app-name.py
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
+      - name: Verify bundle-identifier target resolution
+        run: python3 test-target-application.py
       - name: Verify browser-independent scan engine and launch defaults
         run: python3 test-file-launcher.py
       - name: Verify file lifecycle state transitions
@@ -40,6 +42,10 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Compile native target-app resolver
+        run: xcrun swiftc target-app-resolver.swift -o "$RUNNER_TEMP/ResolveTargetApp"
+      - name: Verify bundle existence and executable on macOS
+        run: python3 test-target-application.py
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
