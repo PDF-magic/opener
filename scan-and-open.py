@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from dataclasses import dataclass
 import fcntl
 import hashlib
 from file_launcher import launch_clean_file
