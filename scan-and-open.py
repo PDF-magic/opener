@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 from file_launcher import intended_destination, launch_clean_file
 import os
+import re
 from pathlib import Path
 from typing import Optional
 import sqlite3
@@ -371,6 +372,25 @@ def decide_opening(detection):
     return OpeningDecision(True)
 
 
+def supported_request_path(item):
+    """Reject unsupported path representations and filesystem entry types."""
+    if not isinstance(item, (str, os.PathLike)):
+        raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
+    try:
+        raw_path = os.fspath(item)
+    except TypeError:
+        raise RuntimeError('Unsupported scan request type: expected a local filesystem path.')
+    # The gate handles local paths only, not URL schemes or remote resources.
+    if not isinstance(raw_path, str) or not raw_path or '\0' in raw_path:
+        raise RuntimeError('Unsupported scan request type: expected a valid local path.')
+    if re.match(r'^[A-Za-z][A-Za-z0-9+.-]*:(?://|/)', raw_path):
+        raise RuntimeError('Unsupported scan request type: URL requests are not supported.')
+    path = Path(raw_path).expanduser().resolve(strict=True)
+    if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
+        raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
+    return path
+
+
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
@@ -431,11 +451,13 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
 
 
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
+    # Reject unsupported requests before allocating shared scanner queue slots.
+    path = supported_request_path(item)
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
         if source_url is None and protection_level is None:
-            return _scan_and_open(item, scanner)
-        return _scan_and_open(item, scanner, source_url=source_url,
+            return _scan_and_open(path, scanner)
+        return _scan_and_open(path, scanner, source_url=source_url,
                               protection_level=protection_level)
 
 
