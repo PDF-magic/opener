@@ -24,6 +24,8 @@ CACHE_TTL = 90 * 24 * 60 * 60
 class ScanRequest:
     # A filename extension is a declared type, not proof of the file's contents.
     file_type: str
+    # Request metadata only; cancellation execution is a separate concern.
+    cancellation_requested: bool = False
 
     @classmethod
     def from_path(cls, path):
