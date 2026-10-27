@@ -142,6 +142,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [script.path, path]
+        var environment = ProcessInfo.processInfo.environment
+        environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"
+        process.environment = environment
         process.standardError = errors
         process.standardOutput = FileHandle.nullDevice
         do {
