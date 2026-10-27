@@ -784,7 +784,9 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             result = opener.scan_and_open(str(self.file), '/scanner')
         self.assertIsNone(result.signature_database_version)
         self.assertEqual(run.call_count, 1)
-        self.assertEqual(run.call_args.args[0][0], '/usr/bin/open')
+        # The cache must bypass ClamAV, independent of the configured launch helper.
+        self.assertNotEqual(run.call_args.args[0][0], '/scanner')
+        self.assertEqual(run.call_args.args[0][-1], str(self.file))
         with sqlite3.connect(opener.CACHE_DB) as connection:
             columns = [row[1] for row in connection.execute('PRAGMA table_info(clean_scans)')]
         self.assertIn('signature_database_version', columns)
