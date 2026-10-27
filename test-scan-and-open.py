@@ -13,6 +13,8 @@ import time
 import unittest
 from unittest.mock import patch
 
+from file_launcher import NATIVE_LAUNCHER
+
 sys.dont_write_bytecode = True
 
 spec = importlib.util.spec_from_file_location('scan_and_open', Path(__file__).with_name('scan-and-open.py'))
@@ -29,6 +31,10 @@ class ScanGateTests(unittest.TestCase):
         cache = patch.object(opener, 'CACHE_DB', Path(self.temp.name) / 'clean-cache.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
+        version = patch.object(opener.subprocess, 'check_output',
+                               side_effect=FileNotFoundError)
+        version.start()
+        self.addCleanup(version.stop)
         audit = patch.object(opener, 'SCAN_REQUEST_DB',
                              Path(self.temp.name) / 'scan-requests.sqlite3')
         audit.start()
@@ -105,21 +111,21 @@ class ScanGateTests(unittest.TestCase):
         outcomes, calls = self.run_parallel_scans()
         self.assertEqual(outcomes, {'first': 'opened', 'waiter': 'opened'})
         self.assertEqual(calls.count('/scanner'), 1)
-        self.assertEqual(calls.count('/usr/bin/open'), 2)
+        self.assertEqual(calls.count(str(NATIVE_LAUNCHER)), 2)
 
     def test_waiter_detects_file_changed_while_another_scan_runs(self):
         outcomes, calls = self.run_parallel_scans(change_waiter=True)
         self.assertEqual(outcomes.get('first'), 'opened')
         self.assertIn('changed', outcomes.get('waiter', ''))
         self.assertEqual(calls.count('/scanner'), 1)
-        self.assertEqual(calls.count('/usr/bin/open'), 1)
+        self.assertEqual(calls.count(str(NATIVE_LAUNCHER)), 1)
 
     def test_infected_active_scan_does_not_supply_reusable_verdict(self):
         outcomes, calls = self.run_parallel_scans(fail_first=True)
         self.assertIn('Malware', outcomes.get('first', ''))
         self.assertEqual(outcomes.get('waiter'), 'opened')
         self.assertEqual(calls.count('/scanner'), 2)
-        self.assertEqual(calls.count('/usr/bin/open'), 1)
+        self.assertEqual(calls.count(str(NATIVE_LAUNCHER)), 1)
 
     def test_failed_lock_acquisition_fails_closed(self):
         with patch.object(opener, 'active_scan_lock', side_effect=OSError('lock denied')), \
@@ -294,7 +300,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             RuntimeError('The file changed while checking it; opening was stopped. Try again.'),
             RuntimeError(f'Secret value from {self.file}'),
             OSError(f'Permission denied: {self.file}'),
-            subprocess.CalledProcessError(1, ['/usr/bin/open', str(self.file)]),
+            subprocess.CalledProcessError(1, [str(NATIVE_LAUNCHER), str(self.file)]),
         )
         output = io.StringIO()
         with patch.object(opener, 'scanner_path', return_value='/scanner'), \
@@ -475,7 +481,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine', side_effect=lambda *args: calls.append('remove quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(calls[1], 'remove quarantine')
-        self.assertEqual(calls[2], ['/usr/bin/open', '-b', 'com.brave.Browser', str(self.file)])
+        self.assertEqual(calls[2], [str(NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser', str(self.file)])
         self.assertIn('--alert-exceeds-max=yes', calls[0])
         self.assertIn('--alert-encrypted=yes', calls[0])
 
@@ -496,7 +502,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(seen, [('com.brave.Browser',)])
         self.assertEqual(run.call_args.args[0],
-                         ['/usr/bin/open', '-b', 'com.brave.Browser', str(self.file)])
+                         [str(NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser', str(self.file)])
 
     def test_records_default_handler_and_selected_app_bundle(self):
         text_file = self.file.with_suffix('.txt')
@@ -510,7 +516,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             opener.scan_and_open(str(app), '/scanner')
         self.assertEqual(self.recorded_destinations(),
                          [('system-default',), ('Example.app',)])
-        self.assertEqual(run.call_args.args[0], ['/usr/bin/open', str(app)])
+        self.assertEqual(run.call_args.args[0], [str(NATIVE_LAUNCHER), str(app)])
 
     def test_records_destination_even_when_scan_detects_malware(self):
         detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
@@ -562,6 +568,83 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(target.read_bytes(), b'keep me unchanged')
         run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_scan_results_record_actual_scanner_version_and_cache_it(self):
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=scan) as run, \
+                patch.object(opener.subprocess, 'check_output',
+                             return_value='ClamAV 1.4.2/27800/Tue Oct 27') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(self.file), '/scanner')
+            cached = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(first, opener.CleanScanResult(status='clean', scanner_version='1.4.2', from_cache=False))
+        self.assertEqual(cached, opener.CleanScanResult(status='clean', scanner_version='1.4.2', from_cache=True))
+        version.assert_called_once_with(
+            ['/scanner', '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
+        self.assertEqual(sum(call.args[0][0] == '/scanner' for call in run.call_args_list), 1)
+        with sqlite3.connect(opener.CACHE_DB) as connection:
+            row = connection.execute(
+                'SELECT scanner_version FROM clean_scans').fetchone()
+        self.assertEqual(row, ('1.4.2',))
+
+    def test_non_pdf_cache_preserves_original_engine_version(self):
+        document = self.file.with_suffix('.txt')
+        document.write_bytes(b'non-pdf data')
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=scan), \
+                patch.object(opener.subprocess, 'check_output',
+                             return_value='ClamAV 1.5.0/27800') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(document), '/scanner')
+            second = opener.scan_and_open(str(document), '/scanner')
+        self.assertEqual(first.scanner_version, '1.5.0')
+        self.assertFalse(first.from_cache)
+        self.assertEqual(second.scanner_version, '1.5.0')
+        self.assertTrue(second.from_cache)
+        version.assert_called_once()
+
+    def test_legacy_cache_keeps_clean_verdict_without_invented_version(self):
+        digest = opener.cache_key(opener.fingerprint(self.file), True)
+        with sqlite3.connect(opener.CACHE_DB) as connection:
+            connection.execute('CREATE TABLE clean_scans '
+                               '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL)')
+            connection.execute('INSERT INTO clean_scans VALUES (?, ?)',
+                               (digest.hex(), time.time()))
+        with patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'scan_engine_version') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            result = opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(result, opener.CleanScanResult(status='clean', scanner_version=None, from_cache=True))
+        version.assert_not_called()
+        self.assertEqual(run.call_count, 1)
+        # The launch executable is selected by file_launcher, not the cache.
+        self.assertNotEqual(run.call_args.args[0][0], '/scanner')
+
+    def test_unavailable_or_unrecognized_version_is_not_misreported(self):
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        for response in (subprocess.TimeoutExpired('/scanner', 5), 'unexpected scanner output'):
+            with self.subTest(response=response):
+                self.file.write_bytes(self.file.read_bytes() + b'changed')
+                with patch.object(opener.subprocess, 'run', return_value=scan), \
+                        patch.object(opener.subprocess, 'check_output') as version, \
+                        patch.object(opener, 'remove_quarantine'):
+                    if isinstance(response, Exception):
+                        version.side_effect = response
+                    else:
+                        version.return_value = response
+                    result = opener.scan_and_open(str(self.file), '/scanner')
+                self.assertEqual(result.scanner_version, None)
+                self.assertFalse(result.from_cache)
+
+    def test_blocked_scan_does_not_produce_version_metadata(self):
+        detection = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=detection), \
+                patch.object(opener, 'scan_engine_version') as version, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        version.assert_not_called()
         quarantine.assert_not_called()
 
     def test_missing_or_stale_signatures_block_before_scanning(self):
@@ -649,7 +732,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine'):
             opener.scan_and_open(str(document), '/scanner')
         self.assertEqual(run.call_count, 1)
-        self.assertEqual(run.call_args.args[0][0], '/usr/bin/open')
+        self.assertEqual(run.call_args.args[0][0], str(NATIVE_LAUNCHER))
 
     def test_byte_identical_replacement_during_scan_is_blocked(self):
         original = self.file.read_bytes()
@@ -718,7 +801,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine', side_effect=remove):
             opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(run.call_count, 2)
-        self.assertEqual(run.call_args_list[-1].args[0][0], '/usr/bin/open')
+        self.assertEqual(run.call_args_list[-1].args[0][0], str(NATIVE_LAUNCHER))
         self.assertEqual(self.file.read_bytes(), contents)
 
     def test_byte_identical_replacement_during_initial_hash_is_blocked(self):
@@ -756,7 +839,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             self.file.rename(renamed)
             opener.scan_and_open(str(renamed), '/scanner')
         self.assertEqual(sum(cmd[0] == '/scanner' for cmd in calls), 1)
-        self.assertEqual(sum(cmd[0] == '/usr/bin/open' for cmd in calls), 2)
+        self.assertEqual(sum(cmd[0] == str(NATIVE_LAUNCHER) for cmd in calls), 2)
 
     def test_file_timestamps_are_not_cache_keys(self):
         calls = []

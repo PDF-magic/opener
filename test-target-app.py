@@ -51,14 +51,14 @@ class TargetApplicationTests(unittest.TestCase):
     def test_missing_configuration_keeps_brave_default(self):
         self.assertEqual(launcher.pdf_target_application(), 'com.brave.Browser')
         run, quarantine = self.scan_clean()
-        self.assertEqual(run.call_args.args[0], ['/usr/bin/open', '-b', 'com.brave.Browser',
+        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser',
                                                   str(self.document)])
         quarantine.assert_called_once()
 
     def test_configured_bundle_identifier_used_only_after_clean_scan(self):
         self.config.write_text('com.apple.Preview\n')
         run, quarantine = self.scan_clean()
-        self.assertEqual(run.call_args.args[0], ['/usr/bin/open', '-b', 'com.apple.Preview',
+        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), '--bundle-id', 'com.apple.Preview',
                                                   str(self.document)])
         self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
         self.assertIn('--alert-encrypted=yes', run.call_args_list[0].args[0])
@@ -105,7 +105,7 @@ class TargetApplicationTests(unittest.TestCase):
         other.write_bytes(b'notes')
         self.config.write_text('not a bundle ID')
         run, quarantine = self.scan_clean(other)
-        self.assertEqual(run.call_args.args[0], ['/usr/bin/open', str(other)])
+        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), str(other)])
         quarantine.assert_called_once()
 
     def test_installer_creates_private_default_and_preserves_custom_choice(self):

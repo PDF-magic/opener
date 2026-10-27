@@ -11,11 +11,12 @@ import stat
 import subprocess
 
 PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
+NATIVE_LAUNCHER = Path(__file__).with_name("launch-scanned-file")
 TARGET_APP_CONFIG = Path.home() / "Library/Application Support/Studio/allow-and-open/target-app.txt"
 
 
 def pdf_target_application():
-    """Read the user's PDF bundle ID, defaulting to Brave only if absent."""
+    """Read the configured PDF bundle ID, falling back only when absent."""
     try:
         descriptor = os.open(TARGET_APP_CONFIG, os.O_RDONLY | os.O_NOFOLLOW)
     except FileNotFoundError:
@@ -29,7 +30,6 @@ def pdf_target_application():
             value = stream.read(257)
     except OSError as error:
         raise RuntimeError("Cannot read the PDF target application setting; opening was stopped.") from error
-
     try:
         selected = value.decode("ascii").strip()
     except UnicodeDecodeError:
@@ -54,7 +54,7 @@ def intended_destination(path):
 def launch_clean_file(path, target_app=None):
     """Launch an already-approved file with the current destination policy."""
     path = Path(path)
-    command = ["/usr/bin/open"]
+    command = [str(NATIVE_LAUNCHER)]
     if path.suffix.lower() == ".pdf":
-        command.extend(["-b", target_app if target_app is not None else pdf_target_application()])
+        command.extend(["--bundle-id", target_app if target_app is not None else pdf_target_application()])
     subprocess.run([*command, str(path)], check=True)
