@@ -72,6 +72,10 @@ class PerBrowserPDFTests(unittest.TestCase):
     def run_command(self, args, **kwargs):
         command = args[0]
         if command == "/scanner":
+            # ClamAV version metadata is queried after a successful scan.
+            # It is not a second document scan or an opening decision.
+            if args[1:] == ["--version"]:
+                return subprocess.CompletedProcess(args, 0, "ClamAV 1.4.0/1", "")
             self.events.append(("scan", args))
             return subprocess.CompletedProcess(
                 args, self.scanner_code,
