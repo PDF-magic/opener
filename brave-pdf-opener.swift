@@ -54,6 +54,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
+    // Retain the path supplied by Finder separately from the resolved scan target.
+    private var requestedPaths = [String: String]()
     private var panel: NSPanel?
     private var filename: NSTextField?
 
@@ -95,7 +97,11 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             panel = window
             window.center()
         }
-        filename?.stringValue = pending.count == 1 ? URL(fileURLWithPath: pending.first!).lastPathComponent : "\(pending.count) documents"
+        if pending.count == 1, let path = pending.first {
+            filename?.stringValue = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
+        } else {
+            filename?.stringValue = "\(pending.count) documents"
+        }
         panel?.orderFrontRegardless()
     }
 
@@ -103,8 +109,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
         for url in urls {
+            let requestedPath = url.path
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
             guard received.insert(path).inserted else { continue }
+            requestedPaths[path] = requestedPath
             pending.insert(path)
             showProgress()
             DispatchQueue.global(qos: .userInitiated).async {
