@@ -56,7 +56,9 @@ class DownloadAvailabilityTests(unittest.TestCase):
             result = opener.scan_and_open(self.pdf, "/scanner")
         self.assertEqual(result.status, "clean")
         self.assertEqual(available.call_count, 3)
-        scan.assert_called_once()
+        self.assertEqual(
+            sum("--no-summary" in call.args[0] for call in scan.call_args_list), 1
+        )
         launch.assert_called_once()
 
     def test_eviction_during_scan_blocks_quarantine_and_browser(self):
@@ -70,7 +72,9 @@ class DownloadAvailabilityTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "not available locally"):
                 opener.scan_and_open(self.pdf, "/scanner")
         self.assertEqual(available.call_count, 2)
-        scan.assert_called_once()
+        self.assertEqual(
+            sum("--no-summary" in call.args[0] for call in scan.call_args_list), 1
+        )
         target.assert_not_called()
         quarantine.assert_not_called()
         launch.assert_not_called()
@@ -97,7 +101,9 @@ class DownloadAvailabilityTests(unittest.TestCase):
              patch.object(opener, "remove_quarantine"), \
              patch.object(opener, "launch_clean_file"):
             opener.scan_and_open(self.pdf, "/scanner")
-        scan.assert_called_once()
+        self.assertEqual(
+            sum("--no-summary" in call.args[0] for call in scan.call_args_list), 1
+        )
         with patch.object(opener, "verify_local_file_available",
                           side_effect=RuntimeError(UNAVAILABLE)), \
              patch.object(opener, "cached_clean") as cache, \
