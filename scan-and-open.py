@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+import hashlib
 import os
 from pathlib import Path
 import sqlite3
@@ -13,6 +14,7 @@ DATABASE = INSTALL_DIR / 'signatures'
 STAMP = DATABASE / 'last-successful-update'
 MAX_DATABASE_AGE = 48 * 60 * 60
 MAX_FILE_SIZE = 512 * 1024 * 1024
+PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 
@@ -38,7 +40,6 @@ def check_database():
 def fingerprint(path):
     # Hash the full byte stream, including embedded PDF metadata. Never rely on
     # filename, size, modification time, or Finder metadata for cache validity.
-    import hashlib
     digest = hashlib.sha256()
     is_bundle = path.is_dir()
     digest.update(b'bundle-v1\0' if is_bundle else b'file-v1\0')
@@ -53,7 +54,7 @@ def fingerprint(path):
                 raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
             size = entry.stat().st_size
-            if size > MAX_FILE_SIZE:
+            if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
             digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
             with entry.open('rb') as stream:
@@ -64,6 +65,12 @@ def fingerprint(path):
         else:
             raise RuntimeError('Only regular files and application bundles can be scanned.')
     return digest.digest()
+
+
+def cache_key(digest, is_pdf):
+    # Keep the existing 90-day cache for non-PDFs, but prevent older limited
+    # PDF scans and differently configured non-PDF scans from bypassing a full PDF scan.
+    return hashlib.sha256(b'pdf-unlimited-v1\0' + digest).digest() if is_pdf else digest
 
 
 @contextmanager
@@ -119,17 +126,25 @@ def scan_and_open(item, scanner):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
+    is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
     before = fingerprint(path)
-    hit = cached_clean(before)
+    cache_id = cache_key(before, is_pdf)
+    hit = cached_clean(cache_id)
     if not hit:
+        if is_pdf:
+            # The engine still alerts on its internal file-size limit (~2 GB).
+            size_options = ('--max-filesize=0', '--max-scansize=0')
+        else:
+            size_options = ('--max-filesize=512M', '--max-scansize=1024M')
         try:
             scan = subprocess.run([
                 scanner, '--database=' + str(DATABASE), '--recursive',
                 '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
                 '--alert-exceeds-max=yes', '--alert-encrypted=yes',
-                '--max-filesize=512M', '--max-scansize=1024M',
+                *size_options,
                 '--max-scantime=0', '--no-summary', '--', str(path)
-            ], capture_output=True, text=True, timeout=180)
+            ], capture_output=True, text=True,
+                timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
         except subprocess.TimeoutExpired:
             raise RuntimeError('The malware scan timed out; opening was stopped.')
         if scan.returncode == 1:
@@ -144,7 +159,7 @@ def scan_and_open(item, scanner):
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     if not hit:
-        remember_clean(before)
+        remember_clean(cache_id)
     remove_quarantine(path)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
