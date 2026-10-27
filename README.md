@@ -18,6 +18,8 @@ bash install-allow-and-open.sh
 
 Double-click PDFs to scan them locally with ClamAV and open them in Brave. A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to Brave. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
+Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
+
 Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
 
 Completed clean scans are cached locally for **90 days from the last successful scan** in `~/Library/Application Support/Studio/allow-and-open/clean-scan-cache.sqlite3`. The cache stores only SHA-256 hashes and scan timestamps, not file contents or paths. A matching hash under the same scanning policy skips another ClamAV scan even if a document is renamed or its filesystem timestamps change; standalone PDFs use separate cache keys so earlier size-limited scans cannot substitute for unlimited scans. the hash covers the complete file bytes, **including PDF metadata embedded in the file**, or the contents and relative paths of an application bundle. A file is hashed again before opening, and changed contents, expired records, scan failures, or an unreadable cache require a new clean scan. The 48-hour malware-signature freshness gate is still checked every time.
@@ -44,6 +46,7 @@ Verify the scan gate with:
 
 ```sh
 python3 test-scan-and-open.py
+python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
@@ -83,6 +86,7 @@ ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
 | `set-brave-pdf-default.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |
+| `test-scan-concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
 | `test-brave-pdf-opener.py` | Verify native progress visibility and duplicate-open handling |
 
 The installer requires an existing **Allow and Open** Quick Action at `~/Library/Services/Allow and Open.workflow` and Brave Browser. Run the commands above from this repository's root.
