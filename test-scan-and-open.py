@@ -2,7 +2,7 @@
 import importlib.util
 import os
 from pathlib import Path
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 import subprocess
 import sys
 import tempfile
@@ -109,6 +109,41 @@ class ScanGateTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Malware'):
                 opener.scan_and_open(str(self.file), '/scanner')
         record.assert_called_once_with(self.file, source_url=None)
+        quarantine.assert_not_called()
+
+    def test_scan_request_preserves_selected_protection_level(self):
+        selected = 'custom-protection-profile'
+        request = opener.ScanRequest.from_path(self.file, protection_level=selected)
+        self.assertEqual(request.file_type, 'pdf')
+        self.assertEqual(request.protection_level, selected)
+        self.assertIsNone(opener.ScanRequest.from_path(self.file).protection_level)
+        with self.assertRaises(FrozenInstanceError):
+            request.protection_level = 'another-profile'
+
+    def test_selected_protection_level_is_recorded_before_scanning(self):
+        selected = 'custom-protection-profile'
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner', protection_level=selected)
+        record.assert_called_once_with(self.file, source_url=None, protection_level=selected)
+        self.assertEqual(run.call_count, 2)
+        scan_command = run.call_args_list[0].args[0]
+        self.assertIn('--max-filesize=0', scan_command)
+        self.assertIn('--max-scansize=0', scan_command)
+        self.assertIn('--alert-exceeds-max=yes', scan_command)
+
+    def test_selected_protection_level_never_overrides_malware_block(self):
+        selected = 'custom-protection-profile'
+        detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
+                patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner', protection_level=selected)
+        record.assert_called_once_with(self.file, source_url=None, protection_level=selected)
+        self.assertEqual(run.call_count, 1)
         quarantine.assert_not_called()
 
     def test_detection_preserves_file_and_quarantine_without_opening(self):
