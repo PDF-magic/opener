@@ -92,6 +92,9 @@ python3 test-brave-pdf-opener.py
 
 ## PDF target application
 
+For a comparison of viewer capabilities, browser-specific settings, and
+launch requirements, see [Browser PDF viewer differences](docs/browser-pdf-viewers.md).
+
 The PDF target is a macOS application **bundle identifier**, not a shell
 command or executable path. The default is `com.brave.Browser`. After
 installing, edit
@@ -179,6 +182,18 @@ impostor, unsigned, or unusable Opera installation fails closed; it does not
 fall back to another app. Opera GX is a separate application and is not
 covered by this Opera-specific exception. ClamAV scanning and the existing
 file-integrity and quarantine checks always precede launching.
+
+To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
+
+```sh
+printf '%s\n' 'org.mozilla.firefox' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Firefox has a built-in PDF viewer but may not register itself as a PDF handler
+with macOS. The launcher accepts an installed Firefox application only when
+its bundle identity, executable, and Mozilla Developer ID signature are verified; other applications must
+still be registered PDF handlers. The usual ClamAV, quarantine, and
+file-integrity checks still apply before Firefox is launched.
 
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
