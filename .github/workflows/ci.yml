@@ -57,6 +57,8 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.brave.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+      - name: Verify bundle-identifier resolution and app existence
+        run: python3 test-bundle-target.py
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py

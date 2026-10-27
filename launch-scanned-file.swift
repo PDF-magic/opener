@@ -29,6 +29,27 @@ final class LaunchCompletion: @unchecked Sendable {
     }
 }
 
+
+ // Resolve only registered and executable .app bundles. Finder registration
+ // alone is not proof that the app remains installed at its recorded URL.
+func resolveTargetApplication(
+    bundleIdentifier: String,
+    lookup: (String) -> URL? = { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+) -> URL? {
+    guard !bundleIdentifier.isEmpty,
+          let target = lookup(bundleIdentifier)?.standardizedFileURL.resolvingSymlinksInPath(),
+          target.pathExtension.lowercased() == "app" else { return nil }
+
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: target.path, isDirectory: &isDirectory),
+          isDirectory.boolValue,
+          let bundle = Bundle(url: target),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return nil }
+    return target
+}
+
 func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
     let path: String
     let bundleIdentifier: String?
@@ -53,7 +74,8 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
 
     if let bundleIdentifier = bundleIdentifier {
         guard !isApplication,
-              let appURL = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
+              let appURL = resolveTargetApplication(bundleIdentifier: bundleIdentifier,
+                                                    lookup: { workspace.urlForApplication(withBundleIdentifier: $0) }) else {
             return false
         }
         workspace.open([target], withApplicationAt: appURL, configuration: config) {
