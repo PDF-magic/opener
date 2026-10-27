@@ -22,7 +22,7 @@ class ScanRequestApplicationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.db = Path(self.temp.name) / "scan-requests.sqlite3"
-        db_patch = patch.object(opener, "REQUEST_DB", self.db)
+        db_patch = patch.object(opener, "SCAN_REQUEST_DB", self.db)
         db_patch.start()
         self.addCleanup(db_patch.stop)
 
@@ -32,6 +32,7 @@ class ScanRequestApplicationTests(unittest.TestCase):
         if application is not None:
             environment[opener.REQUESTING_APPLICATION_ENV] = application
         with patch.dict(os.environ, environment, clear=True), \
+                patch.object(opener, "validate_scan_request", return_value=Path("/example/one.pdf")), \
                 patch.object(opener, "scanner_path", return_value="/scanner"), \
                 patch.object(opener, "check_database"), \
                 patch.object(opener, "scan_and_open", side_effect=scan_error) as scan, \
@@ -42,10 +43,10 @@ class ScanRequestApplicationTests(unittest.TestCase):
     def records(self):
         with sqlite3.connect(str(self.db)) as connection:
             rows = connection.execute(
-                "SELECT requesting_application FROM scan_requests ORDER BY id"
+                "SELECT requesting_application FROM scan_request_applications ORDER BY id"
             ).fetchall()
             columns = [entry[1] for entry in connection.execute(
-                "PRAGMA table_info(scan_requests)"
+                "PRAGMA table_info(scan_request_applications)"
             ).fetchall()]
         return [row[0] for row in rows], columns
 
@@ -71,7 +72,8 @@ class ScanRequestApplicationTests(unittest.TestCase):
         self.assertEqual(self.records()[0], ["Allow and Open"])
 
     def test_unavailable_log_blocks_scan(self):
-        with patch.object(opener, "scanner_path", return_value="/scanner"), \
+        with patch.object(opener, "validate_scan_request", return_value=Path("/example/one.pdf")), \
+                patch.object(opener, "scanner_path", return_value="/scanner"), \
                 patch.object(opener, "check_database"), \
                 patch.object(opener, "record_scan_request",
                              side_effect=sqlite3.OperationalError("read only")), \
