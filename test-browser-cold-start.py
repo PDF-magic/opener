@@ -20,7 +20,8 @@ import AppKit
 
 final class ReceiptDelegate: NSObject, NSApplicationDelegate {
     private func record(_ paths: [String]) {
-        guard let receipt = Bundle.main.object(forInfoDictionaryKey: "TestPDFReceipt") as? String else {
+        guard !paths.isEmpty,
+              let receipt = Bundle.main.object(forInfoDictionaryKey: "TestPDFReceipt") as? String else {
             return
         }
         try? paths.joined(separator: "\n").write(
@@ -73,10 +74,10 @@ let deadline = Date().addingTimeInterval(20)
 var received: String?
 while Date() < deadline {
     received = try? String(contentsOfFile: marker, encoding: .utf8)
-    if received != nil { break }
+    if received == pdf { break }
     Thread.sleep(forTimeInterval: 0.1)
 }
-precondition(received == pdf, "The newly launched app must receive the selected PDF")
+precondition(received == pdf, "The newly launched app must receive the selected PDF (actual: \(received ?? "none"))")
 let running = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
 precondition(!running.isEmpty, "The target application must be running after cold launch")
 for application in running { _ = application.terminate() }
