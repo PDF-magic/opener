@@ -149,7 +149,7 @@ def watch_parent_lifetime():
         return
     def watch():
         try:
-            sys.stdin.buffer.read(1)
+            os.read(sys.stdin.fileno(), 1)
         except (OSError, ValueError):
             pass
         # Existing native cancellation handlers stop ClamAV's process group.
