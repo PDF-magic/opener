@@ -107,6 +107,12 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
+      - name: Identify the current macOS PDF handler without modifying it
+        run: |
+          xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
+          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
+          "$RUNNER_TEMP/TestPDFHandler"
+          if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Compile and verify PDF-capable selection including Arc and Opera signatures
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
