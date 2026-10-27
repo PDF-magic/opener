@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, launch_clean_file
+from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target
 
 
 ROOT = Path(__file__).resolve().parent
@@ -18,6 +18,9 @@ class FileLauncherTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        setting = patch('file_launcher.TARGET_APP_CONFIG', self.root / 'target-app.txt')
+        setting.start()
+        self.addCleanup(setting.stop)
 
     def test_pdf_uses_existing_brave_destination_even_with_uppercase_extension(self):
         pdf = self.root / "a document.PDF"
@@ -54,12 +57,13 @@ class FileLauncherTests(unittest.TestCase):
         source = (ROOT / "scan-and-open.py").read_text()
         self.assertNotIn("com.brave.Browser", source)
         self.assertNotIn("PDF_DEFAULT_BUNDLE_ID", source)
-        self.assertIn("launch_clean_file(path)", source)
+        self.assertIn("launch_clean_file(path, target_app=destination if is_pdf else None)", source)
+        self.assertIn("destination = intended_destination(path)", source)
         quarantine = source.index("    remove_quarantine(path)\n")
         final_check = source.index(
             "    verify_file_integrity(path, before, identity, allow_ctime_change=True)",
             quarantine)
-        launch = source.index("    launch_clean_file(path)", final_check)
+        launch = source.index("    launch_clean_file(path, target_app=destination if is_pdf else None)", final_check)
         self.assertLess(quarantine, final_check)
         self.assertLess(final_check, launch)
 
@@ -69,6 +73,41 @@ class FileLauncherTests(unittest.TestCase):
                      "workspace.openApplication(at: target", "workspace.open(target)"):
             self.assertIn(name, swift)
 
+    def test_registered_pdf_handler_preflight_invokes_native_verifier(self):
+        with patch("file_launcher.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 0)) as run:
+            verify_launch_target(self.root / "document.PDF")
+        run.assert_called_once_with(
+            [str(PDF_TARGET_VERIFIER), PDF_DEFAULT_BUNDLE_ID],
+            capture_output=True, timeout=10,
+        )
+
+    def test_unregistered_missing_and_timed_out_verifiers_block(self):
+        for outcome in (
+            subprocess.CompletedProcess([], 1),
+            FileNotFoundError("verifier missing"),
+            subprocess.TimeoutExpired("verifier", 10),
+        ):
+            with self.subTest(outcome=str(outcome)):
+                kwargs = ({"return_value": outcome} if isinstance(
+                    outcome, subprocess.CompletedProcess) else {"side_effect": outcome})
+                with patch("file_launcher.subprocess.run", **kwargs):
+                    with self.assertRaisesRegex(RuntimeError, "opening was stopped"):
+                        verify_launch_target(self.root / "document.pdf")
+
+    def test_non_pdf_retains_default_handler_without_verification(self):
+        for path in ("readme.txt", "Another.app"):
+            with self.subTest(path=path):
+                with patch("file_launcher.subprocess.run") as run:
+                    verify_launch_target(self.root / path)
+                run.assert_not_called()
+
+    def test_scanner_preflights_target_before_quarantine_release(self):
+        source = (ROOT / "scan-and-open.py").read_text()
+        self.assertIn("verify_launch_target(path)", source)
+        self.assertLess(source.rindex("    verify_launch_target(path)"),
+                        source.rindex("    remove_quarantine(path)"))
+
     def test_installer_deploys_launch_module_with_scanner(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()
         line = next(line for line in script.splitlines()
@@ -76,6 +115,8 @@ class FileLauncherTests(unittest.TestCase):
         self.assertIn('"$script_dir/scan-and-open.py"', line)
         self.assertIn('"$script_dir/file_launcher.py"', line)
         self.assertIn('"$install_dir/"', line)
+        self.assertIn('swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift"', script)
+        self.assertIn('"$install_dir/verify-pdf-target"', script)
         self.assertIn('swiftc -O "$script_dir/launch-scanned-file.swift"', script)
         self.assertIn('"$install_dir/launch-scanned-file"', script)
 

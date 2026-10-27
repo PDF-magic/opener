@@ -26,6 +26,12 @@ class LaunchResultTests(unittest.TestCase):
                              Path(self.temp.name) / "clean-scan-cache.sqlite3")
         cache.start()
         self.addCleanup(cache.stop)
+        native = patch.object(opener, "verify_launch_target")
+        native.start()
+        self.addCleanup(native.stop)
+        version = patch.object(opener, 'scan_engine_version', return_value=None)
+        version.start()
+        self.addCleanup(version.stop)
 
     def test_launch_failure_keeps_completed_result_and_cache(self):
         raw = subprocess.CompletedProcess([], 0, "file: OK", "")
@@ -42,7 +48,7 @@ class LaunchResultTests(unittest.TestCase):
         self.assertIn("scan completed cleanly", str(raised.exception))
         scan.assert_called_once()
         quarantine.assert_called_once_with(self.file.resolve())
-        launch.assert_called_once_with(self.file.resolve())
+        launch.assert_called_once_with(self.file.resolve(), target_app='com.brave.Browser')
         digest = opener.cache_key(opener.fingerprint(self.file), True)
         self.assertTrue(opener.cached_clean(digest))
         self.assertEqual(self.file.read_bytes(), b"%PDF-1.4\nclean data")
