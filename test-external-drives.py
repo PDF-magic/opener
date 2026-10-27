@@ -45,7 +45,7 @@ class ExternalDrivePDFTests(unittest.TestCase):
         launch.assert_called_once_with(self.document, target_app="com.brave.Browser")
 
     def test_symlink_to_external_pdf_resolves_to_scanned_file(self):
-        shortcut = self.document.parents[3] / "external report alias.pdf"
+        shortcut = self.document.parents[2] / "external report alias.pdf"
         shortcut.symlink_to(self.document)
         completed = subprocess.CompletedProcess([], 0, "volume.pdf: OK\n", "")
         with patch.object(opener.subprocess, "run", return_value=completed) as scan, \
