@@ -36,6 +36,8 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 **Security trade-off:** newly published ClamAV signatures will not rescan unchanged content that is already cached clean until the 90-day period expires. Delete `clean-scan-cache.sqlite3` while the opener is not running to force a new scan of every file. Caching does not make a clean verdict a guarantee of safety.
 
+**Launch errors:** After successful malware and integrity checks, `scan_and_open` creates an immutable `CleanScanResult(status="clean", from_cache=...)` independent of launching. A failed destination launch still reports an error and a nonzero CLI exit status, but raises `LaunchFailedError` with the completed `scan_result` attached for callers. The verified 90-day clean scan cache remains valid, subject to existing signature freshness, file integrity and expiry checks, so retrying an unsuccessful launch does not automatically rescan. Incomplete or blocked scans never produce a clean result.
+
 **PDF application support:** Before releasing quarantine or opening a scanned PDF, including on a clean cache hit, the launcher queries macOS Launch Services to confirm the selected application is registered to open PDFs. Unsupported, missing, or unverifiable destinations are rejected. This check does not change the selected browser or the system's PDF default. Re-run `bash install-allow-and-open.sh` to deploy the native verifier; a missing verifier fails closed.
 
 **Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default `/usr/bin/open` handling. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
@@ -58,6 +60,7 @@ Verify the scan gate with:
 
 ```sh
 python3 test-scan-and-open.py
+python3 test-launch-results.py
 python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
