@@ -171,6 +171,54 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(chosen, ('com.apple.Safari',))
         quarantine.assert_called_once()
 
+    def test_arc_launch_preserves_scan_gate_and_selected_bundle(self):
+        self.config.write_text('company.thebrowser.Browser\n')
+        run, quarantine = self.scan_clean()
+        commands = [call.args[0] for call in run.call_args_list]
+        preflight = [str(launcher.PDF_TARGET_VERIFIER), 'company.thebrowser.Browser']
+        launch = [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
+                  'company.thebrowser.Browser', str(self.document)]
+        self.assertEqual(commands[0][0], '/scanner')
+        self.assertIn('--alert-encrypted=yes', commands[0])
+        self.assertIn(preflight, commands)
+        self.assertEqual(commands[-1], launch)
+        self.assertLess(commands.index(preflight), commands.index(launch))
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            destination = db.execute(
+                'SELECT intended_destination_application FROM scan_requests'
+            ).fetchone()
+        self.assertEqual(destination, ('company.thebrowser.Browser',))
+        quarantine.assert_called_once()
+
+    def test_arc_verification_failure_never_releases_quarantine_or_launches(self):
+        self.config.write_text('company.thebrowser.Browser\n')
+
+        def execute(command, *args, **kwargs):
+            if command[0] == str(launcher.PDF_TARGET_VERIFIER):
+                return subprocess.CompletedProcess(command, 1, '', 'not trusted')
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+
+        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'opening was stopped'):
+                opener.scan_and_open(str(self.document), '/scanner')
+        self.assertTrue(any(call.args[0][0] == str(launcher.PDF_TARGET_VERIFIER)
+                            for call in run.call_args_list))
+        self.assertFalse(any(call.args[0][0] == str(launcher.NATIVE_LAUNCHER)
+                             for call in run.call_args_list))
+        quarantine.assert_not_called()
+
+    def test_arc_malware_detection_never_verifies_or_launches(self):
+        self.config.write_text('company.thebrowser.Browser\n')
+        detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.document), '/scanner')
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][0], '/scanner')
+        quarantine.assert_not_called()
+
     def test_preflight_and_launch_keep_original_target_if_preference_changes(self):
         self.config.write_text('com.apple.Preview\n')
         seen = []
