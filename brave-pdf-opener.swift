@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
 struct ScanRequest {
@@ -65,6 +66,41 @@ func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows ->
     return try operation(errors)
 }
 
+
+// Preserve the sending application reported by macOS, never infer a source
+// from the frontmost window or the file extension.
+func requestSource(forBundleIdentifier identifier: String?) -> String {
+    guard let identifier = identifier?.lowercased() else { return "unknown" }
+    if identifier == "com.apple.finder" { return "finder" }
+    let browsers: Set<String> = [
+        "com.apple.safari", "com.apple.safarialternate", "com.brave.browser",
+        "com.google.chrome", "com.google.chrome.canary",
+        "org.mozilla.firefox", "org.mozilla.firefoxdeveloperedition",
+        "com.microsoft.edgemac", "company.thebrowser.browser",
+        "com.vivaldi.vivaldi", "com.operasoftware.opera"
+    ]
+    if browsers.contains(identifier) { return "browser" }
+    if ["com.apple.dock", "com.apple.launchservicesd", "com.apple.loginwindow"].contains(identifier) {
+        return "unknown"
+    }
+    return "desktop-application"
+}
+
+func currentRequestSource() -> String {
+    guard let event = NSAppleEventManager.shared().currentAppleEvent else { return "unknown" }
+    for keyword in [AEKeyword(keySenderPIDAttr), AEKeyword(keyAddressAttr)] {
+        guard let bytes = event.attributeDescriptor(forKeyword: keyword)?
+                .coerce(toDescriptorType: typeKernelProcessID)?.data,
+              bytes.count == MemoryLayout<pid_t>.size else { continue }
+        let pid = bytes.withUnsafeBytes { $0.loadUnaligned(as: pid_t.self) }
+        if pid > 0 {
+            return requestSource(forBundleIdentifier:
+                NSRunningApplication(processIdentifier: pid)?.bundleIdentifier)
+        }
+    }
+    return "unknown"
+}
+
 final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
@@ -74,6 +110,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var running = Set<String>()
     // Retain the path supplied by Finder separately from the resolved scan target.
     private var requestedPaths = [String: String]()
+    // Preserve the open-event source across the native dispatch queue.
+    private var requestOrigins = [String: String]()
     // Session-only metadata keyed by canonical path; duplicate events keep the first time.
     private(set) var scanRequests = [String: ScanRequest]()
     private var panel: NSPanel?
@@ -135,6 +173,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     private func startScan(_ path: String) {
+        let origin = requestOrigins[path] ?? "unknown"
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
         DispatchQueue.global(qos: .userInitiated).async {
@@ -142,6 +181,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [script.path, path]
+        var environment = ProcessInfo.processInfo.environment
+        environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"
+        environment["PDF_MAGIC_REQUEST_ORIGIN"] = origin
+        process.environment = environment
         process.standardError = errors
         process.standardOutput = FileHandle.nullDevice
         do {
@@ -162,6 +205,7 @@ DispatchQueue.main.async {
                 self.running.remove(path)
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
+                self.requestOrigins.removeValue(forKey: path)
                 // Release capacity and start the next queued document even after a failure.
                 self.startQueuedScans()
                 if self.pending.isEmpty { self.panel?.orderOut(nil) }
@@ -181,11 +225,13 @@ DispatchQueue.main.async {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        let origin = currentRequestSource()
         for url in urls {
             let requestedPath = url.path
             let path = url.standardizedFileURL.resolvingSymlinksInPath().path
             guard received.insert(path).inserted else { continue }
             requestedPaths[path] = requestedPath
+            requestOrigins[path] = origin
             scanRequests[path] = ScanRequest(requestTimestamp: Date())
             pending.insert(path)
             queued.append(path)

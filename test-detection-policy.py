@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from file_launcher import NATIVE_LAUNCHER
+
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
     'scan_and_open', Path(__file__).with_name('scan-and-open.py'))
@@ -30,10 +32,9 @@ class DetectionDecisionTests(unittest.TestCase):
                              Path(self.temp.name) / 'clean.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
-        # The macOS verifier is exercised by dedicated launcher/native tests.
-        target = patch.object(opener, 'verify_launch_target')
-        target.start()
-        self.addCleanup(target.stop)
+        native = patch.object(opener, 'verify_launch_target')
+        native.start()
+        self.addCleanup(native.stop)
 
     def test_detection_contains_only_evidence_and_cannot_be_modified(self):
         raw = result(1, 'file: Malware FOUND')
@@ -108,7 +109,7 @@ class DetectionDecisionTests(unittest.TestCase):
                 patch.object(opener, 'remove_quarantine',
                              side_effect=lambda path: events.append('quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(events, ['/scanner', 'quarantine', '/usr/bin/open'])
+        self.assertEqual(events, ['/scanner', 'quarantine', str(NATIVE_LAUNCHER)])
 
     def test_cached_clean_result_does_not_bypass_changed_file(self):
         opener.remember_clean(opener.cache_key(opener.fingerprint(self.file), True))

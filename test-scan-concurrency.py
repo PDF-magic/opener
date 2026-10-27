@@ -42,13 +42,16 @@ class ScanConcurrencyTests(unittest.TestCase):
             with mutex:
                 active -= 1
 
+        files = tuple(Path(self.temp.name) / name for name in
+                      ('a.pdf', 'b.pdf', 'c.pdf', 'd.pdf', 'e.pdf'))
+        for path in files:
+            path.write_bytes(b'%PDF-1.4\n')
         with patch.object(opener, '_scan_and_open', side_effect=fake_scan):
             with ThreadPoolExecutor(max_workers=5) as pool:
-                list(pool.map(lambda item: opener.scan_and_open(item, '/scanner'),
-                              ('a.pdf', 'b.pdf', 'c.pdf', 'd.pdf', 'e.pdf')))
+                list(pool.map(lambda item: opener.scan_and_open(item, '/scanner'), files))
         self.assertEqual(peak, opener.MAX_CONCURRENT_SCANS)
         self.assertEqual(active, 0)
-        self.assertCountEqual(seen, ('a.pdf', 'b.pdf', 'c.pdf', 'd.pdf', 'e.pdf'))
+        self.assertCountEqual(seen, files)
 
     def test_waiting_request_starts_when_slot_is_released(self):
         started = threading.Event()
@@ -70,11 +73,15 @@ class ScanConcurrencyTests(unittest.TestCase):
         self.assertFalse(thread.is_alive())
 
     def test_slot_is_released_when_scan_fails(self):
+        first = Path(self.temp.name) / 'first.pdf'
+        second = Path(self.temp.name) / 'second.pdf'
+        first.touch()
+        second.touch()
         with patch.object(opener, '_scan_and_open', side_effect=RuntimeError('scan failed')):
             with self.assertRaisesRegex(RuntimeError, 'scan failed'):
-                opener.scan_and_open('first.pdf', '/scanner')
+                opener.scan_and_open(first, '/scanner')
         with patch.object(opener, '_scan_and_open', return_value='ok'):
-            self.assertEqual(opener.scan_and_open('second.pdf', '/scanner'), 'ok')
+            self.assertEqual(opener.scan_and_open(second, '/scanner'), 'ok')
 
     def test_locks_limit_independent_processes(self):
         child_code = """
