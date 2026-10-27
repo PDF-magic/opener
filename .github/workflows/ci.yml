@@ -83,6 +83,8 @@ jobs:
         env:
           PDF_MAGIC_TEST_BROWSER: arc
         run: python3 test-browser-pdf-behavior.py
+      - name: Verify browser PDF viewer comparison documentation
+        run: python3 test-browser-viewer-docs.py -v
       - name: Verify optional PDF fallback selection and safety
         run: python3 test-fallback-app.py -v
       - name: Verify clean scan results survive launch failures
