@@ -42,6 +42,25 @@ SAFE_SCAN_FAILURES = frozenset((
 
 
 
+@dataclass(frozen=True)
+class CleanScanResult:
+    """A completed, verified clean scan, independent of app launch success."""
+
+    status: str
+    from_cache: bool
+
+
+class LaunchFailedError(RuntimeError):
+    """An app launch failed after verification; the clean scan result survives."""
+
+    def __init__(self, scan_result):
+        self.scan_result = scan_result
+        super().__init__(
+            'The scan completed cleanly, but the destination application could not open the file.'
+        )
+
+
+
 @contextmanager
 def scan_slot():
     """Wait for one of two cross-process slots shared by Finder and the native app.
@@ -342,6 +361,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     if file_identity(path) != identity:
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = cache_key(before, is_pdf)
+    performed_scan = False
     # Do not serialize an already cached clean hit. For a miss, a cross-process
     # lock prevents another identical-content request from racing its scan.
     if not cached_clean(cache_id):
@@ -371,14 +391,20 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 if not decision.allowed:
                     raise RuntimeError(decision.reason)
                 verify_file_integrity(path, before, identity)
+                performed_scan = True
                 remember_clean(cache_id)
     verify_file_integrity(path, before, identity)
+    # Preserve the completed scan outcome before attempting to launch the file.
+    scan_result = CleanScanResult(status='clean', from_cache=not performed_scan)
     remove_quarantine(path)
-    # Ignore only ctime changes caused by quarantine removal; bytes, path
-    # identities, types, sizes and modification times still must match.
+    # Quarantine removal changes ctime, but source bytes and identities must remain intact.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
     # The scan engine does not select an application or browser.
-    launch_clean_file(path)
+    try:
+        launch_clean_file(path)
+    except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+        raise LaunchFailedError(scan_result) from error
+    return scan_result
 
 
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
