@@ -121,8 +121,10 @@ class LaunchResultTests(unittest.TestCase):
                 patch("sys.stderr", stderr):
             code = opener.main([str(self.file)])
         self.assertEqual(code, 1)
-        self.assertIn("The request could not be processed", stderr.getvalue())
+        self.assertIn("selected PDF application could not open the file", stderr.getvalue())
+        self.assertIn("target-app.txt", stderr.getvalue())
         self.assertNotIn("destination absent", stderr.getvalue())
+        self.assertNotIn(str(self.file), stderr.getvalue())
 
 
 if __name__ == "__main__":

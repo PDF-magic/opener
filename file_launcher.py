@@ -17,6 +17,20 @@ PDF_SYSTEM_DEFAULT_BROWSER = "system-default-browser"
 DEFAULT_BROWSER_RESOLVER = Path(__file__).with_name("resolve-default-browser")
 PDF_TARGET_VERIFIER = Path(__file__).with_name("verify-pdf-target")
 
+PDF_TARGET_UNAVAILABLE_MESSAGE = (
+    "The selected PDF application is unavailable or cannot open PDFs. "
+    "Install it or choose an installed PDF-capable application in target-app.txt; opening was stopped."
+)
+PDF_TARGET_VERIFICATION_MESSAGE = (
+    "PDF application availability could not be checked. "
+    "Reinstall PDF Magic Opener and try again; opening was stopped."
+)
+PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE = (
+    "The macOS default browser is unavailable or could not be resolved. "
+    "Choose an installed default browser in System Settings, or select an installed "
+    "PDF-capable application in target-app.txt; opening was stopped."
+)
+
 
 def verify_launch_target(path, target_app=None):
     """Require Launch Services PDF capability for the selected application."""
@@ -31,9 +45,9 @@ def verify_launch_target(path, target_app=None):
             capture_output=True, timeout=10,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        raise RuntimeError("PDF application support could not be verified; opening was stopped.") from error
+        raise RuntimeError(PDF_TARGET_VERIFICATION_MESSAGE) from error
     if completed.returncode != 0:
-        raise RuntimeError("The selected application is not registered to open PDFs; opening was stopped.")
+        raise RuntimeError(PDF_TARGET_UNAVAILABLE_MESSAGE)
 
 NATIVE_LAUNCHER = Path(__file__).with_name("launch-scanned-file")
 
@@ -80,9 +94,9 @@ def _resolve_default_browser():
         )
         selected = completed.stdout.decode("ascii").strip()
     except (OSError, subprocess.SubprocessError, UnicodeDecodeError, AttributeError) as error:
-        raise RuntimeError("The system default browser could not be resolved; opening was stopped.") from error
+        raise RuntimeError(PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE) from error
     if not _valid_bundle_identifier(selected):
-        raise RuntimeError("The system default browser is invalid; opening was stopped.")
+        raise RuntimeError(PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE)
     return selected
 
 

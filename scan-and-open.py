@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import intended_destination, launch_clean_file, pdf_fallback_application, verify_launch_target, verify_local_file_available
+from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
+                           PDF_TARGET_UNAVAILABLE_MESSAGE,
+                           PDF_TARGET_VERIFICATION_MESSAGE,
+                           intended_destination, launch_clean_file,
+                           pdf_fallback_application,
+                           verify_launch_target, verify_local_file_available)
 import os
 import signal
 import re
@@ -32,9 +37,18 @@ CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
 REQUESTING_APPLICATION_ENV = 'PDF_MAGIC_REQUESTING_APPLICATION'
 
+PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
+    'The scan completed cleanly, but the selected PDF application could not open the file. '
+    'Check that it is installed or choose another PDF-capable application in target-app.txt.'
+)
+
 # Only these fixed, path-free errors may appear in scan diagnostics.
 # Unexpected system or scanner exceptions may contain private source paths.
 SAFE_SCAN_FAILURES = frozenset((
+    PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
+    PDF_TARGET_UNAVAILABLE_MESSAGE,
+    PDF_TARGET_VERIFICATION_MESSAGE,
+    PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
     'Only regular files and application bundles can be scanned.',
@@ -64,9 +78,10 @@ class CleanScanResult:
 class LaunchFailedError(RuntimeError):
     """An app launch failed after verification; the clean scan result survives."""
 
-    def __init__(self, scan_result):
+    def __init__(self, scan_result, *, is_pdf=False):
         self.scan_result = scan_result
         super().__init__(
+            PDF_LAUNCH_UNAVAILABLE_MESSAGE if is_pdf else
             'The scan completed cleanly, but the destination application could not open the file.'
         )
 
@@ -677,8 +692,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
             try:
                 verify_launch_target(path, target_app=fallback)
             except RuntimeError:
-                # The preferred destination is valid; an unavailable optional
-                # fallback must not prevent launching that preferred app.
+                # A failed optional fallback must not block a verified primary.
                 pass
             else:
                 verified_fallback = fallback
@@ -692,7 +706,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
         launch_clean_file(path, target_app=destination if is_pdf else None)
     except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         if verified_fallback is None:
-            raise LaunchFailedError(scan_result) from error
+            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
         # Recheck the unchanged, locally available PDF before another launch.
         verify_file_integrity(path, before, identity, allow_ctime_change=True)
         verify_local_file_available(path)
@@ -700,7 +714,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
         try:
             launch_clean_file(path, target_app=verified_fallback)
         except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
-            raise LaunchFailedError(scan_result) from fallback_error
+            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
     return scan_result
 
 
@@ -720,7 +734,7 @@ def scan_and_open(item, scanner, *, source_url=None, protection_level=None, brow
 def safe_scan_failure(error):
     # Whitelist only messages controlled by this scanner. In particular,
     # OSError and CalledProcessError can include absolute selected paths.
-    if type(error) is RuntimeError and str(error) in SAFE_SCAN_FAILURES:
+    if type(error) in (RuntimeError, LaunchFailedError) and str(error) in SAFE_SCAN_FAILURES:
         return str(error)
     return 'The request could not be processed; opening was stopped.'
 
