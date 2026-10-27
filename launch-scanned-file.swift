@@ -88,7 +88,13 @@ func isLocallyAvailablePDF(_ url: URL) -> Bool {
     }
 }
 
-func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
+// The optional lookup supports a deterministic cold-launch integration test.
+// Production callers use the same system bundle-ID lookup as before.
+func launch(
+    _ arguments: [String],
+    workspace: NSWorkspace = .shared,
+    applicationLookup: ((String) -> URL?)? = nil
+) -> Bool {
     if arguments.count == 2 && arguments[0] == "--check-local" {
         let path = arguments[1]
         return path.hasPrefix("/") && isLocallyAvailablePDF(URL(fileURLWithPath: path))
@@ -120,8 +126,12 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
 
     if let bundleIdentifier = bundleIdentifier {
         guard !isApplication,
-              let appURL = resolveTargetApplication(bundleIdentifier: bundleIdentifier,
-                                                    lookup: { workspace.urlForApplication(withBundleIdentifier: $0) }) else {
+              let appURL = resolveTargetApplication(
+                  bundleIdentifier: bundleIdentifier,
+                  lookup: applicationLookup ?? {
+                      workspace.urlForApplication(withBundleIdentifier: $0)
+                  }
+              ) else {
             return false
         }
         workspace.open([target], withApplicationAt: appURL, configuration: config) {

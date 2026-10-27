@@ -137,6 +137,9 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift test-default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
+      - name: Verify PDF launch starts a stopped browser application
+        timeout-minutes: 3
+        run: python3 test-browser-cold-start.py -v
       - name: Verify bundle-identifier resolution and app existence
         run: python3 test-bundle-target.py
       - name: Verify duplicate-open handling and queued native scans

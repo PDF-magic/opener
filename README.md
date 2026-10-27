@@ -88,6 +88,14 @@ python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
+**Browser closed at launch:** The native macOS helper uses an application-specific
+`NSWorkspace.open` call, which starts the chosen browser if it is not already
+running. The macOS CI job checks this cold-start behavior with a temporary,
+ad-hoc-signed PDF-viewer app bundle and a local test PDF, verifying that the
+app was stopped, was launched, and received the original PDF path. The fixture
+does not claim that every third-party browser was installed or visually
+rendered the PDF. It does not alter user browser settings or the scan gate.
+
 ## PDF target application
 
 The PDF target is a macOS application **bundle identifier**, not a shell
