@@ -82,7 +82,12 @@ app.run()
             raise AssertionError(f'Unexpected event: {event}')
         assert 0 <= active <= 2, 'Native dispatch exceeded the two-scan limit'
     expected = [str(document)] + [str(path) for path in others]
-    assert started == expected, 'Different documents must be scanned once and in FIFO dispatch order'
+    # The first two scans are dispatched concurrently, so OS scheduling can
+    # reverse their observable process-start order. Queued scans remain FIFO.
+    assert set(started[:2]) == set(expected[:2]), (
+        'The two initial documents must start without exceeding the limit')
+    assert started[2:] == expected[2:], (
+        'Documents beyond the two active slots must be dispatched FIFO')
     assert set(finished) == set(expected) and len(finished) == len(expected)
     assert peak == 2 and active == 0, 'Two distinct scans must overlap and all scans must finish'
     print('PASS: original alias is displayed; duplicates are suppressed; concurrent scans are bounded and queued FIFO.')
