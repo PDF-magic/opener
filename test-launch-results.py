@@ -93,7 +93,8 @@ class LaunchResultTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError) as raised:
                     opener.scan_and_open(str(self.file), "/scanner")
             self.assertNotIsInstance(raised.exception, opener.LaunchFailedError)
-            self.assertFalse(hasattr(raised.exception, "scan_result"))
+            self.assertIsInstance(raised.exception.scan_result, opener.ScanResult)
+            self.assertNotIsInstance(raised.exception.scan_result, opener.CleanScanResult)
             quarantine.assert_not_called()
             launch.assert_not_called()
 
