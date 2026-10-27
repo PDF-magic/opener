@@ -48,8 +48,9 @@ class TerminationTests(unittest.TestCase):
             'spec.loader.exec_module(o)\n'
             'o.CACHE_DB = pathlib.Path(' + repr(str(self.cache_db)) + ')\n'
             'o.SCAN_REQUEST_DB = pathlib.Path(' + repr(str(self.root / 'audit.sqlite3')) + ')\n'
-            'o.remember_clean = lambda digest: pathlib.Path(' + repr(str(self.cached)) + ').write_text("cached")\n'
+            'o.remember_clean = lambda *args: pathlib.Path(' + repr(str(self.cached)) + ').write_text("cached")\n'
             'o.remove_quarantine = lambda path: pathlib.Path(' + repr(str(self.unquarantined)) + ').write_text("removed")\n'
+            'o.verify_launch_target = lambda path: None\n'
             'original_run = subprocess.run\n'
             'def safe_run(command, **kwargs):\n'
             '    if command[0] == "/usr/bin/open" or str(command[0]).endswith("/launch-scanned-file"):\n'
@@ -57,8 +58,9 @@ class TerminationTests(unittest.TestCase):
             '        return subprocess.CompletedProcess(command, 0)\n'
             '    return original_run(command, **kwargs)\n'
             'o.subprocess.run = safe_run\n'
+            'o.watch_parent_lifetime()\n'
             'o.scan_and_open(' + repr(str(self.document)) + ', ' + repr(str(self.scanner))
-            + ', cancelled=o.watch_parent_lifetime())\n'
+            + ')\n'
         )
         env = dict(os.environ, PDF_MAGIC_PARENT_LIFETIME='1', PDF_MAGIC_NATIVE_CANCEL='1', TEST_SCAN_SLEEP=sleep)
         return subprocess.Popen(
@@ -69,7 +71,8 @@ class TerminationTests(unittest.TestCase):
         deadline = time.monotonic() + 5
         while not self.started.exists() and process.poll() is None and time.monotonic() < deadline:
             time.sleep(0.02)
-        self.assertTrue(self.started.exists(), 'Fake ClamAV never started')
+        self.assertTrue(self.started.exists(), 'Fake ClamAV never started: ' +
+                        (process.stderr.read().decode() if process.poll() is not None else 'process still running'))
 
     def test_parent_exit_aborts_scan_without_opening_or_cache_write(self):
         child = self.launch()
