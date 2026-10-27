@@ -525,6 +525,22 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 'SELECT scanner_version FROM clean_scans').fetchone()
         self.assertEqual(row, ('1.4.2',))
 
+    def test_non_pdf_cache_preserves_original_engine_version(self):
+        document = self.file.with_suffix('.txt')
+        document.write_bytes(b'non-pdf data')
+        scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=scan), \
+                patch.object(opener.subprocess, 'check_output',
+                             return_value='ClamAV 1.5.0/27800') as version, \
+                patch.object(opener, 'remove_quarantine'):
+            first = opener.scan_and_open(str(document), '/scanner')
+            second = opener.scan_and_open(str(document), '/scanner')
+        self.assertEqual(first.scanner_version, '1.5.0')
+        self.assertFalse(first.from_cache)
+        self.assertEqual(second.scanner_version, '1.5.0')
+        self.assertTrue(second.from_cache)
+        version.assert_called_once()
+
     def test_legacy_cache_keeps_clean_verdict_without_invented_version(self):
         digest = opener.cache_key(opener.fingerprint(self.file), True)
         with sqlite3.connect(opener.CACHE_DB) as connection:
