@@ -72,8 +72,8 @@ class ScanGateTests(unittest.TestCase):
             except (OSError, RuntimeError) as error:
                 outcomes[threading.current_thread().name] = str(error)
 
-        with patch.object(opener, 'cached_clean', side_effect=cached_clean), \\
-                patch.object(opener.subprocess, 'run', side_effect=run), \\
+        with patch.object(opener, 'cached_clean', side_effect=cached_clean), \
+                patch.object(opener.subprocess, 'run', side_effect=run), \
                 patch.object(opener, 'remove_quarantine'):
             first = threading.Thread(target=worker, args=(self.file,), name='first')
             waiter = threading.Thread(target=worker, args=(another,), name='waiter')
@@ -115,8 +115,8 @@ class ScanGateTests(unittest.TestCase):
         self.assertEqual(calls.count('/usr/bin/open'), 1)
 
     def test_failed_lock_acquisition_fails_closed(self):
-        with patch.object(opener, 'active_scan_lock', side_effect=OSError('lock denied')), \\
-                patch.object(opener.subprocess, 'run') as run, \\
+        with patch.object(opener, 'active_scan_lock', side_effect=OSError('lock denied')), \
+                patch.object(opener.subprocess, 'run') as run, \
                 patch.object(opener, 'remove_quarantine') as remove:
             with self.assertRaises(OSError):
                 opener.scan_and_open(str(self.file), '/scanner')
