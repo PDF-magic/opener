@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import intended_destination, launch_clean_file
+from file_launcher import intended_destination, launch_clean_file, verify_launch_target
 import os
 import signal
 import re
@@ -553,6 +553,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                    if performed_scan else cached_scan(cache_id))
     if scan_result is None:
         raise RuntimeError('The clean scan cache could not be verified; opening was stopped.')
+    # Verify PDF destination capability before releasing quarantine.
+    verify_launch_target(path)
     remove_quarantine(path)
     # Quarantine removal changes ctime, but source bytes and identities must remain intact.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)

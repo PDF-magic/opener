@@ -19,6 +19,7 @@ cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/f
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
 /usr/bin/xcrun swiftc -O "$script_dir/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/launch-scanned-file"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 python3 - "$install_dir" <<'CONFIG'
 import sys
 from pathlib import Path
