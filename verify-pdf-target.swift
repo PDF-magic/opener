@@ -76,6 +76,24 @@ func trustedArcPDFTarget(
     return verifySignature(application)
 }
 
+// Vivaldi's built-in PDF viewer may not be advertised as a macOS PDF handler.
+// Only its exact, installed and executable application bundle can use this
+// exception; all other unregistered apps remain blocked.
+func verifiedVivaldiPDFViewer(bundleIdentifier: String, application: URL?) -> Bool {
+    guard bundleIdentifier == "com.vivaldi.Vivaldi",
+          let target = application?.standardizedFileURL.resolvingSymlinksInPath(),
+          target.pathExtension.lowercased() == "app" else { return false }
+
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: target.path, isDirectory: &isDirectory),
+          isDirectory.boolValue,
+          let bundle = Bundle(url: target),
+          bundle.bundleIdentifier == bundleIdentifier,
+          let executable = bundle.executableURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return false }
+    return true
+}
+
 // Standard Firefox releases contain a PDF viewer even when Launch Services
 // does not advertise PDF support. The exception requires Mozilla's actual
 // Developer ID signature, not just a spoofable bundle identifier.
@@ -115,6 +133,7 @@ func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
         registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
     ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || trustedArcPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
+      || verifiedVivaldiPDFViewer(bundleIdentifier: bundleIdentifier, application: application)
       || trustedFirefoxPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
 }
 
