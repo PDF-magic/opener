@@ -16,6 +16,7 @@ MAX_DATABASE_AGE = 48 * 60 * 60
 MAX_FILE_SIZE = 512 * 1024 * 1024
 PDF_SCAN_TIMEOUT = 30 * 60
 CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
+SCAN_REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 
 
@@ -113,6 +114,29 @@ def remember_clean(digest):
         # Failure to save the cache does not invalidate a successful scan.
         pass
 
+def record_scan_destination(destination):
+    """Record the intended launch target separately from clean-scan verdicts."""
+    try:
+        SCAN_REQUEST_DB.parent.mkdir(parents=True, exist_ok=True)
+        # Never follow a user-supplied symlink when preparing the audit database.
+        if SCAN_REQUEST_DB.is_symlink() or (
+                SCAN_REQUEST_DB.exists() and not SCAN_REQUEST_DB.is_file()):
+            raise OSError('The scan request database must be a regular file.')
+        SCAN_REQUEST_DB.touch(mode=0o600, exist_ok=True)
+        SCAN_REQUEST_DB.chmod(0o600)
+        with sqlite3.connect(str(SCAN_REQUEST_DB), timeout=5) as connection:
+            connection.execute(
+                'CREATE TABLE IF NOT EXISTS scan_requests ('
+                'id INTEGER PRIMARY KEY, requested_at REAL NOT NULL, '
+                'intended_destination_application TEXT NOT NULL)')
+            connection.execute(
+                'INSERT INTO scan_requests (requested_at, intended_destination_application) '
+                'VALUES (?, ?)', (time.time(), destination))
+    except (OSError, sqlite3.Error) as error:
+        # A request must not be opened if its intended destination was not recorded.
+        raise RuntimeError('Unable to record the scan destination; opening was stopped.') from error
+
+
 def remove_quarantine(path):
     if path.is_dir():
         subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
@@ -127,6 +151,11 @@ def scan_and_open(item, scanner):
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    # Reflect the existing /usr/bin/open behavior without changing its destination.
+    # Bare file opens use the macOS default handler; .app opens launch that bundle.
+    destination = ('com.brave.Browser' if is_pdf else
+                   path.name if path.is_dir() else 'system-default')
+    record_scan_destination(destination)
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
     hit = cached_clean(cache_id)
@@ -163,7 +192,7 @@ def scan_and_open(item, scanner):
     remove_quarantine(path)
     command = ['/usr/bin/open']
     if path.suffix.lower() == '.pdf':
-        command += ['-b', 'com.brave.Browser']
+        command += ['-b', destination]
     subprocess.run(command + [str(path)], check=True)
 
 
