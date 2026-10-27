@@ -95,6 +95,16 @@ class FileLauncherTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "opening was stopped"):
                         verify_launch_target(self.root / "document.pdf")
 
+    def test_pinned_preflight_uses_supplied_bundle_identifier(self):
+        target = self.root / "file.pdf"
+        with patch("file_launcher.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 0)) as run:
+            verify_launch_target(target, target_app="com.apple.Preview")
+        run.assert_called_once_with(
+            [str(PDF_TARGET_VERIFIER), "com.apple.Preview"],
+            capture_output=True, timeout=10,
+        )
+
     def test_non_pdf_retains_default_handler_without_verification(self):
         for path in ("readme.txt", "Another.app"):
             with self.subTest(path=path):
@@ -104,8 +114,8 @@ class FileLauncherTests(unittest.TestCase):
 
     def test_scanner_preflights_target_before_quarantine_release(self):
         source = (ROOT / "scan-and-open.py").read_text()
-        self.assertIn("verify_launch_target(path)", source)
-        self.assertLess(source.rindex("    verify_launch_target(path)"),
+        self.assertIn("verify_launch_target(path, target_app=destination if is_pdf else None)", source)
+        self.assertLess(source.rindex("    verify_launch_target(path, target_app=destination if is_pdf else None)"),
                         source.rindex("    remove_quarantine(path)"))
 
     def test_installer_deploys_launch_module_with_scanner(self):

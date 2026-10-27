@@ -14,13 +14,13 @@ PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
 PDF_TARGET_VERIFIER = Path(__file__).with_name("verify-pdf-target")
 
 
-def verify_launch_target(path):
+def verify_launch_target(path, target_app=None):
     """Require Launch Services PDF capability for the selected application."""
     if Path(path).suffix.lower() != ".pdf":
         return
     try:
         completed = subprocess.run(
-            [str(PDF_TARGET_VERIFIER), intended_destination(path)],
+            [str(PDF_TARGET_VERIFIER), target_app if target_app is not None else intended_destination(path)],
             capture_output=True, timeout=10,
         )
     except (OSError, subprocess.SubprocessError) as error:

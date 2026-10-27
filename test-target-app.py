@@ -67,6 +67,25 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(actual, ('com.apple.Preview',))
         quarantine.assert_called_once()
 
+    def test_preflight_and_launch_keep_original_target_if_preference_changes(self):
+        self.config.write_text('com.apple.Preview\n')
+        seen = []
+
+        def change_preference(path, target_app=None):
+            seen.append((path, target_app))
+            self.config.write_text('com.brave.Browser\n')
+
+        with patch.object(opener, 'verify_launch_target',
+                          side_effect=change_preference):
+            run, quarantine = self.scan_clean()
+        self.assertEqual(seen, [(self.document, 'com.apple.Preview')])
+        self.assertEqual(
+            run.call_args.args[0],
+            [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
+             'com.apple.Preview', str(self.document)],
+        )
+        quarantine.assert_called_once()
+
     def test_invalid_settings_fail_before_scan_or_quarantine_changes(self):
         for content in ('', 'Preview', '--evil', 'com.apple.Preview\nother',
                         'com..bad', 'local.studio.brave-pdf-opener', 'x' * 260):
