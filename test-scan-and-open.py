@@ -4,6 +4,7 @@ import io
 from dataclasses import FrozenInstanceError, replace
 import threading
 import os
+import sqlite3
 from pathlib import Path
 import subprocess
 import sys
@@ -28,6 +29,10 @@ class ScanGateTests(unittest.TestCase):
         cache = patch.object(opener, 'CACHE_DB', Path(self.temp.name) / 'clean-cache.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
+        audit = patch.object(opener, 'SCAN_REQUEST_DB',
+                             Path(self.temp.name) / 'scan-requests.sqlite3')
+        audit.start()
+        self.addCleanup(audit.stop)
 
     def assert_blocked(self, result=None, exception=None):
         with patch.object(opener.subprocess, 'run', return_value=result, side_effect=exception) as run, \
@@ -353,6 +358,91 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(calls[2], ['/usr/bin/open', '-b', 'com.brave.Browser', str(self.file)])
         self.assertIn('--alert-exceeds-max=yes', calls[0])
         self.assertIn('--alert-encrypted=yes', calls[0])
+
+    def recorded_destinations(self):
+        with sqlite3.connect(str(opener.SCAN_REQUEST_DB)) as connection:
+            return connection.execute(
+                'SELECT intended_destination_application FROM scan_requests ORDER BY id'
+            ).fetchall()
+
+    def test_records_brave_as_intended_destination_before_scanning(self):
+        seen = []
+        def run(command, **kwargs):
+            if command[0] == '/scanner':
+                seen.extend(self.recorded_destinations())
+            return subprocess.CompletedProcess(command, 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', side_effect=run) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(seen, [('com.brave.Browser',)])
+        self.assertEqual(run.call_args.args[0],
+                         ['/usr/bin/open', '-b', 'com.brave.Browser', str(self.file)])
+
+    def test_records_default_handler_and_selected_app_bundle(self):
+        text_file = self.file.with_suffix('.txt')
+        text_file.write_bytes(b'example')
+        app = Path(self.temp.name) / 'Example.app'
+        app.mkdir()
+        complete = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=complete) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(text_file), '/scanner')
+            opener.scan_and_open(str(app), '/scanner')
+        self.assertEqual(self.recorded_destinations(),
+                         [('system-default',), ('Example.app',)])
+        self.assertEqual(run.call_args.args[0], ['/usr/bin/open', str(app)])
+
+    def test_records_destination_even_when_scan_detects_malware(self):
+        detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(self.recorded_destinations(), [('com.brave.Browser',)])
+        self.assertEqual(run.call_count, 1)
+        quarantine.assert_not_called()
+
+    def test_records_each_request_even_when_clean_scan_is_cached(self):
+        complete = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=complete) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner')
+            opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(self.recorded_destinations(),
+                         [('com.brave.Browser',), ('com.brave.Browser',)])
+        self.assertEqual(sum(call.args[0][0] == '/scanner' for call in run.call_args_list), 1)
+
+    def test_audit_write_failure_stops_opening_without_removing_quarantine(self):
+        with patch.object(opener, 'SCAN_REQUEST_DB', Path(self.temp.name)), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'record the scan destination'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        run.assert_not_called()
+        quarantine.assert_not_called()
+
+    def test_audit_file_private_and_excludes_requested_path(self):
+        complete = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.subprocess, 'run', return_value=complete), \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(opener.SCAN_REQUEST_DB.stat().st_mode & 0o777, 0o600)
+        self.assertNotIn(str(self.file).encode(), opener.SCAN_REQUEST_DB.read_bytes())
+        with sqlite3.connect(str(opener.SCAN_REQUEST_DB)) as connection:
+            columns = [row[1] for row in connection.execute('PRAGMA table_info(scan_requests)')]
+        self.assertEqual(columns, ['id', 'requested_at', 'intended_destination_application'])
+
+    def test_symlinked_audit_log_is_rejected_without_touching_target(self):
+        target = Path(self.temp.name) / 'other-file'
+        target.write_bytes(b'keep me unchanged')
+        opener.SCAN_REQUEST_DB.symlink_to(target)
+        with patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as quarantine:
+            with self.assertRaisesRegex(RuntimeError, 'record the scan destination'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(target.read_bytes(), b'keep me unchanged')
+        run.assert_not_called()
+        quarantine.assert_not_called()
 
     def test_missing_or_stale_signatures_block_before_scanning(self):
         database = Path(self.temp.name) / 'database'
