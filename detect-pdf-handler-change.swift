@@ -13,7 +13,7 @@ let pdfMagicOpenerBundleIdentifier = "local.studio.brave-pdf-opener"
 
 func detectPDFHandlerChange(
     expectedBundleIdentifier: String = pdfMagicOpenerBundleIdentifier,
-    lookup: () -> String? = registeredPDFHandlerBundleIdentifier
+    lookup: () -> String? = { registeredPDFHandlerBundleIdentifier() }
 ) -> PDFHandlerChange {
     guard let current = lookup() else { return .unknown }
     if current == expectedBundleIdentifier { return .unchanged }
