@@ -27,6 +27,8 @@ class ScanRequest:
     file_type: str
     # Optional origin metadata supplied by a caller; never a fetch or scan target.
     source_url: Optional[str] = None
+    # Request metadata only; cancellation execution is a separate concern.
+    cancellation_requested: bool = False
 
     @classmethod
     def from_path(cls, path, source_url=None):
