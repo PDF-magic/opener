@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from dataclasses import dataclass
 import fcntl
 import hashlib
 from file_launcher import launch_clean_file
 import os
 from pathlib import Path
+from typing import Optional
 import sqlite3
 import stat
 import subprocess
@@ -56,6 +58,23 @@ def scan_slot():
             finally:
                 os.close(fd)
         time.sleep(0.05)
+
+
+@dataclass(frozen=True)
+class ScanRequest:
+    # A filename extension is a declared type, not proof of the file's contents.
+    file_type: str
+    # Optional origin metadata supplied by a caller; never a fetch or scan target.
+    source_url: Optional[str] = None
+    # Request metadata only; cancellation execution is a separate concern.
+    cancellation_requested: bool = False
+    # Capture caller selection as metadata; it never changes scan enforcement.
+    protection_level: Optional[str] = None
+
+    @classmethod
+    def from_path(cls, path, source_url=None, protection_level=None):
+        return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown',
+                   source_url=source_url, protection_level=protection_level)
 
 
 def scanner_path():
@@ -179,11 +198,15 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def _scan_and_open(item, scanner):
+def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
-    is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    request_kwargs = {'source_url': source_url}
+    if protection_level is not None:
+        request_kwargs['protection_level'] = protection_level
+    request = ScanRequest.from_path(path, **request_kwargs)
+    is_pdf = path.is_file() and request.file_type == 'pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
     # Do not serialize an already cached clean hit. For a miss, a cross-process
@@ -230,10 +253,13 @@ def _scan_and_open(item, scanner):
     launch_clean_file(path)
 
 
-def scan_and_open(item, scanner):
+def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
-        return _scan_and_open(item, scanner)
+        if source_url is None and protection_level is None:
+            return _scan_and_open(item, scanner)
+        return _scan_and_open(item, scanner, source_url=source_url,
+                              protection_level=protection_level)
 
 
 def main(items):
