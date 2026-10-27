@@ -50,7 +50,7 @@ class TerminationTests(unittest.TestCase):
             'o.SCAN_REQUEST_DB = pathlib.Path(' + repr(str(self.root / 'audit.sqlite3')) + ')\n'
             'o.remember_clean = lambda *args: pathlib.Path(' + repr(str(self.cached)) + ').write_text("cached")\n'
             'o.remove_quarantine = lambda path: pathlib.Path(' + repr(str(self.unquarantined)) + ').write_text("removed")\n'
-            'o.verify_launch_target = lambda path: None\n'
+            'o.verify_launch_target = lambda path, target_app=None: None\n'
             'original_run = subprocess.run\n'
             'def safe_run(command, **kwargs):\n'
             '    if command[0] == "/usr/bin/open" or str(command[0]).endswith("/launch-scanned-file"):\n'
