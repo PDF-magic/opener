@@ -140,6 +140,8 @@ the current scanner's exit codes, quarantine handling, or opening behavior.
 | `fileTooLarge` | The input exceeded a configured or scanner-enforced size limit. |
 | `cancelled` | The scan request was cancelled before completion. |
 
+**Detection metadata:** Unique ClamAV `FOUND` signatures appear as `ScanResult.detection_names` in scanner order, without paths or unrelated diagnostic text. Blocked failures expose `error.scan_result`; clean or cached scan results have an empty detection-name tuple. Names are in-memory only and never bypass the scanning or quarantine gate.
+
 **Fail-closed contract:** only `clean` may permit further opening processing;
 every other result blocks opening and leaves quarantine in place. A cancellation,
 scan error, or partial scan must never be treated as `clean`.

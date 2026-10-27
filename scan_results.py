@@ -6,7 +6,9 @@ Defining the vocabulary does not change how the current scanner runs or
 assign outcomes to requests; integration belongs to separate checklist work.
 """
 
+from dataclasses import dataclass
 from enum import Enum
+import re
 
 
 class ScanResultStatus(str, Enum):
@@ -27,3 +29,26 @@ class ScanResultStatus(str, Enum):
     def permits_open(self):
         """Only a confirmed clean verdict permits subsequent open processing."""
         return self is ScanResultStatus.clean
+
+
+# Only ordinary ClamAV signature identifiers belong in structured results.
+# Exclude scanned paths, arbitrary diagnostics, and malformed FOUND lines.
+_DETECTION_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._!+@-]{0,254}\Z")
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    """In-memory result metadata; detection names never authorize opening."""
+
+    detection_names: tuple[str, ...] = ()
+
+    @classmethod
+    def from_clamav_output(cls, output):
+        names = []
+        for line in (output or "").splitlines():
+            if not line.endswith(" FOUND"):
+                continue
+            source, separator, name = line[:-len(" FOUND")].rpartition(": ")
+            if source and separator and _DETECTION_NAME.fullmatch(name) and name not in names:
+                names.append(name)
+        return cls(detection_names=tuple(names))

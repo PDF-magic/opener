@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from scan_results import ScanResult
 from functools import wraps
 from dataclasses import dataclass
 from dataclasses import dataclass
@@ -56,6 +57,7 @@ class CleanScanResult:
     from_cache: bool
     scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
+    detection_names: tuple[str, ...] = ()
 
 
 class LaunchFailedError(RuntimeError):
@@ -477,6 +479,7 @@ class ScanDetection:
     exit_code: int
     stdout: str
     stderr: str
+    detection_names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -484,12 +487,14 @@ class OpeningDecision:
     """Scanner policy judgment before independent file-integrity/open checks."""
     allowed: bool
     reason: str = ''
+    detection_names: tuple[str, ...] = ()
 
 
 def capture_detection(completed_process):
     """Record what ClamAV reported, without conferring opening permission."""
+    names = ScanResult.from_clamav_output(completed_process.stdout).detection_names
     return ScanDetection(completed_process.returncode, completed_process.stdout,
-                         completed_process.stderr)
+                         completed_process.stderr, names)
 
 
 def decide_opening(detection):
@@ -501,10 +506,12 @@ def decide_opening(detection):
     """
     if detection.exit_code == 1:
         return OpeningDecision(
-            False, 'Malware or an unscannable item was detected; opening was stopped.')
+            False, 'Malware or an unscannable item was detected; opening was stopped.',
+            detection_names=detection.detection_names)
     if detection.exit_code != 0:
         return OpeningDecision(
-            False, 'The malware scan could not finish; opening was stopped.')
+            False, 'The malware scan could not finish; opening was stopped.',
+            detection_names=detection.detection_names)
     # ClamAV can emit warnings for unreadable or skipped inputs without a
     # detection. An explicit OK with no unexpected output is still required.
     lines = detection.stdout.splitlines()
@@ -512,8 +519,9 @@ def decide_opening(detection):
             any(not line.endswith((': OK', ': Empty file')) for line in lines) or
             detection.stderr.strip()):
         return OpeningDecision(
-            False, 'The malware scan did not confirm a complete scan; opening was stopped.')
-    return OpeningDecision(True)
+            False, 'The malware scan did not confirm a complete scan; opening was stopped.',
+            detection_names=detection.detection_names)
+    return OpeningDecision(True, detection_names=detection.detection_names)
 
 
 def supported_request_path(item):
@@ -579,7 +587,9 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
                 detection = capture_detection(scan)
                 decision = decide_opening(detection)
                 if not decision.allowed:
-                    raise RuntimeError(decision.reason)
+                    failure = RuntimeError(decision.reason)
+                    failure.scan_result = ScanResult(decision.detection_names)
+                    raise failure
                 signature_version_after = read_signature_database_version()
                 signature_version = (signature_version_before
                                      if signature_version_before == signature_version_after else None)
