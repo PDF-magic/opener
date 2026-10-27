@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 
 PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
+NATIVE_LAUNCHER = Path(__file__).with_name("launch-scanned-file")
 
 
 def intended_destination(path):
@@ -23,7 +24,7 @@ def intended_destination(path):
 def launch_clean_file(path):
     """Launch an already-approved file with the current destination policy."""
     path = Path(path)
-    command = ["/usr/bin/open"]
+    command = [str(NATIVE_LAUNCHER)]
     if path.suffix.lower() == ".pdf":
-        command.extend(["-b", PDF_DEFAULT_BUNDLE_ID])
+        command.extend(["--bundle-id", PDF_DEFAULT_BUNDLE_ID])
     subprocess.run([*command, str(path)], check=True)
