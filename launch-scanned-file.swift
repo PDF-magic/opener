@@ -50,7 +50,45 @@ func resolveTargetApplication(
     return target
 }
 
+// Inspect metadata only. Reading an iCloud placeholder can itself start a
+// download, so this check must precede any content fingerprinting or scanning.
+func downloadStatusAllowsOpen(
+    isUbiquitous: Bool?,
+    downloadingStatus: URLUbiquitousItemDownloadingStatus?,
+    isDownloading: Bool?
+) -> Bool {
+    guard isUbiquitous == true else { return true }
+    guard let status = downloadingStatus,
+          status == .current || status == .downloaded else { return false }
+    // A stale copy may exist, but must not be scanned during an update.
+    return isDownloading != true
+}
+
+func isLocallyAvailablePDF(_ url: URL) -> Bool {
+    guard url.isFileURL, url.pathExtension.lowercased() == "pdf" else { return false }
+    do {
+        let values = try url.resourceValues(forKeys: [
+            .isRegularFileKey,
+            .isUbiquitousItemKey,
+            .ubiquitousItemDownloadingStatusKey,
+            .ubiquitousItemIsDownloadingKey,
+        ])
+        return values.isRegularFile == true && downloadStatusAllowsOpen(
+            isUbiquitous: values.isUbiquitousItem,
+            downloadingStatus: values.ubiquitousItemDownloadingStatus,
+            isDownloading: values.ubiquitousItemIsDownloading
+        )
+    } catch {
+        // Files whose availability cannot be checked must not be launched.
+        return false
+    }
+}
+
 func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
+    if arguments.count == 2 && arguments[0] == "--check-local" {
+        let path = arguments[1]
+        return path.hasPrefix("/") && isLocallyAvailablePDF(URL(fileURLWithPath: path))
+    }
     let path: String
     let bundleIdentifier: String?
     if arguments.count == 1 {
@@ -69,6 +107,10 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared) -> Bool {
     let target = URL(fileURLWithPath: path)
     let isApplication = isDirectory.boolValue && target.pathExtension.lowercased() == "app"
     guard !isDirectory.boolValue || isApplication else { return false }
+    // Recheck immediately before NSWorkspace gets a chance to launch a browser.
+    if target.pathExtension.lowercased() == "pdf" && !isLocallyAvailablePDF(target) {
+        return false
+    }
     let config = NSWorkspace.OpenConfiguration()
     let completed = LaunchCompletion()
 
