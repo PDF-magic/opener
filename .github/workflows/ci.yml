@@ -71,6 +71,9 @@ jobs:
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
           "$RUNNER_TEMP/TestPDFTarget"
           if "$RUNNER_TEMP/VerifyPDFTarget" >/dev/null 2>&1; then exit 1; fi
+          if [ -d /Applications/Safari.app ]; then
+            "$RUNNER_TEMP/VerifyPDFTarget" com.apple.Safari
+          fi
       - name: Compile and smoke-test NSWorkspace launcher
         run: |
           xcrun swiftc -warnings-as-errors launch-scanned-file.swift -o "$RUNNER_TEMP/LaunchScannedFile"
@@ -82,6 +85,7 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
       - name: Verify native PDF cloud download-state decisions
         run: python3 test-native-file-availability.py
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.apple.Safari "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
       - name: Verify bundle-identifier resolution and app existence
         run: python3 test-bundle-target.py
       - name: Verify duplicate-open handling and queued native scans
