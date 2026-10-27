@@ -109,7 +109,7 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
-      - name: Compile and verify PDF-capable selection including Arc and Opera signatures
+      - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
@@ -117,6 +117,9 @@ jobs:
           if "$RUNNER_TEMP/VerifyPDFTarget" >/dev/null 2>&1; then exit 1; fi
           if [ -d /Applications/Safari.app ]; then
             "$RUNNER_TEMP/VerifyPDFTarget" com.apple.Safari
+          fi
+          if [ -d /Applications/Firefox.app ]; then
+            "$RUNNER_TEMP/VerifyPDFTarget" org.mozilla.firefox
           fi
       - name: Compile and smoke-test NSWorkspace launcher
         run: |
@@ -128,6 +131,7 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.apple.Safari "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id company.thebrowser.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.operasoftware.Opera "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id org.mozilla.firefox "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
