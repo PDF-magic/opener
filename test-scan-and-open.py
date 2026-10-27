@@ -2,6 +2,7 @@
 import importlib.util
 import os
 from pathlib import Path
+from dataclasses import replace
 import subprocess
 import sys
 import tempfile
@@ -47,6 +48,14 @@ class ScanGateTests(unittest.TestCase):
             with self.subTest(path=path):
                 request = opener.ScanRequest.from_path(path)
                 self.assertEqual(request.file_type, expected)
+
+    def test_scan_request_has_optional_cancellation_field(self):
+        request = opener.ScanRequest.from_path(self.file)
+        self.assertIs(request.cancellation_requested, False)
+        cancelled_request = replace(request, cancellation_requested=True)
+        self.assertIs(cancelled_request.cancellation_requested, True)
+        self.assertIs(request.cancellation_requested, False)
+        self.assertEqual(cancelled_request.file_type, request.file_type)
 
     def test_scan_records_file_type_before_failed_scan(self):
         infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
