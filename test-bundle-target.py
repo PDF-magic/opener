@@ -9,6 +9,18 @@ import unittest
 
 
 class BundleTargetTests(unittest.TestCase):
+    def test_closed_browser_launches_and_receives_selected_pdf(self):
+        if sys.platform != "darwin":
+            self.skipTest("NSWorkspace requires macOS")
+        # The existing macOS CI bundle-test step runs this integration test,
+        # avoiding a second shared workflow edit during concurrent PR merges.
+        cold_start = Path(__file__).with_name("test-browser-cold-start.py")
+        result = subprocess.run(
+            [sys.executable, str(cold_start), "-v"],
+            capture_output=True, text=True, timeout=150,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_registered_application_must_exist_and_match_bundle_identifier(self):
         if sys.platform != "darwin":
             self.skipTest("NSWorkspace requires macOS")
