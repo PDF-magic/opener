@@ -162,8 +162,8 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
-# Preserve the previous PDF handler only after the user accepts restoration.
-# The verified history record must succeed before any default association change.
+# Only after explicit consent, preserve the user's previous PDF handler before
+# running the verified setter; refusal never changes the association.
 python3 "$script_dir/offer-restore-pdf-handler.py" \
     "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app" \
     "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
