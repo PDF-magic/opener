@@ -8,12 +8,12 @@ from file_launcher import launch_clean_file
 import os
 import re
 from pathlib import Path
+from typing import Optional
 import sqlite3
 import stat
 import subprocess
 import sys
 import time
-from typing import Optional
 
 INSTALL_DIR = Path.home() / 'Library/Application Support/Studio/allow-and-open'
 DATABASE = INSTALL_DIR / 'signatures'
@@ -25,11 +25,26 @@ CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
 
+# Only these fixed, path-free errors may appear in scan diagnostics.
+# Unexpected system or scanner exceptions may contain private source paths.
+SAFE_SCAN_FAILURES = frozenset((
+    'Application bundle contains a link outside the bundle; opening was stopped.',
+    'The file exceeds the 512 MB scan limit; opening was stopped.',
+    'Only regular files and application bundles can be scanned.',
+    'Select a file or application, rather than a folder.',
+    'The malware scan timed out; opening was stopped.',
+    'Malware or an unscannable item was detected; opening was stopped.',
+    'The malware scan could not finish; opening was stopped.',
+    'The malware scan did not confirm a complete scan; opening was stopped.',
+    'The file changed while checking it; opening was stopped. Try again.',
+    'The clean scan cache could not be verified; opening was stopped.',
+))
+
+
 
 @dataclass(frozen=True)
 class ScanResult:
-    """Engine-version metadata for a successfully opened scan result."""
-
+    """Engine-version provenance attached to successful scan results."""
     scanner_version: Optional[str]
     from_cache: bool
 
@@ -67,6 +82,23 @@ def scan_slot():
             finally:
                 os.close(fd)
         time.sleep(0.05)
+
+
+@dataclass(frozen=True)
+class ScanRequest:
+    # A filename extension is a declared type, not proof of the file's contents.
+    file_type: str
+    # Optional origin metadata supplied by a caller; never a fetch or scan target.
+    source_url: Optional[str] = None
+    # Request metadata only; cancellation execution is a separate concern.
+    cancellation_requested: bool = False
+    # Capture caller selection as metadata; it never changes scan enforcement.
+    protection_level: Optional[str] = None
+
+    @classmethod
+    def from_path(cls, path, source_url=None, protection_level=None):
+        return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown',
+                   source_url=source_url, protection_level=protection_level)
 
 
 def scanner_path():
@@ -134,7 +166,6 @@ def cache_connection():
         connection.execute('CREATE TABLE IF NOT EXISTS clean_scans '
                            '(digest TEXT PRIMARY KEY, scanned_at REAL NOT NULL, '
                            'scanner_version TEXT)')
-        # Keep old cache records valid, but do not misattribute their engine version.
         if 'scanner_version' not in {
                 column[1] for column in connection.execute('PRAGMA table_info(clean_scans)')}:
             connection.execute('ALTER TABLE clean_scans ADD COLUMN scanner_version TEXT')
@@ -217,11 +248,24 @@ def remove_quarantine(path):
             subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
 
 
-def _scan_and_open(item, scanner):
+def remove_quarantine(path):
+    if path.is_dir():
+        subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
+    else:
+        attributes = subprocess.run(['/usr/bin/xattr', str(path)], check=True, capture_output=True, text=True)
+        if 'com.apple.quarantine' in attributes.stdout.splitlines():
+            subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
+
+
+def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     path = Path(item).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
-    is_pdf = path.is_file() and path.suffix.lower() == '.pdf'
+    request_kwargs = {'source_url': source_url}
+    if protection_level is not None:
+        request_kwargs['protection_level'] = protection_level
+    request = ScanRequest.from_path(path, **request_kwargs)
+    is_pdf = path.is_file() and request.file_type == 'pdf'
     before = fingerprint(path)
     cache_id = cache_key(before, is_pdf)
     scanned_result = None
@@ -251,14 +295,14 @@ def _scan_and_open(item, scanner):
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 if scan.returncode == 1:
-                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.\n' + scan.stdout.strip())
+                    raise RuntimeError('Malware or an unscannable item was detected; opening was stopped.')
                 if scan.returncode != 0:
-                    raise RuntimeError('The malware scan could not finish; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                    raise RuntimeError('The malware scan could not finish; opening was stopped.')
                 # ClamAV can emit warnings for unreadable or skipped inputs without a detection.
                 lines = scan.stdout.splitlines()
                 if not any(line.endswith(': OK') for line in lines) or any(
                         not line.endswith((': OK', ': Empty file')) for line in lines) or scan.stderr.strip():
-                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.\n' + (scan.stderr or scan.stdout).strip())
+                    raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.')
                 if before != fingerprint(path):
                     raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
                 scanned_result = ScanResult(
@@ -275,10 +319,21 @@ def _scan_and_open(item, scanner):
     return result
 
 
-def scan_and_open(item, scanner):
+def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
-        return _scan_and_open(item, scanner)
+        if source_url is None and protection_level is None:
+            return _scan_and_open(item, scanner)
+        return _scan_and_open(item, scanner, source_url=source_url,
+                              protection_level=protection_level)
+
+
+def safe_scan_failure(error):
+    # Whitelist only messages controlled by this scanner. In particular,
+    # OSError and CalledProcessError can include absolute selected paths.
+    if type(error) is RuntimeError and str(error) in SAFE_SCAN_FAILURES:
+        return str(error)
+    return 'The request could not be processed; opening was stopped.'
 
 
 def main(items):
@@ -289,11 +344,11 @@ def main(items):
         print(str(error), file=sys.stderr)
         return 1
     result = 0
-    for item in items:
+    for index, item in enumerate(items, start=1):
         try:
             scan_and_open(item, scanner)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
-            print(f'{Path(item).name}: {error}', file=sys.stderr)
+            print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
     return result
 
