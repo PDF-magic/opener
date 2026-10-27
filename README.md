@@ -181,6 +181,18 @@ fall back to another app. Opera GX is a separate application and is not
 covered by this Opera-specific exception. ClamAV scanning and the existing
 file-integrity and quarantine checks always precede launching.
 
+To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
+
+```sh
+printf '%s\n' 'org.mozilla.firefox' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Firefox has a built-in PDF viewer but may not register itself as a PDF handler
+with macOS. The launcher accepts an installed Firefox application only when
+its bundle identity, executable, and Mozilla Developer ID signature are verified; other applications must
+still be registered PDF handlers. The usual ClamAV, quarantine, and
+file-integrity checks still apply before Firefox is launched.
+
 An optional **fallback PDF application** can be configured separately. For
 example, use Preview only if the selected browser cannot be verified or fails
 to launch after a successful scan:
