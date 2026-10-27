@@ -68,13 +68,13 @@ class TargetApplicationTests(unittest.TestCase):
         quarantine.assert_called_once()
 
     def test_vivaldi_launches_only_after_clean_scan_and_pinned_preflight(self):
-        self.config.write_text('com.vivaldi.Vivaldi\\n')
+        self.config.write_text('com.vivaldi.Vivaldi\n')
         commands = []
         clean = subprocess.CompletedProcess([], 0, 'file: OK', '')
         def execute(command, **kwargs):
             commands.append(command)
             return clean
-        with patch.object(opener.subprocess, 'run', side_effect=execute), \\
+        with patch.object(opener.subprocess, 'run', side_effect=execute), \
                 patch.object(opener, 'remove_quarantine') as quarantine:
             receipt = opener.scan_and_open(str(self.document), '/scanner')
         self.assertEqual(receipt.status, 'clean')
@@ -94,12 +94,12 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(destination, ('com.vivaldi.Vivaldi',))
 
     def test_vivaldi_unverified_destination_cannot_remove_quarantine_or_launch(self):
-        self.config.write_text('com.vivaldi.Vivaldi\\n')
+        self.config.write_text('com.vivaldi.Vivaldi\n')
         def execute(command, **kwargs):
             if command[0] == str(launcher.PDF_TARGET_VERIFIER):
                 return subprocess.CompletedProcess(command, 1, '', 'unsupported')
             return subprocess.CompletedProcess(command, 0, 'file: OK', '')
-        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \\
+        with patch.object(opener.subprocess, 'run', side_effect=execute) as run, \
                 patch.object(opener, 'remove_quarantine') as quarantine:
             with self.assertRaisesRegex(RuntimeError, 'opening was stopped'):
                 opener.scan_and_open(str(self.document), '/scanner')
