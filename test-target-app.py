@@ -55,6 +55,28 @@ class TargetApplicationTests(unittest.TestCase):
                                                   str(self.document)])
         quarantine.assert_called_once()
 
+    def test_firefox_target_is_pinned_through_pdf_verification_and_launch(self):
+        self.config.write_text('org.mozilla.firefox\\n')
+        verified = []
+
+        def verify(path, target_app=None):
+            verified.append((path, target_app))
+
+        with patch.object(opener, 'verify_launch_target', side_effect=verify):
+            run, quarantine = self.scan_clean()
+        self.assertEqual(verified, [(self.document, 'org.mozilla.firefox')])
+        self.assertEqual(
+            run.call_args.args[0],
+            [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
+             'org.mozilla.firefox', str(self.document)],
+        )
+        self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
+        quarantine.assert_called_once()
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            destination = db.execute(
+                'SELECT intended_destination_application FROM scan_requests').fetchone()
+        self.assertEqual(destination, ('org.mozilla.firefox',))
+
     def test_configured_bundle_identifier_used_only_after_clean_scan(self):
         self.config.write_text('com.apple.Preview\n')
         run, quarantine = self.scan_clean()

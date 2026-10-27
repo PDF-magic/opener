@@ -96,6 +96,18 @@ different installed application; for example, Preview:
 printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
+To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
+
+```sh
+printf '%s\\n' 'org.mozilla.firefox' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Firefox has a built-in PDF viewer but may not register itself as a PDF handler
+with macOS. The launcher accepts an installed Firefox application only when
+its bundle identity and executable are verified; other applications must
+still be registered PDF handlers. The usual ClamAV, quarantine, and
+file-integrity checks still apply before Firefox is launched.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
