@@ -102,7 +102,7 @@ class LaunchResultTests(unittest.TestCase):
         self.assertNotIsInstance(raised.exception, opener.LaunchFailedError)
         launch.assert_not_called()
 
-    def test_cli_fails_without_discarding_clean_scan_reason(self):
+    def test_cli_launch_failure_remains_nonzero_and_private(self):
         raw = subprocess.CompletedProcess([], 0, "file: OK", "")
         stderr = StringIO()
         with patch.object(opener, "scanner_path", return_value="/scanner"), \
@@ -114,7 +114,7 @@ class LaunchResultTests(unittest.TestCase):
                 patch("sys.stderr", stderr):
             code = opener.main([str(self.file)])
         self.assertEqual(code, 1)
-        self.assertIn("scan completed cleanly", stderr.getvalue())
+        self.assertIn("The request could not be processed", stderr.getvalue())
         self.assertNotIn("destination absent", stderr.getvalue())
 
 
