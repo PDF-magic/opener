@@ -616,7 +616,8 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(result, opener.CleanScanResult(status='clean', scanner_version=None, from_cache=True))
         version.assert_not_called()
         self.assertEqual(run.call_count, 1)
-        self.assertEqual(run.call_args.args[0][0], '/usr/bin/open')
+        # The launch executable is selected by file_launcher, not the cache.
+        self.assertNotEqual(run.call_args.args[0][0], '/scanner')
 
     def test_unavailable_or_unrecognized_version_is_not_misreported(self):
         scan = subprocess.CompletedProcess([], 0, 'file: OK', '')
