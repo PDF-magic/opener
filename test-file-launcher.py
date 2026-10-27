@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target
+from file_launcher import NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID, PDF_TARGET_VERIFIER, launch_clean_file, verify_launch_target
 
 
 ROOT = Path(__file__).resolve().parent
@@ -31,6 +31,17 @@ class FileLauncherTests(unittest.TestCase):
             [str(NATIVE_LAUNCHER), "--bundle-id", PDF_DEFAULT_BUNDLE_ID, str(pdf)], check=True
         )
         self.assertEqual(PDF_DEFAULT_BUNDLE_ID, "com.brave.Browser")
+
+    def test_explicit_self_destination_never_runs_verification_or_launcher(self):
+        pdf = self.root / "document.PDF"
+        pdf.write_bytes(b"%PDF-1.4\\n")
+        self.assertEqual(PDF_OPENER_BUNDLE_ID, "local.studio.brave-pdf-opener")
+        with patch("file_launcher.subprocess.run") as run:
+            with self.assertRaisesRegex(RuntimeError, "cannot launch itself"):
+                verify_launch_target(pdf, target_app=PDF_OPENER_BUNDLE_ID)
+            with self.assertRaisesRegex(RuntimeError, "cannot launch itself"):
+                launch_clean_file(pdf, target_app=PDF_OPENER_BUNDLE_ID)
+        run.assert_not_called()
 
     def test_non_pdf_uses_system_default_application(self):
         document = self.root / "file with spaces.txt"

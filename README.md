@@ -56,6 +56,8 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **iCloud Drive PDFs:** Locally accessible PDF files in iCloud Drive follow the same scan, content-integrity, quarantine, and selected-application checks as any other local PDF. Use the file's normal Finder path (including paths under `~/Library/Mobile Documents/com~apple~CloudDocs/`); no special browser or destination configuration is needed. A cloud-only document that is not available as a local file cannot be opened by this workflow. The opener does not explicitly download or synchronize cloud files. Existing local file access, scan failure, and quarantine restrictions still apply.
 
+**Recursive launch protection:** PDF Magic Opener is the scan gate, not a PDF destination. The configured PDF target cannot be its own bundle identifier. Both Python handoff and native macOS launching independently reject that destination; the native helper also refuses a PDF without an explicitly selected target, since the system default PDF handler may point back to PDF Magic Opener. Default-handler launches that would resolve back to the opener are refused. Other installed PDF destinations, user preferences, and non-PDF default handlers are unchanged.
+
 **Native application launching:** After the scan gate approves a file, verifies unchanged contents, and completes quarantine handling, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
@@ -95,6 +97,16 @@ different installed application; for example, Preview:
 ```sh
 printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
+
+To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
+
+```sh
+printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Chrome must be installed and registered with macOS as a PDF-capable application.
+The launcher verifies the selected bundle and PDF registration before opening,
+and never substitutes another browser when verification fails.
 
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
