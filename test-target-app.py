@@ -56,7 +56,7 @@ class TargetApplicationTests(unittest.TestCase):
         quarantine.assert_called_once()
 
     def test_firefox_target_is_pinned_through_pdf_verification_and_launch(self):
-        self.config.write_text('org.mozilla.firefox\\n')
+        self.config.write_text('org.mozilla.firefox\n')
         verified = []
 
         def verify(path, target_app=None):

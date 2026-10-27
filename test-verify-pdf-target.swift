@@ -47,7 +47,7 @@ struct PDFTargetVerificationTests {
                 try data.write(to: app.appendingPathComponent("Contents/Info.plist"))
                 if executable {
                     let program = bin.appendingPathComponent("firefox")
-                    try Data("#!/bin/sh\\nexit 0\\n".utf8).write(to: program)
+                    try Data("#!/bin/sh\nexit 0\n".utf8).write(to: program)
                     try FileManager.default.setAttributes([.posixPermissions: 0o755],
                                                           ofItemAtPath: program.path)
                 }

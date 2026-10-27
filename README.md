@@ -99,7 +99,7 @@ printf '%s\n' 'com.apple.Preview' > "$HOME/Library/Application Support/Studio/al
 To open approved PDFs in Mozilla Firefox instead, use Firefox's bundle ID:
 
 ```sh
-printf '%s\\n' 'org.mozilla.firefox' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+printf '%s\n' 'org.mozilla.firefox' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
 Firefox has a built-in PDF viewer but may not register itself as a PDF handler
