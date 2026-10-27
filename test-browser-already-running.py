@@ -63,7 +63,7 @@ final class BrowserDelegate: NSObject, NSApplicationDelegate {
         if FileManager.default.fileExists(atPath: output.path),
            let handle = try? FileHandle(forWritingTo: output) {
             defer { try? handle.close() }
-            try? handle.seekToEnd()
+            _ = try? handle.seekToEnd()
             try? handle.write(contentsOf: data)
         } else {
             try? data.write(to: output)
