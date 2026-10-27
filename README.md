@@ -47,6 +47,31 @@ python3 test-scan-and-open.py
 python3 test-brave-pdf-opener.py
 ```
 
+## File lifecycle contract
+
+A file request has seven defined, case-sensitive lifecycle states: `queued`,
+`scanning`, `analyzing`, `blocked`, `ready`, `opening`, and `completed`.
+The transitions are:
+
+| Current state | Allowed next states |
+| --- | --- |
+| `queued` | `scanning`, `blocked` |
+| `scanning` | `analyzing`, `blocked` |
+| `analyzing` | `ready`, `blocked` |
+| `ready` | `opening`, `blocked` |
+| `opening` | `completed`, `blocked` |
+| `blocked` | None (terminal) |
+| `completed` | None (terminal) |
+
+The normal success path advances through the five active stages to completion.
+Failures, cancellation, or a revoked decision can block a request at any
+nonterminal stage. A blocked or completed request cannot resume; retry with a
+new queued request. Self-transitions and skipped stages are invalid.
+`file_lifecycle.py` provides `FileState`, immutable `VALID_TRANSITIONS`,
+`can_transition`, and a validating `transition_state` helper. This module
+defines the contract for future integrations; it does **not** change existing
+ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
+
 ## Tooling
 
 | File | Purpose |
