@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify configurable PDF destination without relaxing the scan gate."""
 import importlib.util
+import sqlite3
 from pathlib import Path
 import subprocess
 import sys
@@ -36,6 +37,9 @@ class TargetApplicationTests(unittest.TestCase):
         cache_setting = patch.object(opener, 'CACHE_DB', root / 'clean-cache.sqlite3')
         cache_setting.start()
         self.addCleanup(cache_setting.stop)
+        audit_setting = patch.object(opener, 'SCAN_REQUEST_DB', root / 'request-log.sqlite3')
+        audit_setting.start()
+        self.addCleanup(audit_setting.stop)
 
     def scan_clean(self, item=None):
         complete = subprocess.CompletedProcess([], 0, 'file: OK', '')
@@ -58,6 +62,9 @@ class TargetApplicationTests(unittest.TestCase):
                                                   str(self.document)])
         self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
         self.assertIn('--alert-encrypted=yes', run.call_args_list[0].args[0])
+        with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
+            actual = db.execute('SELECT intended_destination_application FROM scan_requests').fetchone()
+        self.assertEqual(actual, ('com.apple.Preview',))
         quarantine.assert_called_once()
 
     def test_invalid_settings_fail_before_scan_or_quarantine_changes(self):

@@ -1,7 +1,7 @@
 """Launch files only after the caller's malware scan gate has accepted them.
 
-Application selection belongs here, not in the ClamAV scan engine. The
-user-selectable PDF target defaults to Brave for existing installations.
+Application selection belongs here, not in the ClamAV scan engine. Retain the
+PDF-to-Brave default while allowing a user-selected PDF bundle ID.
 """
 
 from pathlib import Path
@@ -15,14 +15,13 @@ TARGET_APP_CONFIG = Path.home() / "Library/Application Support/Studio/allow-and-
 
 
 def pdf_target_application():
-    """Return the selected PDF bundle ID, defaulting only when absent."""
+    """Read the user's PDF bundle ID, defaulting to Brave only if absent."""
     try:
         descriptor = os.open(TARGET_APP_CONFIG, os.O_RDONLY | os.O_NOFOLLOW)
     except FileNotFoundError:
         return PDF_DEFAULT_BUNDLE_ID
     except OSError as error:
         raise RuntimeError("Cannot read the PDF target application setting; opening was stopped.") from error
-
     try:
         with os.fdopen(descriptor, "rb") as stream:
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
@@ -40,6 +39,16 @@ def pdf_target_application():
             or selected == "local.studio.brave-pdf-opener"):
         raise RuntimeError("Invalid PDF target application bundle identifier; opening was stopped.")
     return selected
+
+
+def intended_destination(path):
+    """Describe current launch selection without changing user settings."""
+    path = Path(path)
+    if path.suffix.lower() == ".pdf":
+        return pdf_target_application()
+    if path.is_dir() and path.suffix.lower() == ".app":
+        return path.name
+    return "system-default"
 
 
 def launch_clean_file(path, target_app=None):
