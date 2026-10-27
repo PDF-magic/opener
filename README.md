@@ -110,6 +110,18 @@ Chrome must be installed and registered with macOS as a PDF-capable application.
 The launcher verifies the selected bundle and PDF registration before opening,
 and never substitutes another browser when verification fails.
 
+To open scanned PDFs in **Arc** instead, use Arc's macOS bundle identifier:
+
+```sh
+printf '%s\n' 'company.thebrowser.Browser' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Arc's PDF viewer may not be registered as a macOS PDF handler. The
+preflight accepts only the installed Arc bundle with a working executable and
+a valid Browser Company signature (team S6N382Y83G); missing or untrusted
+installations stop opening. The ClamAV and quarantine checks still run, and
+Brave remains the default unless the user explicitly selects Arc.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
