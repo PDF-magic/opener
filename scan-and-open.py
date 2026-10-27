@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from dataclasses import dataclass
 import fcntl
 import hashlib
-from file_launcher import intended_destination, launch_clean_file, verify_launch_target
+from file_launcher import intended_destination, launch_clean_file, verify_launch_target, verify_local_file_available
 import os
 import signal
 import re
@@ -45,6 +45,7 @@ SAFE_SCAN_FAILURES = frozenset((
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
     'The clean scan cache could not be verified; opening was stopped.',
+    'The requested PDF is not available locally; opening was stopped.',
 ))
 
 
@@ -155,6 +156,8 @@ def validate_scan_request(item):
         raise RuntimeError('Scan request requires a file path.') from error
     if not isinstance(requested, str) or not requested or '\0' in requested:
         raise RuntimeError('Scan request requires a valid, nonempty file path.')
+    if requested.lower().endswith('.pdf.icloud'):
+        raise RuntimeError('The requested PDF is not available locally; opening was stopped.')
     path = Path(requested).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
@@ -575,6 +578,8 @@ def supported_request_path(item):
         raise RuntimeError('Unsupported scan request type: expected a valid local path.')
     if re.match(r'^[A-Za-z][A-Za-z0-9+.-]*:(?://|/)', raw_path):
         raise RuntimeError('Unsupported scan request type: URL requests are not supported.')
+    if raw_path.lower().endswith('.pdf.icloud'):
+        raise RuntimeError('The requested PDF is not available locally; opening was stopped.')
     path = Path(raw_path).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
@@ -590,6 +595,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
         request_kwargs['browser_download_identifier'] = browser_download_identifier
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
+    if is_pdf:
+        verify_local_file_available(path)
     destination = intended_destination(path)
     record_scan_destination(destination)
     identity = file_identity(path)
@@ -645,11 +652,16 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
                    if performed_scan else cached_scan(cache_id))
     if scan_result is None:
         raise RuntimeError('The clean scan cache could not be verified; opening was stopped.')
+    # Cache hits are not proof the file remains downloaded locally.
+    if is_pdf:
+        verify_local_file_available(path)
     # Verify PDF destination capability before releasing quarantine.
     verify_launch_target(path, target_app=destination if is_pdf else None)
     remove_quarantine(path)
     # Quarantine removal changes ctime, but source bytes and identities must remain intact.
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
+    if is_pdf:
+        verify_local_file_available(path)
     # The scan engine does not select an application or browser.
     try:
         launch_clean_file(path, target_app=destination if is_pdf else None)
