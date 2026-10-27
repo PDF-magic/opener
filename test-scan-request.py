@@ -99,18 +99,21 @@ class ScanRequestApplicationTests(unittest.TestCase):
         (temporary / "capture.sh").write_text(
             '#!/bin/bash\nprintf "%s\\n" "$PDF_MAGIC_REQUESTING_APPLICATION" "$@"\n'
         )
-        for args, expected_app in [
-            (["--from-pdf-magic-opener", "/document with spaces.pdf"], "PDF Magic Opener"),
-            (["/document with spaces.pdf"], "Allow and Open"),
+        for environment, expected_app in [
+            ({"PDF_MAGIC_REQUESTING_APPLICATION": "PDF Magic Opener"}, "PDF Magic Opener"),
+            ({}, "Allow and Open"),
         ]:
             with self.subTest(expected_app=expected_app):
-                result = subprocess.run(["/bin/bash", str(gate), *args],
-                                        capture_output=True, text=True, check=True)
+                variables = os.environ.copy()
+                variables.pop("PDF_MAGIC_REQUESTING_APPLICATION", None)
+                variables.update(environment)
+                result = subprocess.run(["/bin/bash", str(gate), "/document with spaces.pdf"],
+                                        env=variables, capture_output=True, text=True, check=True)
                 self.assertEqual(result.stdout.splitlines(),
                                  [expected_app, "/document with spaces.pdf"])
         native = (ROOT / "brave-pdf-opener.swift").read_text()
-        self.assertIn('process.arguments = [script.path, "--from-pdf-magic-opener", path]',
-                      native)
+        self.assertIn('process.arguments = [script.path, path]', native)
+        self.assertIn('environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"', native)
 
 
 if __name__ == "__main__":
