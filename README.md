@@ -90,6 +90,9 @@ python3 test-brave-pdf-opener.py
 
 ## PDF target application
 
+For a comparison of viewer capabilities, browser-specific settings, and
+launch requirements, see [Browser PDF viewer differences](docs/browser-pdf-viewers.md).
+
 The PDF target is a macOS application **bundle identifier**, not a shell
 command or executable path. The default is `com.brave.Browser`. After
 installing, edit
