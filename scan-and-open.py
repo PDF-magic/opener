@@ -542,7 +542,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
         request_kwargs['protection_level'] = protection_level
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
-    record_scan_destination(intended_destination(path))
+    destination = intended_destination(path)
+    record_scan_destination(destination)
     identity = file_identity(path)
     before = fingerprint(path)
     if file_identity(path) != identity:
@@ -601,7 +602,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
     # The scan engine does not select an application or browser.
     try:
-        launch_clean_file(path)
+        launch_clean_file(path, target_app=destination if is_pdf else None)
     except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         raise LaunchFailedError(scan_result) from error
     return scan_result

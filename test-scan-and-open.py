@@ -437,7 +437,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'launch_clean_file') as launch:
             opener.scan_and_open(alias, '/scanner')
         self.assertEqual(run.call_count, 1)
-        launch.assert_called_once_with(self.file)
+        launch.assert_called_once_with(self.file, target_app='com.brave.Browser')
 
     def test_main_reports_unsupported_request_object_without_crashing(self):
         with patch.object(opener, 'scanner_path', return_value='/scanner'), \

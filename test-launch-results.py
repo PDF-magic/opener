@@ -48,7 +48,7 @@ class LaunchResultTests(unittest.TestCase):
         self.assertIn("scan completed cleanly", str(raised.exception))
         scan.assert_called_once()
         quarantine.assert_called_once_with(self.file.resolve())
-        launch.assert_called_once_with(self.file.resolve())
+        launch.assert_called_once_with(self.file.resolve(), target_app='com.brave.Browser')
         digest = opener.cache_key(opener.fingerprint(self.file), True)
         self.assertTrue(opener.cached_clean(digest))
         self.assertEqual(self.file.read_bytes(), b"%PDF-1.4\nclean data")
