@@ -106,9 +106,16 @@ def main():
         while not receipt.exists() and time.monotonic() < deadline:
             time.sleep(0.1)
         assert receipt.exists(), "Launch Services did not deliver the PDF to the scan gate"
-        assert receipt.read_text(encoding="utf-8").strip() == str(document.resolve()), (
-            "The open-documents event changed the selected Unicode PDF path"
+        # Launch Services may decompose Unicode when constructing file URLs.
+        # File identity and NFC-equivalent names must survive that conversion.
+        import unicodedata
+        delivered = Path(receipt.read_text(encoding="utf-8").strip())
+        assert delivered.is_file() and delivered.samefile(document), (
+            "The open-documents event selected a different PDF"
         )
+        assert unicodedata.normalize("NFC", delivered.name) == unicodedata.normalize(
+            "NFC", document.name
+        ), "The open-documents event changed the requested PDF filename"
         assert current_handler() == original_handler, (
             "The test changed the registered default PDF handler"
         )
