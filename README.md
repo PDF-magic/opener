@@ -85,6 +85,30 @@ new queued request. Self-transitions and skipped stages are invalid.
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 
+## Scan result vocabulary (section 1.3)
+
+The canonical terminal result names are defined in `scan_results.py` as
+`ScanResultStatus`. They are stable, case-sensitive strings for callers to
+consume as scan-result reporting is added. These definitions do **not** change
+the current scanner's exit codes, quarantine handling, or opening behavior.
+
+| Result | Meaning |
+| --- | --- |
+| `clean` | All required checks completed successfully with no detected threat or blocking condition; **not** a guarantee of safety. |
+| `malwareDetected` | The scanner positively identified malware. |
+| `suspiciousStructure` | The file structure appeared suspicious or malformed, without a confirmed malware identification. |
+| `encrypted` | Encryption prevented a required inspection of the file's contents. |
+| `incompleteScan` | The scanner skipped required content or could not confirm that inspection was complete. |
+| `scanFailed` | A scanner execution, scanner prerequisite, or other scan operation failed. |
+| `scanTimedOut` | The configured time allowed for scanning expired. |
+| `fileChanged` | The input changed between verification and the end of scanning. |
+| `fileTooLarge` | The input exceeded a configured or scanner-enforced size limit. |
+| `cancelled` | The scan request was cancelled before completion. |
+
+**Fail-closed contract:** only `clean` may permit further opening processing;
+every other result blocks opening and leaves quarantine in place. A cancellation,
+scan error, or partial scan must never be treated as `clean`.
+
 ## Tooling
 
 | File | Purpose |

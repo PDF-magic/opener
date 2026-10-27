@@ -29,6 +29,9 @@ jobs:
       - name: Verify cross-process scan concurrency
         run: python3 test-scan-concurrency.py
 
+      - name: Verify scan result contract
+        run: python3 test-scan-results.py
+
   macos-build:
     runs-on: macos-latest
     steps:
