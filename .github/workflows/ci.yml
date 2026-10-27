@@ -39,7 +39,7 @@ jobs:
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
         run: python3 test-pdf-filename-paths.py -v
-      - name: Verify configurable PDF target application and Arc scan gating
+      - name: Verify configurable PDF targets including Arc and Opera
         run: python3 test-target-app.py
       - name: Verify Microsoft Edge PDF launch routing and fail-closed behavior
         run: python3 test-edge-target.py -v
@@ -71,7 +71,7 @@ jobs:
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Compile PDF handler utility
         run: xcrun swiftc set-brave-pdf-default.swift -o "$RUNNER_TEMP/SetPDFHandler"
-      - name: Compile and verify PDF-capable selection including Arc signatures
+      - name: Compile and verify PDF-capable selection including Arc and Opera signatures
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
@@ -89,6 +89,7 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id org.chromium.Chromium "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.apple.Safari "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id company.thebrowser.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+          if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.operasoftware.Opera "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
