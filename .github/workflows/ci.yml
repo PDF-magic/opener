@@ -36,3 +36,6 @@ jobs:
       - name: Verify requested paths and duplicate-open handling
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
+      - name: Verify scan subprocess resources are cleaned on failure
+        timeout-minutes: 5
+        run: python3 test-scan-resource-cleanup.py
