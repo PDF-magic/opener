@@ -114,11 +114,35 @@ class ScanRequest:
     cancellation_requested: bool = False
     # Capture caller selection as metadata; it never changes scan enforcement.
     protection_level: Optional[str] = None
+    browser_download_identifier: Optional[str] = None
 
     @classmethod
-    def from_path(cls, path, source_url=None, protection_level=None):
+    def from_path(cls, path, source_url=None, protection_level=None,
+                  browser_download_identifier=None):
         return cls(file_type=path.suffix.lower().lstrip('.') or 'unknown',
-                   source_url=source_url, protection_level=protection_level)
+                   source_url=source_url, protection_level=protection_level,
+                   browser_download_identifier=browser_download_identifier)
+
+
+@dataclass(frozen=True)
+class BrowserDownloadRequest:
+    """Optional browser correlation attached to a single requested path."""
+    path: str
+    browser_download_identifier: Optional[str] = None
+
+
+def parse_scan_requests(args):
+    """Keep ordinary file arguments compatible with optional browser metadata."""
+    if args and args[0] == '--browser-download-id':
+        if len(args) != 3:
+            raise ValueError('A browser download ID requires one identifier and one file path.')
+        identifier = args[1]
+        if (not identifier or len(identifier) > 256 or
+                any(ord(character) < 32 or ord(character) == 127
+                    for character in identifier)):
+            raise ValueError('The browser download ID must be a nonempty printable identifier.')
+        return [BrowserDownloadRequest(args[2], identifier)]
+    return [BrowserDownloadRequest(path) for path in args]
 
 
 def validate_scan_request(item):
@@ -140,7 +164,6 @@ NATIVE_CANCELLATION = 'PDF_MAGIC_NATIVE_CANCEL'
 
 class ScanCancelled(RuntimeError):
     """A cancelled request must never permit an open or process the next file."""
-
 
 
 def watch_parent_lifetime():
@@ -550,14 +573,17 @@ def supported_request_path(item):
     return path
 
 
-def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
+def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
     path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
     if protection_level is not None:
         request_kwargs['protection_level'] = protection_level
+    if browser_download_identifier is not None:
+        request_kwargs['browser_download_identifier'] = browser_download_identifier
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
-    record_scan_destination(intended_destination(path))
+    destination = intended_destination(path)
+    record_scan_destination(destination)
     identity = file_identity(path)
     before = fingerprint(path)
     if file_identity(path) != identity:
@@ -616,22 +642,23 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None):
     verify_file_integrity(path, before, identity, allow_ctime_change=True)
     # The scan engine does not select an application or browser.
     try:
-        launch_clean_file(path)
+        launch_clean_file(path, target_app=destination if is_pdf else None)
     except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         raise LaunchFailedError(scan_result) from error
     return scan_result
 
 
 @cancellable_scan
-def scan_and_open(item, scanner, *, source_url=None, protection_level=None):
+def scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
     # Reject unsupported requests before allocating shared scanner queue slots.
     path = supported_request_path(item)
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
-        if source_url is None and protection_level is None:
+        if source_url is None and protection_level is None and browser_download_identifier is None:
             return _scan_and_open(path, scanner)
         return _scan_and_open(path, scanner, source_url=source_url,
-                              protection_level=protection_level)
+                              protection_level=protection_level,
+                              browser_download_identifier=browser_download_identifier)
 
 
 def safe_scan_failure(error):
@@ -652,7 +679,7 @@ def main(items):
     result = 0
     for index, item in enumerate(items, start=1):
         try:
-            validate_scan_request(item)
+            validate_scan_request(item.path if isinstance(item, BrowserDownloadRequest) else item)
         except (OSError, RuntimeError) as error:
             print(f'Scan request {index}: {safe_scan_failure(error)}', file=sys.stderr)
             result = 1
@@ -670,7 +697,14 @@ def main(items):
     for index, item in valid_items:
         try:
             record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
-            scan_and_open(item, scanner)
+            if isinstance(item, BrowserDownloadRequest):
+                if item.browser_download_identifier is None:
+                    scan_and_open(item.path, scanner)
+                else:
+                    scan_and_open(item.path, scanner,
+                                  browser_download_identifier=item.browser_download_identifier)
+            else:
+                scan_and_open(item, scanner)
         except ScanCancelled:
             print('The scan was cancelled; opening was stopped.', file=sys.stderr)
             return 1
@@ -681,4 +715,9 @@ def main(items):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    try:
+        requests = parse_scan_requests(sys.argv[1:])
+    except ValueError:
+        print('Invalid browser download identifier; opening was stopped.', file=sys.stderr)
+        sys.exit(2)
+    sys.exit(main(requests))
