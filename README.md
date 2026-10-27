@@ -16,7 +16,7 @@ Install local malware scanning for the existing **Allow and Open** Finder action
 bash install-allow-and-open.sh
 ```
 
-Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
+Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
 The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
@@ -45,6 +45,8 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 **Launch errors:** After successful malware and integrity checks, `scan_and_open` creates an immutable `CleanScanResult(status="clean", from_cache=...)` independent of launching. A failed destination launch still reports an error and a nonzero CLI exit status, but raises `LaunchFailedError` with the completed `scan_result` attached for callers. The verified 90-day clean scan cache remains valid, subject to existing signature freshness, file integrity and expiry checks, so retrying an unsuccessful launch does not automatically rescan. Incomplete or blocked scans never produce a clean result.
 
 **Unavailable selected PDF application:** When a configured browser is missing or cannot open PDFs, the macOS opener displays an `Opening stopped` warning explaining that the selected PDF application is unavailable or not PDF-capable. Install the selected application or change `~/Library/Application Support/Studio/allow-and-open/target-app.txt` to an installed PDF-capable application. If the opt-in system-default-browser choice cannot be resolved, check the default browser in macOS System Settings. If the native verification tool is unavailable, reinstall PDF Magic Opener. A browser that disappears after verification results in a separate explanation that scanning succeeded but launching failed. Diagnostics never reveal document paths, never silently switch browsers, and never bypass malware scanning or quarantine checks.
+
+**Detect a changed macOS PDF default:** PDF Magic Opener does not silently reclaim the system PDF association after another application becomes the default. To check the current association against PDF Magic Opener's bundle ID without modifying any settings, run the installed `"$HOME/Library/Application Support/Studio/allow-and-open/detect-pdf-handler-change"` utility. It returns **0** if PDF Magic Opener is still the default, **2** if another application now owns the association (and names its bundle ID), or **1** if the default cannot be determined. Each invocation re-reads macOS Launch Services, so changes made between checks are detected. This read-only check does not continually monitor in the background, change the selected browser, or open a PDF. Reinstall the opener to deploy the utility; see the existing instructions below if you want to restore PDF Magic Opener as the system's PDF handler.
 
 **PDF application support:** Before releasing quarantine or opening a verified clean PDF, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
 
@@ -143,6 +145,24 @@ The command **only reads** the macOS PDF association using the separately
 installed `identify-pdf-handler` helper. It does not open a PDF, change the
 default PDF association, change the browser receiving scanned PDFs, or modify
 user preferences.
+
+## Make PDF Magic Opener the default PDF application
+
+After installing, double-click **Make PDF Magic Opener Default.command** in
+`~/Applications` to explicitly make PDF Magic Opener the macOS PDF handler.
+You can also invoke that same user action from Terminal:
+
+```sh
+bash "$HOME/Applications/Make PDF Magic Opener Default.command"
+```
+
+This action verifies the installed PDF Magic Opener application's identity,
+executable, and PDF support before asking macOS to change the association.
+It reports an error if the application is missing or macOS refuses the change.
+It does not open any PDF, run a scan, or modify your selected post-scan browser
+(`target-app.txt`). It runs **only when invoked**, not whenever a PDF opens.
+Installation still registers the opener as before; this action allows you to
+restore it later if another application takes over.
 
 ## PDF target application
 
