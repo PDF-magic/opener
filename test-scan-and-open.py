@@ -48,6 +48,50 @@ class ScanGateTests(unittest.TestCase):
                 request = opener.ScanRequest.from_path(path)
                 self.assertEqual(request.file_type, expected)
 
+
+    def test_source_url_is_optional_request_metadata(self):
+        local = opener.ScanRequest.from_path(self.file)
+        origin = 'https://example.test/downloads/report.pdf?version=2'
+        sourced = opener.ScanRequest.from_path(self.file, source_url=origin)
+        self.assertIsNone(local.source_url)
+        self.assertEqual(sourced.source_url, origin)
+        self.assertEqual(sourced.file_type, local.file_type)
+        self.assertEqual(sourced.file_type, 'pdf')
+
+    def test_source_url_is_recorded_but_not_used_as_scan_target(self):
+        origin = 'https://example.test/downloads/report.pdf?version=2'
+        requests = []
+        from_path = opener.ScanRequest.from_path
+
+        def capture(path, source_url=None):
+            request = from_path(path, source_url=source_url)
+            requests.append(request)
+            return request
+
+        clean = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener.ScanRequest, 'from_path', side_effect=capture), \
+                patch.object(opener.subprocess, 'run', return_value=clean) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            opener.scan_and_open(str(self.file), '/scanner', source_url=origin)
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0].source_url, origin)
+        self.assertEqual(run.call_count, 2)
+        scan_command = run.call_args_list[0].args[0]
+        self.assertEqual(scan_command[-1], str(self.file))
+        self.assertNotIn(origin, repr(run.call_args_list))
+        self.assertEqual(run.call_args_list[1].args[0][-1], str(self.file))
+        remove.assert_called_once_with(self.file)
+
+    def test_source_url_cannot_override_infected_scan(self):
+        infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener.subprocess, 'run', return_value=infected) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner',
+                                     source_url='https://example.test/clean.pdf')
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
+
     def test_scan_records_file_type_before_failed_scan(self):
         infected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
         with patch.object(opener.ScanRequest, 'from_path', wraps=opener.ScanRequest.from_path) as record, \
@@ -55,7 +99,7 @@ class ScanGateTests(unittest.TestCase):
                 patch.object(opener, 'remove_quarantine') as quarantine:
             with self.assertRaisesRegex(RuntimeError, 'Malware'):
                 opener.scan_and_open(str(self.file), '/scanner')
-        record.assert_called_once_with(self.file)
+        record.assert_called_once_with(self.file, source_url=None)
         quarantine.assert_not_called()
 
     def test_detection_preserves_file_and_quarantine_without_opening(self):
