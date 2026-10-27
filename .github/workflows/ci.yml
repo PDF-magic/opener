@@ -119,6 +119,12 @@ jobs:
           xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
           "$RUNNER_TEMP/TestPDFHandler"
           if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
+      - name: Detect when another application becomes the PDF default
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift test-detect-pdf-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
+          "$RUNNER_TEMP/TestDetectPDFHandler"
+          if "$RUNNER_TEMP/DetectPDFHandlerChange" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
