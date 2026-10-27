@@ -23,7 +23,9 @@ class DefaultPDFHandlerNameTests(unittest.TestCase):
 
     def test_installer_invokes_renamed_utility_for_opener_bundle(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        self.assertIn('/usr/bin/swift "$script_dir/' + NEW_NAME + '" "$app"', installer)
+        self.assertIn('python3 "$script_dir/offer-restore-pdf-handler.py"', installer)
+        self.assertIn('"$script_dir/' + NEW_NAME + '" "$app"', installer)
+        self.assertNotIn('/usr/bin/swift "$script_dir/' + NEW_NAME + '" "$app"', installer)
         self.assertNotIn(OLD_NAME, installer)
         self.assertIn('app_name="PDF Magic Opener"', installer)
 

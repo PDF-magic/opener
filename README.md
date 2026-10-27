@@ -92,6 +92,21 @@ python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
+## Restore PDF Magic Opener as the default PDF handler
+
+When the installer detects that another application is the current default for
+PDF files, it **offers to restore PDF Magic Opener**. Answer `y` or `yes`
+to approve that change; any other response keeps the existing association.
+If the installer is running non-interactively, it leaves the association
+untouched and explains how to run it interactively. An unavailable or invalid
+Launch Services handler lookup never triggers an automatic change. If PDF
+Magic Opener is already the default, no prompt or setter call is necessary.
+
+Restoration affects only macOS' default PDF association; the separate app
+chosen to receive clean PDFs in `target-app.txt` remains unchanged. Re-running
+the installer gives the same restoration offer without bypassing any scanning,
+quarantine, or integrity checks.
+
 ## Inspect the registered macOS PDF handler
 
 To see which application macOS currently has registered as the default for

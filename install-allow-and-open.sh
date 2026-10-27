@@ -148,5 +148,6 @@ with path.open('wb') as stream:
     plistlib.dump(workflow, stream)
 PY
 
-/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"
+python3 "$script_dir/offer-restore-pdf-handler.py" \
+    "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
