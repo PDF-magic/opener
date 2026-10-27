@@ -23,6 +23,12 @@ class ScanGateTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.file = Path(self.temp.name).resolve() / 'selected file.PDF'
         self.file.write_bytes(b'%PDF-1.4\nTest document')
+        self.target_app = Path(self.temp.name) / 'Brave Browser.app'
+        self.target_app.mkdir()
+        resolver = patch.object(opener, 'resolve_target_application',
+                                return_value=str(self.target_app))
+        resolver.start()
+        self.addCleanup(resolver.stop)
         cache = patch.object(opener, 'CACHE_DB', Path(self.temp.name) / 'clean-cache.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
@@ -186,9 +192,55 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine', side_effect=lambda *args: calls.append('remove quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(calls[1], 'remove quarantine')
-        self.assertEqual(calls[2], ['/usr/bin/open', '-b', 'com.brave.Browser', str(self.file)])
+        self.assertEqual(calls[2], ['/usr/bin/open', '-a', str(self.target_app), str(self.file)])
         self.assertIn('--alert-exceeds-max=yes', calls[0])
         self.assertIn('--alert-encrypted=yes', calls[0])
+
+    def test_missing_target_application_blocks_before_removing_quarantine(self):
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener, 'resolve_target_application',
+                          side_effect=RuntimeError('Target application unavailable')) as lookup, \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'Target application unavailable'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        lookup.assert_called_once_with(opener.PDF_DEFAULT_BUNDLE_ID)
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
+
+    def test_cached_clean_pdf_still_requires_installed_target(self):
+        digest = opener.cache_key(opener.fingerprint(self.file), True)
+        opener.remember_clean(digest)
+        with patch.object(opener, 'resolve_target_application',
+                          side_effect=RuntimeError('Target application unavailable')), \
+                patch.object(opener.subprocess, 'run') as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'Target application unavailable'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        run.assert_not_called()
+        remove.assert_not_called()
+
+    def test_non_pdf_keeps_mac_default_handler_without_bundle_lookup(self):
+        document = self.file.with_suffix('.txt')
+        document.write_bytes(b'text')
+        completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
+        with patch.object(opener, 'resolve_target_application') as lookup, \
+                patch.object(opener.subprocess, 'run', return_value=completed) as run, \
+                patch.object(opener, 'remove_quarantine'):
+            opener.scan_and_open(str(document), '/scanner')
+        lookup.assert_not_called()
+        self.assertEqual(run.call_args.args[0], ['/usr/bin/open', str(document)])
+
+    def test_infected_pdf_never_attempts_application_resolution(self):
+        detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
+        with patch.object(opener, 'resolve_target_application') as lookup, \
+                patch.object(opener.subprocess, 'run', return_value=detected) as run, \
+                patch.object(opener, 'remove_quarantine') as remove:
+            with self.assertRaisesRegex(RuntimeError, 'Malware'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        lookup.assert_not_called()
+        self.assertEqual(run.call_count, 1)
+        remove.assert_not_called()
 
     def test_missing_or_stale_signatures_block_before_scanning(self):
         database = Path(self.temp.name) / 'database'

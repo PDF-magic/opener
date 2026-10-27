@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
+from target_application import PDF_DEFAULT_BUNDLE_ID, resolve_target_application
 import fcntl
 import hashlib
 import os
@@ -187,10 +188,13 @@ def scan_and_open(item, scanner):
                 remember_clean(cache_id)
     if before != fingerprint(path):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    # A clean verdict is not enough: confirm the chosen application is installed
+    # before removing quarantine, including for a previously cached clean file.
+    target_app = resolve_target_application(PDF_DEFAULT_BUNDLE_ID) if is_pdf else None
     remove_quarantine(path)
     command = ['/usr/bin/open']
-    if path.suffix.lower() == '.pdf':
-        command += ['-b', 'com.brave.Browser']
+    if target_app is not None:
+        command += ['-a', target_app]
     subprocess.run(command + [str(path)], check=True)
 
 
