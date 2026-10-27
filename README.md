@@ -96,6 +96,33 @@ python3 test-scan-concurrency.py
 python3 test-brave-pdf-opener.py
 ```
 
+## Restore the previous macOS PDF handler
+
+The installer saves the **original system PDF association** (if one is known)
+in a private, single-use-to-create file at
+`~/Library/Application Support/Studio/allow-and-open/previous-pdf-handler.txt`
+**before** selecting PDF Magic Opener as the macOS default. Reinstalling never
+overwrites a valid saved choice with PDF Magic Opener or a later preference.
+If the existing default cannot be identified, installation stops before
+changing the default; if PDF Magic Opener was already the default on the first
+recording attempt, no earlier handler can be reconstructed.
+
+To restore the saved application later, explicitly run:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-history" restore \
+  "$HOME/Library/Application Support/Studio/allow-and-open/previous-pdf-handler.txt"
+```
+
+Restoration requires PDF Magic Opener to **still be the current PDF default**,
+the original application to still be installed and executable, and a valid,
+private saved identifier. It refuses to replace a different handler you chose
+in the meantime, and checks whether macOS registered the restored handler.
+The saved preference remains on disk so a retry is possible after a failure.
+**After restoration, opening PDFs by double-clicking will no longer
+automatically pass through PDF Magic Opener's malware scan gate.** The separate
+post-scan browser preference is unchanged.
+
 ## Inspect the registered macOS PDF handler
 
 To see which application macOS currently has registered as the default for
