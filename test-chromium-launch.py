@@ -39,6 +39,11 @@ class ChromiumLaunchingTests(unittest.TestCase):
             mocked.start()
             self.addCleanup(mocked.stop)
         self.setting.write_text(CHROMIUM_BUNDLE_ID + "\n", encoding="ascii")
+        # Do not let the optional scanner-version probe add a mocked scan call.
+        version = patch.object(opener.subprocess, "check_output",
+                               side_effect=FileNotFoundError)
+        version.start()
+        self.addCleanup(version.stop)
 
     def test_chromium_preflight_then_native_launch_after_clean_scan(self):
         calls = []
