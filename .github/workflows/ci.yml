@@ -160,6 +160,9 @@ jobs:
         run: python3 test-browser-already-running.py -v
       - name: Verify bundle-identifier resolution and app existence
         run: python3 test-bundle-target.py
+      - name: Verify Finder-style PDF open-event delivery through Launch Services
+        timeout-minutes: 3
+        run: python3 test-finder-double-click.py
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
