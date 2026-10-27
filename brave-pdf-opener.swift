@@ -55,6 +55,16 @@ final class TwilightReadingView: NSView {
     }
 }
 
+// Clean up scan stderr pipes even if launching or reading from the scanner fails.
+func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows -> Result {
+    let errors = Pipe()
+    defer {
+        errors.fileHandleForReading.closeFile()
+        errors.fileHandleForWriting.closeFile()
+    }
+    return try operation(errors)
+}
+
 final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
@@ -128,25 +138,27 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         let script = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
         DispatchQueue.global(qos: .userInitiated).async {
-            let process = Process()
-            let errors = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/bin/bash")
-            process.arguments = [script.path, path]
-            process.standardError = errors
-            process.standardOutput = FileHandle.nullDevice
-            var message: String?
-            do {
-                try process.run()
-                let output = errors.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                if process.terminationStatus != 0 {
-                    message = String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
-                }
-            } catch {
-                message = error.localizedDescription
+    let failure = withScanErrorPipe { errors -> String? in
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [script.path, path]
+        process.standardError = errors
+        process.standardOutput = FileHandle.nullDevice
+        do {
+            try process.run()
+            // Release the parent write end before waiting for the child's output.
+            errors.fileHandleForWriting.closeFile()
+            let output = errors.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            if process.terminationStatus != 0 {
+                return String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
             }
-            let failure = message
-            DispatchQueue.main.async {
+        } catch {
+            return error.localizedDescription
+        }
+        return nil
+    }
+DispatchQueue.main.async {
                 self.running.remove(path)
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
