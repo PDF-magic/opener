@@ -26,6 +26,12 @@ class ScanGateTests(unittest.TestCase):
         cache = patch.object(opener, 'CACHE_DB', Path(self.temp.name) / 'clean-cache.sqlite3')
         cache.start()
         self.addCleanup(cache.stop)
+        # check_output calls subprocess.run internally, which the scan tests
+        # patch independently. Isolate version probes by default.
+        version = patch.object(opener.subprocess, 'check_output',
+                               side_effect=FileNotFoundError)
+        version.start()
+        self.addCleanup(version.stop)
 
     def assert_blocked(self, result=None, exception=None):
         with patch.object(opener.subprocess, 'run', return_value=result, side_effect=exception) as run, \
