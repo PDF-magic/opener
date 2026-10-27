@@ -43,6 +43,42 @@ jobs:
         run: python3 test-target-app.py
       - name: Verify Chromium PDF launching and fail-closed preflight
         run: python3 test-chromium-launch.py -v
+      - name: Verify Brave PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: brave
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Google Chrome PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: chrome
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Mozilla Firefox PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: firefox
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Safari PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: safari
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Microsoft Edge PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: edge
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Chromium PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: chromium
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Vivaldi PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: vivaldi
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Opera PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: opera
+        run: python3 test-browser-pdf-behavior.py
+      - name: Verify Arc PDF opening separately
+        env:
+          PDF_MAGIC_TEST_BROWSER: arc
+        run: python3 test-browser-pdf-behavior.py
       - name: Verify clean scan results survive launch failures
         run: python3 test-launch-results.py -v
       - name: Verify scan-request origin records
