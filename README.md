@@ -136,6 +136,19 @@ succeed. A missing or unregistered Chromium installation blocks opening rather
 than falling back to Chrome, Brave, or another browser. Existing user selections
 are not overwritten.
 
+To open verified PDFs in **Vivaldi**, select its application bundle identifier:
+
+```sh
+printf '%s\n' 'com.vivaldi.Vivaldi' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
+```
+
+Vivaldi has a built-in PDF viewer but may not register with Launch Services as
+a PDF handler. The opener accepts Vivaldi only when the selected installed app
+has the exact Vivaldi bundle identifier and an executable; missing or mismatched
+apps fail closed. Every PDF still requires the existing malware scan, integrity
+checks, and quarantine policy before the pinned Vivaldi destination can launch.
+This setting does not change the system's default browser or PDF association.
+
 The setting survives reinstallations. An absent setting falls back to Brave
 for existing installations; an invalid, unreadable or symlinked setting stops
 PDF opening instead of silently choosing an application. The setting affects
