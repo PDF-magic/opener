@@ -290,7 +290,7 @@ class TargetApplicationTests(unittest.TestCase):
         quarantine.assert_called_once()
 
     def test_missing_browser_displays_safe_guidance_without_launch(self):
-        self.config.write_text('com.example.Uninstalled\\n')
+        self.config.write_text('com.example.Uninstalled\n')
         commands = []
 
         def execute(command, *args, **kwargs):
