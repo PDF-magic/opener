@@ -44,7 +44,7 @@ class PDFStructureParserTests(unittest.TestCase):
         writer.write(output)
         structure = parse_pdf_structure(output.getvalue())
         self.assertEqual(structure.page_count, 2)
-        self.assertRegex(structure.pdf_version, r"^1\\.[0-7]$")
+        self.assertRegex(structure.pdf_version, r"^1\.[0-7]$")
 
     def test_encrypted_documents_are_not_decrypted_or_approved(self):
         writer = PdfWriter()
