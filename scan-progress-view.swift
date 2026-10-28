@@ -70,13 +70,14 @@ enum ScanProgressStage {
 
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
+    let queuedDocumentCountLabel = NSTextField(labelWithString: "0 documents queued")
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 338),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 362),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -84,17 +85,24 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 118, width: 300, height: 205)))
+            frame: NSRect(x: 30, y: 142, width: 300, height: 205)))
         stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         stageLabel.alignment = .center
-        stageLabel.frame = NSRect(x: 20, y: 93, width: 320, height: 22)
+        stageLabel.frame = NSRect(x: 20, y: 117, width: 320, height: 22)
         stageLabel.setAccessibilityLabel("Current scanning stage")
         contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 91, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
+        queuedDocumentCountLabel.alignment = .center
+        queuedDocumentCountLabel.font = .systemFont(ofSize: 12)
+        queuedDocumentCountLabel.textColor = .secondaryLabelColor
+        queuedDocumentCountLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        queuedDocumentCountLabel.setAccessibilityIdentifier("queuedDocumentCount")
+        queuedDocumentCountLabel.setAccessibilityLabel(queuedDocumentCountLabel.stringValue)
+        contentView?.addSubview(queuedDocumentCountLabel)
         progressIndicator.style = .bar
         progressIndicator.isIndeterminate = true
         progressIndicator.startAnimation(nil)
@@ -106,9 +114,15 @@ final class ScanProgressPanel: NSPanel {
     }
 
     // Set only display state. Callers own the scan lifecycle and Cancel action.
-    func show(documentDescription: String, stage: ScanProgressStage = .queued) {
+    func show(documentDescription: String, stage: ScanProgressStage = .queued,
+              queuedDocumentCount: Int = 0) {
         filenameLabel.stringValue = documentDescription
         stageLabel.stringValue = stage.label
+        // Only not-yet-dispatched documents belong in the queue count.
+        let count = max(0, queuedDocumentCount)
+        let text = "\(count) \(count == 1 ? "document" : "documents") queued"
+        queuedDocumentCountLabel.stringValue = text
+        queuedDocumentCountLabel.setAccessibilityLabel(text)
         orderFrontRegardless()
     }
 }
