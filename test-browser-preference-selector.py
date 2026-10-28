@@ -96,6 +96,7 @@ class BrowserSelectorTests(unittest.TestCase):
         ]}
         extras = selector.additional_application_choices(payload, browsers)
         self.assertEqual(extras, (("Editor", "org.example.Editor"),
+                                  ("org.example.bad", "org.example.bad"),
                                   ("PDF Reader", "org.example.Reader")))
         hidden = StringIO()
         self.assertEqual(selector.choose_browser(
