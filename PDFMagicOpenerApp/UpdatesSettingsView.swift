@@ -21,7 +21,18 @@ struct UpdatesSettingsView: View {
 
         GroupBox("Application updates") {
           VStack(alignment: .leading, spacing: 10) {
-            LabeledContent("Installed version", value: applicationVersion)
+            // Permit a stacked label/value when system text cannot fit
+            // the default horizontal presentation.
+            ViewThatFits(in: .horizontal) {
+              LabeledContent("Installed version", value: applicationVersion)
+              VStack(alignment: .leading, spacing: 4) {
+                Text("Installed version")
+                  .font(.headline)
+                Text(applicationVersion)
+                  .fixedSize(horizontal: false, vertical: true)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             Text("Checking for or installing application updates is not available from this page yet.")
               .foregroundStyle(.secondary)
