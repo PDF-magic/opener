@@ -13,6 +13,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from effective_protection_policy import (
+    ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
+    resolve_effective_policy,
+)
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 
 sys.dont_write_bytecode = True
@@ -47,6 +51,16 @@ class EffectivePolicyScanResultsTests(unittest.TestCase):
 
     def test_constant_is_actual_built_in_policy_not_planned_tier(self):
         self.assertEqual(EFFECTIVE_POLICY_ID, "built-in")
+        self.assertEqual(EFFECTIVE_POLICY_ID, ACTIVE_PROFILE_ID)
+        self.assertEqual(EFFECTIVE_POLICY_ID, resolve_effective_policy().profile_id)
+        self.assertEqual(EFFECTIVE_POLICY_ID, resolve_effective_policy({
+            SELECTED_PROFILE_KEY: ACTIVE_PROFILE_ID,
+            "customBrowser": "unchanged",
+        }).profile_id)
+        for planned in ("standard", "enhanced", "maximum", None):
+            with self.subTest(unsupported=planned), \
+                    self.assertRaises(UnsupportedEffectivePolicy):
+                resolve_effective_policy({SELECTED_PROFILE_KEY: planned})
         self.assertEqual(opener.EFFECTIVE_POLICY_ID, EFFECTIVE_POLICY_ID)
         for receipt in (
             ScanResult(),
