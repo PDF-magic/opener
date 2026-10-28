@@ -1,0 +1,36 @@
+name: Maximum sanitized PDF copy CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sanitized-copy-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install strict PDF validation dependency
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Verify supported-only copy offers and fail-closed scanner isolation
+        run: python3 test-maximum-sanitized-copy.py -v
+
+  sanitized-copy-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install strict PDF validation dependency
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Compile optional CoreGraphics raster conversion worker
+        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+      - name: Verify real visual-only conversion and discarded PDF actions
+        run: python3 test-maximum-sanitized-copy.py -v
