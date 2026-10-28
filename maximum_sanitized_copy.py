@@ -14,6 +14,7 @@ import stat
 import subprocess
 import sys
 
+from maximum_active_content_removal import remove_active_pdf_functionality
 from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
@@ -147,15 +148,17 @@ def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
         if (converted.returncode != 0 or
                 type(converted.stdout) is not bytes or
                 not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
-                converted.stdout == source_bytes or
-                not _passive_pages(converted.stdout, count)):
+                converted.stdout == source_bytes):
             return None
-        # Structural integrity is an independent final-output gate. A passive
-        # resource classification alone does not prove valid PDF framing,
-        # object references, or page-tree consistency.
-        structure = verify_sanitized_pdf_structure(converted.stdout, count)
+        # Never offer raw converter output. Keep only decoded raster pixels
+        # through a second, independent fresh PDF reconstruction.
+        cleaned = remove_active_pdf_functionality(converted.stdout, count)
+        if cleaned is None or not _passive_pages(cleaned, count):
+            return None
+        # Check the *rebuilt* sanitized PDF, not the original or raw raster.
+        structure = verify_sanitized_pdf_structure(cleaned, count)
         if structure.page_count != count:
             return None
-        return SanitizedCopyOffer(converted.stdout, count)
+        return SanitizedCopyOffer(cleaned, count)
     except Exception:
         return None

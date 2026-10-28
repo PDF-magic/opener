@@ -68,7 +68,9 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
                     self.assertIsNone(copies.offer_sanitized_pdf_copy(original))
             with patch.object(copies.subprocess, "run",
                               return_value=subprocess.CompletedProcess([], 0, different)), \
-                    patch.object(copies, "_passive_pages", return_value=True):
+                    patch.object(copies, "_passive_pages", return_value=True), \
+                    patch.object(copies, "remove_active_pdf_functionality",
+                                 return_value=different):
                 offer = copies.offer_sanitized_pdf_copy(original)
         self.assertIsNotNone(offer)
         self.assertEqual(offer.pdf_bytes, different)
@@ -134,9 +136,12 @@ class NativeRasterizationTests(unittest.TestCase):
         self.assertNotEqual(offer.pdf_bytes, source)
         reader = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
         self.assertEqual(len(reader.pages), 1)
+        self.assertEqual(set(reader.trailer["/Root"]), {"/Type", "/Pages"})
         self.assertNotIn("/Names", reader.trailer["/Root"])
         self.assertNotIn("/OpenAction", reader.trailer["/Root"])
         self.assertNotIn("/Annots", reader.pages[0])
+        self.assertEqual(set(reader.pages[0]),
+                         {"/Type", "/Parent", "/MediaBox", "/Resources", "/Contents"})
         self.assertNotIn(b"NEVER COPY THIS SECRET", offer.pdf_bytes)
         self.assertNotIn(b"app.alert", offer.pdf_bytes)
         self.assertFalse(offer.permits_open)
