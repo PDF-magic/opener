@@ -30,6 +30,8 @@ jobs:
         run: python3 test-protection-stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
         run: python3 test-required-optional-profile-checks.py -v
+      - name: Test every planned profile admission against one reference PDF collection
+        run: python3 test-reference-pdf-profiles.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: python3 test-effective-protection-policy.py -v
       - name: Verify General reset confirmation and scanner isolation
