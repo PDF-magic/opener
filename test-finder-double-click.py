@@ -18,6 +18,7 @@ import time
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "brave-pdf-opener.swift"
 PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
+PREFERENCE_SOURCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"
 HANDLER_READER = ROOT / "identify-pdf-handler.swift"
 SCRIPT_ANCHOR = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
@@ -58,7 +59,8 @@ def main():
         harness = root / "finder-opener.swift"
         harness.write_text(
             source.replace(SCRIPT_ANCHOR, "URL(fileURLWithPath: " + json.dumps(str(gate)) + ")") + "\n" +
-            PROGRESS_SOURCE.read_text(encoding="utf-8"),
+            PROGRESS_SOURCE.read_text(encoding="utf-8") + "\n" +
+            PREFERENCE_SOURCE.read_text(encoding="utf-8").replace("import Foundation\n", ""),
             encoding="utf-8",
         )
         info = {

@@ -18,6 +18,7 @@ import unicodedata
 ROOT = Path(__file__).resolve().parent
 APP_SOURCE = ROOT / "brave-pdf-opener.swift"
 PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
+PREFERENCE_SOURCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"
 HANDLER_SOURCE = ROOT / "identify-pdf-handler.swift"
 SCAN_GATE = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
@@ -87,7 +88,8 @@ def test_drop_handoff():
         harness.write_text(
             source.replace(SCAN_GATE, "URL(fileURLWithPath: "
                            + json.dumps(str(gate)) + ")") + "\n" +
-            PROGRESS_SOURCE.read_text(encoding="utf-8"),
+            PROGRESS_SOURCE.read_text(encoding="utf-8") + "\n" +
+            PREFERENCE_SOURCE.read_text(encoding="utf-8").replace("import Foundation\n", ""),
             encoding="utf-8",
         )
 
