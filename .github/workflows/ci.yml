@@ -242,6 +242,8 @@ jobs:
         run: python3 test-enhanced-analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
         run: python3 test-enhanced-finding-explanations.py -v
+      - name: Determine which Enhanced findings require additional inspection
+        run: python3 test-enhanced-additional-inspections.py -v
       - name: Verify effective protection policy identifier in scan results
         run: python3 test-effective-policy-scan-results.py -v
       - name: Verify responses for every detection remain fail-closed
