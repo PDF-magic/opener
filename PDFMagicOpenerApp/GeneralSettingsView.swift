@@ -23,7 +23,7 @@ struct GeneralSettingsView: View {
 
   // A Picker change is an explicit user action, not an automatic save on view
   // appearance. The installed native chooser verifies PDF eligibility and
-  // atomically persists target-app.txt; failure leaves selection unchanged.
+  // atomically persists the installed PDF target; failure leaves it unchanged.
   private func selectBrowser(_ identifier: String) {
     guard !savingBrowser, identifier != selectedBrowserID,
           let option = browserOptions.first(where: { $0.id == identifier }) else { return }
