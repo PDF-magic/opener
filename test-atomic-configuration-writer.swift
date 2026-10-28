@@ -4,6 +4,25 @@ import Foundation
 @main
 struct AtomicConfigurationWriterTests {
   static func main() throws {
+    let arguments = CommandLine.arguments
+    if arguments.count == 4 && arguments[1] == "--save-child" {
+      let directory = URL(fileURLWithPath: arguments[2], isDirectory: true)
+      FileHandle.standardOutput.write(Data([1]))
+      try AtomicConfigurationWriter.save(Data(arguments[3].utf8), in: directory, named: "settings.json")
+      return
+    }
+    if arguments.count == 4 && arguments[1] == "--batch-child" {
+      let directory = URL(fileURLWithPath: arguments[2], isDirectory: true)
+      guard let index = Int(arguments[3]), (0..<4).contains(index) else {
+        fatalError("invalid test worker index")
+      }
+      let payload = Data(repeating: UInt8(65 + index), count: 65_536)
+      for _ in 0..<12 {
+        try AtomicConfigurationWriter.save(payload, in: directory, named: "settings.json")
+      }
+      return
+    }
+
     let root = FileManager.default.temporaryDirectory
       .appendingPathComponent("atomic-config-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
@@ -96,66 +115,48 @@ struct AtomicConfigurationWriterTests {
       fatalError("accepted a directory lock")
     } catch AtomicConfigurationWriter.SaveError.unsafeLock {}
 
-    // An independent process must not enter save while the destination lock
-    // is held. A ready pipe makes the test deterministic before checking.
+    // A separate executable invocation cannot finish saving while a different
+    // process holds the destination lock. A one-byte signal ensures the worker
+    // has started before testing contention.
     let heldLock = open(lockPath.path, O_RDWR | O_NOFOLLOW | O_CLOEXEC)
     assert(heldLock >= 0)
     assert(flock(heldLock, LOCK_EX) == 0)
-    var readyPipe: [Int32] = [0, 0]
-    assert(pipe(&readyPipe) == 0)
-    let child = fork()
-    assert(child >= 0)
-    if child == 0 {
-      close(readyPipe[0])
-      close(heldLock)
-      var signal: UInt8 = 1
-      guard Darwin.write(readyPipe[1], &signal, 1) == 1 else { _exit(2) }
-      close(readyPipe[1])
-      do {
-        try AtomicConfigurationWriter.save(first, in: root, named: "settings.json")
-        _exit(0)
-      } catch {
-        _exit(3)
-      }
-    }
-    close(readyPipe[1])
-    var signal: UInt8 = 0
-    assert(Darwin.read(readyPipe[0], &signal, 1) == 1 && signal == 1)
-    close(readyPipe[0])
+    let executable = URL(fileURLWithPath: CommandLine.arguments[0])
+    let child = Process()
+    child.executableURL = executable
+    child.arguments = ["--save-child", root.path, String(decoding: first, as: UTF8.self)]
+    let readyPipe = Pipe()
+    child.standardOutput = readyPipe
+    try child.run()
+    let ready = readyPipe.fileHandleForReading.readData(ofLength: 1)
+    assert(ready == Data([1]))
     usleep(200_000)
-    var childStatus: Int32 = 0
-    assert(waitpid(child, &childStatus, WNOHANG) == 0)
+    assert(child.isRunning)
     let lockedSnapshot = try Data(contentsOf: target)
     assert(lockedSnapshot == second)
     assert(flock(heldLock, LOCK_UN) == 0)
     close(heldLock)
-    assert(waitpid(child, &childStatus, 0) == child && childStatus == 0)
+    child.waitUntilExit()
+    assert(child.terminationStatus == 0)
     let unlockedSnapshot = try Data(contentsOf: target)
     assert(unlockedSnapshot == first)
 
-    // Contending processes publish entire snapshots, never mixed bytes.
+    // Contending independent processes publish complete snapshots, never
+    // mixed bytes. Each worker writes many times to the same destination.
     let payloads = (0..<4).map { number in
       Data(repeating: UInt8(65 + number), count: 65_536)
     }
-    var children: [pid_t] = []
-    for payload in payloads {
-      let pid = fork()
-      assert(pid >= 0)
-      if pid == 0 {
-        do {
-          for _ in 0..<12 {
-            try AtomicConfigurationWriter.save(payload, in: root, named: "settings.json")
-          }
-          _exit(0)
-        } catch {
-          _exit(4)
-        }
-      }
-      children.append(pid)
+    var workers: [Process] = []
+    for index in 0..<payloads.count {
+      let worker = Process()
+      worker.executableURL = executable
+      worker.arguments = ["--batch-child", root.path, String(index)]
+      try worker.run()
+      workers.append(worker)
     }
-    for pid in children {
-      var status: Int32 = 0
-      assert(waitpid(pid, &status, 0) == pid && status == 0)
+    for worker in workers {
+      worker.waitUntilExit()
+      assert(worker.terminationStatus == 0)
     }
     let finalSnapshot = try Data(contentsOf: target)
     assert(payloads.contains(finalSnapshot))
