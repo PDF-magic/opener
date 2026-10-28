@@ -69,6 +69,44 @@ func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows ->
     return try operation(errors)
 }
 
+
+// Initialization diagnostics are selected from known, path-free scanner messages.
+// Do not present arbitrary process errors as verified initialization diagnoses.
+enum ScannerInitializationError {
+    static let missingHelper = "The installed scan helper is missing. Reinstall PDF Magic Opener."
+    static let launchFailed = "The scan helper could not start. Reinstall PDF Magic Opener."
+
+    private static let knownScannerMessages: Set<String> = [
+        "ClamAV is unavailable. Run the Allow and Open installer again.",
+        "Malware signatures are unavailable. Run update-malware-signatures.sh.",
+        "Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.",
+        "The malware signature database is incomplete. Run update-malware-signatures.sh."
+    ]
+
+    static func displayedMessage(for failure: String) -> String? {
+        let message = failure.trimmingCharacters(in: .whitespacesAndNewlines)
+        if message == missingHelper || message == launchFailed ||
+            knownScannerMessages.contains(message) {
+            return message
+        }
+        return nil
+    }
+}
+
+func scanFailureAlert(for failure: String) -> NSAlert {
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    if let initializationMessage = ScannerInitializationError.displayedMessage(for: failure) {
+        alert.messageText = "Scanner initialization failed"
+        alert.informativeText = initializationMessage + "\nThe document was not opened."
+    } else {
+        alert.messageText = "Opening stopped"
+        alert.informativeText = failure
+    }
+    alert.addButton(withTitle: "OK")
+    return alert
+}
+
 // Preserve the sending application reported by macOS, never infer a source
 // from the frontmost window or the file extension.
 func requestSource(forBundleIdentifier identifier: String?) -> String {
@@ -247,6 +285,12 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     self.processLock.unlock()
                     return nil
                 }
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: script.path, isDirectory: &isDirectory),
+                      !isDirectory.boolValue else {
+                    self.processLock.unlock()
+                    return ScannerInitializationError.missingHelper
+                }
                 do {
                     try process.run()
                     self.activeProcesses[path] = process
@@ -264,7 +308,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     }
                 } catch {
                     self.processLock.unlock()
-                    return error.localizedDescription
+                    return ScannerInitializationError.launchFailed
                 }
                 errors.fileHandleForWriting.closeFile()
                 let output = errors.fileHandleForReading.readDataToEndOfFile()
@@ -300,12 +344,7 @@ DispatchQueue.main.async {
                 else { self.panel?.orderOut(nil) }
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
-                    let alert = NSAlert()
-                    alert.alertStyle = .warning
-                    alert.messageText = "Opening stopped"
-                    alert.informativeText = failure
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
+                    scanFailureAlert(for: failure).runModal()
                 }
                 // A nil error may also indicate cancellation. Only a zero
                 // status scan-and-open completion with no cancellation can
