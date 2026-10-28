@@ -24,6 +24,8 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Verify strict PDF structure parsing with the maintained library
         run: python3 test-pdf-structure-parser.py -v
+      - name: Inspect indirect PDF object links and page-tree consistency
+        run: python3 test-pdf-object-relationships.py -v
       - name: Inspect automatic PDF action hooks without executing them
         run: python3 test-pdf-automatic-actions.py -v
       - name: Verify built-in active protection profile label and unchanged scanner gates
@@ -96,6 +98,8 @@ jobs:
         run: python3 test-advanced-scanning-settings-page.py -v
       - name: Verify dedicated Updates settings page
         run: python3 test-updates-settings-page.py -v
+      - name: Verify Notifications settings navigation and safe informational page
+        run: python3 test-notifications-settings-page.py -v
       - name: Verify dedicated General settings page
         run: python3 test-general-settings-page.py -v
       - name: Verify persistent configuration storage location and user customizations
@@ -543,6 +547,9 @@ jobs:
       - name: Verify scan failures identify the PDF and show useful details
         timeout-minutes: 2
         run: python3 test-native-scan-failure.py
+      - name: Verify blocked scans keep the progress window until user acknowledgement
+        timeout-minutes: 3
+        run: python3 test-native-attention-required.py -v
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: python3 test-native-cancellation.py
