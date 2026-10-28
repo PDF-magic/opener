@@ -40,6 +40,10 @@ jobs:
         run: python3 test-effective-protection-policy.py -v
       - name: Verify fail-closed response to unsupported PDF features
         run: python3 test-unsupported-pdf-features.py -v
+      - name: Inspect embedded PDF attachments under the planned Enhanced policy
+        run: |
+          python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+          python3 test-enhanced-embedded-files.py -v
       - name: Verify resource budgets for every protection policy stage
         run: python3 test-protection-stage-resource-budgets.py -v
       - name: Verify General reset confirmation and scanner isolation
