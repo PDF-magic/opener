@@ -53,6 +53,13 @@ class PDFAutomaticActionTests(unittest.TestCase):
                 self.assertFalse(evidence.permits_open)
                 with self.assertRaises(FrozenInstanceError):
                     evidence.action_count = 5
+                with self.assertRaises(FrozenInstanceError):
+                    evidence.permits_open = True
+                with self.assertRaises(TypeError):
+                    PDFAutomaticActionInspection(
+                        action_count=0, open_destination_count=0,
+                        trigger_types=(), action_types=(), permits_open=True,
+                    )
 
     def test_catalog_open_action_detects_script_without_evaluating_it(self):
         writer = writer_with_page()

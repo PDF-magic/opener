@@ -7,7 +7,7 @@ A future sandboxed Enhanced pipeline must enforce execution time/memory limits
 and use these findings without bypassing the installed ClamAV scan gate.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 
 from pdf_structure_parser import parse_pdf_structure, PDFStructureParseError
@@ -44,7 +44,7 @@ class PDFAutomaticActionInspection:
     open_destination_count: int
     trigger_types: tuple[str, ...]
     action_types: tuple[str, ...]
-    permits_open: bool = False
+    permits_open: bool = field(default=False, init=False)
 
     @property
     def has_automatic_actions(self) -> bool:
