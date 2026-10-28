@@ -5,16 +5,13 @@ import subprocess
 import tempfile
 
 source = Path(__file__).with_name("brave-pdf-opener.swift").read_text()
-entry = """let app = NSApplication.shared
-let delegate = PDFOpener()
-app.delegate = delegate
-app.setActivationPolicy(.accessory)
-app.run()
-"""
-assert source.endswith(entry), "Cannot isolate native helper from app entry point"
+marker = "@main\nstruct PDFMagicOpenerEntry {"
+assert marker in source, "Cannot isolate native helper from app entry point"
 assert "let failure = withScanErrorPipe" in source, "Native scans must use cleanup wrapper"
 
-swift = "import Darwin\n" + source[:-len(entry)] + """
+swift = ("import Darwin\n" + source.split(marker)[0] + "\n"
+         + Path(__file__).with_name("scan-progress-view.swift").read_text()
+         + """
 enum SimulatedFailure: Error {
     case launch
 }

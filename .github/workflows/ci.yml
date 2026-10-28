@@ -134,8 +134,10 @@ jobs:
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
-      - name: Compile native PDF opener
-        run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
+      - name: Compile native PDF opener with the shared scan progress component
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift -o "$RUNNER_TEMP/PDFOpener"
+          python3 test-scan-progress-component.py -v
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
