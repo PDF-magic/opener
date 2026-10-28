@@ -178,6 +178,7 @@
         COPY_PHASE_STRIP = NO;
         DEBUG_INFORMATION_FORMAT = dwarf;
         GENERATE_INFOPLIST_FILE = YES;
+        INFOPLIST_FILE = PDFMagicOpenerApp/Info.plist;
         MARKETING_VERSION = 0.1.0;
         CURRENT_PROJECT_VERSION = 1;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
@@ -202,6 +203,7 @@
         COPY_PHASE_STRIP = YES;
         DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
         GENERATE_INFOPLIST_FILE = YES;
+        INFOPLIST_FILE = PDFMagicOpenerApp/Info.plist;
         MARKETING_VERSION = 0.1.0;
         CURRENT_PROJECT_VERSION = 1;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";

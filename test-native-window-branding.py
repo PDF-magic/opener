@@ -8,6 +8,7 @@ import zlib
 ROOT = Path(__file__).resolve().parent
 APP = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
+INFO = ROOT / "PDFMagicOpenerApp" / "Info.plist"
 ICON = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerIcon.icns"
 RESOLUTIONS = {b"icp4": 16, b"icp5": 32, b"icp6": 64,
                b"ic07": 128, b"ic08": 256, b"ic09": 512, b"ic10": 1024}
@@ -45,6 +46,8 @@ class NativeWindowBrandingTests(unittest.TestCase):
     self.assertEqual(project.count('INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";'), 2)
     self.assertEqual(project.count("INFOPLIST_KEY_CFBundleIconFile = PDFMagicOpenerIcon;"), 2)
     self.assertNotIn("CFBundleDocumentTypes", project)
+    self.assertEqual(project.count("INFOPLIST_FILE = PDFMagicOpenerApp/Info.plist;"), 2)
+    self.assertIn("<key>CFBundleIconFile</key>", INFO.read_text(encoding="utf-8"))
 
   def test_icon_is_in_the_built_app_resources(self):
     project = PROJECT.read_text(encoding="utf-8")
@@ -56,7 +59,16 @@ class NativeWindowBrandingTests(unittest.TestCase):
   def test_icns_contains_all_seven_valid_png_sizes(self):
     data = ICON.read_bytes()
     self.assertEqual(data[:4], b"icns")
-    self.assertEqual(struct.unpack_from(">I", data, 4)[0], len(data))
+    declared = struct.unpack_from(">I", data, 4)[0]
+    if declared != len(data):
+      descriptions, pos = [], 8
+      while pos + 8 <= len(data):
+        part_size = struct.unpack_from(">I", data, pos + 4)[0]
+        descriptions.append((data[pos:pos + 4], part_size, pos))
+        if part_size < 8:
+          break
+        pos += part_size
+      self.fail(f"ICNS header {declared}, bytes {len(data)}; entries {descriptions}")
     offset, seen = 8, set()
     while offset < len(data):
       kind = data[offset:offset + 4]
