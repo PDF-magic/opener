@@ -15,6 +15,7 @@ import subprocess
 import sys
 
 from maximum_active_content_removal import remove_active_pdf_functionality
+from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
@@ -153,6 +154,10 @@ def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
         # through a second, independent fresh PDF reconstruction.
         cleaned = remove_active_pdf_functionality(converted.stdout, count)
         if cleaned is None or not _passive_pages(cleaned, count):
+            return None
+        # Check the *rebuilt* sanitized PDF, not the original or raw raster.
+        structure = verify_sanitized_pdf_structure(cleaned, count)
+        if structure.page_count != count:
             return None
         return SanitizedCopyOffer(cleaned, count)
     except Exception:
