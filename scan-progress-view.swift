@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 
 // Shared native scan-progress presentation for the PDF opener and any later
 // native entry point. This component never starts scans or changes scan policy.
@@ -68,15 +69,70 @@ enum ScanProgressStage {
     }
 }
 
+// Read-only presentation of the installed scanner's selected PDF destination.
+// Mirror the verified chooser's target-app.txt contract; never use this label
+// to select a launcher, authorize opening, or change the scanner's fail-closed gate.
+enum SelectedDestinationBrowser {
+    private static let names = [
+        "com.brave.Browser": "Brave",
+        "com.google.Chrome": "Google Chrome",
+        "org.chromium.Chromium": "Chromium",
+        "com.microsoft.edgemac": "Microsoft Edge",
+        "com.vivaldi.Vivaldi": "Vivaldi",
+        "com.operasoftware.Opera": "Opera",
+        "company.thebrowser.Browser": "Arc",
+        "org.mozilla.firefox": "Firefox",
+        "com.apple.Safari": "Safari",
+    ]
+
+    static func displayName(
+        in directory: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Studio/allow-and-open",
+                                    isDirectory: true)
+    ) -> String {
+        guard directory.isFileURL else { return "Unavailable" }
+        let parent = open(directory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard parent >= 0 else { return errno == ENOENT ? "Brave" : "Unavailable" }
+        defer { close(parent) }
+
+        let file = openat(parent, "target-app.txt", O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+        guard file >= 0 else { return errno == ENOENT ? "Brave" : "Unavailable" }
+        defer { close(file) }
+
+        var info = stat()
+        guard fstat(file, &info) == 0,
+              (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG) else {
+            return "Unavailable"
+        }
+        var bytes = [UInt8](repeating: 0, count: 257)
+        let count = read(file, &bytes, bytes.count)
+        guard count > 0, count <= 256,
+              let text = String(bytes: bytes.prefix(count), encoding: .ascii) else {
+            return "Unavailable"
+        }
+        let identifier = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if identifier == "system-default-browser" { return "System default browser" }
+        guard identifier.count <= 255,
+              identifier.range(of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
+                               options: .regularExpression) != nil,
+              identifier.contains("."), !identifier.contains(".."),
+              identifier != "local.studio.brave-pdf-opener" else {
+            return "Unavailable"
+        }
+        return names[identifier] ?? "Custom application (\(identifier))"
+    }
+}
+
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
+    let destinationBrowserLabel = NSTextField(labelWithString: "Destination browser: Unavailable")
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 338),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 364),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -84,17 +140,24 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 118, width: 300, height: 205)))
+            frame: NSRect(x: 30, y: 144, width: 300, height: 205)))
         stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         stageLabel.alignment = .center
-        stageLabel.frame = NSRect(x: 20, y: 93, width: 320, height: 22)
+        stageLabel.frame = NSRect(x: 20, y: 119, width: 320, height: 22)
         stageLabel.setAccessibilityLabel("Current scanning stage")
         contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 93, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
+        destinationBrowserLabel.alignment = .center
+        destinationBrowserLabel.font = .systemFont(ofSize: 12)
+        destinationBrowserLabel.lineBreakMode = .byTruncatingMiddle
+        destinationBrowserLabel.textColor = .secondaryLabelColor
+        destinationBrowserLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        destinationBrowserLabel.setAccessibilityLabel(destinationBrowserLabel.stringValue)
+        contentView?.addSubview(destinationBrowserLabel)
         progressIndicator.style = .bar
         progressIndicator.isIndeterminate = true
         progressIndicator.startAnimation(nil)
@@ -103,6 +166,13 @@ final class ScanProgressPanel: NSPanel {
         cancelButton.frame = NSRect(x: 136, y: 8, width: 88, height: 28)
         contentView?.addSubview(cancelButton)
         center()
+    }
+
+    // This is information only: the scan gate still chooses and validates
+    // the actual application after a successful verdict.
+    func updateDestinationBrowser(_ displayName: String) {
+        destinationBrowserLabel.stringValue = "Destination browser: \(displayName)"
+        destinationBrowserLabel.setAccessibilityLabel(destinationBrowserLabel.stringValue)
     }
 
     // Set only display state. Callers own the scan lifecycle and Cancel action.

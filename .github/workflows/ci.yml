@@ -24,6 +24,8 @@ jobs:
         run: python3 test-reset-to-defaults.py -v
       - name: Verify main Dock icon and invisible PDF scan-helper policy
         run: python3 test-dock-behavior.py -v
+      - name: Verify selected destination browser display never changes scanner policy
+        run: python3 test-selected-destination-browser.py -v
       - name: Verify native window title and bundled application icon
         run: python3 test-native-window-branding.py -v
       - name: Verify independent SwiftUI application target

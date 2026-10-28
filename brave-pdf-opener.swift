@@ -202,6 +202,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         } else {
             stage = .queued
         }
+        // Refresh only the displayed destination; the installed scan gate
+        // remains authoritative for validated post-scan application selection.
+        panel?.updateDestinationBrowser(SelectedDestinationBrowser.displayName())
         panel?.show(documentDescription: description, stage: stage)
     }
 
