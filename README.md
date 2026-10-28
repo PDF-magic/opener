@@ -18,7 +18,7 @@ bash install-allow-and-open.sh
 
 Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default).
 For the Finder double-click verification procedure and its automated Launch Services
-regression test, see [Finder double-click testing](docs/finder-double-click-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
+regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf-drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
 The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
@@ -55,6 +55,8 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 **Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
 
 Each accepted scan attempt also records the **requesting scan-gate application** (PDF Magic Opener or the Allow and Open Finder Quick Action) and timestamp in a separate `scan_request_applications` table of the private `scan-requests.sqlite3` database. Direct calls to `scan-and-open.py` default to **Command Line**; integrations can set `PDF_MAGIC_REQUESTING_APPLICATION`. This identifies the scan entry point, **not** the external app that originally opened a document through macOS Launch Services. Requester records contain no document paths, types, or contents. Logging failures stop the requested opening. Delete the request database while the opener is stopped to clear both requester and destination history.
+
+**Find installed applications:** The installed `"$HOME/Library/Application Support/Studio/allow-and-open/installed-applications"` command searches macOS Spotlight's indexed application bundles by display name, application-bundle name, or bundle identifier. For example, pass `"Safari"` or `"com.apple.Safari"` as a single argument. The command returns a JSON array of matching application names, bundle identifiers, and paths, sorted for display. It verifies each bundle still exists and has an executable; unavailable or stale entries are omitted. Spotlight results may be incomplete when indexing is disabled or an application is not indexed. This is read-only discovery, not PDF capability verification: searching does not choose a browser, change any preferences, or bypass malware scanning. Existing target and fallback settings remain unchanged.
 
 **Installed-browser metadata (opener-0129):** `browser-app-metadata.swift` provides a read-only lookup for an already-discovered macOS `.app` bundle. It reports the localized display name (falling back to bundle name or filename), the macOS application icon, the short version (falling back to the build version), and the executable's resolved location. For a command-line JSON response including a base64-encoded TIFF icon, build the helper with `xcrun swiftc -parse-as-library browser-app-metadata.swift -o ReadBrowserApplicationMetadata` and run `./ReadBrowserApplicationMetadata "/Applications/Brave Browser.app"`. Missing or non-executable bundles fail closed; an unavailable icon or version is reported as absent. This helper does not discover installation locations, define the supported-browser registry, authorize PDF launches, or change any saved browser selection.
 
@@ -264,6 +266,28 @@ To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
 ```sh
 printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
+
+**Discovery-populated browser preference selector (opener-0137):** The standalone
+`browser_preference_selector.py` command accepts installed-browser discovery JSON
+on standard input and presents a numbered selection on the controlling terminal.
+Its input is either a list of browser records or an object with a `browsers`
+list. Each record contains `bundle_id`, `name`, and `installed: true`.
+Only installed, valid, non-self-referential browser IDs are selectable;
+duplicate installations with one bundle identifier display as one choice,
+while preview channels with distinct IDs remain separate.
+
+For example, after a separate installed-application discovery component has
+produced `discovered-browsers.json`, invoke
+`python3 browser_preference_selector.py --current com.brave.Browser < discovered-browsers.json`.
+The selector prints the explicitly chosen bundle identifier to stdout;
+Enter or `q` cancels without choosing anything. It does not update
+`target-app.txt`, substitute a default, modify macOS preferences, or launch
+any application. A caller must explicitly save the chosen bundle identifier
+through the existing preference workflow. The §3.1 discovery provider and
+integration into a graphical preferences screen are **separate prerequisites**;
+this selector does not claim to discover installed browsers on its own.
+The existing PDF scan, quarantine, and native application verification gates
+remain unchanged.
 
 To follow your **macOS default web browser** automatically (instead of a fixed
 bundle identifier), opt in by writing `system-default-browser` to the same file:
