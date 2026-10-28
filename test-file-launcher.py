@@ -100,8 +100,9 @@ class FileLauncherTests(unittest.TestCase):
         self.assertIn("launch_clean_file(path, target_app=destination if is_pdf else None)", source)
         self.assertIn("destination = intended_destination(path)", source)
         quarantine = source.index("    remove_quarantine(path)\n")
+        # Quarantine stays intact, so the final identity/ctime check is strict.
         final_check = source.index(
-            "    verify_file_integrity(path, before, identity, allow_ctime_change=True)",
+            "    verify_file_integrity(path, before, identity)",
             quarantine)
         launch = source.index("    launch_clean_file(path, target_app=destination if is_pdf else None)", final_check)
         self.assertLess(quarantine, final_check)
