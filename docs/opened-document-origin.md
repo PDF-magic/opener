@@ -24,13 +24,13 @@ relabel a failed malware scan or report an already-opened document as
 blocked. Existing clean-cache behavior, settings, signature updates and
 quarantine remain unchanged.
 
-Coordination: the separately developed Maximum safe-copy routing in
-[PR #215](https://github.com/PDF-magic/opener/pull/215) currently invokes the
-ordinary `scan_and_open` entry point for its staged copy. Before making
-that pending route selectable, its caller must switch to the validated
-generated-copy scan entry point (or an equivalent trusted generated-copy
-origin integration); **a filename or staging directory cannot establish
-provenance**. This change does not rewrite #215 or activate Maximum.
+Coordination: pending [PR #215](https://github.com/PDF-magic/opener/pull/215)
+has updated its safe-copy handoff to invoke the verified
+`scan_and_open_generated_copy` entry point with the actual sanitized
+`SanitizedCopyOffer`, preserving generated-copy provenance and the mandatory
+fresh scan. Both changes must merge before the future Maximum safe-copy path
+is enabled. **A filename or staging directory alone cannot establish
+provenance.** This change does not rewrite #215 or activate Maximum.
 
 Dedicated Linux and macOS CI exercises successful original and generated
 handoffs, cached originals, rejected malware/incomplete scans, failed and
