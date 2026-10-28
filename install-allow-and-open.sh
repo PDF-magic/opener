@@ -36,6 +36,8 @@ chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatur
 chmod 755 "$install_dir/launch-scanned-file"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/resolve-default-browser.swift" -o "$install_dir/resolve-default-browser"
 chmod 755 "$install_dir/resolve-default-browser"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/discover-installed-browsers.swift" -o "$install_dir/discover-installed-browsers"
+chmod 755 "$install_dir/discover-installed-browsers"
 # Read-only installed application discovery uses the macOS Spotlight index.
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/installed-applications.swift" -o "$install_dir/installed-applications"
 chmod 755 "$install_dir/installed-applications"

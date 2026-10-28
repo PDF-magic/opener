@@ -57,6 +57,8 @@ jobs:
         run: python3 test-chromium-launch.py -v
       - name: Verify system-default-browser selection and fail-closed handoff
         run: python3 test-system-default-browser.py -v
+      - name: Verify preference selector uses installed-browser discovery results
+        run: python3 test-browser-preference-selector.py -v
       - name: Verify Brave PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: brave
@@ -149,7 +151,7 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift test-detect-pdf-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
           "$RUNNER_TEMP/TestDetectPDFHandler"
           if "$RUNNER_TEMP/DetectPDFHandlerChange" unexpected-argument >/dev/null 2>&1; then exit 1; fi
-      - name: Verify PDF handlers and signed Safari, Arc, Opera and Firefox
+      - name: Verify discovered app availability, PDF handlers and signed browser exceptions
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
           xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
@@ -183,6 +185,14 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift test-default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
+      - name: Discover installed macOS browsers across standard and custom locations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors discover-installed-browsers.swift -o "$RUNNER_TEMP/DiscoverInstalledBrowsers"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-installed-browsers.swift -o "$RUNNER_TEMP/TestInstalledBrowsers"
+          "$RUNNER_TEMP/TestInstalledBrowsers"
+          "$RUNNER_TEMP/DiscoverInstalledBrowsers" | python3 -c 'import json, sys; assert isinstance(json.load(sys.stdin), list)'
+          if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --application relative.app; then exit 1; fi
+          if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --search-directory; then exit 1; fi
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
@@ -200,6 +210,9 @@ jobs:
       - name: Verify Finder-style PDF open-event delivery through Launch Services
         timeout-minutes: 3
         run: python3 test-finder-double-click.py
+      - name: Verify PDF drop onto an explicitly selected macOS app
+        timeout-minutes: 3
+        run: python3 test-pdf-drag-drop.py
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
