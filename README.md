@@ -20,6 +20,13 @@ Each section provides a read-only overview of the existing workflow; this
 foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
+**Menu-bar decision (opener-0176):** No persistent menu-bar status item is
+enabled or required. The standalone application only presents preferences;
+the installed PDF-scanning handler operates independently. This avoids a
+redundant background presence and additional menu-bar clutter. See
+[menu-bar decision](docs/menu-bar-decision.md) for the rationale and conditions
+that would justify enabling one in the future.
+
 Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
 standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored
