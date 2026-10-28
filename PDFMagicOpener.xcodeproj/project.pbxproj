@@ -8,30 +8,40 @@
       isa = PBXBuildFile;
       fileRef = A10000000000000000000002;
     };
-    A10000000000000000000002 = {
-      isa = PBXFileReference;
-      lastKnownFileType = sourcecode.swift;
-      path = PDFMagicOpenerApp.swift;
-      sourceTree = "<group>";
-    };
     A10000000000000000000012 = {
       isa = PBXBuildFile;
       fileRef = A10000000000000000000013;
     };
-    A10000000000000000000014 = {
-      isa = PBXBuildFile;
-      fileRef = A10000000000000000000015;
-    };
     A10000000000000000000013 = {
+      isa = PBXFileReference;
+      lastKnownFileType = sourcecode.swift;
+      path = MainPreferencesView.swift;
+      sourceTree = "<group>";
+    };
+    A10000000000000000000016 = {
+      isa = PBXBuildFile;
+      fileRef = A10000000000000000000017;
+    };
+    A10000000000000000000018 = {
+      isa = PBXBuildFile;
+      fileRef = A10000000000000000000019;
+    };
+    A10000000000000000000017 = {
       isa = PBXFileReference;
       lastKnownFileType = sourcecode.swift;
       path = AboutView.swift;
       sourceTree = "<group>";
     };
-    A10000000000000000000015 = {
+    A10000000000000000000019 = {
       isa = PBXFileReference;
       lastKnownFileType = text;
       path = LICENSE;
+      sourceTree = "<group>";
+    };
+    A10000000000000000000002 = {
+      isa = PBXFileReference;
+      lastKnownFileType = sourcecode.swift;
+      path = PDFMagicOpenerApp.swift;
       sourceTree = "<group>";
     };
     A10000000000000000000003 = {
@@ -49,12 +59,12 @@
     };
     A10000000000000000000005 = {
       isa = PBXGroup;
-      children = (A10000000000000000000006, A10000000000000000000007, A10000000000000000000015,);
+      children = (A10000000000000000000006, A10000000000000000000007, A10000000000000000000019,);
       sourceTree = "<group>";
     };
     A10000000000000000000006 = {
       isa = PBXGroup;
-      children = (A10000000000000000000002, A10000000000000000000013,);
+      children = (A10000000000000000000002, A10000000000000000000013, A10000000000000000000017,);
       path = PDFMagicOpenerApp;
       sourceTree = "<group>";
     };
@@ -78,13 +88,13 @@
     A10000000000000000000009 = {
       isa = PBXSourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = (A10000000000000000000001, A10000000000000000000012,);
+      files = (A10000000000000000000001, A10000000000000000000012, A10000000000000000000016,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     A1000000000000000000000A = {
       isa = PBXResourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = (A10000000000000000000014,);
+      files = (A10000000000000000000018,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     A1000000000000000000000B = {

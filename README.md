@@ -14,18 +14,24 @@ Xcode, or build an unsigned development app with:
 xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Debug -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-This is an initial settings-window shell, **not** a replacement for the
+The standalone SwiftUI application now opens a **main preferences window**
+(opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
+Each section provides a read-only overview of the existing workflow; this
+foundational window does not alter configured browser choices or security
+controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+
+This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
 by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
 
-The SwiftUI application includes an **About PDF Magic Opener** command in its
-application menu. About displays the app's version from its bundled metadata,
-identifies the GNU Affero General Public License v3, explains the absence of
-warranty, and provides an offline viewer for the full bundled `LICENSE` text.
-The standalone SwiftUI target currently uses version `0.1.0` (build `1`).
-These changes do not affect the installed AppKit PDF handler or scanner.
+The SwiftUI application also includes an **About PDF Magic Opener** command
+in its application menu. About shows the version from the built app bundle,
+names the GNU Affero General Public License v3 and its no-warranty notice,
+and provides an offline full-license viewer using the original `LICENSE`
+resource. This target starts at version `0.1.0` (build `1`) and does not
+change the installed PDF handler or scanner.
 
 ## Art
 

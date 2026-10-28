@@ -136,6 +136,80 @@ struct InstalledBrowserDiscoveryTests {
                 .map(\.path) == [systemBrowser.path],
             "Removing one duplicate must not suppress the remaining healthy installation"
         )
+        // opener-0155: simultaneously installed Chromium-family browsers.
+        // Use separate fixture directories to avoid requiring real browsers on CI.
+        let familyRoot = root.appendingPathComponent("Chromium Family", isDirectory: true)
+        let familySystem = familyRoot.appendingPathComponent("System", isDirectory: true)
+        let familyUser = familyRoot.appendingPathComponent("User", isDirectory: true)
+        let familyCustom = familyRoot.appendingPathComponent("Custom", isDirectory: true)
+        for directory in [familySystem, familyUser, familyCustom] {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        let familyBrave = try makeApp(
+            at: familySystem, name: "Brave", identifier: "com.brave.Browser")
+        let familyChrome = try makeApp(
+            at: familySystem, name: "Chrome", identifier: "com.google.Chrome")
+        let familyChromium = try makeApp(
+            at: familyUser, name: "Chromium", identifier: "org.chromium.Chromium")
+        let familyEdge = try makeApp(
+            at: familyCustom, name: "Edge", identifier: "com.microsoft.edgemac")
+        let familyVivaldi = try makeApp(
+            at: familyCustom, name: "Vivaldi", identifier: "com.vivaldi.Vivaldi")
+        _ = try makeApp(
+            at: familySystem, name: "Chrome Impostor",
+            identifier: "com.google.Chrome.fake")
+        _ = try makeApp(
+            at: familySystem, name: "Broken Opera",
+            identifier: "com.operasoftware.Opera", executable: false)
+        _ = try makeApp(
+            at: familySystem, name: "Non Browser", identifier: "example.editor")
+
+        // Detect accidental launches without executing actual browsers.
+        let launchMarker = familyRoot.appendingPathComponent("unexpected-launch")
+        for app in [familyBrave, familyChrome, familyChromium, familyEdge, familyVivaldi] {
+            let executable = app.appendingPathComponent("Contents/MacOS/Browser")
+            try "#!/bin/sh\nprintf launched > \"\(launchMarker.path)\"\n"
+                .write(to: executable, atomically: true, encoding: .utf8)
+            try fileManager.setAttributes([.posixPermissions: 0o755],
+                                          ofItemAtPath: executable.path)
+        }
+        let expectedFamily = [
+            InstalledBrowser(bundleIdentifier: "com.brave.Browser", path: familyBrave.path),
+            InstalledBrowser(bundleIdentifier: "com.google.Chrome", path: familyChrome.path),
+            InstalledBrowser(bundleIdentifier: "org.chromium.Chromium", path: familyChromium.path),
+            InstalledBrowser(bundleIdentifier: "com.microsoft.edgemac", path: familyEdge.path),
+            InstalledBrowser(bundleIdentifier: "com.vivaldi.Vivaldi", path: familyVivaldi.path),
+        ].sorted { ($0.bundleIdentifier, $0.path) < ($1.bundleIdentifier, $1.path) }
+        func discoverChromiumFamily() -> [InstalledBrowser] {
+            discoverInstalledBrowsers(
+                searchDirectories: [familySystem, familyUser],
+                additionalApplications: [familyEdge, familyVivaldi, familyEdge],
+                registeredApplications: [familyChrome, familyEdge]
+            )
+        }
+        let discoveredFamily = discoverChromiumFamily()
+        precondition(discoveredFamily == expectedFamily,
+                     "Discover five distinct Chromium-based browsers with stable ordering")
+        precondition(Set(discoveredFamily.map(\.bundleIdentifier)).count == 5,
+                     "Different Chromium browser identities must not collapse")
+        let familyJSON = try JSONEncoder().encode(discoveredFamily)
+        let familyDecoded = try JSONDecoder().decode(
+            [InstalledBrowser].self, from: familyJSON)
+        precondition(familyDecoded == expectedFamily,
+                     "Multi-browser discovery must round-trip through inventory JSON")
+        precondition(!fileManager.fileExists(atPath: launchMarker.path),
+                     "Discovery must not execute Chromium-family applications")
+
+        let chromiumExecutable = familyChromium.appendingPathComponent(
+            "Contents/MacOS/Browser")
+        try fileManager.setAttributes([.posixPermissions: 0o644],
+                                      ofItemAtPath: chromiumExecutable.path)
+        precondition(discoverChromiumFamily() == expectedFamily.filter {
+            $0.bundleIdentifier != "org.chromium.Chromium"
+        }, "Unavailable Chromium must not hide other installed browsers")
+        precondition(!fileManager.fileExists(atPath: launchMarker.path),
+                     "Failed discovery must not launch applications")
+
         print("PASS: browser discovery in system, user and custom locations; distinct duplicate installations")
     }
 }

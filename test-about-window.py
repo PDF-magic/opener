@@ -39,7 +39,7 @@ class AboutWindowTests(unittest.TestCase):
     self.assertIn('url(forResource: "LICENSE", withExtension: nil)', source)
     self.assertIn("View Full License", source)
     self.assertIn("lastKnownFileType = text;\n      path = LICENSE;", project)
-    self.assertIn("files = (A10000000000000000000014,);", project)
+    self.assertIn("files = (A10000000000000000000018,);", project)
     self.assertIn("path = AboutView.swift;", project)
 
   def test_about_does_not_mutate_pdf_scan_or_destination(self):
