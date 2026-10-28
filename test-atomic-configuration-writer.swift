@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 @main
@@ -49,6 +50,32 @@ struct AtomicConfigurationWriterTests {
     try AtomicConfigurationWriter.save(empty, in: root, named: "empty.json")
     let emptyRead = try Data(contentsOf: root.appendingPathComponent("empty.json"))
     assert(emptyRead == empty)
+    // A permissive process umask must not make configuration world-readable.
+    let previousUmask = umask(0)
+    defer { _ = umask(previousUmask) }
+    try AtomicConfigurationWriter.save(first, in: root, named: "private.json")
+    var permissions = stat()
+    let privatePath = root.appendingPathComponent("private.json").path
+    assert(lstat(privatePath, &permissions) == 0)
+    assert((permissions.st_mode & mode_t(0o7777)) == mode_t(0o600))
+
+    // Existing settings may have overly permissive legacy permissions.
+    // Replacement must not retain those permissions or truncate on failure.
+    assert(chmod(target.path, mode_t(0o644)) == 0)
+    try AtomicConfigurationWriter.save(first, in: root, named: "settings.json")
+    assert(lstat(target.path, &permissions) == 0)
+    assert((permissions.st_mode & mode_t(0o7777)) == mode_t(0o600))
+    let restrictedRead = try Data(contentsOf: target)
+    assert(restrictedRead == first)
+
+    // A locked-down legacy file is replaceable without first broadening it.
+    assert(chmod(target.path, mode_t(0o000)) == 0)
+    try AtomicConfigurationWriter.save(second, in: root, named: "settings.json")
+    assert(lstat(target.path, &permissions) == 0)
+    assert((permissions.st_mode & mode_t(0o7777)) == mode_t(0o600))
+    let restoredRead = try Data(contentsOf: target)
+    assert(restoredRead == second)
+
     let names = try FileManager.default.contentsOfDirectory(atPath: root.path)
     assert(!names.contains(where: { $0.hasSuffix(".tmp") }))
     print("Atomic configuration saving tests passed")

@@ -125,6 +125,65 @@ enum GeneralPreferencesReset {
   }
 }
 
+// Versioned, opt-in representation for settings shared by the preferences app
+// and the installed opener. This defines a future persistence contract; it does
+// not migrate or overwrite the existing UserDefaults keys on its own.
+// Nil means "not explicitly configured", preserving each setting's legacy default.
+struct PDFMagicConfigurationSchema: Codable, Equatable {
+  static let currentVersion = 1
+
+  let schemaVersion: Int
+  var showScanProgress: Bool?
+  var showSuccessfulScanNotifications: Bool?
+  var showBlockedFileNotifications: Bool?
+
+  init(
+    showScanProgress: Bool? = nil,
+    showSuccessfulScanNotifications: Bool? = nil,
+    showBlockedFileNotifications: Bool? = nil
+  ) {
+    schemaVersion = Self.currentVersion
+    self.showScanProgress = showScanProgress
+    self.showSuccessfulScanNotifications = showSuccessfulScanNotifications
+    self.showBlockedFileNotifications = showBlockedFileNotifications
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case showScanProgress
+    case showSuccessfulScanNotifications
+    case showBlockedFileNotifications
+  }
+
+  init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    let version = try values.decode(Int.self, forKey: .schemaVersion)
+    guard version == Self.currentVersion else {
+      throw DecodingError.dataCorruptedError(
+        forKey: .schemaVersion,
+        in: values,
+        debugDescription: "Unsupported configuration schema version"
+      )
+    }
+    schemaVersion = version
+    showScanProgress = try values.decodeIfPresent(Bool.self, forKey: .showScanProgress)
+    showSuccessfulScanNotifications = try values.decodeIfPresent(
+      Bool.self, forKey: .showSuccessfulScanNotifications
+    )
+    showBlockedFileNotifications = try values.decodeIfPresent(Bool.self, forKey: .showBlockedFileNotifications)
+  }
+
+  func encoded() throws -> Data {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    return try encoder.encode(self)
+  }
+
+  static func decoded(from data: Data) throws -> Self {
+    return try JSONDecoder().decode(Self.self, from: data)
+  }
+}
+
 // Create persisted presentation preferences on first launch without overwriting
 // user choices. The installed scanner continues to own its separate settings.
 enum InitialConfiguration {
