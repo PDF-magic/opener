@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 
 // Shared native scan-progress presentation for the PDF opener and any later
 // native entry point. This component never starts scans or changes scan policy.
