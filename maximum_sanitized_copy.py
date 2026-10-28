@@ -7,6 +7,7 @@ the installed scanner or user preferences.
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
 import os
 from pathlib import Path
@@ -51,6 +52,155 @@ class SanitizedCopyOffer:
                 self.needs_separate_scan is not True or
                 self.rasterized is not True):
             raise ValueError("Sanitized copies never grant scan or open approval")
+
+
+class SanitizationBlockReason(str, Enum):
+    """Fixed, source-independent reasons why a Maximum copy is unavailable."""
+
+    invalidSource = "invalidSource"
+    converterUnavailable = "converterUnavailable"
+    encryptedSource = "encryptedSource"
+    unsupportedPages = "unsupportedPages"
+    unsupportedFeature = "unsupportedFeature"
+    unreadableSource = "unreadableSource"
+    conversionFailed = "conversionFailed"
+    outputUnverified = "outputUnverified"
+
+
+@dataclass(frozen=True)
+class SanitizationDecision:
+    """Explicit terminal Maximum copy decision, never a clean/open verdict.
+
+    An absent offer must be a BLOCK with a fixed reason. An offer must
+    carry the original immutable, separately-scannable in-memory copy.
+    No PDF-controlled data is interpolated into the decision metadata.
+    """
+
+    offer: SanitizedCopyOffer | None
+    blocked_reason: SanitizationBlockReason | None
+
+    def __post_init__(self):
+        ready = type(self.offer) is SanitizedCopyOffer
+        blocked = type(self.blocked_reason) is SanitizationBlockReason
+        if ready == blocked:
+            raise ValueError("A sanitized copy must be verified or blocked")
+
+    @property
+    def action(self) -> str:
+        return "offerForSeparateScan" if self.offer is not None else "block"
+
+    @property
+    def permits_open(self) -> bool:
+        return False
+
+    @property
+    def allow_fallback(self) -> bool:
+        return False
+
+    @property
+    def allow_clean_cache(self) -> bool:
+        return False
+
+    @property
+    def preserve_quarantine(self) -> bool:
+        return True
+
+    @property
+    def requires_separate_scan(self) -> bool:
+        return True
+
+    def to_dict(self) -> dict:
+        return {
+            "action": self.action,
+            "reason": (self.blocked_reason.value if self.blocked_reason is not None
+                       else None),
+            "offerAvailable": self.offer is not None,
+            "pageCount": self.offer.page_count if self.offer is not None else None,
+            "permitsOpen": False,
+            "allowFallback": False,
+            "allowCleanCache": False,
+            "preserveQuarantine": True,
+            "requiresSeparateScan": True,
+        }
+
+
+def _blocked(reason: SanitizationBlockReason) -> SanitizationDecision:
+    return SanitizationDecision(None, reason)
+
+
+_KNOWN_PASSIVE_FILTERS = frozenset({
+    "/FlateDecode", "/LZWDecode", "/ASCII85Decode", "/ASCIIHexDecode",
+    "/RunLengthDecode", "/CCITTFaxDecode", "/DCTDecode", "/JPXDecode",
+    "/JBIG2Decode",
+})
+
+
+def _unsupported_filter(obj) -> bool:
+    """Inspect only stream filter *names*, never decompress source bytes."""
+    value = obj.get("/Filter")
+    if value is None:
+        return False
+    values = value if isinstance(value, (list, tuple)) else (value,)
+    return (not 1 <= len(values) <= 8 or
+            any(str(v.get_object()) not in _KNOWN_PASSIVE_FILTERS
+                for v in values))
+
+
+def _unsupported_source_features(original) -> bool:
+    """Conservatively reject PDF features without reliable static raster fidelity.
+
+    Normal document JavaScript, annotations, attachments, and forms may be
+    discarded by the visual-only converter. XFA, layered content, portfolios
+    and rich media cannot be claimed to have a faithful static view. Inspect
+    trusted PDF *structure* only; never execute actions or open attachments.
+    Unknown/malformed structures are rejected by the caller.
+    """
+    root = original.trailer["/Root"]
+    if any(name in root for name in (
+        "/NeedsRendering", "/Collection", "/OCProperties", "/Perms",
+    )):
+        return True
+    form = root.get("/AcroForm")
+    if form is not None:
+        form = form.get_object()
+        if "/XFA" in form or int(form.get("/SigFlags", 0)) & 0b11:
+            return True
+    forbidden_subtypes = {
+        "/RichMedia", "/3D", "/Movie", "/Screen", "/Sound",
+    }
+    for page in original.pages:
+        # A converter may render an incomplete page without admitting that a
+        # stream filter was unsupported. Reject unknown filter names before
+        # it runs; never decode unknown or potentially dangerous source data.
+        contents = page.get("/Contents")
+        if contents is not None:
+            contents = contents.get_object()
+            streams = contents if isinstance(contents, (list, tuple)) else (contents,)
+            if len(streams) > 128:
+                return True
+            for ref in streams:
+                if _unsupported_filter(ref.get_object()):
+                    return True
+        resources = page.get("/Resources")
+        if resources is not None:
+            objects = resources.get_object().get("/XObject")
+            if objects is not None:
+                objects = objects.get_object()
+                if len(objects) > 128:
+                    return True
+                for ref in objects.values():
+                    if _unsupported_filter(ref.get_object()):
+                        return True
+        annots = page.get("/Annots")
+        if annots is None:
+            continue
+        annots = annots.get_object()
+        for ref in annots:
+            annotation = ref.get_object()
+            if annotation.get("/Subtype") in forbidden_subtypes or (
+                    "/3DD" in annotation or "/RichMediaContent" in annotation):
+                return True
+    return False
 
 
 def _trusted_converter() -> Path | None:
@@ -110,27 +260,38 @@ def _passive_pages(pdf_bytes: bytes, count: int) -> bool:
         return False
 
 
-def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
-    """Return an offer only when a complete *new* rasterized copy was verified.
+def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
+    """Block every unsupported/incomplete sanitization; never infer clean.
 
-    Conversion is on-demand. No file is written, displayed or launched here:
-    a future Maximum UI must ask the user to save the copy, and route that
-    new document through the normal mandatory scan before any opening.
-    Unsupported or failed conversions return None without disclosing PDF data.
+    Only a fully verified, *new* visual PDF becomes a non-opening offer.
+    Encryption, dynamic content, malformed structures, failed converters and
+    unverified output have explicit fixed reasons. No source bytes, paths,
+    parser diagnostics or filesystem output enter the decision.
     """
     if (type(source_bytes) is not bytes or
             not 0 < len(source_bytes) <= MAX_SOURCE_BYTES or
             not source_bytes.startswith(b"%PDF-")):
-        return None
-    converter = _trusted_converter()
+        return _blocked(SanitizationBlockReason.invalidSource)
+    try:
+        converter = _trusted_converter()
+    except Exception:
+        return _blocked(SanitizationBlockReason.converterUnavailable)
     if converter is None:
-        return None
+        return _blocked(SanitizationBlockReason.converterUnavailable)
     try:
         from pypdf import PdfReader
         original = PdfReader(BytesIO(source_bytes), strict=True)
-        if original.is_encrypted or not 1 <= len(original.pages) <= MAX_PAGES:
-            return None
+        if original.is_encrypted:
+            return _blocked(SanitizationBlockReason.encryptedSource)
+        if not 1 <= len(original.pages) <= MAX_PAGES:
+            return _blocked(SanitizationBlockReason.unsupportedPages)
+        if _unsupported_source_features(original):
+            return _blocked(SanitizationBlockReason.unsupportedFeature)
         count = len(original.pages)
+    except Exception:
+        return _blocked(SanitizationBlockReason.unreadableSource)
+
+    try:
         converted = subprocess.run(
             [str(converter)],
             input=source_bytes,
@@ -148,12 +309,28 @@ def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
                 type(converted.stdout) is not bytes or
                 not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
                 converted.stdout == source_bytes):
-            return None
-        # Never offer raw converter output. Keep only decoded raster pixels
-        # through a second, independent fresh PDF reconstruction.
-        cleaned = remove_active_pdf_functionality(converted.stdout, count)
-        if cleaned is None or not _passive_pages(cleaned, count):
-            return None
-        return SanitizedCopyOffer(cleaned, count)
+            return _blocked(SanitizationBlockReason.conversionFailed)
     except Exception:
-        return None
+        return _blocked(SanitizationBlockReason.conversionFailed)
+
+    try:
+        # Never offer raw converter output. Reconstruct from decoded raster
+        # pixels and independently verify the new passive output.
+        cleaned = remove_active_pdf_functionality(converted.stdout, count)
+        if (type(cleaned) is not bytes or
+                not 0 < len(cleaned) <= MAX_OUTPUT_BYTES or
+                cleaned == source_bytes or
+                not _passive_pages(cleaned, count)):
+            return _blocked(SanitizationBlockReason.outputUnverified)
+        return SanitizationDecision(SanitizedCopyOffer(cleaned, count), None)
+    except Exception:
+        return _blocked(SanitizationBlockReason.outputUnverified)
+
+
+def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
+    """Compatibility API: unavailable/unsupported cases NEVER offer a copy.
+
+    Call assess_sanitized_pdf_copy() when an explicit block reason and
+    fail-closed decision are needed. The existing opt-in UI is unchanged.
+    """
+    return assess_sanitized_pdf_copy(source_bytes).offer
