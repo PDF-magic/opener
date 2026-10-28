@@ -18,6 +18,14 @@ The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
 The **General** sidebar entry opens a dedicated read-only settings page
 (opener-0178) describing PDF scanning and preserved application choices.
+The **Default PDF browser** selector (opener-0195) lists only registered,
+installed supported browser bundles. Choosing one explicitly calls the installed
+PDF application selection utility to verify eligibility and atomically update
+the existing `target-app.txt` preference. A rejected choice leaves the previous
+preference intact; opening General or using its other sections never changes
+the selected browser. Existing custom choices remain displayed without being
+silently replaced. Install the PDF Magic Opener scanner tools before using
+this selector.
 **Protection** (opener-0180) opens a separate informational page explaining
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
