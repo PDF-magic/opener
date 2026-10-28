@@ -49,6 +49,17 @@ reports an error. Opening settings does not change the default. The
 standalone preferences app is never registered as a PDF handler, and saved
 browser choices and scanning safeguards remain unchanged.
 
+**Restore Previous Default (opener-0198):** General also offers an explicit
+Restore Previous Default action with a confirmation prompt. It calls the
+installed `pdf-handler-history restore` utility, which will restore only the
+recorded, valid, installed PDF app while PDF Magic Opener is still the
+current PDF handler. If the previous association was not safely recorded,
+its app is missing, or the default has changed independently, restoration
+fails without silently selecting another application. This may remove the
+PDF Magic Opener scan gate from the macOS default association, so the
+confirmation explains the effect. The selected post-scan browser and
+malware scanner configuration are not changed.
+
 **General PDF handler status (opener-0196):** General separately reports
 whether Launch Services currently associates **PDF files** with the installed
 PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), another
