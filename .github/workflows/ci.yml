@@ -38,8 +38,8 @@ jobs:
         run: python3 test-pdf-embedded-executable-content.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
-      - name: Inspect suspicious embedded PDF URLs without fetching destinations
-        run: python3 test-pdf-suspicious-urls.py -v
+      - name: Detect malformed PDF structures in the planned Enhanced stage
+        run: python3 test-pdf-malformed-structures.py -v
       - name: Distinguish dangerous PDF behavior from legitimate features
         run: python3 test-pdf-behavior-classification.py -v
       - name: Verify maximum processing time for each protection stage
@@ -240,6 +240,8 @@ jobs:
         run: python3 test-effective-policy-scan-results.py -v
       - name: Verify responses for every detection remain fail-closed
         run: python3 test-detection-responses.py -v
+      - name: Inspect suspicious embedded PDF URLs without fetching destinations
+        run: python3 test-pdf-suspicious-urls.py -v
 
   macos-build:
     runs-on: macos-latest
