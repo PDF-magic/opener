@@ -261,6 +261,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
+      - name: Verify safe malformed configuration recovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+          "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
