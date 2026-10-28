@@ -44,10 +44,57 @@ struct BrowserPreferenceListTests {
         precondition(list.rows[1].detailsButton == nil,
                      "Do not present a fake version or disclosure when unavailable")
         precondition(list.rows[1].nameField.stringValue == "Safari")
-        precondition(BrowserPreferenceListView(items: []).rows.isEmpty)
+        // A valid empty discovery result gets actionable guidance, not a
+        // blank list or a synthetic browser choice.
+        precondition(list.emptyState == nil, "Nonempty results never show an empty state")
+        precondition(browserPreferenceItems(from: encode([]))?.isEmpty == true,
+                     "Valid empty discovery results remain distinct from malformed data")
+        let emptyList = BrowserPreferenceListView(items: [])
+        precondition(emptyList.rows.isEmpty, "Empty results cannot create a fake browser row")
+        guard let emptyState = emptyList.emptyState else {
+            fatalError("An empty list must render recovery guidance")
+        }
+        precondition(emptyList.arrangedSubviews.count == 1,
+                     "The empty state replaces browser rows")
+        precondition(emptyState.heading.stringValue == "No browsers found")
+        precondition(emptyState.guidance.stringValue.contains("Install a browser"),
+                     "Suggest an actionable installation check")
+        precondition(emptyState.guidance.stringValue.contains("discovery again"),
+                     "Explain how to retry browser discovery")
+        precondition(emptyState.preferenceNote.stringValue.contains("has not changed"),
+                     "Do not imply the saved PDF target was reset")
+
+        let unsupported = encode([
+            [
+                "bundleIdentifier": "com.example.FakeBrowser",
+                "name": "Unsupported Browser",
+            ],
+            [
+                "bundleIdentifier": "com.brave.Browser.beta",
+                "name": "Brave Beta",
+            ],
+            [
+                "bundleIdentifier": "com.google.Chrome",
+                "name": "Google Chrome",
+            ],
+            [
+                "bundleIdentifier": "com.google.Chrome.fake",
+                "name": "Google Chrome",
+            ],
+        ])
+        let primaryItems = browserPreferenceItems(from: unsupported)
+        precondition(primaryItems?.count == 1,
+                     "Hide unsupported and preview browsers from primary list")
+        precondition(primaryItems?.first?.bundleIdentifier == "com.google.Chrome")
+        precondition(browserPreferenceItems(from: encode([[
+            "bundleIdentifier": "com.example.Custom",
+            "name": "Custom Browser",
+        ]]))?.isEmpty == true,
+                     "Unsupported browser alone produces an empty primary list")
+        precondition(BrowserPreferenceListView(items: primaryItems!).rows.count == 1)
 
         let blankVersion = encode([[
-            "bundleIdentifier": "com.example.Browser",
+            "bundleIdentifier": "com.brave.Browser",
             "name": " Example Browser ",
             "version": "\n",
         ]])
@@ -58,7 +105,7 @@ struct BrowserPreferenceListTests {
         let invalidNames = ["", "\n", "Browser\nFake", String(repeating: "X", count: 129)]
         for name in invalidNames {
             precondition(browserPreferenceItems(from: encode([[
-                "bundleIdentifier": "com.example.Browser", "name": name
+                "bundleIdentifier": "com.brave.Browser", "name": name
             ]])) == nil, "Reject misleading labels")
         }
         for identifier in ["", "bad-id", "com..broken", "local.studio.brave-pdf-opener"] {
@@ -81,7 +128,7 @@ struct BrowserPreferenceListTests {
         image.unlockFocus()
         if let imageData = image.tiffRepresentation {
             let iconItems = browserPreferenceItems(from: encode([[
-                "bundleIdentifier": "com.example.Browser",
+                "bundleIdentifier": "com.brave.Browser",
                 "name": "Example Browser",
                 "iconTIFFBase64": imageData.base64EncodedString(),
             ]]))
@@ -141,7 +188,7 @@ struct BrowserPreferenceListTests {
         let macos = app.appendingPathComponent("Contents/MacOS")
         try! manager.createDirectory(at: macos, withIntermediateDirectories: true)
         let info: [String: String] = [
-            "CFBundleIdentifier": "com.example.RefreshBrowser",
+            "CFBundleIdentifier": "com.brave.Browser",
             "CFBundleExecutable": "Browser",
             "CFBundleDisplayName": "Refreshed Browser",
             "CFBundleShortVersionString": "2.1",
@@ -156,14 +203,14 @@ struct BrowserPreferenceListTests {
         try! manager.setAttributes(
             [.posixPermissions: 0o755], ofItemAtPath: browserExecutable.path)
         let discoveredData = encode([[
-            "bundleIdentifier": "com.example.RefreshBrowser",
+            "bundleIdentifier": "com.brave.Browser",
             "path": app.path,
         ]])
         let decoded = refreshedBrowserPreferenceItems(from: discoveredData)
         precondition(decoded?.count == 1 && decoded?.first?.name == "Refreshed Browser")
         precondition(decoded?.first?.version == "2.1")
         precondition(refreshedBrowserPreferenceItems(from: encode([[
-            "bundleIdentifier": "com.example.Impostor",
+            "bundleIdentifier": "com.google.Chrome",
             "path": app.path,
         ]]))?.isEmpty == true, "Mismatched bundle identities never become rows")
         precondition(refreshedBrowserPreferenceItems(from: Data("bad".utf8)) == nil)

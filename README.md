@@ -239,7 +239,11 @@ printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","
   "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
 ```
 
-Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The initial list uses only caller-provided metadata. The **Refresh Browsers** button explicitly reruns the installed, read-only `discover-installed-browsers` helper, revalidates discovered bundle identities and executables, and replaces displayed rows with fresh names, icons, and versions. A failed refresh retains the existing list and shows an error; a successful empty inventory is displayed as empty. Refresh never chooses a PDF target, edits `target-app.txt`, launches a browser, or changes Launch Services defaults. This action works after reinstalling the updated helper and does not modify scanner protections or the current saved preference.
+When discovery supplies an empty array (`[]`), the view shows **No browsers found** with guidance to install a browser, check custom installation locations, and run discovery again. It also confirms that the existing PDF application preference remains unchanged. Invalid discovery data still fails closed instead of appearing to be an empty result.
+
+**Refresh Browsers (opener-0149):** Press the native **Refresh Browsers** button to rerun the installed read-only discovery helper. Refreshed bundle identities and executables are revalidated, and the primary list is updated with current names, icons and versions, retaining supported-browser filtering. A successful empty result shows the existing recovery guidance; failed or invalid discovery leaves the existing rows intact. Refresh never changes the saved PDF destination, launches a browser, resets a custom preference, or affects scan/quarantine policy. Reinstall to deploy the updated native browser preferences helper.
+
+Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
 
 ## PDF target application
 
@@ -283,9 +287,11 @@ printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/al
 on standard input and presents a numbered selection on the controlling terminal.
 Its input is either a list of browser records or an object with a `browsers`
 list. Each record contains `bundle_id`, `name`, and `installed: true`.
-Only installed, valid, non-self-referential browser IDs are selectable;
-duplicate installations with one bundle identifier display as one choice,
-while preview channels with distinct IDs remain separate.
+Only installed, valid browsers with **exact bundle IDs** in the supported
+browser registry (`browser_registry.py`) appear in the primary list. Unknown,
+custom and unsupported preview identifiers are hidden, even when their name or
+bundle-ID prefix resembles a supported browser. Duplicate installations of a
+supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
@@ -301,12 +307,29 @@ The selector still requires an explicit user choice.
 The selector prints the explicitly chosen bundle identifier to stdout;
 Enter or `q` cancels without choosing anything. It does not update
 `target-app.txt`, substitute a default, modify macOS preferences, or launch
-any application. A caller must explicitly save the chosen bundle identifier
+any application. Existing manually configured custom targets are preserved
+when hidden from the primary list; the native PDF verification gate remains
+required. A caller must explicitly save the chosen bundle identifier
 through the existing preference workflow. The §3.1 discovery provider and
 integration into a graphical preferences screen are **separate prerequisites**;
 this selector does not claim to discover installed browsers on its own.
 The existing PDF scan, quarantine, and native application verification gates
 remain unchanged.
+
+**Manual application bundle selection (opener-0145):** After installation,
+run `python3 "$HOME/Library/Application Support/Studio/allow-and-open/select-custom-pdf-application.py"`
+to choose a macOS `.app` using the native file picker. Alternatively provide
+`--application "/Applications/Custom Browser.app"` for an explicit path (including
+applications installed on another volume). This action validates the bundle,
+executable, exact Launch Services-selected installation, and PDF capability
+**before** atomically saving its bundle identifier to the existing
+`target-app.txt` preference with private permissions. A cancelled selection,
+unsupported or unregistered app, mismatched duplicate installation, or unsafe
+preference file does not replace the existing choice. Custom bundle paths are
+not persisted because the launcher uses bundle IDs; register custom-location
+apps with macOS first so Launch Services selects the same installation. The
+normal PDF scanning, signed-browser exceptions, fallback preferences, and
+macOS default associations are not changed by this action.
 
 To follow your **macOS default web browser** automatically (instead of a fixed
 bundle identifier), opt in by writing `system-default-browser` to the same file:

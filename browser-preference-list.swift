@@ -18,6 +18,18 @@ struct BrowserPreferenceItem {
     let icon: NSImage?
 }
 
+private let supportedBrowserBundleIDs: Set<String> = [
+    "com.brave.Browser",
+    "com.google.Chrome",
+    "org.chromium.Chromium",
+    "com.microsoft.edgemac",
+    "com.vivaldi.Vivaldi",
+    "com.operasoftware.Opera",
+    "company.thebrowser.Browser",
+    "org.mozilla.firefox",
+    "com.apple.Safari",
+]
+
 private func safeBrowserDisplayText(_ raw: String, limit: Int) -> String? {
     let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !value.isEmpty, value.count <= limit,
@@ -27,7 +39,7 @@ private func safeBrowserDisplayText(_ raw: String, limit: Int) -> String? {
     return value
 }
 
-// Never read bundle paths or execute an application while displaying entries.
+// The initial list never reads bundle paths or executes applications.
 // A malformed list is rejected as a whole rather than showing misleading names.
 func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     guard data.count <= 4 * 1024 * 1024,
@@ -45,6 +57,10 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
           !record.bundleIdentifier.contains(".."),
           record.bundleIdentifier != "local.studio.brave-pdf-opener",
               let name = safeBrowserDisplayText(record.name, limit: 128) else { return nil }
+
+        // An installed application's name or similar ID does not mean it is
+        // supported in the primary list. Manual custom targets remain separate.
+        guard supportedBrowserBundleIDs.contains(record.bundleIdentifier) else { continue }
 
         // The version is an optional detail, never a reason to invent one.
         let version = record.version.flatMap {
@@ -64,7 +80,6 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     }
     return items
 }
-
 
 private struct BrowserDiscoveryLocation: Decodable {
     let bundleIdentifier: String
@@ -92,7 +107,7 @@ func refreshedBrowserPreferenceItems(
               !location.path.unicodeScalars.contains(where: {
                   CharacterSet.controlCharacters.contains($0)
               }),
-              location.bundleIdentifier != "local.studio.brave-pdf-opener",
+              supportedBrowserBundleIDs.contains(location.bundleIdentifier),
               let metadata = metadataLookup(URL(fileURLWithPath: location.path)),
               metadata.bundleIdentifier == location.bundleIdentifier,
               !identifiers.contains(metadata.bundleIdentifier),
@@ -222,13 +237,42 @@ final class BrowserPreferenceRow: NSStackView {
     }
 }
 
+// The discovery consumer may receive a valid empty list. Explain how to
+// recover without treating the empty result as a reason to reset preferences.
+final class BrowserPreferenceEmptyStateView: NSStackView {
+    let heading = NSTextField(labelWithString: "No browsers found")
+    let guidance = NSTextField(wrappingLabelWithString:
+        "Install a browser or check that discovery includes its installation location, then run browser discovery again.")
+    let preferenceNote = NSTextField(wrappingLabelWithString:
+        "Your existing PDF application preference has not changed.")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        orientation = .vertical
+        alignment = .leading
+        spacing = 8
+
+        heading.font = .systemFont(ofSize: 15, weight: .semibold)
+        guidance.textColor = .secondaryLabelColor
+        preferenceNote.textColor = .secondaryLabelColor
+        guidance.preferredMaxLayoutWidth = 440
+        preferenceNote.preferredMaxLayoutWidth = 440
+
+        addArrangedSubview(heading)
+        addArrangedSubview(guidance)
+        addArrangedSubview(preferenceNote)
+    }
+
+    required init?(coder: NSCoder) { return nil }
+}
+
 final class BrowserPreferenceListView: NSStackView {
     private(set) var rows = [BrowserPreferenceRow]()
     let refreshButton: NSButton?
     let refreshStatus: NSTextField?
     var onItemsChanged: ((Int) -> Void)?
     private let refreshProvider: ((@escaping ([BrowserPreferenceItem]?) -> Void) -> Void)?
-    private var emptyLabel: NSTextField?
+    private(set) var emptyState: BrowserPreferenceEmptyStateView?
 
     init(
         items: [BrowserPreferenceItem],
@@ -271,16 +315,16 @@ final class BrowserPreferenceListView: NSStackView {
             removeArrangedSubview(row)
             row.removeFromSuperview()
         }
-        if let emptyLabel = emptyLabel {
-            removeArrangedSubview(emptyLabel)
-            emptyLabel.removeFromSuperview()
-            self.emptyLabel = nil
+        if let oldEmptyState = emptyState {
+            removeArrangedSubview(oldEmptyState)
+            oldEmptyState.removeFromSuperview()
+            emptyState = nil
         }
         rows = items.map { BrowserPreferenceRow(item: $0) }
         if rows.isEmpty {
-            let label = NSTextField(labelWithString: "No discovered browsers to display.")
-            emptyLabel = label
-            addArrangedSubview(label)
+            let view = BrowserPreferenceEmptyStateView(frame: .zero)
+            emptyState = view
+            addArrangedSubview(view)
         } else {
             for row in rows {
                 if expanded.contains(row.bundleIdentifier), let button = row.detailsButton {

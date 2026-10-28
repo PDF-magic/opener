@@ -49,6 +49,12 @@ chmod 755 "$install_dir/detect-pdf-handler-change"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
 chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
+# User-invoked custom .app chooser reuses the existing PDF verification logic.
+cp "$script_dir/select-custom-pdf-application.py" "$install_dir/select-custom-pdf-application.py"
+/usr/bin/xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING -O \
+    "$script_dir/verify-pdf-target.swift" "$script_dir/select-custom-pdf-application.swift" \
+    -o "$install_dir/select-custom-pdf-application"
+chmod 755 "$install_dir/select-custom-pdf-application" "$install_dir/select-custom-pdf-application.py"
 # Optional read-only browser-list display; no changes to scanner or target-app.txt.
 /usr/bin/xcrun swiftc -parse-as-library -D BROWSER_METADATA_TESTING -O "$script_dir/browser-app-metadata.swift" "$script_dir/browser-preference-list.swift" -o "$install_dir/browser-preference-list"
 chmod 755 "$install_dir/browser-preference-list"
