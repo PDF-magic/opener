@@ -69,7 +69,9 @@ class MainPreferencesWindowTests(unittest.TestCase):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = ProtectionSettingsView.swift;", project)
     self.assertIn("fileRef = A10000000000000000000023;", project)
-    self.assertIn("A10000000000000000000022,);", project)
+    sources = project.split("isa = PBXSourcesBuildPhase;", 1)[1].split(
+        "runOnlyForDeploymentPostprocessing", 1)[0]
+    self.assertIn("A10000000000000000000022,", sources)
 
   def test_window_is_non_mutating_and_in_xcode_target(self):
     view = VIEW.read_text(encoding="utf-8")
