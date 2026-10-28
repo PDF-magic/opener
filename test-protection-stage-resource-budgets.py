@@ -80,7 +80,10 @@ class ProtectionStageBudgetTests(unittest.TestCase):
         self.assertIn("MAX_CONCURRENT_SCANS = 2", source)
         self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", source)
         self.assertIn("PDF_SCAN_TIMEOUT = 30 * 60", source)
-        self.assertIn("timeout=PDF_SCAN_TIMEOUT if is_pdf else 180", source)
+        # The active scanner uses validated request-scoped limits, which can
+        # only tighten the two existing Built-in timeout ceilings.
+        self.assertIn("timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf", source)
+        self.assertIn("else policy_snapshot.other_timeout_seconds", source)
 
     def test_future_limits_are_positive_and_explicitly_not_enforced(self):
         for control, budget in PROTECTION_STAGE_RESOURCES.items():
