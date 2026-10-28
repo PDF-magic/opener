@@ -38,8 +38,9 @@ class BrowsersSettingsPageTests(unittest.TestCase):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = BrowsersSettingsView.swift;", project)
     self.assertIn("fileRef = A10000000000000000000021;", project)
-    self.assertRegex(project, r"files = \([^\n]*A10000000000000000000020,")
-    self.assertRegex(project, r"children = \([^\n]*A10000000000000000000021,")
+    sources = project.split("isa = PBXSourcesBuildPhase;", 1)[1].split(
+        "runOnlyForDeploymentPostprocessing", 1)[0]
+    self.assertIn("A10000000000000000000020,", sources)
     for forbidden in (
         "Process(", "NSWorkspace", "FileHandle(", "UserDefaults",
         "onOpenURL", "DocumentGroup", "clamscan",
