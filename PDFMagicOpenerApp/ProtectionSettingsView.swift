@@ -104,17 +104,17 @@ struct ProtectionSettingsView: View {
                 }
               }
               .buttonStyle(.plain)
-              .accessibilityIdentifier("protectionCard-\\(tier.rawValue)")
-              .accessibilityLabel("\\(tier.title) protection preview")
+              .accessibilityIdentifier("protectionCard-\(tier.rawValue)")
+              .accessibilityLabel("\(tier.title) protection preview")
               .accessibilityValue(selectedPreview == tier
                                   ? "Selected for preview, not active"
                                   : "Not selected, not active")
-              .accessibilityHint("Show \\(tier.title) details. This does not change scanning.")
+              .accessibilityHint("Show \(tier.title) details. This does not change scanning.")
             }
 
             if let selectedPreview {
               VStack(alignment: .leading, spacing: 6) {
-                Text("Previewing \\(selectedPreview.title)")
+                Text("Previewing \(selectedPreview.title)")
                   .font(.headline)
                 Text(selectedPreview.detail)
                   .foregroundStyle(.secondary)
