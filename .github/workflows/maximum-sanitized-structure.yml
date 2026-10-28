@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pinned strict PDF parser
-        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: Build native raster converter on macOS
         if: runner.os == 'macOS'
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
