@@ -15,6 +15,8 @@ struct PDFMagicOpenerApp: App {
       MainPreferencesView()
     }
     .commands {
+      AboutMenuCommands()
+
       CommandGroup(replacing: .appTermination) {
         Button("Quit PDF Magic Opener") {
           NSApplication.shared.terminate(nil)
@@ -23,12 +25,29 @@ struct PDFMagicOpenerApp: App {
       }
     }
 
-    // macOS manages the Settings menu and window separately from PDF scans.
-    // The conventional Command-comma key opens this existing preferences UI.
+    Window("About PDF Magic Opener", id: "about") {
+      AboutView()
+    }
+    .windowResizability(.contentSize)
+
+    // Use SwiftUI's managed Settings window, with the standard
+    // Command-comma shortcut and the existing main preferences content.
     Settings {
       MainPreferencesView()
     }
     .keyboardShortcut(",", modifiers: .command)
+  }
+}
+
+private struct AboutMenuCommands: Commands {
+  @Environment(\.openWindow) private var openWindow
+
+  var body: some Commands {
+    CommandGroup(replacing: .appInfo) {
+      Button("About PDF Magic Opener") {
+        openWindow(id: "about")
+      }
+    }
   }
 }
 

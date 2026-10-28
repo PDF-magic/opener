@@ -20,6 +20,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify independent SwiftUI application target
         run: python3 test-swiftui-app-target.py -v
+      - name: Verify SwiftUI About window, version and AGPL license
+        run: python3 test-about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: python3 test-main-preferences-window.py -v
       - name: Verify native Settings shortcut
@@ -151,6 +153,19 @@ jobs:
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p' "$app/Contents/Info.plist"
+      - name: Verify built About version and bundled license
+        run: |
+          app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          python3 - "$app/Contents/Info.plist" <<'ABOUT_PLIST'
+          import plistlib
+          import sys
+          with open(sys.argv[1], "rb") as stream:
+              info = plistlib.load(stream)
+          assert info["CFBundleShortVersionString"] == "0.1.0", info
+          assert info["CFBundleVersion"] == "1", info
+          assert "CFBundleDocumentTypes" not in info
+          ABOUT_PLIST
+          cmp LICENSE "$app/Contents/Resources/LICENSE"
       - name: Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift -o "$RUNNER_TEMP/PDFOpener"
