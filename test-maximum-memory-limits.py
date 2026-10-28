@@ -75,7 +75,8 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
         self.assertEqual(state[0], (hard, hard))
 
     def test_unavailable_or_invalid_limits_fail_closed(self):
-        with patch.object(limits.resource, "getrlimit", side_effect=OSError("sensitive")):
+        with patch.object(limits.sys, "platform", "linux"), \
+                patch.object(limits.resource, "getrlimit", side_effect=OSError("sensitive")):
             with self.assertRaises(limits.MaximumMemoryLimitError):
                 limits.impose_maximum_worker_memory_limit()
         for invalid in (0, -1, True, "1 GiB", None):
@@ -131,7 +132,7 @@ try:
     import pypdf
     print('parser-ready')
 except BaseException as error:
-    print('bootstrap-failed:' + type(error).__name__)
+    print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))
     raise SystemExit(2)
 """
         completed = subprocess.run(
