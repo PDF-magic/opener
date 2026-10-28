@@ -279,3 +279,43 @@ enum PDFMagicConfigurationMigration {
     ).encoded()
   }
 }
+
+// Explicit in-memory fallback; do not modify persisted preferences.
+enum MalformedConfigurationRecovery {
+  enum RecoveryError: Error, Equatable {
+    case unsupportedVersion(Int)
+    case oversized
+  }
+  enum Outcome: Equatable {
+    case loaded(PDFMagicConfigurationSchema)
+    case recovered(PDFMagicConfigurationSchema)
+  }
+  private struct VersionProbe: Decodable {
+    let schemaVersion: Int?
+  }
+  static func decode(_ data: Data) throws -> Outcome {
+    guard data.count <= 65_536 else { throw RecoveryError.oversized }
+    if let probe = try? JSONDecoder().decode(VersionProbe.self, from: data),
+       let version = probe.schemaVersion,
+       version != PDFMagicConfigurationSchema.currentVersion {
+      throw RecoveryError.unsupportedVersion(version)
+    }
+    if let valid = try? PDFMagicConfigurationSchema.decoded(from: data) {
+      return .loaded(valid)
+    }
+    // Salvage valid presentation choices and default only invalid fields.
+    // Preserve the original bytes, including any unknown future fields.
+    let fields = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    return .recovered(PDFMagicConfigurationSchema(
+      showScanProgress: boolean(fields?["showScanProgress"]),
+      showSuccessfulScanNotifications: boolean(fields?["showSuccessfulScanNotifications"]),
+      showBlockedFileNotifications: boolean(fields?["showBlockedFileNotifications"])
+    ))
+  }
+  private static func boolean(_ value: Any?) -> Bool? {
+    // Do not mistake JSON integers for booleans via NSNumber bridging.
+    guard let number = value as? NSNumber,
+          CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }
+    return number.boolValue
+  }
+}
