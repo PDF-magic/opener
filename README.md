@@ -317,6 +317,21 @@ browser is not among the discovered installed choices, no system-default label
 appears. The helper does not query PDF associations or modify browser defaults.
 The selector still requires an explicit user choice.
 
+The optional `applications` array in the same discovery JSON can contain
+installed non-browser applications from the read-only native
+`installed-applications` helper (`name`, `bundleIdentifier`, `path`), or
+records explicitly marked `installed: true` (`name`, `bundle_id`).
+Press **a** in the terminal selector to reveal these additional applications, and
+**a** again to hide them. They are hidden by default, displayed without
+filesystem paths, and **view-only**: only numbered browser choices may be
+returned as a selection. Missing application results display an empty
+message rather than triggering a filesystem search. This control does not
+change any saved preference or relax PDF verification. The native macOS
+browser preference window also accepts an optional `{"browsers": [...],
+"applications": [...]}` JSON envelope, displaying a **Show additional
+installed applications** button. Its extra application rows are hidden
+until requested and cannot change the selected browser.
+
 The selector prints the explicitly chosen bundle identifier to stdout;
 Enter or `q` cancels without choosing anything. It does not update
 `target-app.txt`, substitute a default, modify macOS preferences, or launch

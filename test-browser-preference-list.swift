@@ -54,8 +54,10 @@ struct BrowserPreferenceListTests {
         guard let emptyState = emptyList.emptyState else {
             fatalError("An empty list must render recovery guidance")
         }
-        precondition(emptyList.arrangedSubviews.count == 1,
-                     "The empty state replaces browser rows")
+        precondition(emptyList.arrangedSubviews.contains { $0 === emptyState },
+                     "The empty state remains present with the disclosure control")
+        precondition(emptyList.additionalSection.isHidden,
+                     "Additional applications remain hidden in the empty state")
         precondition(emptyState.heading.stringValue == "No browsers found")
         precondition(emptyState.guidance.stringValue.contains("Install a browser"),
                      "Suggest an actionable installation check")
@@ -92,6 +94,42 @@ struct BrowserPreferenceListTests {
         ]]))?.isEmpty == true,
                      "Unsupported browser alone produces an empty primary list")
         precondition(BrowserPreferenceListView(items: primaryItems!).rows.count == 1)
+
+        // The extra-applications control is a disclosure, not a selection or
+        // change to the user's PDF target. Legacy array input still works.
+        let legacy = browserPreferenceDisplay(from: encode(entries))
+        precondition(legacy?.browsers.count == 2 && legacy?.applications.isEmpty == true)
+        let envelope: [String: Any] = [
+            "browsers": entries,
+            "applications": [
+                ["name": "PDF Reader", "bundleIdentifier": "org.example.Reader",
+                 "path": "/Applications/PDF Reader.app"],
+                ["name": "Brave duplicate", "bundleIdentifier": "com.brave.Browser",
+                 "path": "/Applications/Brave.app"],
+                ["name": "Invalid\nApp", "bundleIdentifier": "org.example.invalid",
+                 "path": "/Applications/Invalid.app"],
+                ["name": "Unverified", "bundleIdentifier": "org.example.unverified"],
+            ],
+        ]
+        let payload = try! JSONSerialization.data(withJSONObject: envelope)
+        let display = browserPreferenceDisplay(from: payload)
+        precondition(display?.browsers.count == 2)
+        precondition(display?.applications.count == 1)
+        precondition(display?.applications.first?.name == "PDF Reader")
+        let additionalList = BrowserPreferenceListView(
+            items: display!.browsers, additionalApplications: display!.applications)
+        precondition(additionalList.additionalSection.isHidden)
+        precondition(additionalList.additionalButton.title == "Show additional installed applications")
+        additionalList.toggleAdditionalApplications(additionalList.additionalButton)
+        precondition(!additionalList.additionalSection.isHidden)
+        precondition(additionalList.additionalButton.title == "Hide additional installed applications")
+        let shown = additionalList.additionalSection.arrangedSubviews
+            .compactMap { ($0 as? NSTextField)?.stringValue }
+        precondition(shown == ["PDF Reader [org.example.Reader]"],
+                     "Only validated additional application labels should appear")
+        additionalList.toggleAdditionalApplications(additionalList.additionalButton)
+        precondition(additionalList.additionalSection.isHidden)
+        precondition(browserPreferenceDisplay(from: Data("not json".utf8)) == nil)
 
         let blankVersion = encode([[
             "bundleIdentifier": "com.brave.Browser",
