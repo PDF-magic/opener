@@ -709,6 +709,33 @@ new queued request. Self-transitions and skipped stages are invalid.
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 
+## Protection stage resource budgets (section 5.1)
+
+`protection_stage_budgets.py` defines an immutable, JSON-serializable
+resource-budget descriptor for **every file lifecycle state**. Each stage has
+explicit PDF and non-PDF wall-time ceilings (seconds), CPU time (seconds),
+memory (MiB), and simultaneous-request limits. Each limit is marked
+`current`, `planned`, `not_configured`, or `not_applicable`.
+
+| Stage | PDF / other wall time | CPU seconds | Memory MiB | Concurrent requests |
+| --- | --- | --- | --- | --- |
+| queued | 3,600 / 3,600 (planned) | N/A | 64 (planned) | Not configured |
+| scanning | 1,800 / 180 (current) | Not configured | Not configured | 2 (current) |
+| analyzing | 300 / 300 (planned) | 240 (planned) | 512 (planned) | 2 (planned) |
+| ready | 30 / 30 (planned) | 10 (planned) | 64 (planned) | 2 (planned) |
+| opening | 60 / 60 (planned) | 30 (planned) | 128 (planned) | 2 (planned) |
+| blocked / completed | N/A (terminal) | N/A | N/A | N/A |
+
+**Only the existing scanner wall-time and two-scan concurrency limits are
+currently enforced.** Proposed values are design targets for future stage
+implementations, not active throttles, guarantees, or user-selectable modes.
+`not_configured` means no application-configured ceiling; OS
+and ClamAV limits still apply. In particular, the installed PDF scan has no
+configured ClamAV file-size or extracted-size cap, and there is no
+application-imposed memory/CPU cap; non-PDF size restrictions remain
+unchanged. This contract does not alter scanning, quarantine, cache,
+handoff, cancellation, preferences, or the inactive protection tiers.
+
 ## Scan result vocabulary (section 1.3)
 
 The canonical terminal result names are defined in `scan_results.py` as
