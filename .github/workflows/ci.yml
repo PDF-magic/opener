@@ -186,7 +186,7 @@ jobs:
       - name: Verify PDF handoff to an already-running browser process
         timeout-minutes: 3
         run: python3 test-browser-already-running.py -v
-      - name: Verify bundle-identifier resolution and app existence
+      - name: Verify bundle-identifier resolution, duplicate installations and app existence
         run: python3 test-bundle-target.py
       - name: Verify Finder-style PDF open-event delivery through Launch Services
         timeout-minutes: 3

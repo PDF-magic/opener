@@ -45,6 +45,7 @@ class BundleTargetTests(unittest.TestCase):
                 return app
 
             make_app("Installed", "com.example.verified")
+            make_app("SecondCopy", "com.example.verified")
             make_app("WrongIdentity", "com.example.unrelated")
             make_app("MicrosoftEdge", "com.microsoft.edgemac")
             make_app("EdgeImpostor", "com.example.not-edge")
@@ -66,6 +67,24 @@ func fakeLookup(_ app: String) -> (String) -> URL? {
 }
 precondition(resolveTargetApplication(bundleIdentifier: wanted,
                                       lookup: fakeLookup("Installed")) != nil)
+// Launch Services ranks duplicate installations. Select the first *valid*
+// registered copy; skip stale, spoofed, and nonexecutable registrations.
+func allCandidates(_ names: [String]) -> (String) -> [URL] {
+    return { _ in names.map { root.appendingPathComponent($0 + ".app", isDirectory: true) } }
+}
+let first = resolveTargetApplication(bundleIdentifier: wanted,
+    lookupAll: allCandidates(["NotInstalled", "WrongIdentity",
+                              "MissingExecutable", "Installed", "SecondCopy"]))
+precondition(first == root.appendingPathComponent("Installed.app"))
+let second = resolveTargetApplication(bundleIdentifier: wanted,
+    lookupAll: allCandidates(["SecondCopy", "Installed"]))
+precondition(second == root.appendingPathComponent("SecondCopy.app"))
+precondition(resolveTargetApplication(bundleIdentifier: wanted,
+    lookupAll: allCandidates(["WrongIdentity", "MissingExecutable", "NotInstalled"])) == nil)
+precondition(resolveTargetApplication(bundleIdentifier: wanted,
+    lookupAll: { _ in [] }) == nil)
+precondition(resolveTargetApplication(bundleIdentifier: "local.studio.brave-pdf-opener",
+    lookupAll: allCandidates(["PDFOpener", "Installed"])) == nil)
 precondition(resolveTargetApplication(bundleIdentifier: "com.microsoft.edgemac",
                                       lookup: fakeLookup("MicrosoftEdge")) != nil)
 precondition(resolveTargetApplication(bundleIdentifier: "com.microsoft.edgemac",
