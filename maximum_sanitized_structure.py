@@ -98,7 +98,8 @@ def verify_sanitized_pdf_structure(
             raise SanitizedPDFStructureError(BLOCK_MESSAGE)
         size = reader.trailer.raw_get("/Size")
         root_ref = reader.trailer.raw_get("/Root")
-        if (type(size) is not int or not 2 <= size <= MAX_OUTPUT_OBJECTS + 1 or
+        if (not isinstance(size, int) or isinstance(size, bool) or
+                not 2 <= size <= MAX_OUTPUT_OBJECTS + 1 or
                 not isinstance(root_ref, IndirectObject)):
             raise SanitizedPDFStructureError(BLOCK_MESSAGE)
 
@@ -159,7 +160,8 @@ def verify_sanitized_pdf_structure(
                 count = node.raw_get("/Count") if "/Count" in node else None
                 if (not isinstance(children, ArrayObject) or
                         not 1 <= len(children) <= MAX_OUTPUT_PAGES or
-                        type(count) is not int or not 1 <= count <= MAX_OUTPUT_PAGES):
+                        not isinstance(count, int) or isinstance(count, bool) or
+                        not 1 <= count <= MAX_OUTPUT_PAGES):
                     raise SanitizedPDFStructureError(BLOCK_MESSAGE)
                 total = sum(walk(child, ref) for child in children)
                 if total != count:
