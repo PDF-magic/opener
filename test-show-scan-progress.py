@@ -53,6 +53,8 @@ class ShowScanProgressTests(unittest.TestCase):
     self.assertIn("panel = ScanProgressPanel(", presentation)
     self.assertIn("panel?.show(documentDescription: description, stage: stage,", presentation)
     self.assertIn("activeScans: launchedScans.count)", presentation)
+    self.assertIn("panel?.updateBatchProgress(batchProgress)", presentation)
+    self.assertIn("finishedRequests + pending.count", presentation)
     self.assertIn("queuedDocumentCount: queued.count,", presentation)
     self.assertNotIn("queuedDocumentCount: pending.count", presentation)
     self.assertIn("if !launchedScans.isEmpty", presentation)

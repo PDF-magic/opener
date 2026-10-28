@@ -20,6 +20,10 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify built-in active protection profile label and unchanged scanner gates
         run: python3 test-active-protection-profile.py -v
+      - name: Verify planned protection profile catalog and existing fail-closed policy
+        run: python3 test-protection-profiles.py -v
+      - name: Verify structured policies for every planned protection profile
+        run: python3 test-structured-protection-policy.py -v
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
@@ -294,6 +298,8 @@ jobs:
           "$RUNNER_TEMP/TestShowScanProgress"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-initial-configuration.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
           "$RUNNER_TEMP/TestInitialConfiguration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
+          "$RUNNER_TEMP/TestSelectedProtectionProfile"
       - name: Verify settings survive app restart and replacement executable
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
@@ -452,12 +458,14 @@ jobs:
       - name: Verify PDF drop onto an explicitly selected macOS app
         timeout-minutes: 3
         run: python3 test-pdf-drag-drop.py
+      - name: Display native scanner initialization failures and preserve fail-closed scan behavior
+        run: python3 test-scanner-initialization-errors.py -v
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
-      - name: Verify scan failures identify the PDF and show useful details
-        timeout-minutes: 2
-        run: python3 test-native-scan-failure.py
+      - name: Verify actual multi-document progress and unknown single-file progress
+        timeout-minutes: 3
+        run: python3 test-native-determinate-progress.py -v
       - name: Verify blocked scans keep the progress window until user acknowledgement
         timeout-minutes: 3
         run: python3 test-native-attention-required.py -v

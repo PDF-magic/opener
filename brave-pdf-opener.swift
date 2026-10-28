@@ -69,6 +69,29 @@ func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows ->
     return try operation(errors)
 }
 
+// Initialization diagnostics are selected from known, path-free scanner messages.
+// Do not present arbitrary process errors as verified initialization diagnoses.
+enum ScannerInitializationError {
+    static let missingHelper = "The installed scan helper is missing. Reinstall PDF Magic Opener."
+    static let launchFailed = "The scan helper could not start. Reinstall PDF Magic Opener."
+
+    private static let knownScannerMessages: Set<String> = [
+        "ClamAV is unavailable. Run the Allow and Open installer again.",
+        "Malware signatures are unavailable. Run update-malware-signatures.sh.",
+        "Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.",
+        "The malware signature database is incomplete. Run update-malware-signatures.sh."
+    ]
+
+    static func displayedMessage(for failure: String) -> String? {
+        let message = failure.trimmingCharacters(in: .whitespacesAndNewlines)
+        if message == missingHelper || message == launchFailed ||
+            knownScannerMessages.contains(message) {
+            return message
+        }
+        return nil
+    }
+}
+
 // Preserve the sending application reported by macOS, never infer a source
 // from the frontmost window or the file extension.
 func requestSource(forBundleIdentifier identifier: String?) -> String {
@@ -116,6 +139,11 @@ func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
     alert.messageText = "PDF could not be opened"
     alert.informativeText = "File: \(filename)\n\nThe safety scan or destination handoff failed. "
         + "PDF Magic Opener did not open this file.\n\nDetails: \(explanation)"
+    if let initialization = ScannerInitializationError.displayedMessage(for: reason) {
+        alert.messageText = "Scanner initialization failed"
+        alert.informativeText = "File: \(filename)\n\nThe scanner could not initialize. "
+            + "PDF Magic Opener did not open this file.\n\nDetails: \(initialization)"
+    }
     alert.addButton(withTitle: "OK")
     return alert
 }
@@ -124,6 +152,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
+    // A finished request is not necessarily a safe or approved document.
+    private var finishedRequests = 0
     private let maxConcurrentScans = 2
     private var queued = [String]()
     private var running = Set<String>()
@@ -170,7 +200,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     @objc private func cancelScans(_ sender: NSButton) {
-        // Once scanning is finished, Close explicitly acknowledges the warning.
+        // Once scanning finishes, Close explicitly acknowledges a blocked file.
         if pending.isEmpty && attentionRequired {
             attentionRequired = false
             panel?.orderOut(nil)
@@ -236,10 +266,15 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         panel?.show(documentDescription: description, stage: stage,
                     queuedDocumentCount: queued.count,
                     activeScans: launchedScans.count)
+        // The scan gate provides no per-file percentage; only requests
+        // actually finished within a multi-document batch are measurable.
+        let totalRequests = finishedRequests + pending.count
+        let batchProgress: (completed: Int, total: Int)? = totalRequests > 1
+            ? (completed: finishedRequests, total: totalRequests) : nil
+        panel?.updateBatchProgress(batchProgress)
     }
 
-    // All visibility preferences stay in this presentation-only helper,
-    // never in the scan gate, scanner process, or launch decision.
+    // Presentation-only. Never read UI preferences from the scan-gate path.
     private func noteAttentionRequired(for path: String) {
         guard panel != nil, ScanProgressPreference.isEnabled() else { return }
         attentionRequired = true
@@ -297,6 +332,12 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     self.processLock.unlock()
                     return nil
                 }
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: script.path, isDirectory: &isDirectory),
+                      !isDirectory.boolValue else {
+                    self.processLock.unlock()
+                    return ScannerInitializationError.missingHelper
+                }
                 do {
                     try process.run()
                     self.activeProcesses[path] = process
@@ -314,7 +355,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     }
                 } catch {
                     self.processLock.unlock()
-                    return error.localizedDescription
+                    return ScannerInitializationError.launchFailed
                 }
                 errors.fileHandleForWriting.closeFile()
                 let output = errors.fileHandleForReading.readDataToEndOfFile()
@@ -338,6 +379,10 @@ DispatchQueue.main.async {
                 if failure != nil { self.noteAttentionRequired(for: path) }
                 self.running.remove(path)
                 self.launchedScans.remove(path)
+                self.processLock.lock()
+                let wasCancelled = self.cancelledRequests.contains(path)
+                self.processLock.unlock()
+                if !wasCancelled { self.finishedRequests += 1 }
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
                 self.requestOrigins.removeValue(forKey: path)
