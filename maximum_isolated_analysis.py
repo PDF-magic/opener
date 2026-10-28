@@ -5,11 +5,11 @@ Never a PDF clean verdict and never connected to the deployed ClamAV gate.
 """
 from dataclasses import dataclass
 import json
-import os
 from pathlib import Path
-import subprocess
 import sys
 from types import MappingProxyType
+
+from maximum_process_termination import run_limited_worker
 
 MAX_PDF_BYTES = 16 * 1024 * 1024
 MAX_RESPONSE_BYTES = 4096
@@ -81,8 +81,8 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
 
     Input is in-memory PDF bytes via stdin. An isolated Python interpreter
     ignores user-site configuration and Python environment variables. The
-    child applies CPU, memory and no-filesystem-output rlimits before any PDF
-    parser import; wall-clock expiry kills it. No shell, temp files or PDF paths
+    child applies CPU and supported memory limits before importing the PDF
+    parser; a monotonic wall deadline kills its process group. No shell, temp files or PDF paths
     are passed to the worker. Failure is always non-clean and path-free.
 
     This is process/resource isolation, not a full OS network sandbox. It does
@@ -95,17 +95,10 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
     worker = Path(__file__).resolve().with_name("maximum_isolated_worker.py")
     command = [sys.executable, "-I", "-B", str(worker), inspection]
     try:
-        completed = subprocess.run(
-            command,
-            input=contents,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=WORKER_WALL_TIMEOUT_SECONDS,
-            check=False,
-            close_fds=True,
-            start_new_session=True,
-            cwd="/",
-            env={
+        output = run_limited_worker(
+            tuple(command), contents,
+            timeout_seconds=WORKER_WALL_TIMEOUT_SECONDS,
+            environment={
                 "PATH": "/usr/bin:/bin",
                 "HOME": "/nonexistent",
                 "LANG": "C",
@@ -113,11 +106,9 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
                 "PYTHONNOUSERSITE": "1",
             },
         )
-        if (completed.returncode != 0 or
-                type(completed.stdout) is not bytes or
-                not 0 < len(completed.stdout) <= MAX_RESPONSE_BYTES):
+        if type(output) is not bytes or not 0 < len(output) <= MAX_RESPONSE_BYTES:
             raise IsolatedPDFAnalysisError(BLOCK_MESSAGE)
-        response = json.loads(completed.stdout, object_pairs_hook=_unique_json_pairs)
+        response = json.loads(output, object_pairs_hook=_unique_json_pairs)
         if (type(response) is not dict or
                 set(response) != {"protocol", "inspection", "workerPid",
                                   "metrics", "permitsOpen"} or
