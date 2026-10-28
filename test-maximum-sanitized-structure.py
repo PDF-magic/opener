@@ -135,6 +135,7 @@ class SanitizedStructureTests(unittest.TestCase):
         converted = output_pdf(pages=2)
         with (patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")),
               patch.object(copies.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, converted)),
+              patch.object(copies, "remove_active_pdf_functionality", return_value=converted),
               patch.object(copies, "_passive_pages", return_value=True),
               patch.object(copies, "verify_sanitized_pdf_structure",
                            side_effect=SanitizedPDFStructureError(BLOCK_MESSAGE)) as verify):
@@ -142,6 +143,7 @@ class SanitizedStructureTests(unittest.TestCase):
             verify.assert_called_once()
         with (patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")),
               patch.object(copies.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, converted)),
+              patch.object(copies, "remove_active_pdf_functionality", return_value=converted),
               patch.object(copies, "_passive_pages", return_value=True),
               patch.object(copies, "verify_sanitized_pdf_structure",
                            return_value=SanitizedPDFStructure(1, 5))):
