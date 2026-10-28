@@ -253,6 +253,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         } else {
             stage = .queued
         }
+        // Display the read-only selection, never substitute a launch destination.
+        panel?.updateDestinationBrowser(SelectedDestinationBrowser.displayName())
         panel?.show(documentDescription: description, stage: stage,
                     queuedDocumentCount: queued.count,
                     activeScans: launchedScans.count)

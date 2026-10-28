@@ -26,12 +26,16 @@ jobs:
         run: python3 test-structured-protection-policy.py -v
       - name: Verify maximum processing time for each protection stage
         run: python3 test-protection-stage-time-limits.py -v
+      - name: Verify required and optional checks for each protection profile
+        run: python3 test-required-optional-profile-checks.py -v
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
         run: python3 test-reset-to-defaults.py -v
       - name: Verify main Dock icon and invisible PDF scan-helper policy
         run: python3 test-dock-behavior.py -v
+      - name: Verify selected destination browser display never changes scanner policy
+        run: python3 test-selected-destination-browser.py -v
       - name: Verify native window title and bundled application icon
         run: python3 test-native-window-branding.py -v
       - name: Verify independent SwiftUI application target
@@ -198,6 +202,8 @@ jobs:
 
       - name: Verify scan result contract
         run: python3 test-scan-results.py
+      - name: Verify responses for every detection remain fail-closed
+        run: python3 test-detection-responses.py -v
 
   macos-build:
     runs-on: macos-latest
