@@ -12,6 +12,7 @@ from pathlib import Path
 import stat
 import sys
 import tempfile
+import threading
 
 from maximum_sanitized_copy import (
     MAX_OUTPUT_BYTES, MAX_SOURCE_BYTES, SanitizedCopyOffer,
@@ -93,6 +94,7 @@ def _source_unchanged(path, identity):
 def _stage_private_copy(pdf_bytes):
     """New 0700 private directory and exclusive 0600 PDF; never source path."""
     directory = None
+    staged = False
     try:
         directory = Path(tempfile.mkdtemp(prefix="pdf-magic-safe-copy-"))
         if stat.S_IMODE(directory.stat().st_mode) != 0o700:
@@ -111,12 +113,13 @@ def _stage_private_copy(pdf_bytes):
                 created.st_size != len(pdf_bytes) or
                 not path.is_file() or path.is_symlink()):
             raise MaximumSafeCopyError(BLOCK_MESSAGE)
+        staged = True
         return path
     except (OSError, ValueError):
         raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
     finally:
         # A failed staging attempt must not leave a partial private file.
-        if directory is not None and not (directory / "safe-copy.pdf").is_file():
+        if directory is not None and not staged:
             _discard_private_copy(directory / "safe-copy.pdf")
 
 
@@ -131,19 +134,30 @@ def _discard_private_copy(path):
         pass
 
 
+_SCAN_GATE = None
+_SCAN_GATE_LOCK = threading.Lock()
+
+
 def _scan_staged_copy(path, scanner):
-    """Use the installed scan-and-open implementation, not a custom bypass."""
-    gate = Path(__file__).resolve().with_name("scan-and-open.py")
-    spec = importlib.util.spec_from_file_location("_maximum_safe_copy_scan_gate", gate)
-    if spec is None or spec.loader is None:
-        raise MaximumSafeCopyError(BLOCK_MESSAGE)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    try:
-        spec.loader.exec_module(module)
-        return module.scan_and_open(str(path), scanner)
-    finally:
-        sys.modules.pop(spec.name, None)
+    """Use a shared installed scanner gate, retaining its concurrency limit."""
+    global _SCAN_GATE
+    with _SCAN_GATE_LOCK:
+        if _SCAN_GATE is None:
+            gate = Path(__file__).resolve().with_name("scan-and-open.py")
+            spec = importlib.util.spec_from_file_location(
+                "_maximum_safe_copy_scan_gate", gate)
+            if spec is None or spec.loader is None:
+                raise MaximumSafeCopyError(BLOCK_MESSAGE)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = module
+            try:
+                spec.loader.exec_module(module)
+            except Exception:
+                sys.modules.pop(spec.name, None)
+                raise
+            _SCAN_GATE = module
+        module = _SCAN_GATE
+    return module.scan_and_open(str(path), scanner)
 
 
 def open_required_maximum_safe_copy(source_path, scanner, *, disposition):
