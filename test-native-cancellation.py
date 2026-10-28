@@ -8,6 +8,7 @@ import tempfile
 source = Path(__file__).with_name("brave-pdf-opener.swift").read_text()
 classes = source.split("@main\nstruct PDFMagicOpenerEntry {")[0]
 classes += "\n" + Path(__file__).with_name("scan-progress-view.swift").read_text()
+classes += "\n" + (Path(__file__).parent / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text().replace("import Foundation\n", "")
 with tempfile.TemporaryDirectory(prefix="opener-native-cancel-") as directory:
     root = Path(directory)
     (root / "twilight-reading.png").write_bytes(
@@ -45,6 +46,11 @@ DispatchQueue.main.async {{
               let text = String(data: data, encoding: .utf8),
               text.split(whereSeparator: {{ $0.isNewline }}).count == 2 else {{
             fatalError("Two active scans must start before cancellation")
+        }}
+        guard let progress = panel as? ScanProgressPanel,
+              progress.activeScansLabel.stringValue == "Active scans: 2",
+              progress.activeScansLabel.accessibilityLabel() == "Active scans: 2" else {{
+            fatalError("Only two launched scans, not the queued third document, should count as active")
         }}
         cancel.performClick(nil)
     }}

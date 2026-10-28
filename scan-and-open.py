@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Scan selected local files before changing quarantine or launching an app."""
+"""Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
-from scan_results import ScanResult
+from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from functools import wraps
-from dataclasses import dataclass
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import fcntl
 import hashlib
 from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
@@ -54,7 +53,8 @@ SAFE_SCAN_FAILURES = frozenset((
     'Only regular files and application bundles can be scanned.',
     'Select a file or application, rather than a folder.',
     'The malware scan timed out; opening was stopped.',
-    'Malware or an unscannable item was detected; opening was stopped.',
+    'Malware was detected; opening was stopped.',
+    'The scanner flagged a suspicious or unscannable item; opening was stopped.',
     'The malware scan could not finish; opening was stopped.',
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
@@ -73,6 +73,60 @@ class CleanScanResult:
     scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
     detection_names: tuple[str, ...] = ()
+    # The installed Built-in gate remains effective for every completed scan,
+    # independent of caller-supplied protection_level request metadata.
+    effective_policy_id: str = field(default=EFFECTIVE_POLICY_ID, init=False)
+
+
+
+@dataclass(frozen=True)
+class ScanSecurityPolicySnapshot:
+    """Request-scoped Built-in limits, not a selectable protection profile.
+
+    Mandatory ClamAV flags, integrity checks, freshness, fail-closed verdicts
+    and verified handoff remain unconditional. Only tighter timeouts are valid.
+    """
+    pdf_timeout_seconds: int = PDF_SCAN_TIMEOUT
+    other_timeout_seconds: int = 180
+
+    def __post_init__(self):
+        for value, maximum in ((self.pdf_timeout_seconds, PDF_SCAN_TIMEOUT),
+                               (self.other_timeout_seconds, 180)):
+            if type(value) is not int or not 1 <= value <= maximum:
+                raise ValueError('Scan limits must be positive integers within Built-in bounds.')
+
+
+class ActiveScanPolicy:
+    """Atomically publish immutable Built-in limits for subsequent requests."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._current = ScanSecurityPolicySnapshot()
+
+    def snapshot(self):
+        with self._lock:
+            return self._current
+
+    def activate(self, policy):
+        if type(policy) is not ScanSecurityPolicySnapshot:
+            raise TypeError('Only validated Built-in policy snapshots can be activated.')
+        with self._lock:
+            self._current = policy
+
+
+ACTIVE_SCAN_POLICY = ActiveScanPolicy()
+DEFAULT_SCAN_POLICY = ScanSecurityPolicySnapshot()
+
+
+def policy_cache_key(digest, is_pdf, policy):
+    """Prevent reuse of a clean verdict under different effective limits."""
+    if type(policy) is not ScanSecurityPolicySnapshot:
+        raise TypeError('A validated scan security policy is required.')
+    legacy = cache_key(digest, is_pdf)
+    if policy == DEFAULT_SCAN_POLICY:
+        return legacy  # Preserve existing cache behavior for unchanged Built-in.
+    identity = (f'{policy.pdf_timeout_seconds}:{policy.other_timeout_seconds}').encode('ascii')
+    return hashlib.sha256(b'bounded-scan-policy-v1\\0' + identity + b'\\0' + legacy).digest()
 
 
 class LaunchFailedError(RuntimeError):
@@ -311,9 +365,26 @@ def check_database():
         age = time.time() - float(STAMP.read_text().strip())
     except (OSError, ValueError):
         raise RuntimeError('Malware signatures are unavailable. Run update-malware-signatures.sh.')
-    if age < 0 or age > MAX_DATABASE_AGE:
+    # Only a real timestamp in the inclusive 48-hour window is acceptable.
+    # In particular, float("nan") passes both < and > checks and must fail closed.
+    if not 0 <= age <= MAX_DATABASE_AGE:
         raise RuntimeError('Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.')
-    if not any(DATABASE.glob('daily.c[vl]d')) or not any(DATABASE.glob('main.c[vl]d')):
+    # Filename matches alone are insufficient: empty placeholders and
+    # directories masquerading as main.cvd / daily.cvd are not databases.
+    # Do not follow symlinks outside the installed signature directory.
+    def has_signature_file(name):
+        for suffix in ('.cld', '.cvd'):
+            candidate = DATABASE / (name + suffix)
+            try:
+                if (not candidate.is_symlink() and candidate.is_file() and
+                        candidate.stat().st_size > 0):
+                    return True
+            except OSError:
+                # An inaccessible or missing database cannot authorize opening.
+                continue
+        return False
+
+    if not has_signature_file('daily') or not has_signature_file('main'):
         raise RuntimeError('The malware signature database is incomplete. Run update-malware-signatures.sh.')
 
 
@@ -521,12 +592,13 @@ def record_scan_request(application):
 
 
 def remove_quarantine(path):
-    if path.is_dir():
-        subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
-    else:
-        attributes = subprocess.run(['/usr/bin/xattr', str(path)], check=True, capture_output=True, text=True)
-        if 'com.apple.quarantine' in attributes.stdout.splitlines():
-            subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
+    """Legacy post-scan hook: retain, never strip, macOS quarantine metadata.
+
+    Keep the existing call site and integration hook for compatibility.
+    A clean malware verdict does not cancel macOS Gatekeeper or other
+    operating-system protections. This hook deliberately makes no changes.
+    """
+    return None
 
 
 @dataclass(frozen=True)
@@ -558,12 +630,20 @@ def decide_opening(detection):
 
     A positive decision means only that the result passed the ClamAV gate.
     The file must still pass an independent before/after content check before
-    quarantine is removed or an application can be launched.
+    quarantine metadata is retained and an application can be launched.
     """
-    if detection.exit_code == 1:
-        return OpeningDecision(
-            False, 'Malware or an unscannable item was detected; opening was stopped.',
-            detection_names=detection.detection_names)
+    # Exit code 1 may also describe heuristic/unscannable items. Never
+    # present scanner errors, incomplete results, or heuristics as malware.
+    # Retain the exact fail-closed opening decision for all nonzero codes.
+    if detection.exit_code == 1 and not detection.stderr.strip():
+        if any(not name.startswith('Heuristics.') for name in detection.detection_names):
+            return OpeningDecision(
+                False, 'Malware was detected; opening was stopped.',
+                detection_names=detection.detection_names)
+        if detection.detection_names:
+            return OpeningDecision(
+                False, 'The scanner flagged a suspicious or unscannable item; opening was stopped.',
+                detection_names=detection.detection_names)
     if detection.exit_code != 0:
         return OpeningDecision(
             False, 'The malware scan could not finish; opening was stopped.',
@@ -601,7 +681,13 @@ def supported_request_path(item):
     return path
 
 
-def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
+def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
+                   browser_download_identifier=None, policy_snapshot=None):
+    # The admission-time snapshot persists across queue waits and handoff.
+    if policy_snapshot is None:
+        policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
+    if type(policy_snapshot) is not ScanSecurityPolicySnapshot:
+        raise TypeError('Invalid scan security policy snapshot.')
     path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
     if protection_level is not None:
@@ -614,7 +700,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
         verify_local_file_available(path)
     destination = intended_destination(path)
     # The optional fallback is an explicit PDF-only preference. Validate it
-    # before any scan or quarantine mutation, and never derive it from the
+    # before scanning or handoff, and never derive it from the
     # default PDF handler (which may recursively invoke this opener).
     fallback = pdf_fallback_application(primary=destination) if is_pdf else None
     record_scan_destination(destination)
@@ -622,7 +708,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     before = fingerprint(path)
     if file_identity(path) != identity:
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
-    cache_id = cache_key(before, is_pdf)
+    cache_id = policy_cache_key(before, is_pdf, policy_snapshot)
     performed_scan = False
     scanner_version = None
     signature_version = None
@@ -647,7 +733,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
                         '--alert-exceeds-max=yes', '--alert-encrypted=yes',
                         *size_options,
                         '--max-scantime=0', '--no-summary', '--', str(path)
-                    ], timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                    ], timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf
+                                else policy_snapshot.other_timeout_seconds))
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 detection = capture_detection(scan)
@@ -674,7 +761,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     # Cache hits are not proof the file remains downloaded locally.
     if is_pdf:
         verify_local_file_available(path)
-    # Verify a destination before releasing quarantine, including a fallback.
+    # Verify a destination before opening; keep OS quarantine in place.
     # Fallback never overrides a failed scan, missing local bytes or a changed file.
     verified_fallback = None
     try:
@@ -696,9 +783,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
                 pass
             else:
                 verified_fallback = fallback
+    # Stable legacy hook: leave com.apple.quarantine and Gatekeeper protections intact.
     remove_quarantine(path)
-    # Quarantine removal changes ctime, but source bytes and identities must remain intact.
-    verify_file_integrity(path, before, identity, allow_ctime_change=True)
+    # Quarantine is no longer stripped; reject unexpected metadata/ctime changes.
+    verify_file_integrity(path, before, identity)
     if is_pdf:
         verify_local_file_available(path)
     # The scan engine does not select an application or browser.
@@ -708,7 +796,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
         if verified_fallback is None:
             raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
         # Recheck the unchanged, locally available PDF before another launch.
-        verify_file_integrity(path, before, identity, allow_ctime_change=True)
+        verify_file_integrity(path, before, identity)
         verify_local_file_available(path)
         record_scan_destination(verified_fallback)
         try:
@@ -722,13 +810,17 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
     # Reject unsupported requests before allocating shared scanner queue slots.
     path = supported_request_path(item)
+    # Freeze policy before waiting for a slot, not after starting the scanner.
+    # Changes are visible to new requests only.
+    policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
         if source_url is None and protection_level is None and browser_download_identifier is None:
-            return _scan_and_open(path, scanner)
+            return _scan_and_open(path, scanner, policy_snapshot=policy_snapshot)
         return _scan_and_open(path, scanner, source_url=source_url,
                               protection_level=protection_level,
-                              browser_download_identifier=browser_download_identifier)
+                              browser_download_identifier=browser_download_identifier,
+                              policy_snapshot=policy_snapshot)
 
 
 def safe_scan_failure(error):

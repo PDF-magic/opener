@@ -1,0 +1,22 @@
+name: PDF incremental revision inspection
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  incremental-revision-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PDF parser used by the Enhanced inspection suites
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Inspect incremental PDF revisions without authorizing opening
+        run: python3 test-pdf-incremental-revisions.py -v

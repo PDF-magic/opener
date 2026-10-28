@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 
 // Shared native scan-progress presentation for the PDF opener and any later
 // native entry point. This component never starts scans or changes scan policy.
@@ -52,14 +53,243 @@ final class TwilightReadingView: NSView {
     }
 }
 
+// These stages describe the native owner's observable process lifecycle, not
+// ClamAV internals or a prediction that a document will be approved.
+enum ScanProgressStage {
+    case queued
+    case starting
+    case scanning
+
+    var label: String {
+        switch self {
+        case .queued: return "Waiting to scan…"
+        case .starting: return "Starting safety checks…"
+        case .scanning: return "Scanning and verifying document…"
+        }
+    }
+}
+
+// The installed scan gate has one built-in, mandatory protection policy.
+// This is a display descriptor, NOT a selectable or health-verified profile:
+// a missing or failed scanner still blocks opening via the existing scan gate.
+private enum BuiltInProtectionProfile {
+    static let name = "Built-in"
+    static let details = "ClamAV malware scanning · fail-closed"
+}
+
+// Read-only presentation of the installed scanner's selected PDF destination.
+// Mirror the verified chooser's target-app.txt contract; never use this label
+// to select a launcher, authorize opening, or change the scanner's fail-closed gate.
+enum SelectedDestinationBrowser {
+    private static let names = [
+        "com.brave.Browser": "Brave",
+        "com.google.Chrome": "Google Chrome",
+        "org.chromium.Chromium": "Chromium",
+        "com.microsoft.edgemac": "Microsoft Edge",
+        "com.vivaldi.Vivaldi": "Vivaldi",
+        "com.operasoftware.Opera": "Opera",
+        "company.thebrowser.Browser": "Arc",
+        "org.mozilla.firefox": "Firefox",
+        "com.apple.Safari": "Safari",
+    ]
+
+    static func displayName(
+        in directory: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Studio/allow-and-open",
+                                    isDirectory: true)
+    ) -> String {
+        guard directory.isFileURL else { return "Unavailable" }
+        let parent = open(directory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard parent >= 0 else { return errno == ENOENT ? "Brave" : "Unavailable" }
+        defer { close(parent) }
+
+        let file = openat(parent, "target-app.txt", O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+        guard file >= 0 else { return errno == ENOENT ? "Brave" : "Unavailable" }
+        defer { close(file) }
+
+        var info = stat()
+        guard fstat(file, &info) == 0,
+              (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG) else {
+            return "Unavailable"
+        }
+        var bytes = [UInt8](repeating: 0, count: 257)
+        let count = read(file, &bytes, bytes.count)
+        guard count > 0, count <= 256,
+              let text = String(bytes: bytes.prefix(count), encoding: .ascii) else {
+            return "Unavailable"
+        }
+        let identifier = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if identifier == "system-default-browser" { return "System default browser" }
+        guard identifier.count <= 255,
+              identifier.range(of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
+                               options: .regularExpression) != nil,
+              identifier.contains("."), !identifier.contains(".."),
+              identifier != "local.studio.brave-pdf-opener" else {
+            return "Unavailable"
+        }
+        return names[identifier] ?? "Custom application (\(identifier))"
+    }
+}
+
+// Future Enhanced producers may hand the panel a v2 explainable findings
+// snapshot. This adapter never authorizes a PDF, trusts no document-provided
+// strings, and accepts only the fixed stage/code/outcome vocabulary.
+struct EnhancedFindingsProgressSnapshot {
+    let summary: String
+    let details: String
+
+    private static let stages = [
+        "pdfStructure": "PDF structure",
+        "objectRelationships": "Object relationships",
+        "embeddedFiles": "Embedded files",
+        "automaticActions": "Automatic actions",
+        "javascriptActions": "JavaScript actions",
+        "formActions": "Form actions",
+        "annotations": "Annotations",
+        "incrementalRevisions": "Incremental revisions",
+        "embeddedUrls": "Embedded URLs",
+        "malformedStructures": "Malformed structures",
+        "ambiguousStructures": "Ambiguous structures",
+        "executableContent": "Executable content",
+    ]
+    private static let codes = [
+        "malformedStructure": "Malformed structure",
+        "conflictingStructure": "Conflicting structure",
+        "unresolvedReference": "Unresolved reference",
+        "activeContent": "Active content",
+        "suspiciousUrl": "Suspicious URL",
+        "unexpectedEmbeddedFile": "Unexpected embedded file",
+        "incrementalRevision": "Incremental revision",
+        "unsupportedFeature": "Unsupported feature",
+        "resourceLimit": "Resource limit",
+        "inspectionFailure": "Inspection failure",
+    ]
+    private static let severities = [
+        "informational": "Informational",
+        "suspicious": "Suspicious",
+        "critical": "Critical",
+    ]
+    private static let actions = [
+        "recorded": ("continueRequiredChecks", "Recorded; other checks required"),
+        "reviewRequired": ("requestReviewBeforeOpening", "Review required"),
+        "blocking": ("stopOpening", "Opening stopped"),
+        "inspectionIncomplete": ("rerunOrRepairInspection", "Inspection incomplete"),
+    ]
+    private static let maxDisplayedRows = 64
+
+    static func decode(_ data: Data) -> EnhancedFindingsProgressSnapshot? {
+        guard data.count <= 256 * 1024,
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              payload["schemaVersion"] as? Int == 2,
+              payload["authorizesOpen"] as? Bool == false,
+              let requiresBlock = payload["requiresBlock"] as? Bool,
+              let stages = payload["stageResults"] as? [[String: Any]],
+              !stages.isEmpty, stages.count <= 32 else {
+            return nil
+        }
+        var seen = Set<String>()
+        var rows = [String]()
+        var findings = 0
+        var incomplete = 0
+        var calculatedBlock = false
+
+        // Validate ALL entries even when only the first few fit the view.
+        for stage in stages {
+            guard let identifier = stage["stage"] as? String,
+                  let stageName = Self.stages[identifier],
+                  seen.insert(identifier).inserted,
+                  let outcome = stage["outcome"] as? String,
+                  ["completed", "incomplete", "notRun"].contains(outcome),
+                  let entries = stage["findings"] as? [[String: Any]],
+                  entries.count <= 128,
+                  outcome != "notRun" || entries.isEmpty else {
+                return nil
+            }
+            if outcome != "completed" {
+                incomplete += 1
+                calculatedBlock = true
+                if rows.count < maxDisplayedRows {
+                    rows.append("\(stageName): inspection \(outcome == "notRun" ? "not run" : "incomplete")")
+                }
+            }
+            for finding in entries {
+                guard let code = finding["code"] as? String,
+                      let codeName = Self.codes[code],
+                      let severity = finding["severity"] as? String,
+                      let severityName = Self.severities[severity],
+                      let result = finding["result"] as? [String: Any],
+                      let resultID = result["outcome"] as? String,
+                      let nextAction = result["nextAction"] as? String,
+                      let (expectedAction, resultLabel) = Self.actions[resultID] else {
+                    return nil
+                }
+                // A malicious or mismatched producer cannot downgrade a
+                // critical result or an incomplete-inspection finding.
+                let expectedResult: String
+                if code == "resourceLimit" || code == "inspectionFailure" {
+                    expectedResult = "inspectionIncomplete"
+                } else if severity == "critical" {
+                    expectedResult = "blocking"
+                } else if severity == "suspicious" {
+                    expectedResult = "reviewRequired"
+                } else {
+                    expectedResult = "recorded"
+                }
+                guard resultID == expectedResult, nextAction == expectedAction else {
+                    return nil
+                }
+                findings += 1
+                if resultID != "recorded" {
+                    calculatedBlock = true
+                }
+                if rows.count < maxDisplayedRows {
+                    rows.append("\(stageName) · \(severityName) · \(codeName) — \(resultLabel)")
+                }
+            }
+        }
+        guard calculatedBlock == requiresBlock else { return nil }
+        let summary = "Enhanced findings: \(findings) · incomplete stages: \(incomplete)"
+        if findings == 0 && incomplete == 0 {
+            rows.append("No findings reported for these stages. This is not a clean verdict.")
+        }
+        if rows.count < maxDisplayedRows && (findings > 0 || incomplete > 0) {
+            rows.insert("Inspection evidence only; opening is never authorized here.", at: 0)
+        }
+        let undisplayed = findings + incomplete - min(findings + incomplete, maxDisplayedRows)
+        if undisplayed > 0 {
+            rows.append("\(undisplayed) additional results not displayed; review the full report.")
+        }
+        return EnhancedFindingsProgressSnapshot(
+            summary: summary,
+            details: rows.joined(separator: "\n")
+        )
+    }
+}
+
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
+    let destinationBrowserLabel = NSTextField(labelWithString: "Destination browser: Unavailable")
+    let activeScansLabel = NSTextField(labelWithString: "Active scans: 0")
+    let queuedDocumentCountLabel = NSTextField(labelWithString: "0 documents queued")
+    let protectionProfileLabel = NSTextField(
+        labelWithString: "Active protection profile: " + BuiltInProtectionProfile.name)
+    let protectionProfileDetailsLabel = NSTextField(
+        labelWithString: BuiltInProtectionProfile.details)
+    let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
+    // Hidden for the deployed Built-in scanner: Enhanced is not selectable.
+    // These views display only validated, fixed-vocabulary inspection metadata.
+    let enhancedFindingsLabel = NSTextField(labelWithString: "")
+    let enhancedFindingsScrollView = NSScrollView(
+        frame: NSRect(x: 20, y: 462, width: 320, height: 139))
+    let enhancedFindingsTextView = NSTextView(frame: NSRect(x: 0, y: 0, width: 314, height: 139))
+    private static let originalHeight: CGFloat = 458
+    private static let findingsHeight: CGFloat = 650
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 338),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 458),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -67,17 +297,49 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 118, width: 300, height: 205)))
-        let status = NSTextField(labelWithString: "Checking for malware…")
-        status.font = .systemFont(ofSize: 15, weight: .semibold)
-        status.alignment = .center
-        status.frame = NSRect(x: 20, y: 93, width: 320, height: 22)
-        contentView?.addSubview(status)
+            frame: NSRect(x: 30, y: 238, width: 300, height: 205)))
+        stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        stageLabel.alignment = .center
+        stageLabel.frame = NSRect(x: 20, y: 213, width: 320, height: 22)
+        stageLabel.setAccessibilityLabel("Current scanning stage")
+        contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 187, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
+        activeScansLabel.alignment = .center
+        activeScansLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        activeScansLabel.textColor = .secondaryLabelColor
+        activeScansLabel.frame = NSRect(x: 20, y: 161, width: 320, height: 20)
+        activeScansLabel.setAccessibilityIdentifier("activeScanCount")
+        activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
+        contentView?.addSubview(activeScansLabel)
+        queuedDocumentCountLabel.alignment = .center
+        queuedDocumentCountLabel.font = .systemFont(ofSize: 12)
+        queuedDocumentCountLabel.textColor = .secondaryLabelColor
+        queuedDocumentCountLabel.frame = NSRect(x: 20, y: 137, width: 320, height: 20)
+        queuedDocumentCountLabel.setAccessibilityIdentifier("queuedDocumentCount")
+        queuedDocumentCountLabel.setAccessibilityLabel(queuedDocumentCountLabel.stringValue)
+        contentView?.addSubview(queuedDocumentCountLabel)
+        protectionProfileLabel.alignment = .center
+        protectionProfileLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        protectionProfileLabel.textColor = .secondaryLabelColor
+        protectionProfileLabel.frame = NSRect(x: 20, y: 111, width: 320, height: 20)
+        protectionProfileLabel.setAccessibilityLabel(protectionProfileLabel.stringValue)
+        contentView?.addSubview(protectionProfileLabel)
+        protectionProfileDetailsLabel.alignment = .center
+        protectionProfileDetailsLabel.font = .systemFont(ofSize: 11)
+        protectionProfileDetailsLabel.textColor = .secondaryLabelColor
+        protectionProfileDetailsLabel.frame = NSRect(x: 20, y: 91, width: 320, height: 18)
+        contentView?.addSubview(protectionProfileDetailsLabel)
+        destinationBrowserLabel.alignment = .center
+        destinationBrowserLabel.font = .systemFont(ofSize: 12)
+        destinationBrowserLabel.lineBreakMode = .byTruncatingMiddle
+        destinationBrowserLabel.textColor = .secondaryLabelColor
+        destinationBrowserLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        destinationBrowserLabel.setAccessibilityLabel(destinationBrowserLabel.stringValue)
+        contentView?.addSubview(destinationBrowserLabel)
         progressIndicator.style = .bar
         progressIndicator.isIndeterminate = true
         progressIndicator.startAnimation(nil)
@@ -85,12 +347,106 @@ final class ScanProgressPanel: NSPanel {
         cancelButton.bezelStyle = .rounded
         cancelButton.frame = NSRect(x: 136, y: 8, width: 88, height: 28)
         contentView?.addSubview(cancelButton)
+        enhancedFindingsLabel.frame = NSRect(x: 20, y: 608, width: 320, height: 22)
+        enhancedFindingsLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        enhancedFindingsLabel.alignment = .center
+        enhancedFindingsLabel.lineBreakMode = .byTruncatingTail
+        enhancedFindingsLabel.setAccessibilityIdentifier("enhancedFindingsSummary")
+        enhancedFindingsLabel.isHidden = true
+        contentView?.addSubview(enhancedFindingsLabel)
+        enhancedFindingsTextView.isEditable = false
+        enhancedFindingsTextView.isSelectable = true
+        enhancedFindingsTextView.isRichText = false
+        enhancedFindingsTextView.drawsBackground = false
+        enhancedFindingsTextView.font = .systemFont(ofSize: 11)
+        enhancedFindingsTextView.isVerticallyResizable = true
+        enhancedFindingsTextView.isHorizontallyResizable = false
+        enhancedFindingsTextView.autoresizingMask = [.width]
+        enhancedFindingsTextView.textContainer?.widthTracksTextView = true
+        enhancedFindingsTextView.textContainer?.containerSize = NSSize(
+            width: 314, height: CGFloat.greatestFiniteMagnitude)
+        enhancedFindingsTextView.setAccessibilityIdentifier("enhancedFindingsDetails")
+        enhancedFindingsScrollView.documentView = enhancedFindingsTextView
+        enhancedFindingsScrollView.hasVerticalScroller = true
+        enhancedFindingsScrollView.drawsBackground = false
+        enhancedFindingsScrollView.isHidden = true
+        contentView?.addSubview(enhancedFindingsScrollView)
         center()
     }
 
-    // Set only display text. Callers own the document queue and Cancel action.
-    func show(documentDescription: String) {
+    // Presentation only: callers must supply validated v2 analysis evidence
+    // from a trusted, separate Enhanced producer. No parser/scanner policy
+    // changes or automatic file opening can result from this method.
+    func updateEnhancedFindings(from report: Data?) {
+        guard let report else {
+            enhancedFindingsLabel.stringValue = ""
+            enhancedFindingsLabel.setAccessibilityLabel("")
+            enhancedFindingsTextView.string = ""
+            enhancedFindingsLabel.isHidden = true
+            enhancedFindingsScrollView.isHidden = true
+            setContentSize(NSSize(width: 360, height: Self.originalHeight))
+            return
+        }
+        let snapshot = EnhancedFindingsProgressSnapshot.decode(report)
+        enhancedFindingsLabel.stringValue = snapshot?.summary
+            ?? "Enhanced findings unavailable"
+        enhancedFindingsLabel.setAccessibilityLabel(enhancedFindingsLabel.stringValue)
+        enhancedFindingsTextView.string = snapshot?.details
+            ?? "Inspection report could not be verified. No opening decision follows."
+        enhancedFindingsLabel.isHidden = false
+        enhancedFindingsScrollView.isHidden = false
+        setContentSize(NSSize(width: 360, height: Self.findingsHeight))
+    }
+
+    // An individual scan has no trustworthy percentage. For a batch, only
+    // finished request counts are measurable: not ClamAV bytes, ETA or approval.
+    // Keep this separate from the active/queued document count labels.
+    func updateBatchProgress(_ batchProgress: (completed: Int, total: Int)?) {
+        if let batchProgress, batchProgress.total > 1,
+           batchProgress.completed >= 0,
+           batchProgress.completed <= batchProgress.total {
+            if progressIndicator.isIndeterminate {
+                progressIndicator.stopAnimation(nil)
+                progressIndicator.isIndeterminate = false
+            }
+            progressIndicator.minValue = 0
+            progressIndicator.maxValue = Double(batchProgress.total)
+            progressIndicator.doubleValue = Double(batchProgress.completed)
+            let description = "\(batchProgress.completed) of \(batchProgress.total) document requests processed"
+            progressIndicator.setAccessibilityLabel(description)
+            progressIndicator.toolTip = description
+        } else {
+            if !progressIndicator.isIndeterminate {
+                progressIndicator.isIndeterminate = true
+                progressIndicator.startAnimation(nil)
+            }
+            progressIndicator.setAccessibilityLabel("Individual scan progress is unknown")
+            progressIndicator.toolTip = "Individual scan progress is unknown"
+        }
+    }
+
+    // This is information only: the scan gate still chooses and validates
+    // the actual application after a successful verdict.
+    func updateDestinationBrowser(_ displayName: String) {
+        destinationBrowserLabel.stringValue = "Destination browser: \(displayName)"
+        destinationBrowserLabel.setAccessibilityLabel(destinationBrowserLabel.stringValue)
+    }
+
+    // Set only display state. Callers own the scan lifecycle and Cancel action.
+    func show(documentDescription: String, stage: ScanProgressStage = .queued,
+              queuedDocumentCount: Int = 0, activeScans: Int = 0) {
         filenameLabel.stringValue = documentDescription
+        stageLabel.stringValue = stage.label
+        // Count only processes confirmed launched by the native owner, never
+        // queued documents, scheduled workers, or duplicate open events.
+        let count = max(0, activeScans)
+        activeScansLabel.stringValue = "Active scans: \(count)"
+        activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
+        // Only waiting documents are counted; active scans are displayed above.
+        let waiting = max(0, queuedDocumentCount)
+        let waitingText = "\(waiting) \(waiting == 1 ? "document" : "documents") queued"
+        queuedDocumentCountLabel.stringValue = waitingText
+        queuedDocumentCountLabel.setAccessibilityLabel(waitingText)
         orderFrontRegardless()
     }
 }

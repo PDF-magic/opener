@@ -10,6 +10,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
   case advancedScanning
   case updates
   case aboutAndDiagnostics
+  case extensionsAndIntegrations
   case notifications
 
   var id: Self { self }
@@ -22,6 +23,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .advancedScanning: return "Advanced Scanning"
     case .updates: return "Updates"
     case .aboutAndDiagnostics: return "About and Diagnostics"
+    case .extensionsAndIntegrations: return "Extensions and Integrations"
     case .notifications: return "Notifications"
     }
   }
@@ -34,6 +36,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .advancedScanning: return "magnifyingglass.circle"
     case .updates: return "arrow.triangle.2.circlepath"
     case .aboutAndDiagnostics: return "info.circle"
+    case .extensionsAndIntegrations: return "puzzlepiece.extension"
     case .notifications: return "bell.badge"
     }
   }
@@ -82,6 +85,13 @@ private struct PreferenceOverviewPane: View {
 
 struct MainPreferencesView: View {
   @State private var selection: MainPreferenceSection? = .general
+  @State private var showResetToDefaultsConfirmation = false
+  @State private var showResetToDefaultsResult = false
+  @State private var resetToDefaultsResult = ""
+  @State private var resetRevision = 0
+  // Follow increased macOS system text sizes rather than assuming a fixed
+  // 170-point sidebar can fit every label.
+  @ScaledMetric(relativeTo: .body) private var sidebarMinimumWidth: CGFloat = 230
   @FocusState private var sidebarFocused: Bool
 
   private var selectedIndex: Int {
@@ -98,17 +108,37 @@ struct MainPreferencesView: View {
     sidebarFocused = true
   }
 
+  // Reset only persisted preferences represented by the current configuration
+  // schema. PDF targets, user-selected applications and scanner policy are
+  // intentionally managed by separate, verified workflows.
+  private func resetToDefaults() {
+    if GeneralPreferencesReset.reset() {
+      // Recreate General so its existing onAppear readers show current values.
+      resetRevision += 1
+      resetToDefaultsResult = "Scan progress and notification preferences restored to defaults. Your selected PDF browser, PDF handler and scanner protections were not changed."
+    } else {
+      resetToDefaultsResult = "Could not reset saved preferences. Check the existing settings before trying again."
+    }
+    showResetToDefaultsResult = true
+  }
+
   var body: some View {
     NavigationSplitView {
       List(MainPreferenceSection.allCases, selection: $selection) { section in
         Label(section.title, systemImage: section.symbolName)
+          .lineLimit(nil)
+          .fixedSize(horizontal: false, vertical: true)
           .tag(section)
+          // Read the page title, not the decorative SF Symbol name.
+          .accessibilityLabel("\(section.title) settings")
+          .accessibilityHint("Show the \(section.title) settings page")
       }
       .listStyle(.sidebar)
+      .accessibilityLabel("Preferences sections")
       .focused($sidebarFocused)
       .onAppear { sidebarFocused = true }
       .navigationTitle("Preferences")
-      .frame(minWidth: 170)
+      .frame(minWidth: sidebarMinimumWidth)
       .accessibilityIdentifier("mainPreferencesSidebar")
     } detail: {
       currentPane
@@ -135,6 +165,30 @@ struct MainPreferencesView: View {
         .disabled(selectedIndex == MainPreferenceSection.allCases.count - 1)
         .help("Next preferences section (Command-])")
       }
+      ToolbarItem(placement: .primaryAction) {
+        Button("Reset to Defaults") {
+          showResetToDefaultsConfirmation = true
+        }
+        .accessibilityIdentifier("resetToDefaultsButton")
+        .help("Restore scan display and notification defaults without changing your PDF browser or scanner")
+      }
+    }
+    .confirmationDialog(
+      "Reset saved preferences to defaults?",
+      isPresented: $showResetToDefaultsConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Reset to Defaults", role: .destructive) {
+        resetToDefaults()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Restore scan progress to on and successful-scan and blocked-file notifications to off. Your selected PDF browser, macOS PDF handler, scanner protections and unrelated customizations remain unchanged.")
+    }
+    .alert("Reset to Defaults", isPresented: $showResetToDefaultsResult) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(resetToDefaultsResult)
     }
   }
 
@@ -143,6 +197,7 @@ struct MainPreferencesView: View {
     switch selection ?? .general {
     case .general:
       GeneralSettingsView()
+        .id(resetRevision)
     case .browsers:
       BrowsersSettingsView()
     case .security:
@@ -153,6 +208,8 @@ struct MainPreferencesView: View {
       UpdatesSettingsView()
     case .aboutAndDiagnostics:
       AboutAndDiagnosticsSettingsView()
+    case .extensionsAndIntegrations:
+      ExtensionsAndIntegrationsSettingsView()
     case .notifications:
       NotificationsSettingsView()
     }

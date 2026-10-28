@@ -1,0 +1,22 @@
+name: PDF Form Action Inspection
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  form-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install maintained PDF parser
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Inspect PDF form actions without submitting or importing data
+        run: python3 test-pdf-form-actions.py -v

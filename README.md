@@ -18,6 +18,14 @@ The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
 The **General** sidebar entry opens a dedicated read-only settings page
 (opener-0178) describing PDF scanning and preserved application choices.
+The **Default PDF browser** selector (opener-0195) lists only registered,
+installed supported browser bundles. Choosing one explicitly calls the installed
+PDF application selection utility to verify eligibility and atomically update
+the existing `target-app.txt` preference. A rejected choice leaves the previous
+preference intact; opening General or using its other sections never changes
+the selected browser. Existing custom choices remain displayed without being
+silently replaced. Install the PDF Magic Opener scanner tools before using
+this selector.
 **Protection** (opener-0180) opens a separate informational page explaining
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
@@ -30,16 +38,64 @@ browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
+**Set as Default PDF App (opener-0197):** General has a separate, explicit
+button that asks macOS to make the **installed, scanning PDF Magic Opener
+handler** the default application for .pdf files. This is different from
+the Default PDF browser selector, which chooses the viewer for a PDF *after*
+the scan. The button launches the validated installed `MakePDFMagicDefault`
+helper and checks the actual macOS association before reporting success.
+If the handler is not installed or a change cannot be verified, the page
+reports an error. Opening settings does not change the default. The
+standalone preferences app is never registered as a PDF handler, and saved
+browser choices and scanning safeguards remain unchanged.
+
+**Restore Previous Default (opener-0198):** General also offers an explicit
+Restore Previous Default action with a confirmation prompt. It calls the
+installed `pdf-handler-history restore` utility, which will restore only the
+recorded, valid, installed PDF app while PDF Magic Opener is still the
+current PDF handler. If the previous association was not safely recorded,
+its app is missing, or the default has changed independently, restoration
+fails without silently selecting another application. This may remove the
+PDF Magic Opener scan gate from the macOS default association, so the
+confirmation explains the effect. The selected post-scan browser and
+malware scanner configuration are not changed.
+
+**General PDF handler status (opener-0196):** General separately reports
+whether Launch Services currently associates **PDF files** with the installed
+PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), another
+application (including its bundle identifier), or an unknown association.
+This is distinct from both the post-scan browser selector and the explicit
+Set as Default PDF App action. It refreshes when General appears and when the
+app becomes active, without changing macOS associations or saved browser
+choices. The standalone Settings app is not the PDF handler.
+
 **Advanced Scanning** (opener-0181) is a separate read-only preferences
 destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
+
+**VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
+group label and each page entry announces its section name and a navigation
+hint. Labels are derived from the existing page titles and preserve native
+sidebar selection, keyboard navigation, and current-page state.
 
 The **Updates** sidebar entry (opener-0182) provides a read-only page
 showing the installed application version and explaining application
 and ClamAV definition updates. It does not check for, download, or
 install updates, claim unverified update status, or modify any scan
 protections or saved preferences.
+
+**Technical help text (opener-0194):** Inline, accessible informational notes
+clarify ClamAV malware scans, fail-closed behavior, locally available files,
+verified PDF handoff, discovered versus preferred applications, and the
+difference between app updates and malware definition updates. Help appears
+beside the relevant read-only sections; no settings are changed and the
+installed PDF scanner remains authoritative.
+
+**Extensions and Integrations** (opener-0185) has a dedicated read-only
+settings page for Finder scan actions, verified PDF handoff and
+extension-management boundaries. Viewing it cannot install or enable
+extensions, change chosen applications, or bypass scanning safeguards.
 
 The **About and Diagnostics** page (opener-0186) is a separate read-only
 preferences destination showing the running app version, build, bundle identifier,
@@ -48,6 +104,18 @@ It cannot determine scanner readiness or definition freshness, and it does
 not inspect logs, documents, or saved application choices. The existing
 **About PDF Magic Opener** menu command still displays the version and the
 bundled AGPL-3.0 license; it has not been replaced.
+
+**Larger system text (opener-0193):** The preferences sidebar accommodates
+wrapped section titles and scales its minimum width with Dynamic Type.
+The Updates version field stacks when its horizontal layout cannot fit,
+and settings details remain vertically scrollable. CI audits the use of
+semantic fonts and checks SwiftUI layouts at default and accessibility
+text sizes in a constrained macOS window. To inspect the actual system
+appearance, increase text size in macOS System Settings > Accessibility >
+Display > Text size, open Settings, and confirm all section labels,
+headings, descriptions, and the installed version remain legible without
+horizontal clipping. These automated checks do not replace a visual audit
+on every macOS display or accessibility configuration.
 
 **Keyboard navigation (opener-0189):** When the preferences window opens,
 the sidebar receives keyboard focus. Use **↑/↓** to select a page and
@@ -61,6 +129,14 @@ Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
 scan, or modifying saved configuration.
+
+**Launch at Login (opener-0199):** No option is necessary for the current
+windowed preferences app. The separately installed PDF handler opens on
+document requests even when Settings is closed, and the existing scheduled
+malware-signature updater is independent of Settings. Do not register the
+preferences UI as a login item or launch it in the background. See the
+[Launch at Login decision](docs/launch-at-login-decision.md) and its CI check
+for the rationale and conditions that would warrant reconsideration.
 
 **Menu-bar decision (opener-0176):** No persistent menu-bar status item is
 enabled or required. The standalone application only presents preferences;
@@ -128,11 +204,35 @@ Double-click PDFs to scan them locally with ClamAV and open them in the selected
 For the Finder double-click verification procedure and its automated Launch Services
 regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf-drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
+**Show Successful Scan Notifications (opener-0201):** General offers an
+**opt-in**, default-off setting shared with the installed native PDF opener.
+When enabled, a PDF scan-and-open process that exits successfully may
+request macOS notification permission and publish a generic success message.
+Cancelled requests, malware detections, scanner failures, and unsuccessful
+application handoffs never produce a success notification. Notification
+contents contain no document names or paths; a denied macOS notification
+permission is respected. Failure warnings, scan gating, and the saved
+browser choice remain unchanged. The Settings app does not send scan alerts.
+Reinstall the native PDF opener after updating to include this behavior.
+
+**Show Scan Progress (opener-0200):** General settings includes a toggle
+that is **on by default**, preserving the existing animated scan window and
+Cancel button. Turning it off hides only that native progress window
+(including its Cancel button); it never skips a scan, changes quarantine
+handling, suppresses failure warnings, or changes the browser used for
+verified PDFs. The preference is stored in the shared, per-user
+`local.studio.pdf-magic-opener` defaults suite and is read by the
+separately installed PDF handler when displaying scan progress. Reinstall
+the PDF handler after updating the application to deploy the compatible
+native helper. Cancel from the progress window is available when the toggle
+is enabled; while it is hidden, closing the opener or other process-level
+controls may interrupt a scan without approving any document.
+
 The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
-Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
+Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Successful clean and cached scans also retain the original `com.apple.quarantine` extended attribute, leaving Gatekeeper and OS-level downloaded-file protections in place for PDFs and application bundles. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
 
 Each accepted native PDF open request also has an in-memory `ScanRequest.requestTimestamp` (`Date`) set when the open event is accepted. Repeated events for the same resolved file retain the original request timestamp. This field is not logged or persisted, and is distinct from the scan time used in the clean-file cache.
 
@@ -142,7 +242,7 @@ Each accepted scan request records the **intended destination application** and 
 
 When PDF Magic Opener exits during a native scan, it closes the scan gate's parent-lifetime pipe. The scan is cancelled and the ClamAV process group is stopped; abandoned scans cannot cache a new clean result, clear quarantine, or open a file. Finder and direct command-line scans retain their prior behavior.
 
-Completed clean scans are cached locally for **90 days from the last successful scan** in `~/Library/Application Support/Studio/allow-and-open/clean-scan-cache.sqlite3`. The cache stores SHA-256 hashes, scan timestamps, and optional scanner-engine and signature-database versions, not file contents or paths. A matching hash under the same scanning policy skips another ClamAV scan even if a document is renamed or its filesystem timestamps change; standalone PDFs use separate cache keys so earlier size-limited scans cannot substitute for unlimited scans. the hash covers the complete file bytes, **including PDF metadata embedded in the file**, or the contents and relative paths of an application bundle. File bytes and filesystem identities (including members of application bundles) are checked across hashing and scanning, then checked again after quarantine removal immediately before launch. Byte-identical replacements also block opening. Quarantine removal can change filesystem change timestamps without altering file contents; that expected change alone does not invalidate the final check. Changed contents or identities, expired records, scan failures, or an unreadable cache require a new clean scan. The 48-hour malware-signature freshness gate is still checked every time. Verified clean-scan results include the ClamAV engine version from the scan that established the verdict. Cached results reuse that version, while legacy cache records report an unknown engine rather than misattributing a current one.
+Completed clean scans are cached locally for **90 days from the last successful scan** in `~/Library/Application Support/Studio/allow-and-open/clean-scan-cache.sqlite3`. The cache stores SHA-256 hashes, scan timestamps, and optional scanner-engine and signature-database versions, not file contents or paths. A matching hash under the same scanning policy skips another ClamAV scan even if a document is renamed or its filesystem timestamps change; standalone PDFs use separate cache keys so earlier size-limited scans cannot substitute for unlimited scans. the hash covers the complete file bytes, **including PDF metadata embedded in the file**, or the contents and relative paths of an application bundle. File bytes and filesystem identities (including members of application bundles) are checked across hashing and scanning, then checked again while retaining quarantine immediately before launch. Byte-identical replacements also block opening. Because quarantine is no longer removed, unexpected changes to filesystem change timestamps also stop opening. Changed contents or identities, expired records, scan failures, or an unreadable cache require a new clean scan. The 48-hour malware-signature freshness gate is still checked every time. Verified clean-scan results include the ClamAV engine version from the scan that established the verdict. Cached results reuse that version, while legacy cache records report an unknown engine rather than misattributing a current one.
 
 The immutable clean-scan receipt also reports `signature_database_version`: ClamAV `main`, `daily`, and optional `bytecode` revisions read from installed `.cvd`/`.cld` headers. Cached results preserve these original revisions and the scanner-engine version. Missing, ambiguous, changing, or legacy version metadata is reported as `None`, not guessed; no source filenames or file contents are stored with this metadata.
 
@@ -158,7 +258,7 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 **Detect a changed macOS PDF default:** PDF Magic Opener does not silently reclaim the system PDF association after another application becomes the default. To check the current association against PDF Magic Opener's bundle ID without modifying any settings, run the installed `"$HOME/Library/Application Support/Studio/allow-and-open/detect-pdf-handler-change"` utility. It returns **0** if PDF Magic Opener is still the default, **2** if another application now owns the association (and names its bundle ID), or **1** if the default cannot be determined. Each invocation re-reads macOS Launch Services, so changes made between checks are detected. This read-only check does not continually monitor in the background, change the selected browser, or open a PDF. Reinstall the opener to deploy the utility; see the existing instructions below if you want to restore PDF Magic Opener as the system's PDF handler.
 
-**PDF application support:** Before releasing quarantine or opening a verified clean PDF, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
+**PDF application support:** Before opening a verified clean PDF while retaining quarantine, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
 
 **Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
 
@@ -180,7 +280,7 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Already-running browsers:** If the selected PDF browser is already open, macOS receives the approved file through the same explicit `NSWorkspace` application handoff, rather than launching a second browser by design. The macOS CI regression uses a temporary browser-like `.app` and verifies the open event reaches its existing process. This does not bypass malware scanning, change application preferences, or require a real browser installation.
 
-**Native application launching:** After the scan gate approves a file, verifies unchanged contents, and completes quarantine handling, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
+**Native application launching:** After the scan gate approves a file, verifies unchanged contents, and retains macOS quarantine metadata, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
 
@@ -566,7 +666,7 @@ there is **no automatic fallback**; a malformed or symlinked setting blocks
 PDF opening. A fallback is never attempted after detection, scan errors,
 an unavailable cloud file, failed integrity checks, or quarantine errors.
 On a failed preferred-app launch, the fallback must already have passed PDF
-capability verification before quarantine removal, and the file is rechecked
+capability verification before opening, without stripping quarantine, and the file is rechecked
 before its second launch attempt. The request audit retains the preferred
 destination and adds a fallback destination entry when used. Existing
 settings survive reinstallations unchanged. Non-PDF documents and application
@@ -587,7 +687,7 @@ printf '%s\\n' 'com.microsoft.edgemac' > "$HOME/Library/Application Support/Stud
 
 Edge must be installed and registered with macOS as a PDF-capable application.
 The existing launcher verifies its bundle identity, executable, and PDF
-registration before releasing quarantine or opening a clean file. If Edge is
+registration before opening a clean file while retaining quarantine. If Edge is
 missing or unsupported, the request stops without trying another browser;
 non-PDF associations and the existing scanning safeguards are unchanged.
 
@@ -616,6 +716,51 @@ new queued request. Self-transitions and skipped stages are invalid.
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 
+## Effective protection policy resolution (opener-0260)
+
+The pure `resolve_effective_policy(saved_preferences)` function in
+`effective_protection_policy.py` returns an immutable snapshot of the **currently
+installed Built-in** safety policy. The four mandatory checks (ClamAV scanning,
+signature freshness, file integrity and fail-closed handoff) remain required
+regardless of presentation preferences. An absent `selectedProtectionProfile`
+uses `built-in`; an invalid explicit value or planned `standard`, `enhanced`
+or `maximum` selection **raises** instead of silently falling back.
+
+This resolver does not read or modify user settings, activate planned checks,
+start scans, remove quarantine or authorize opening. The existing installed
+scanner remains authoritative. Only separately implemented and verified future
+work may make additional profiles active.
+
+## Protection-stage resource budgets (section 5.1)
+
+`protection_stage_resource_budgets.py` defines validated, immutable, JSON-safe
+resource ceilings for all six policy controls (signature freshness, integrity,
+ClamAV scanning, PDF structure validation, isolated behavior analysis, and
+fail-closed handoff), in the required stage order for each inactive profile.
+Each dimension explicitly says `current`, `planned`, `not_configured`,
+or `not_applicable`. Proposed values are **per-stage design targets**,
+not live enforcement, guarantees, or selectable settings.
+
+| Protection stage | CPU seconds | Memory MiB | Temporary disk MiB | Concurrent requests |
+| --- | --- | --- | --- | --- |
+| Signature freshness | 5 (planned) | 64 (planned) | N/A | 2 (planned) |
+| File integrity | 120 (planned) | 256 (planned) | 16 (planned) | 2 (planned) |
+| ClamAV malware scan | Not configured | Not configured | Not configured | **2 (current)** |
+| PDF structure validation | 90 (planned) | 256 (planned) | 512 (planned) | 1 (planned) |
+| Isolated behavior analysis | 300 (planned) | 1,024 (planned) | 2,048 (planned) | 1 (planned) |
+| Fail-closed handoff | 10 (planned) | 128 (planned) | N/A | 2 (planned) |
+
+**Only two concurrent scanner processes are enforced today** from this table.
+The installed scanner has no application-enforced CPU, memory, or temporary-disk
+ceiling. Its existing wall-clock scan timeouts (30 minutes for standalone PDFs,
+three minutes for other scans) are unchanged; the separate stage elapsed-time
+contract in opener-0257 covers per-stage wall-time limits. The two declarative
+contracts must not be mistaken for CPU, memory, or temporary-disk enforcement.
+Current size constraints, file-integrity checks, ClamAV limits, quarantine
+handling, and preferences remain untouched. Planned structure and behavioral
+analysis controls are **not implemented** and the planned protection profiles
+remain non-selectable.
+
 ## Scan result vocabulary (section 1.3)
 
 The canonical terminal result names are defined in `scan_results.py` as
@@ -641,6 +786,31 @@ the current scanner's exit codes, quarantine handling, or opening behavior.
 **Fail-closed contract:** only `clean` may permit further opening processing;
 every other result blocks opening and leaves quarantine in place. A cancellation,
 scan error, or partial scan must never be treated as `clean`.
+
+## Detection response contract (opener-0253)
+
+`detection_responses.py` defines immutable, path-free responses for **every**
+canonical `ScanResultStatus`. These are **declarative definitions only**:
+the installed scan gate remains authoritative, and this contract does not
+activate a different protection profile or change existing scan behavior.
+
+| Result | Response | User-facing handling |
+| --- | --- | --- |
+| `clean` | Continue to **existing file-integrity, destination, and quarantine checks**; never open from a status alone | No failure alert |
+| `malwareDetected` | Deny opening; preserve quarantine | Alert that malware was detected |
+| `suspiciousStructure` | Deny opening; preserve quarantine | Alert about suspicious/malformed structure, not confirmed malware |
+| `encrypted` | Deny opening; preserve quarantine | Alert that required inspection was blocked by encryption |
+| `incompleteScan` | Deny opening; preserve quarantine | Alert that inspection was incomplete |
+| `scanFailed` | Deny opening; preserve quarantine | Alert that the scanner or a prerequisite failed |
+| `scanTimedOut` | Deny opening; preserve quarantine | Alert that the scan exceeded its time limit |
+| `fileChanged` | Deny opening; preserve quarantine | Alert that the file changed during verification |
+| `fileTooLarge` | Deny opening; preserve quarantine | Alert that the scanning size limit was exceeded |
+| `cancelled` | Stop processing; preserve quarantine | No unexpected failure alert |
+
+Unknown or untrusted result values—including an unvalidated string
+`"clean"`—have a generic **deny opening** response. No response directly
+launches a file, removes quarantine, or modifies saved user settings.
+Existing launch-gate, scanner and cancellation code remain unchanged.
 
 ## Scan-request origins
 
