@@ -285,9 +285,11 @@ printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/al
 on standard input and presents a numbered selection on the controlling terminal.
 Its input is either a list of browser records or an object with a `browsers`
 list. Each record contains `bundle_id`, `name`, and `installed: true`.
-Only installed, valid, non-self-referential browser IDs are selectable;
-duplicate installations with one bundle identifier display as one choice,
-while preview channels with distinct IDs remain separate.
+Only installed, valid browsers with **exact bundle IDs** in the supported
+browser registry (`browser_registry.py`) appear in the primary list. Unknown,
+custom and unsupported preview identifiers are hidden, even when their name or
+bundle-ID prefix resembles a supported browser. Duplicate installations of a
+supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
@@ -303,7 +305,9 @@ The selector still requires an explicit user choice.
 The selector prints the explicitly chosen bundle identifier to stdout;
 Enter or `q` cancels without choosing anything. It does not update
 `target-app.txt`, substitute a default, modify macOS preferences, or launch
-any application. A caller must explicitly save the chosen bundle identifier
+any application. Existing manually configured custom targets are preserved
+when hidden from the primary list; the native PDF verification gate remains
+required. A caller must explicitly save the chosen bundle identifier
 through the existing preference workflow. The §3.1 discovery provider and
 integration into a graphical preferences screen are **separate prerequisites**;
 this selector does not claim to discover installed browsers on its own.

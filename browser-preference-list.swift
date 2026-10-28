@@ -18,6 +18,18 @@ struct BrowserPreferenceItem {
     let icon: NSImage?
 }
 
+private let supportedBrowserBundleIDs: Set<String> = [
+    "com.brave.Browser",
+    "com.google.Chrome",
+    "org.chromium.Chromium",
+    "com.microsoft.edgemac",
+    "com.vivaldi.Vivaldi",
+    "com.operasoftware.Opera",
+    "company.thebrowser.Browser",
+    "org.mozilla.firefox",
+    "com.apple.Safari",
+]
+
 private func safeBrowserDisplayText(_ raw: String, limit: Int) -> String? {
     let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !value.isEmpty, value.count <= limit,
@@ -45,6 +57,10 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
           !record.bundleIdentifier.contains(".."),
           record.bundleIdentifier != "local.studio.brave-pdf-opener",
               let name = safeBrowserDisplayText(record.name, limit: 128) else { return nil }
+
+        // An installed application's name or similar ID does not mean it is
+        // supported in the primary list. Manual custom targets remain separate.
+        guard supportedBrowserBundleIDs.contains(record.bundleIdentifier) else { continue }
 
         // The version is an optional detail, never a reason to invent one.
         let version = record.version.flatMap {

@@ -57,7 +57,7 @@ jobs:
         run: python3 test-chromium-launch.py -v
       - name: Verify system-default-browser selection and fail-closed handoff
         run: python3 test-system-default-browser.py -v
-      - name: Verify preference selector choices and macOS default-browser indicator
+      - name: Verify selector hides unsupported browsers and marks macOS default
         run: python3 test-browser-preference-selector.py -v
       - name: Verify explicit custom application choice and atomic persistence
         run: python3 test-select-custom-pdf-application.py -v

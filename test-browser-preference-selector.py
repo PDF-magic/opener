@@ -27,7 +27,7 @@ class BrowserSelectorTests(unittest.TestCase):
             ("Firefox", "org.mozilla.firefox"),
         ))
 
-    def test_multiple_installations_and_preview_channels(self):
+    def test_multiple_installations_and_unsupported_preview_hidden(self):
         rows = [
             {"bundle_id": "com.brave.Browser", "name": "Brave Browser", "installed": True,
              "path": "/Applications/Brave Browser.app"},
@@ -35,10 +35,8 @@ class BrowserSelectorTests(unittest.TestCase):
              "path": "/Users/someone/Applications/Brave Browser.app"},
             {"bundle_id": "com.brave.Browser.beta", "name": "Brave Beta", "installed": True},
         ]
-        self.assertEqual(selector.selector_choices(rows), (
-            ("Brave", "com.brave.Browser"),
-            ("Brave Beta", "com.brave.Browser.beta"),
-        ))
+        self.assertEqual(selector.selector_choices(rows),
+                         (("Brave", "com.brave.Browser"),))
 
     def test_invalid_unavailable_or_self_referential_entries_are_hidden(self):
         rows = [
@@ -47,14 +45,50 @@ class BrowserSelectorTests(unittest.TestCase):
             {"bundle_id": "com..invalid", "name": "Bad", "installed": True},
             {"bundle_id": "com.example.absent", "name": "Missing", "installed": False},
             {"bundle_id": "com.example.string", "name": "Wrong", "installed": "true"},
-            {"bundle_id": "com.example.good", "name": "Unsafe\nRow", "installed": True},
+            {"bundle_id": "com.apple.Safari", "name": "Unsafe\nRow", "installed": True},
         ]
         self.assertEqual(selector.selector_choices(rows),
-                         (("com.example.good", "com.example.good"),))
+                         (("com.apple.Safari", "com.apple.Safari"),))
         for invalid in (None, {}, {"browsers": {}}, "wrong", [None] * 2049):
             with self.subTest(value=type(invalid).__name__):
                 with self.assertRaises(ValueError):
                     selector.selector_choices(invalid)
+
+    def test_primary_list_requires_exact_supported_registry_membership(self):
+        from browser_registry import SUPPORTED_BROWSER_BUNDLE_IDS
+
+        rows = [{"bundle_id": identifier, "name": identifier, "installed": True}
+                for identifier in SUPPORTED_BROWSER_BUNDLE_IDS]
+        rows += [
+            {"bundle_id": "com.brave.Browser.beta", "name": "Brave Beta",
+             "installed": True, "supported": True},
+            {"bundle_id": "com.google.Chrome.dev", "name": "Chrome Dev",
+             "installed": True},
+            {"bundle_id": "com.apple.SafariTechnologyPreview",
+             "name": "Safari Preview", "installed": True},
+            {"bundle_id": "org.mozilla.firefox.spoof", "name": "Firefox",
+             "installed": True},
+            {"bundle_id": "org.example.Custom", "name": "Custom",
+             "installed": True, "pdf_capable": True},
+        ]
+        choices = selector.selector_choices(rows)
+        self.assertEqual({identifier for _, identifier in choices},
+                         SUPPORTED_BROWSER_BUNDLE_IDS)
+        self.assertEqual(len(choices), len(SUPPORTED_BROWSER_BUNDLE_IDS))
+
+    def test_unknown_current_and_default_do_not_insert_unsupported_options(self):
+        choices = selector.selector_choices([
+            {"bundle_id": "com.apple.Safari", "name": "Safari", "installed": True},
+            {"bundle_id": "com.example.Custom", "name": "Custom", "installed": True},
+        ])
+        screen = StringIO()
+        self.assertIsNone(selector.choose_browser(
+            choices, current="com.example.Custom",
+            system_default="com.example.Custom", source=StringIO("\n"),
+            destination=screen))
+        self.assertEqual(choices, (("Safari", "com.apple.Safari"),))
+        self.assertNotIn("com.example.Custom", screen.getvalue())
+        self.assertNotIn("(system default)", screen.getvalue())
 
     def test_explicit_choice_current_marker_and_cancellation(self):
         choices = (("Brave", "com.brave.Browser"), ("Safari", "com.apple.Safari"))
@@ -133,14 +167,14 @@ class BrowserSelectorTests(unittest.TestCase):
 
     def test_no_preference_file_access_or_browser_launch(self):
         choices = selector.selector_choices([{
-            "bundle_id": "com.example.Browser", "name": "Example", "installed": True,
+            "bundle_id": "com.apple.Safari", "name": "Safari", "installed": True,
             "path": "/private/hidden/secret.app",
         }])
         with patch("builtins.open", side_effect=AssertionError("no file access")), \
                 patch("subprocess.run", side_effect=AssertionError("no process launch")):
             self.assertEqual(selector.choose_browser(
                 choices, source=StringIO("1\n"), destination=StringIO()),
-                "com.example.Browser")
+                "com.apple.Safari")
 
 
 if __name__ == "__main__":
