@@ -19,8 +19,8 @@ struct ConfigurationSchemaTests {
     let explicit = PDFMagicConfigurationSchema(
       showScanProgress: false, showSuccessfulScanNotifications: true
     )
-    check(try PDFMagicConfigurationSchema.decoded(from: explicit.encoded()) == explicit,
-          "explicit choices must round-trip")
+    let decoded = try PDFMagicConfigurationSchema.decoded(from: explicit.encoded())
+    check(decoded == explicit, "explicit choices must round-trip")
     let oldVersion = Data(#"{"schemaVersion":0,"showScanProgress":true}"#.utf8)
     let futureVersion = Data(#"{"schemaVersion":2,"showScanProgress":true}"#.utf8)
     let missingVersion = Data(#"{"showScanProgress":true}"#.utf8)
@@ -36,8 +36,8 @@ struct ConfigurationSchemaTests {
     let withUnknownKey = Data(
       #"{"schemaVersion":1,"showScanProgress":false,"futureChoice":"keep"}"#.utf8
     )
-    check(try PDFMagicConfigurationSchema.decoded(from: withUnknownKey).showScanProgress == false,
-          "additive keys should not break older readers")
+    let additive = try PDFMagicConfigurationSchema.decoded(from: withUnknownKey)
+    check(additive.showScanProgress == false, "additive keys should not break older readers")
     let suiteName = "local.studio.pdf-magic-opener.schema-test.\(UUID().uuidString)"
     guard let defaults = UserDefaults(suiteName: suiteName) else { fatalError("test suite") }
     defer { defaults.removePersistentDomain(forName: suiteName) }
