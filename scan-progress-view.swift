@@ -144,6 +144,33 @@ final class ScanProgressPanel: NSPanel {
         center()
     }
 
+    // An individual scan has no trustworthy percentage. For a batch, only
+    // finished request counts are measurable: not ClamAV bytes, ETA or approval.
+    // Keep this separate from the active/queued document count labels.
+    func updateBatchProgress(_ batchProgress: (completed: Int, total: Int)?) {
+        if let batchProgress, batchProgress.total > 1,
+           batchProgress.completed >= 0,
+           batchProgress.completed <= batchProgress.total {
+            if progressIndicator.isIndeterminate {
+                progressIndicator.stopAnimation(nil)
+                progressIndicator.isIndeterminate = false
+            }
+            progressIndicator.minValue = 0
+            progressIndicator.maxValue = Double(batchProgress.total)
+            progressIndicator.doubleValue = Double(batchProgress.completed)
+            let description = "\(batchProgress.completed) of \(batchProgress.total) document requests processed"
+            progressIndicator.setAccessibilityLabel(description)
+            progressIndicator.toolTip = description
+        } else {
+            if !progressIndicator.isIndeterminate {
+                progressIndicator.isIndeterminate = true
+                progressIndicator.startAnimation(nil)
+            }
+            progressIndicator.setAccessibilityLabel("Individual scan progress is unknown")
+            progressIndicator.toolTip = "Individual scan progress is unknown"
+        }
+    }
+
     // Set only display state. Callers own the scan lifecycle and Cancel action.
     func show(documentDescription: String, stage: ScanProgressStage = .queued,
               queuedDocumentCount: Int = 0, activeScans: Int = 0) {
