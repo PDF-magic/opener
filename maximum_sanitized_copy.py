@@ -14,6 +14,8 @@ import stat
 import subprocess
 import sys
 
+from maximum_sanitized_structure import verify_sanitized_pdf_structure
+
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_PAGES = 16
@@ -147,6 +149,12 @@ def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
                 not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
                 converted.stdout == source_bytes or
                 not _passive_pages(converted.stdout, count)):
+            return None
+        # Structural integrity is an independent final-output gate. A passive
+        # resource classification alone does not prove valid PDF framing,
+        # object references, or page-tree consistency.
+        structure = verify_sanitized_pdf_structure(converted.stdout, count)
+        if structure.page_count != count:
             return None
         return SanitizedCopyOffer(converted.stdout, count)
     except Exception:
