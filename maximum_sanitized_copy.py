@@ -417,7 +417,11 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
         # The opt-in converter's output is never itself offered. Keep only
         # decoded raster pixels through a new PDF construction.
         cleaned = remove_active_pdf_functionality(converted.stdout, count)
-        if cleaned is None or not _passive_pages(cleaned, count):
+        if (type(cleaned) is not bytes or
+                not 0 < len(cleaned) <= MAX_OUTPUT_BYTES or
+                cleaned == source_bytes or
+                not _passive_pages(cleaned, count)):
+            # Never offer the original, a non-PDF or an incomplete rebuild.
             return _failed(SanitizerFailureKind.INVALID_OUTPUT)
         # Preserve opener-0319's independent verification of final output.
         structure = verify_sanitized_pdf_structure(cleaned, count)

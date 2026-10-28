@@ -174,8 +174,10 @@ class UnsupportedSanitizationTests(unittest.TestCase):
             for completed in outputs:
                 with self.subTest(code=completed.returncode, size=len(completed.stdout)), \
                      patch.object(sanitizer.subprocess, "run", return_value=completed):
-                    self.assertBlocked(sanitizer.assess_sanitized_pdf_copy(pdf),
-                                       sanitizer.SanitizationBlockReason.conversionFailed)
+                    expected = (sanitizer.SanitizationBlockReason.conversionFailed
+                                if completed.returncode != 0
+                                else sanitizer.SanitizationBlockReason.outputUnverified)
+                    self.assertBlocked(sanitizer.assess_sanitized_pdf_copy(pdf), expected)
             for error in (OSError("/private/secret.pdf"),
                           subprocess.TimeoutExpired("secret.pdf", 2)):
                 with self.subTest(type=type(error).__name__), \
