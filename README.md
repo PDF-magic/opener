@@ -247,6 +247,28 @@ To open scanned PDFs in **Google Chrome**, use its bundle identifier instead:
 printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/allow-and-open/target-app.txt"
 ```
 
+**Discovery-populated browser preference selector (opener-0137):** The standalone
+`browser_preference_selector.py` command accepts installed-browser discovery JSON
+on standard input and presents a numbered selection on the controlling terminal.
+Its input is either a list of browser records or an object with a `browsers`
+list. Each record contains `bundle_id`, `name`, and `installed: true`.
+Only installed, valid, non-self-referential browser IDs are selectable;
+duplicate installations with one bundle identifier display as one choice,
+while preview channels with distinct IDs remain separate.
+
+For example, after a separate installed-application discovery component has
+produced `discovered-browsers.json`, invoke
+`python3 browser_preference_selector.py --current com.brave.Browser < discovered-browsers.json`.
+The selector prints the explicitly chosen bundle identifier to stdout;
+Enter or `q` cancels without choosing anything. It does not update
+`target-app.txt`, substitute a default, modify macOS preferences, or launch
+any application. A caller must explicitly save the chosen bundle identifier
+through the existing preference workflow. The §3.1 discovery provider and
+integration into a graphical preferences screen are **separate prerequisites**;
+this selector does not claim to discover installed browsers on its own.
+The existing PDF scan, quarantine, and native application verification gates
+remain unchanged.
+
 To follow your **macOS default web browser** automatically (instead of a fixed
 bundle identifier), opt in by writing `system-default-browser` to the same file:
 
