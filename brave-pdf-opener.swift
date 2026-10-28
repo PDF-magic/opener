@@ -107,7 +107,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
-    // Only completed scan-gate requests count here; failure is not approval.
+    // Count finished scan-gate requests, not completed malware approvals.
     private var finishedRequests = 0
     private let maxConcurrentScans = 2
     private var queued = [String]()
@@ -209,9 +209,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             stage = .queued
         }
         panel?.show(documentDescription: description, stage: stage,
+                    queuedDocumentCount: queued.count,
                     activeScans: launchedScans.count)
-        // Actual finished document requests are countable; individual ClamAV
-        // subprocesses have no trustworthy percentage for this window.
+        // Per-document scanning percentages are unknown; batch completion is
+        // measured using the actual finished and still-pending requests.
         let totalRequests = finishedRequests + pending.count
         let batchProgress: (completed: Int, total: Int)? = totalRequests > 1
             ? (completed: finishedRequests, total: totalRequests) : nil
