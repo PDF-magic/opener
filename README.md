@@ -58,7 +58,7 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Installed-browser metadata (opener-0129):** `browser-app-metadata.swift` provides a read-only lookup for an already-discovered macOS `.app` bundle. It reports the localized display name (falling back to bundle name or filename), the macOS application icon, the short version (falling back to the build version), and the executable's resolved location. For a command-line JSON response including a base64-encoded TIFF icon, build the helper with `xcrun swiftc -parse-as-library browser-app-metadata.swift -o ReadBrowserApplicationMetadata` and run `./ReadBrowserApplicationMetadata "/Applications/Brave Browser.app"`. Missing or non-executable bundles fail closed; an unavailable icon or version is reported as absent. This helper does not discover installation locations, define the supported-browser registry, authorize PDF launches, or change any saved browser selection.
 
-**Bundle-ID verification:** A registered PDF target is accepted only if its macOS application bundle still exists, its identity matches the requested bundle identifier, and the bundle executable is available. Missing, stale, or mismatched app registrations stop opening without another application fallback.
+**Bundle-ID verification and duplicate installations:** If macOS registers several copies of a browser under the same bundle identifier, PDF Magic Opener examines them in Launch Services' preferred order and uses the first existing, executable app with the exact requested identifier. Stale registrations, missing executables, and mismatched identities are skipped, not treated as other browser choices. The PDF-capability preflight and the native launcher apply the same selection rule; if the chosen copy is not PDF-capable, opening stops rather than switching to an alternate copy or default PDF handler. Changing `target-app.txt` is not required, and existing choices remain intact. Reinstall to deploy the native helpers. Launch Services discovery also excludes paths that cannot be read as app bundles: each discovered application must have a readable regular `Info.plist` and a regular executable file with execute permission. Broken or dangling app links and inaccessible installations are omitted; working links to custom installations remain usable. The final native handoff independently rechecks the selected bundle.
 
 **External-drive PDFs:** Finder and native open events accept ordinary mounted-volume file URLs (including names containing spaces or Unicode), then resolve them to local paths and apply the same ClamAV, integrity, quarantine, and configured PDF-target checks as internal files. When macOS grants a security-scoped file URL, the opener retains that access throughout queued and running scans and releases it on completion, cancellation, or termination. A disconnected or unreadable drive blocks opening rather than falling back to an unscanned copy. No external drive is copied to the internal disk by the opener.
 
@@ -232,6 +232,22 @@ restore it later if another application takes over.
 
 For a comparison of viewer capabilities, browser-specific settings, and
 launch requirements, see [Browser PDF viewer differences](docs/browser-pdf-viewers.md).
+
+To inspect the **release channel** of an installed browser (stable, beta, dev,
+nightly, canary, or other recognized preview), run the read-only metadata tool:
+
+```sh
+python3 browser_release.py "/Applications/Brave Browser.app"
+```
+
+It prints the bundle ID, browser family, exact channel, stable/preview/unknown
+classification, and reported version as JSON. It does not enumerate installed
+apps, change your target or fallback settings, open a PDF, or approve a launch.
+Unrecognized IDs remain **unknown**; Chrome builds sharing the stable bundle
+ID require Keystone channel metadata to distinguish non-side-by-side previews.
+For example, Brave Beta has `com.brave.Browser.beta`, distinct from the
+stable `com.brave.Browser`. A detected preview is **not** implicitly trusted
+as a PDF destination: existing PDF-capability and scanner checks still apply.
 
 The PDF target is a macOS application **bundle identifier**, not a shell
 command or executable path. The default is `com.brave.Browser`. After
