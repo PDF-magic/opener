@@ -6,7 +6,8 @@ caller releases the lease when the viewer has finished; failed handoffs must
 release it promptly. No user-supplied filename, directory scan, glob or
 untrusted PDF property is accepted (opener-0325).
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from weakref import WeakKeyDictionary, WeakSet
 import os
 from pathlib import Path
 import stat
@@ -17,7 +18,8 @@ MAX_TEMP_PDF_BYTES = 32 * 1024 * 1024
 BLOCK_MESSAGE = "Maximum temporary PDF cleanup failed safely; output was not released."
 _DIR_PREFIX = "pdf-magic-safe-copy-"
 _FILE_NAME = "safe-copy.pdf"
-_LEASES = {}
+_LEASES = WeakKeyDictionary()
+_RELEASED = WeakSet()
 _LOCK = threading.RLock()
 
 
@@ -42,20 +44,19 @@ class MaximumTemporaryOutput:
     """Unforgeable-in-process, explicitly released in-memory ownership lease."""
 
     path: Path
-    _token: object = field(repr=False, compare=False)
 
     @property
     def released(self) -> bool:
         with _LOCK:
-            return self._token not in _LEASES
+            return self not in _LEASES
 
     def release(self) -> None:
         """Remove only the original owned file, then its now-empty directory."""
         with _LOCK:
-            recorded = _LEASES.get(self._token)
+            recorded = _LEASES.get(self)
             if recorded is None:
                 # Reject forged leases, but allow a real lease to be idempotent.
-                if self._token in _RELEASED:
+                if self in _RELEASED:
                     return
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
             directory, file_identity, directory_identity = recorded
@@ -87,8 +88,8 @@ class MaximumTemporaryOutput:
                     os.close(directory_fd)
             except (OSError, ValueError, MaximumTemporaryOutputError):
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE) from None
-            _LEASES.pop(self._token, None)
-            _RELEASED.add(self._token)
+            _LEASES.pop(self, None)
+            _RELEASED.add(self)
 
     def __enter__(self):
         return self
@@ -99,9 +100,6 @@ class MaximumTemporaryOutput:
 
 # Small token registry: callers cannot clean arbitrary paths by constructing
 # a lease from a user-controlled directory or by guessing its name.
-_RELEASED = set()
-
-
 def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
     """Write one exclusive private PDF and return its explicit cleanup lease.
 
@@ -141,10 +139,9 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
                     after.st_size != len(contents) or
                     not _is_private_file(after)):
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-        token = object()
-        lease = MaximumTemporaryOutput(file_path, token)
+        lease = MaximumTemporaryOutput(file_path)
         with _LOCK:
-            _LEASES[token] = (directory, created_identity, _identity(directory_info))
+            _LEASES[lease] = (directory, created_identity, _identity(directory_info))
         return lease
     except Exception:
         if directory is not None:
