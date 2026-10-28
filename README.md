@@ -119,6 +119,14 @@ to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
 scan, or modifying saved configuration.
 
+**Launch at Login (opener-0199):** No option is necessary for the current
+windowed preferences app. The separately installed PDF handler opens on
+document requests even when Settings is closed, and the existing scheduled
+malware-signature updater is independent of Settings. Do not register the
+preferences UI as a login item or launch it in the background. See the
+[Launch at Login decision](docs/launch-at-login-decision.md) and its CI check
+for the rationale and conditions that would warrant reconsideration.
+
 **Menu-bar decision (opener-0176):** No persistent menu-bar status item is
 enabled or required. The standalone application only presents preferences;
 the installed PDF-scanning handler operates independently. This avoids a
