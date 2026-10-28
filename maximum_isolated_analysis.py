@@ -11,6 +11,8 @@ import subprocess
 import sys
 from types import MappingProxyType
 
+from maximum_output_limits import run_bounded_worker
+
 MAX_PDF_BYTES = 16 * 1024 * 1024
 MAX_RESPONSE_BYTES = 4096
 WORKER_WALL_TIMEOUT_SECONDS = 30
@@ -83,7 +85,7 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
     ignores user-site configuration and Python environment variables. The
     child applies CPU, memory and no-filesystem-output rlimits before any PDF
     parser import; wall-clock expiry kills it. No shell, temp files or PDF paths
-    are passed to the worker. Failure is always non-clean and path-free.
+    are passed to the worker. Parent output is capped during capture, not\n    after unbounded buffering. Failure is non-clean and path-free.
 
     This is process/resource isolation, not a full OS network sandbox. It does
     not replace host file identity, mandatory scanner gates or quarantine.
@@ -95,15 +97,10 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
     worker = Path(__file__).resolve().with_name("maximum_isolated_worker.py")
     command = [sys.executable, "-I", "-B", str(worker), inspection]
     try:
-        completed = subprocess.run(
-            command,
-            input=contents,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+        completed = run_bounded_worker(
+            command, input_bytes=contents,
+            output_limit=MAX_RESPONSE_BYTES,
             timeout=WORKER_WALL_TIMEOUT_SECONDS,
-            check=False,
-            close_fds=True,
-            start_new_session=True,
             cwd="/",
             env={
                 "PATH": "/usr/bin:/bin",
