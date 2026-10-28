@@ -59,9 +59,9 @@ func readGeneralPDFHandlerStatus(
     ? .isDefault : .other(identifier)
 }
 
-// Only the explicit default-browser control may change the saved PDF target.
-// It delegates validation and persistence to the existing installed helper.
-// It does not change the macOS PDF handler, scanner, or quarantine protections.
+// Only explicit user actions may change either the saved PDF browser or the
+// macOS PDF file association. Neither action changes scanner protections,
+// and the PDF default action targets the separate installed scan handler.
 struct GeneralSettingsView: View {
   @State private var pdfHandlerStatus: GeneralPDFHandlerStatus = .unknown
   @State private var browserOptions: [PDFBrowserOption] = []
@@ -203,6 +203,8 @@ struct GeneralSettingsView: View {
         } label: {
           Label("Current configuration", systemImage: "gearshape")
         }
+
+        PDFDefaultApplicationSettingsView()
 
         Spacer(minLength: 0)
       }

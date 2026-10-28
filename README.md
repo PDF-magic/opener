@@ -26,15 +26,6 @@ preference intact; opening General or using its other sections never changes
 the selected browser. Existing custom choices remain displayed without being
 silently replaced. Install the PDF Magic Opener scanner tools before using
 this selector.
-**General PDF handler status (opener-0196):** General separately reports
-whether Launch Services currently associates **PDF files** with the installed
-PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), another
-application (including its bundle identifier), or an unknown association.
-This is not the post-scan browser selector. It refreshes when General appears
-and when the app becomes active, without changing macOS associations or
-saved PDF browser preferences. The standalone Settings app itself is not
-the PDF handler.
-
 **Protection** (opener-0180) opens a separate informational page explaining
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
@@ -46,6 +37,26 @@ applications. Actual discovery and selection remain with the installed
 browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
+
+**Set as Default PDF App (opener-0197):** General has a separate, explicit
+button that asks macOS to make the **installed, scanning PDF Magic Opener
+handler** the default application for .pdf files. This is different from
+the Default PDF browser selector, which chooses the viewer for a PDF *after*
+the scan. The button launches the validated installed `MakePDFMagicDefault`
+helper and checks the actual macOS association before reporting success.
+If the handler is not installed or a change cannot be verified, the page
+reports an error. Opening settings does not change the default. The
+standalone preferences app is never registered as a PDF handler, and saved
+browser choices and scanning safeguards remain unchanged.
+
+**General PDF handler status (opener-0196):** General separately reports
+whether Launch Services currently associates **PDF files** with the installed
+PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), another
+application (including its bundle identifier), or an unknown association.
+This is distinct from both the post-scan browser selector and the explicit
+Set as Default PDF App action. It refreshes when General appears and when the
+app becomes active, without changing macOS associations or saved browser
+choices. The standalone Settings app is not the PDF handler.
 
 **Advanced Scanning** (opener-0181) is a separate read-only preferences
 destination covering local ClamAV malware checks, file readiness, and
