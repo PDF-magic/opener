@@ -502,15 +502,15 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             self.assertEqual(run.call_count, 1)
             remove.assert_not_called()
 
-    def test_clean_pdf_removes_quarantine_then_opens_in_brave(self):
+    def test_clean_pdf_retains_quarantine_then_opens_in_brave(self):
         calls = []
         def run(command, **kwargs):
             calls.append(command)
             return subprocess.CompletedProcess(command, 0, 'file: OK', '')
         with patch.object(opener.subprocess, 'run', side_effect=run), \
-                patch.object(opener, 'remove_quarantine', side_effect=lambda *args: calls.append('remove quarantine')):
+                patch.object(opener, 'remove_quarantine', side_effect=lambda *args: calls.append('retain quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(calls[1], 'remove quarantine')
+        self.assertEqual(calls[1], 'retain quarantine')
         self.assertEqual(calls[2], [str(NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser', str(self.file)])
         self.assertIn('--alert-exceeds-max=yes', calls[0])
         self.assertIn('--alert-encrypted=yes', calls[0])
@@ -696,16 +696,16 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 opener.scan_and_open(str(self.file), '/scanner')
         opener.verify_launch_target.assert_not_called()
 
-    def test_clean_pdf_checks_destination_before_quarantine(self):
+    def test_clean_pdf_checks_destination_before_quarantine_guard(self):
         events = []
         done = subprocess.CompletedProcess([], 0, 'file: OK', '')
         with patch.object(opener.subprocess, 'run', return_value=done), \
                 patch.object(opener, 'verify_launch_target',
                              side_effect=lambda path, target_app=None: events.append(('checked', target_app))), \
                 patch.object(opener, 'remove_quarantine',
-                             side_effect=lambda path: events.append('quarantine')):
+                             side_effect=lambda path: events.append('quarantine retained')):
             opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(events, [('checked', 'com.brave.Browser'), 'quarantine'])
+        self.assertEqual(events, [('checked', 'com.brave.Browser'), 'quarantine retained'])
 
     def test_missing_or_stale_signatures_block_before_scanning(self):
         database = Path(self.temp.name) / 'database'
@@ -809,7 +809,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         remove.assert_not_called()
         self.assertEqual(self.file.read_bytes(), original)
 
-    def test_change_during_quarantine_removal_blocks_opening(self):
+    def test_change_during_post_scan_quarantine_hook_blocks_opening(self):
         def remove(path):
             self.file.write_bytes(b'%PDF-1.4\\nChanged after scan')
         completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
@@ -820,7 +820,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(run.call_count, 1)
         self.assertEqual(run.call_args.args[0][0], '/scanner')
 
-    def test_cached_file_changed_during_quarantine_is_not_opened(self):
+    def test_cached_file_changed_during_quarantine_guard_is_not_opened(self):
         digest = opener.cache_key(opener.fingerprint(self.file), True)
         opener.remember_clean(digest)
         def remove(path):
@@ -850,18 +850,19 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(run.call_count, 1)
         remove.assert_not_called()
 
-    def test_quarantine_metadata_only_change_preserves_clean_open(self):
+    def test_unexpected_quarantine_metadata_change_blocks_clean_open(self):
         contents = self.file.read_bytes()
-        def remove(path):
+        def change_metadata(path):
             old = self.file.stat()
-            # Removing quarantine can change ctime without changing bytes.
+            # Without legitimate quarantine removal, changing only ctime is unexpected.
+            time.sleep(0.01)
             os.utime(self.file, ns=(old.st_atime_ns, old.st_mtime_ns))
         completed = subprocess.CompletedProcess([], 0, 'file: OK', '')
         with patch.object(opener.subprocess, 'run', return_value=completed) as run, \
-                patch.object(opener, 'remove_quarantine', side_effect=remove):
-            opener.scan_and_open(str(self.file), '/scanner')
-        self.assertEqual(run.call_count, 2)
-        self.assertEqual(run.call_args_list[-1].args[0][0], str(NATIVE_LAUNCHER))
+                patch.object(opener, 'remove_quarantine', side_effect=change_metadata):
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                opener.scan_and_open(str(self.file), '/scanner')
+        self.assertEqual(run.call_count, 1)
         self.assertEqual(self.file.read_bytes(), contents)
 
     def test_byte_identical_replacement_during_initial_hash_is_blocked(self):
