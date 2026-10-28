@@ -22,15 +22,19 @@ The **General** sidebar entry opens a dedicated read-only settings page
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
 scanner and quarantine safeguards; viewing Protection cannot change them
-or modify saved application preferences. Browsers retains its existing
-overview pending its separate page. Rebuild and run the `PDFMagicOpener`
-Xcode scheme to see the navigation.
+or modify saved application preferences. The **Browsers** sidebar entry
+now opens a dedicated read-only settings page (opener-0179), with sections
+for installed browser discovery, the preferred PDF destination, and custom
+applications. Actual discovery and selection remain with the installed
+browser preference tools; opening this page does not reset user choices,
+change system associations, or bypass any scan protections. Rebuild and
+run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
 The **Updates** sidebar entry (opener-0182) provides a dedicated, read-only
-page showing the installed app version and explaining application updates
-and the existing ClamAV definition-update workflow. It does not check
-for, download, or install updates, claim an update status, or change
-preferences, scanning safeguards, or PDF associations.
+page showing the installed application version and explaining application
+and ClamAV definition updates. It does not check, download, or install
+updates, report an unverified update status, or modify saved preferences
+or scan protections.
 
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows

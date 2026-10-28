@@ -25,7 +25,7 @@ class MainPreferencesWindowTests(unittest.TestCase):
         "List(MainPreferenceSection.allCases",
         "case general", "case browsers", "case security",
         "GeneralSettingsView()",
-        'title: "Browsers"',
+        'BrowsersSettingsView()',
         'case .security: return "Protection"',
         'ProtectionSettingsView()',
         'accessibilityIdentifier("mainPreferencesSidebar")',
