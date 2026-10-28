@@ -50,7 +50,9 @@ chmod 755 "$install_dir/detect-pdf-handler-change"
 chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 # Optional read-only browser-list display; no changes to scanner or target-app.txt.
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/browser-preference-list.swift" -o "$install_dir/browser-preference-list"
+/usr/bin/xcrun swiftc -parse-as-library -O -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING \
+    "$script_dir/browser-preference-list.swift" "$script_dir/discover-installed-browsers.swift" \
+    "$script_dir/browser-app-metadata.swift" -o "$install_dir/browser-preference-list"
 chmod 755 "$install_dir/browser-preference-list"
 python3 - "$install_dir" <<'CONFIG'
 import sys

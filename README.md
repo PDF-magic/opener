@@ -232,14 +232,22 @@ restore it later if another application takes over.
 
 ## Browser preference display (read-only)
 
-The optional native macOS browser-list view displays **each supplied installed browser's icon and name**, with its reported version behind a **Show version** disclosure. It consumes a JSON array of application metadata objects with `bundleIdentifier`, `name`, optional `version`, and optional base64 `iconTIFFBase64` fields. These match the read-only metadata contract in the separate opener-0129 work. Example input for a caller that already has browser discovery results:
+The native macOS browser-list view **refreshes installed browser discovery each time preferences opens**. On every open, it uses the existing Launch Services and filesystem discovery provider plus the installed bundle's current name, icon, and optional version. Newly installed, removed, and updated browsers appear on the next open rather than being taken from a previous snapshot.
+
+Launch the installed window with no arguments:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
+```
+
+For an explicitly supplied metadata snapshot, the backwards-compatible mode is `--metadata-stdin`. It takes a JSON array of records containing `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
 
 ```sh
 printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
-  "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
+  "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list" --metadata-stdin
 ```
 
-Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
+A version appears only behind the optional Show version disclosure; missing artwork receives a generic application icon. Reinstall to deploy the refreshed display. Discovery is read-only: it never changes `target-app.txt`, replaces user customizations, selects a destination, alters Launch Services defaults, or bypasses scanning and quarantine.
 
 ## PDF target application
 

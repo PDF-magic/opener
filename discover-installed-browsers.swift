@@ -90,7 +90,7 @@ func discoverInstalledBrowsers(
 }
 
 #if canImport(AppKit)
-private func registeredBrowserApplications() -> [URL] {
+func registeredBrowserApplications() -> [URL] {
     let workspace = NSWorkspace.shared
     let probe = URL(string: "https://example.invalid/")!
     var applications = workspace.urlsForApplications(toOpen: probe)
