@@ -76,7 +76,6 @@ struct GeneralSettingsView: View {
   @State private var selectedBrowserID = ""
   @State private var browserMessage = ""
   @State private var savingBrowser = false
-  @State private var loaded = false
 
   private func loadScanProgressPreference() {
     showScanProgress = ScanProgressPreference.isEnabled()
@@ -142,9 +141,18 @@ struct GeneralSettingsView: View {
     pdfHandlerStatus = readGeneralPDFHandlerStatus()
   }
 
+  private func refreshEffectiveConfiguration() {
+    // Refresh shared values without triggering a save or changing scan policy.
+    let effective = EffectivePresentationConfiguration.read()
+    showScanProgress = effective.showScanProgress
+    showSuccessfulScanNotifications = effective.showSuccessfulScanNotifications
+    showBlockedFileNotifications = effective.showBlockedFileNotifications
+  }
+
   private func loadBrowserSelection() {
-    guard !loaded else { return }
-    loaded = true
+    // A different settings or verified chooser process may have changed the
+    // canonical PDF target while this window remained open.
+    guard !savingBrowser else { return }
     browserOptions = DefaultPDFBrowserPreferences.discover()
     if let saved = DefaultPDFBrowserPreferences.currentSelection() {
       selectedBrowserID = saved
@@ -397,6 +405,8 @@ struct GeneralSettingsView: View {
       for: NSApplication.didBecomeActiveNotification
     )) { _ in
       refreshPDFHandlerStatus()
+      refreshEffectiveConfiguration()
+      loadBrowserSelection()
     }
   }
 }
