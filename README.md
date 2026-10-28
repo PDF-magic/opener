@@ -25,6 +25,13 @@ to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
 scan, or modifying saved configuration.
 
+**Menu-bar decision (opener-0176):** No persistent menu-bar status item is
+enabled or required. The standalone application only presents preferences;
+the installed PDF-scanning handler operates independently. This avoids a
+redundant background presence and additional menu-bar clutter. See
+[menu-bar decision](docs/menu-bar-decision.md) for the rationale and conditions
+that would justify enabling one in the future.
+
 Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
 standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored

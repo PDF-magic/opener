@@ -1,6 +1,11 @@
 import AppKit
 import SwiftUI
 
+// Menu bar decision (opener-0176): do not install a persistent status item.
+// This windowed preferences app does not own ongoing PDF scans or offer
+// background controls; the separate PDF handler remains usable when this
+// application is closed. Do not turn the app into an LSUIElement agent.
+// See docs/menu-bar-decision.md for rationale and reconsideration criteria.
 // Standalone preferences UI target. The existing AppKit/ClamAV scan gate
 // continues to handle PDFs; this target does not register as a PDF opener.
 @main
@@ -18,9 +23,8 @@ struct PDFMagicOpenerApp: App {
       }
     }
 
-    // Let macOS supply its native Settings menu item and window.
-    // Command-comma opens the same preferences view without touching
-    // scanning, file associations, or the saved application target.
+    // macOS manages the Settings menu and window separately from PDF scans.
+    // The conventional Command-comma key opens this existing preferences UI.
     Settings {
       MainPreferencesView()
     }
