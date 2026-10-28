@@ -34,12 +34,16 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
           python3 test-enhanced-embedded-files.py -v
+      - name: Detect excessive PDF decompression requirements safely
+        run: python3 test-pdf-decompression-requirements.py -v
       - name: Detect unexpected executable signatures in embedded PDF streams
         run: python3 test-pdf-embedded-executable-content.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
       - name: Inspect PDF incremental revisions without activating Enhanced
         run: python3 test-pdf-incremental-revisions.py -v
+      - name: Detect malformed PDF structures in the planned Enhanced stage
+        run: python3 test-pdf-malformed-structures.py -v
       - name: Distinguish dangerous PDF behavior from legitimate features
         run: python3 test-pdf-behavior-classification.py -v
       - name: Verify maximum processing time for each protection stage
