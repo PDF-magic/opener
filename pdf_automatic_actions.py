@@ -51,7 +51,9 @@ class PDFAutomaticActionInspection:
         return bool(self.action_count or self.open_destination_count)
 
 
-def inspect_pdf_automatic_actions(contents: bytes) -> PDFAutomaticActionInspection:
+def inspect_pdf_automatic_actions(
+    contents: bytes, *, _javascript_inspector=None,
+) -> PDFAutomaticActionInspection:
     """Inspect catalog, page, annotation, field and name-tree auto-action hooks.
 
     Never interpret /JS stream/string payloads or follow URI/Launch destinations.
@@ -67,8 +69,8 @@ def inspect_pdf_automatic_actions(contents: bytes) -> PDFAutomaticActionInspecti
     try:
         from pypdf import PdfReader
         from pypdf.generic import (
-            ArrayObject, DictionaryObject, IndirectObject, NameObject,
-            NullObject, TextStringObject, StreamObject,
+            ArrayObject, ByteStringObject, DictionaryObject, IndirectObject,
+            NameObject, NullObject, TextStringObject, StreamObject,
         )
     except (ImportError, OSError):
         raise PDFAutomaticActionError(_DEPENDENCY) from None
@@ -139,11 +141,16 @@ def inspect_pdf_automatic_actions(contents: bytes) -> PDFAutomaticActionInspecti
                 raise PDFAutomaticActionError(_ERROR)
             if kind == "/JavaScript":
                 script = entry.get("/JS")
-                if script is None or not isinstance(
-                    dereference(script), (TextStringObject, StreamObject)
-                ):
+                if script is None:
                     raise PDFAutomaticActionError(_ERROR)
-                # Never decode streams or convert document scripts to text.
+                script = dereference(script)
+                if not isinstance(script, (TextStringObject, ByteStringObject, StreamObject)):
+                    raise PDFAutomaticActionError(_ERROR)
+                # The private hook allows a bounded payload inspector to reuse
+                # the full action/trigger graph without repeating that traversal.
+                # This automatic-action inspector never interprets scripts.
+                if _javascript_inspector is not None:
+                    _javascript_inspector(script, trigger)
             next_action = entry.get("/Next")
             if next_action is not None:
                 next_action = dereference(next_action)
