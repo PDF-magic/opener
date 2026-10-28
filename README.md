@@ -20,6 +20,11 @@ The **General** sidebar entry now opens a dedicated read-only settings page
 (opener-0178), describing PDF scanning and preserved application choices.
 Browsers and Security retain their existing overview panes. General does not
 change configured browser choices, PDF associations, or security controls.
+The **Updates** sidebar entry (opener-0182) opens a dedicated read-only
+page with the installed app version from its bundle metadata, information
+about application updates, and an explanation of the existing ClamAV
+definition-update workflow. It does not check for, download, or install
+updates, claim an update status, or modify preferences or scan protections.
 Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,

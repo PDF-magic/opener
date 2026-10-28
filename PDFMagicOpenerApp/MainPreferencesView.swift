@@ -7,6 +7,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
   case general
   case browsers
   case security
+  case updates
 
   var id: Self { self }
 
@@ -15,6 +16,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .general: return "General"
     case .browsers: return "Browsers"
     case .security: return "Security"
+    case .updates: return "Updates"
     }
   }
 
@@ -23,6 +25,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .general: return "gearshape"
     case .browsers: return "globe"
     case .security: return "checkmark.shield"
+    case .updates: return "arrow.triangle.2.circlepath"
     }
   }
 }
@@ -105,6 +108,8 @@ struct MainPreferencesView: View {
             title: "Saved choices",
             detail: "Opening this window never resets your configured destination or changes the system default browser."),
         ])
+    case .updates:
+      UpdatesSettingsView()
     case .security:
       PreferenceOverviewPane(
         title: "Security",
