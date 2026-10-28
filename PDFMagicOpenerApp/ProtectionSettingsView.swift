@@ -3,6 +3,63 @@ import SwiftUI
 // The installed ClamAV gate owns the effective protection policy. These
 // planned tier cards can be selected for comparison only; they deliberately
 // never persist a selection or imply an unavailable tier is enforcing scans.
+// These display-only check IDs mirror protection_policy_definitions.py.
+// The native view intentionally does not alter scanner policy or preferences.
+private struct ProtectionLevelCheck: Identifiable {
+  enum Availability: String {
+    case current = "Current Built-in safeguard"
+    case planned = "Planned; not active"
+  }
+
+  let id: String
+  let title: String
+  let explanation: String
+  let availability: Availability
+}
+
+private enum ProtectionLevelCheckCatalog {
+  static let clamav = ProtectionLevelCheck(
+    id: "clamav_scan_gate",
+    title: "ClamAV malware scan",
+    explanation: "Scan locally before allowing a PDF to open.",
+    availability: .current
+  )
+  static let signatures = ProtectionLevelCheck(
+    id: "signature_freshness",
+    title: "Malware signature freshness",
+    explanation: "Check the installed signature database before scanning.",
+    availability: .current
+  )
+  static let integrity = ProtectionLevelCheck(
+    id: "file_integrity",
+    title: "File integrity verification",
+    explanation: "Reject files that change between scan and handoff.",
+    availability: .current
+  )
+  static let handoff = ProtectionLevelCheck(
+    id: "fail_closed_handoff",
+    title: "Fail-closed verified opening",
+    explanation: "Block unsafe, incomplete or unverified opening attempts.",
+    availability: .current
+  )
+  static let structure = ProtectionLevelCheck(
+    id: "pdf_structure_validation",
+    title: "PDF structure validation",
+    explanation: "Planned required Enhanced inspection of PDF structure.",
+    availability: .planned
+  )
+  static let isolated = ProtectionLevelCheck(
+    id: "isolated_behavior_analysis",
+    title: "Isolated behavior analysis",
+    explanation: "Planned isolated analysis before any opening decision.",
+    availability: .planned
+  )
+
+  static let baseline: [ProtectionLevelCheck] = [
+    clamav, signatures, integrity, handoff
+  ]
+}
+
 private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
   case standard
   case enhanced
@@ -37,6 +94,35 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
       return "Enhanced is not available for enforcement. Its additional inspection stages must be fully integrated and verified before activation."
     case .maximum:
       return "Maximum is not available for enforcement. Its isolated analysis, rasterization and safe-copy safeguards are still being integrated."
+    }
+  }
+
+  // Required/optional status comes from the inactive structured policy contract.
+  // Planned checks remain labeled planned even when individual analyzers exist.
+  var requiredChecks: [ProtectionLevelCheck] {
+    switch self {
+    case .standard:
+      return ProtectionLevelCheckCatalog.baseline
+    case .enhanced:
+      return ProtectionLevelCheckCatalog.baseline + [
+        ProtectionLevelCheckCatalog.structure
+      ]
+    case .maximum:
+      return ProtectionLevelCheckCatalog.baseline + [
+        ProtectionLevelCheckCatalog.structure,
+        ProtectionLevelCheckCatalog.isolated
+      ]
+    }
+  }
+
+  var optionalChecks: [ProtectionLevelCheck] {
+    switch self {
+    case .standard:
+      return [ProtectionLevelCheckCatalog.structure]
+    case .enhanced:
+      return [ProtectionLevelCheckCatalog.isolated]
+    case .maximum:
+      return []
     }
   }
 }
@@ -87,6 +173,16 @@ struct ProtectionSettingsView: View {
                       .font(.footnote)
                       .foregroundStyle(.secondary)
                       .fixedSize(horizontal: false, vertical: true)
+                    Text("Required checks: \(tier.requiredChecks.map(\.title).joined(separator: ", "))")
+                      .font(.footnote)
+                      .foregroundStyle(.secondary)
+                      .fixedSize(horizontal: false, vertical: true)
+                    if !tier.optionalChecks.isEmpty {
+                      Text("Optional planned checks: \(tier.optionalChecks.map(\.title).joined(separator: ", "))")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                   }
                   Spacer(minLength: 0)
                 }
@@ -117,6 +213,24 @@ struct ProtectionSettingsView: View {
                 Text("Previewing \(selectedPreview.title)")
                   .font(.headline)
                 Text(selectedPreview.detail)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                Text("Required checks")
+                  .font(.subheadline.weight(.semibold))
+                  .accessibilityAddTraits(.isHeader)
+                ForEach(selectedPreview.requiredChecks) { check in
+                  includedCheckDetail(check)
+                }
+                if !selectedPreview.optionalChecks.isEmpty {
+                  Text("Optional planned checks")
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                  ForEach(selectedPreview.optionalChecks) { check in
+                    includedCheckDetail(check)
+                  }
+                }
+                Text("This comparison lists planned tier requirements; only the current Built-in safeguards are enforced.")
+                  .font(.footnote)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
               }
@@ -164,6 +278,27 @@ struct ProtectionSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("protectionSettingsPage")
+  }
+
+  private func includedCheckDetail(_ check: ProtectionLevelCheck) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text(check.title)
+          .font(.subheadline.weight(.medium))
+        Spacer(minLength: 0)
+        Text(check.availability.rawValue)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Text(check.explanation)
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(.vertical, 4)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("protectionCheck-\(check.id)")
   }
 
   private func protectionDetail(_ title: String, _ explanation: String, helpText: String) -> some View {
