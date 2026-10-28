@@ -104,17 +104,7 @@ struct MainPreferencesView: View {
             detail: "Your current browser choices and application associations remain unchanged when viewing preferences."),
         ])
     case .browsers:
-      PreferenceOverviewPane(
-        title: "Browsers",
-        description: "Manage where verified PDFs open using the existing browser preference tools.",
-        explanations: [
-          PreferenceExplanation(
-            title: "Available applications",
-            detail: "The installed browser preferences utility discovers available browsers and displays their versions."),
-          PreferenceExplanation(
-            title: "Saved choices",
-            detail: "Opening this window never resets your configured destination or changes the system default browser."),
-        ])
+      BrowsersSettingsView()
     case .security:
       PreferenceOverviewPane(
         title: "Security",

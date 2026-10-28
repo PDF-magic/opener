@@ -16,9 +16,15 @@ xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configurati
 
 The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
-Each section provides a read-only overview of the existing workflow; this
-foundational window does not alter configured browser choices or security
-controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+The **Browsers** sidebar entry now opens its own dedicated settings page
+(opener-0179), with clear sections for installed browser discovery, the saved
+PDF destination, and additional custom applications. This initial page is
+read-only and uses the existing browser preference tools for actual discovery
+and selection. It does not reset any selection or change default applications,
+scanner protections, or the separate PDF handler.
+
+The General and Security sections retain their read-only workflow overviews.
+Rebuild and run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
 **Menu-bar decision (opener-0176):** No persistent menu-bar status item is
 enabled or required. The standalone application only presents preferences;
