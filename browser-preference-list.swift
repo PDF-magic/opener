@@ -131,12 +131,14 @@ func refreshedBrowserPreferenceItems() -> [BrowserPreferenceItem] {
 // The browser's actual macOS icon and human-readable name are always in the
 // main row. Version appears only when the user requests optional details.
 final class BrowserPreferenceRow: NSStackView {
+    let bundleIdentifier: String
     let nameField: NSTextField
     let iconView: NSImageView
     let versionField: NSTextField?
     let detailsButton: NSButton?
 
     init(item: BrowserPreferenceItem) {
+        bundleIdentifier = item.bundleIdentifier
         nameField = NSTextField(labelWithString: item.name)
         iconView = NSImageView()
         if let version = item.version {
@@ -252,7 +254,10 @@ final class BrowserPreferenceListView: NSStackView {
 
 #if !BROWSER_PREFERENCE_TESTING
 private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate {
+    var onClose: (() -> Void)?
+
     func windowWillClose(_ notification: Notification) {
+        onClose?()
         NSApp.terminate(nil)
     }
 }
@@ -289,25 +294,65 @@ struct ShowBrowserPreferences {
         window.title = "Installed browser preferences"
         window.minSize = NSSize(width: 420, height: 220)
 
-        let list = BrowserPreferenceListView(items: items)
-        let contentHeight = max(120, CGFloat(max(items.count, 1)) * 84 + 32)
-        let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: contentHeight))
-        list.frame = NSRect(x: 16, y: 16, width: 488, height: contentHeight - 32)
-        document.addSubview(list)
+        // Rebuild the visible document only after the installed-browser list
+        // actually changes. Keep optional disclosures and the scroll position.
+        func makeDocument(_ results: [BrowserPreferenceItem],
+                          expanded: Set<String> = []) -> (NSView, BrowserPreferenceListView) {
+            let list = BrowserPreferenceListView(items: results)
+            for row in list.rows where expanded.contains(row.bundleIdentifier) {
+                if let button = row.detailsButton {
+                    row.toggleDetails(button)
+                }
+            }
+            let height = max(120, CGFloat(max(results.count, 1)) * 84 + 32)
+            let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: height))
+            list.frame = NSRect(x: 16, y: 16, width: 488, height: height - 32)
+            document.addSubview(list)
+            return (document, list)
+        }
 
+        let (initialDocument, initialList) = makeDocument(items)
+        var visibleList = initialList
         let scrolling = NSScrollView(frame: window.contentView?.bounds ?? .zero)
         scrolling.autoresizingMask = [.width, .height]
         scrolling.hasVerticalScroller = true
-        scrolling.documentView = document
+        scrolling.documentView = initialDocument
         window.contentView = scrolling
 
+        // Explicit --metadata-stdin snapshots remain static by design.
+        // Only the normal live inventory is rescanned while preferences stay open.
+        let refresher: BrowserPreferenceLiveRefresher? = arguments.isEmpty
+            ? BrowserPreferenceLiveRefresher(
+                initialItems: items,
+                discover: { refreshedBrowserPreferenceItems() },
+                update: { nextItems in
+                    let expanded = Set(visibleList.rows.compactMap { row in
+                        row.versionField?.isHidden == false ? row.bundleIdentifier : nil
+                    })
+                    let previousOffset = scrolling.contentView.bounds.origin.y
+                    let (document, list) = makeDocument(nextItems, expanded: expanded)
+                    scrolling.documentView = document
+                    visibleList = list
+                    let limit = max(0, document.frame.height - scrolling.contentView.bounds.height)
+                    scrolling.contentView.scroll(
+                        to: NSPoint(x: 0, y: min(previousOffset, limit))
+                    )
+                    scrolling.reflectScrolledClipView(scrolling.contentView)
+                }
+              ) : nil
+
         let closeHandler = BrowserPreferenceWindowDelegate()
+        closeHandler.onClose = { refresher?.stop() }
         window.delegate = closeHandler
         window.center()
         window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
+        refresher?.start()
         app.run()
-        withExtendedLifetime(closeHandler) {}
+        refresher?.stop()
+        withExtendedLifetime(closeHandler) {
+            withExtendedLifetime(refresher) {}
+        }
     }
 }
 #endif

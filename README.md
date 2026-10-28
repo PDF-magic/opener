@@ -232,7 +232,7 @@ restore it later if another application takes over.
 
 ## Browser preference display (read-only)
 
-The native macOS browser-list view **refreshes discovery every time preferences opens**. It reads the current installed-browser inventory and the current metadata for each verified bundle, so newly installed, removed and updated browsers are reflected on the next open. The primary list still excludes unsupported browsers; an empty result shows the existing **No browsers found** recovery guidance, and the saved PDF target stays unchanged.
+The native macOS browser-list view **refreshes discovery every time preferences opens** and checks again every five seconds while the window remains open. It reads the current installed-browser inventory and the current metadata for each verified bundle, so newly installed, removed and updated browsers appear without reopening the window. Only changed results rebuild rows; the current scroll position and open version disclosures are preserved. Scanning stops when the window closes. The primary list still excludes unsupported browsers; an empty result shows the existing **No browsers found** recovery guidance, and the saved PDF target stays unchanged.
 
 Launch the installed preferences window without arguments:
 
@@ -240,7 +240,7 @@ Launch the installed preferences window without arguments:
 "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
 ```
 
-For callers explicitly supplying a JSON metadata snapshot, the existing behavior is available as `--metadata-stdin`. A metadata array contains `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
+For callers explicitly supplying a JSON metadata snapshot, the existing behavior is available as `--metadata-stdin`. This opt-in snapshot mode never polls or changes the supplied rows. A metadata array contains `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
 
 ```sh
 printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
