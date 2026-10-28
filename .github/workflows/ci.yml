@@ -20,6 +20,10 @@ jobs:
         run: python3 -m unittest discover -p 'test-configuration-loading.py' -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Install maintained PDF parser for isolated Enhanced structure tests
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Verify strict PDF structure parsing with the maintained library
+        run: python3 test-pdf-structure-parser.py -v
       - name: Verify built-in active protection profile label and unchanged scanner gates
         run: python3 test-active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
