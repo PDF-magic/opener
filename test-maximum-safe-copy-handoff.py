@@ -3,6 +3,7 @@
 from dataclasses import FrozenInstanceError
 from io import BytesIO
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 import os
 import tempfile
@@ -141,6 +142,47 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 self.source, "/scanner",
                 disposition=route.MaximumCopyDisposition.REQUIRED)
         scan.assert_not_called()
+
+    def test_failed_private_copy_write_cleans_up_without_a_scan(self):
+        created = []
+        mkdtemp = tempfile.mkdtemp
+        def stage(*args, **kwargs):
+            name = mkdtemp(*args, **kwargs)
+            created.append(Path(name))
+            return name
+        with patch.object(route, "offer_sanitized_pdf_copy", return_value=self._offer()), \
+                patch.object(route, "_passive_pages", return_value=True), \
+                patch.object(route.tempfile, "mkdtemp", side_effect=stage), \
+                patch.object(route.os, "fsync", side_effect=OSError("private error")), \
+                patch.object(route, "_scan_staged_copy") as scanner, \
+                self.assertRaises(route.MaximumSafeCopyError):
+            route.open_required_maximum_safe_copy(
+                self.source, "/scanner",
+                disposition=route.MaximumCopyDisposition.REQUIRED)
+        self.assertEqual(len(created), 1)
+        self.assertFalse(created[0].exists())
+        scanner.assert_not_called()
+
+    @unittest.skipUnless(sys.platform == "darwin",
+                         "Native sanitized conversion only runs on macOS")
+    def test_real_rebuilt_copy_is_the_only_scanner_target(self):
+        destination = []
+        def scanner(path, executable):
+            file = Path(path)
+            destination.append(file)
+            self.assertNotEqual(file, self.source)
+            self.assertNotEqual(file.read_bytes(), self.source.read_bytes())
+            self.assertTrue(file.read_bytes().startswith(b"%PDF-"))
+            self.assertEqual(executable, "/scanner")
+            return SimpleNamespace(status="clean",
+                                   effective_policy_id=EFFECTIVE_POLICY_ID)
+        with patch.object(route, "_scan_staged_copy", side_effect=scanner):
+            result = route.open_required_maximum_safe_copy(
+                self.source, "/scanner",
+                disposition=route.MaximumCopyDisposition.REQUIRED)
+        self.addCleanup(route._discard_private_copy, result.copy_path)
+        self.assertEqual(destination, [result.copy_path])
+        self.assertFalse(result.original_opened)
 
     def test_normal_gate_is_the_real_existing_scanner_not_new_launcher(self):
         text = Path(route.__file__).read_text()
