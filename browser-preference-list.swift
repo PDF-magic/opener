@@ -75,7 +75,7 @@ func refreshedBrowserPreferenceItems(
     var items = [BrowserPreferenceItem]()
     for browser in discover() {
         if items.count >= 100 { break }
-        let url = URL(fileURLWithPath: browser.path)
+        let url = URL(fileURLWithPath: browser.path, isDirectory: true)
         guard url.pathExtension.lowercased() == "app",
               let details = metadata(url),
               details.bundleIdentifier == browser.bundleIdentifier,
