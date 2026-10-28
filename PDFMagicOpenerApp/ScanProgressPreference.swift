@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 // A cosmetic setting shared by the standalone preferences UI and the
 // separately installed PDF scan handler. It does not change scan policy.
@@ -157,8 +158,11 @@ enum ActiveConfigurationSchemaVersion {
   static func read(
     defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
   ) -> Int? {
-    guard let defaults, let version = defaults.object(forKey: key) as? Int,
-          version > 0 else { return nil }
+    guard let defaults,
+          let raw = defaults.object(forKey: key),
+          let numeric = raw as? NSNumber,
+          CFGetTypeID(numeric) != CFBooleanGetTypeID(),
+          let version = raw as? Int, version > 0 else { return nil }
     return version
   }
 

@@ -39,8 +39,7 @@ struct ActiveConfigurationSchemaVersionTests {
     // Malformed metadata must not be mistaken for the active version.
     for invalid: Any in ["invalid", true, 0] {
       defaults.set(invalid, forKey: versionKey)
-      precondition(ActiveConfigurationSchemaVersion.read(defaults: defaults) == nil ||
-                   ActiveConfigurationSchemaVersion.read(defaults: defaults) == 0)
+      precondition(ActiveConfigurationSchemaVersion.read(defaults: defaults) == nil)
       precondition(!InitialConfiguration.createIfNeeded(defaults: defaults))
       precondition(defaults.object(forKey: SuccessfulScanNotificationPreference.key) == nil)
     }
