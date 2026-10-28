@@ -33,6 +33,7 @@ SANDBOX_PROFILE = """(version 1)
 (allow file-read-metadata (subpath "/"))
 (allow file-read*
     (literal (param "WORKER"))
+    (literal "/")
     (subpath "/System")
     (subpath "/usr/bin")
     (subpath "/usr/lib")

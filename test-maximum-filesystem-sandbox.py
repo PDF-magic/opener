@@ -102,6 +102,18 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
                     b"harmless stdin\n", timeout_seconds=15,
                 )
             permitted = execute('IFS= read -r line; [ "$line" = "harmless stdin" ]')
+            if permitted.return_code != 0:
+                # Diagnostic is confined to this fixed harmless fixture; never
+                # run diagnostics on a user PDF or echo arbitrary worker stderr.
+                probe = sandbox.subprocess.run(
+                    [sandbox.SANDBOX_EXEC, "-p", sandbox.SANDBOX_PROFILE,
+                     "-D", "WORKER=/bin/sh", "/bin/sh", "-c",
+                     'IFS= read -r line; [ "$line" = "harmless stdin" ]'],
+                    input=b"harmless stdin\\n", capture_output=True, timeout=10,
+                    cwd="/", env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty", "LC_ALL": "C"},
+                )
+                self.fail("Confined stdin probe failed: %s; benign diagnostics: %s" % (
+                    probe.returncode, probe.stderr.decode("utf-8", errors="replace")[-300:]))
             self.assertEqual(permitted.return_code, 0,
                              "The sandbox must permit an in-memory worker to run")
             denied_read = execute('IFS= read -r line < "$1"', private)
@@ -131,7 +143,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
             self.assertEqual(call.kwargs["cwd"], "/")
             self.assertTrue(call.kwargs["close_fds"])
             self.assertNotIn("PYTHONPATH", call.kwargs["env"])
-            self.assertNotIn("HOME", os.environ if False else {})  # no host env forwarding
+            self.assertEqual(call.kwargs["env"]["HOME"], "/var/empty")
             self.assertFalse(outcome.permits_open)
 
 
