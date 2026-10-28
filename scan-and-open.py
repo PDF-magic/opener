@@ -365,9 +365,26 @@ def check_database():
         age = time.time() - float(STAMP.read_text().strip())
     except (OSError, ValueError):
         raise RuntimeError('Malware signatures are unavailable. Run update-malware-signatures.sh.')
-    if age < 0 or age > MAX_DATABASE_AGE:
+    # Only a real timestamp in the inclusive 48-hour window is acceptable.
+    # In particular, float("nan") passes both < and > checks and must fail closed.
+    if not 0 <= age <= MAX_DATABASE_AGE:
         raise RuntimeError('Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.')
-    if not any(DATABASE.glob('daily.c[vl]d')) or not any(DATABASE.glob('main.c[vl]d')):
+    # Filename matches alone are insufficient: empty placeholders and
+    # directories masquerading as main.cvd / daily.cvd are not databases.
+    # Do not follow symlinks outside the installed signature directory.
+    def has_signature_file(name):
+        for suffix in ('.cld', '.cvd'):
+            candidate = DATABASE / (name + suffix)
+            try:
+                if (not candidate.is_symlink() and candidate.is_file() and
+                        candidate.stat().st_size > 0):
+                    return True
+            except OSError:
+                # An inaccessible or missing database cannot authorize opening.
+                continue
+        return False
+
+    if not has_signature_file('daily') or not has_signature_file('main'):
         raise RuntimeError('The malware signature database is incomplete. Run update-malware-signatures.sh.')
 
 
