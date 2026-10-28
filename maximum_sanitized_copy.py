@@ -7,6 +7,7 @@ the installed scanner or user preferences.
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
 import os
 from pathlib import Path
@@ -51,6 +52,93 @@ class SanitizedCopyOffer:
                 self.needs_separate_scan is not True or
                 self.rasterized is not True):
             raise ValueError("Sanitized copies never grant scan or open approval")
+
+
+class SanitizerFailureKind(str, Enum):
+    """No sanitizer failure is a malware scan verdict."""
+
+    UNSUPPORTED_INPUT = "unsupportedInput"
+    UNAVAILABLE = "sanitizerUnavailable"
+    CRASHED = "sanitizerCrashed"
+    TIMED_OUT = "sanitizerTimedOut"
+    LAUNCH_FAILED = "sanitizerLaunchFailed"
+    PROCESS_FAILED = "sanitizerProcessFailed"
+    INVALID_OUTPUT = "sanitizerInvalidOutput"
+
+
+# Fixed, path-free user messages; never interpolate a source pathname,
+# worker stdout/stderr, PDF text, signal details, or scanner signatures.
+_FAILURE_MESSAGES = {
+    SanitizerFailureKind.UNSUPPORTED_INPUT: (
+        "This PDF cannot be converted to a sanitized copy; no copy was offered."
+    ),
+    SanitizerFailureKind.UNAVAILABLE: (
+        "The PDF sanitizer is unavailable; no copy was offered."
+    ),
+    SanitizerFailureKind.CRASHED: (
+        "The PDF sanitizer crashed; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.TIMED_OUT: (
+        "The PDF sanitizer timed out; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.LAUNCH_FAILED: (
+        "The PDF sanitizer could not start; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.PROCESS_FAILED: (
+        "The PDF sanitizer failed during conversion. This is not a malware detection."
+    ),
+    SanitizerFailureKind.INVALID_OUTPUT: (
+        "The PDF sanitizer did not produce a verified copy. This is not a malware detection."
+    ),
+}
+
+
+@dataclass(frozen=True)
+class SanitizerFailureReport:
+    """Sanitizer diagnostic only; never a scan result or opening permission."""
+
+    kind: SanitizerFailureKind
+    message: str
+    permits_open: bool = False
+    scan_verdict: str = "notAssessed"
+
+    def __post_init__(self):
+        if (type(self.kind) is not SanitizerFailureKind or
+                self.message != _FAILURE_MESSAGES[self.kind] or
+                self.permits_open is not False or
+                self.scan_verdict != "notAssessed"):
+            raise ValueError("Sanitizer failures cannot become malware or clean verdicts")
+
+    def to_dict(self) -> dict:
+        return {
+            "status": "sanitizerFailure",
+            "kind": self.kind.value,
+            "message": self.message,
+            "scanVerdict": "notAssessed",
+            "permitsOpen": False,
+        }
+
+
+@dataclass(frozen=True)
+class SanitizerAttempt:
+    """Exactly one verified offer or a separately typed sanitizer failure."""
+
+    offer: SanitizedCopyOffer | None
+    failure: SanitizerFailureReport | None
+
+    def __post_init__(self):
+        if ((self.offer is None) == (self.failure is None) or
+                (self.offer is not None and type(self.offer) is not SanitizedCopyOffer) or
+                (self.failure is not None and type(self.failure) is not SanitizerFailureReport)):
+            raise ValueError("A sanitizer attempt needs exactly one outcome")
+
+    @property
+    def permits_open(self) -> bool:
+        return False
+
+
+def _failed(kind: SanitizerFailureKind) -> SanitizerAttempt:
+    return SanitizerAttempt(None, SanitizerFailureReport(kind, _FAILURE_MESSAGES[kind]))
 
 
 def _trusted_converter() -> Path | None:
@@ -110,27 +198,31 @@ def _passive_pages(pdf_bytes: bytes, count: int) -> bool:
         return False
 
 
-def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
-    """Return an offer only when a complete *new* rasterized copy was verified.
+def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
+    """Report converter crashes separately, never infer malware from a crash.
 
-    Conversion is on-demand. No file is written, displayed or launched here:
-    a future Maximum UI must ask the user to save the copy, and route that
-    new document through the normal mandatory scan before any opening.
-    Unsupported or failed conversions return None without disclosing PDF data.
+    A verified offer is distinct from sanitization failures; neither
+    authorizes opening or changes the installed ClamAV scan result. Only
+    the scanner may assign a malware-detected status. All diagnostics use
+    fixed messages without paths, PDF text or worker output.
     """
     if (type(source_bytes) is not bytes or
             not 0 < len(source_bytes) <= MAX_SOURCE_BYTES or
             not source_bytes.startswith(b"%PDF-")):
-        return None
+        return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
     converter = _trusted_converter()
     if converter is None:
-        return None
+        return _failed(SanitizerFailureKind.UNAVAILABLE)
     try:
         from pypdf import PdfReader
         original = PdfReader(BytesIO(source_bytes), strict=True)
         if original.is_encrypted or not 1 <= len(original.pages) <= MAX_PAGES:
-            return None
+            return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
         count = len(original.pages)
+    except Exception:
+        return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
+
+    try:
         converted = subprocess.run(
             [str(converter)],
             input=source_bytes,
@@ -144,16 +236,41 @@ def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
             env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
                  "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
         )
-        if (converted.returncode != 0 or
-                type(converted.stdout) is not bytes or
-                not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
-                converted.stdout == source_bytes):
-            return None
-        # Never offer raw converter output. Keep only decoded raster pixels
-        # through a second, independent fresh PDF reconstruction.
+    except subprocess.TimeoutExpired:
+        return _failed(SanitizerFailureKind.TIMED_OUT)
+    except (OSError, subprocess.SubprocessError):
+        return _failed(SanitizerFailureKind.LAUNCH_FAILED)
+    except Exception:
+        return _failed(SanitizerFailureKind.LAUNCH_FAILED)
+
+    if type(converted.returncode) is not int:
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+    if converted.returncode < 0:
+        # POSIX negative exit status means the child died from a signal.
+        # Never present this as a ClamAV malware detection.
+        return _failed(SanitizerFailureKind.CRASHED)
+    if converted.returncode != 0:
+        return _failed(SanitizerFailureKind.PROCESS_FAILED)
+    if (type(converted.stdout) is not bytes or
+            not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
+            converted.stdout == source_bytes):
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+
+    try:
+        # The opt-in converter's output is never itself offered. Keep only
+        # decoded raster pixels through a new PDF construction.
         cleaned = remove_active_pdf_functionality(converted.stdout, count)
         if cleaned is None or not _passive_pages(cleaned, count):
-            return None
-        return SanitizedCopyOffer(cleaned, count)
+            return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+        return SanitizerAttempt(SanitizedCopyOffer(cleaned, count), None)
     except Exception:
-        return None
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+
+
+def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
+    """Compatibility API: an unsuccessful conversion still offers nothing.
+
+    Use attempt_sanitized_pdf_copy() when callers need to show a specific
+    sanitizer failure without conflating it with malware detections.
+    """
+    return attempt_sanitized_pdf_copy(source_bytes).offer
