@@ -7,6 +7,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
   case general
   case browsers
   case security
+  case extensionsAndIntegrations
 
   var id: Self { self }
 
@@ -15,6 +16,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .general: return "General"
     case .browsers: return "Browsers"
     case .security: return "Protection"
+    case .extensionsAndIntegrations: return "Extensions and Integrations"
     }
   }
 
@@ -23,6 +25,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .general: return "gearshape"
     case .browsers: return "globe"
     case .security: return "checkmark.shield"
+    case .extensionsAndIntegrations: return "puzzlepiece.extension"
     }
   }
 }
@@ -97,6 +100,8 @@ struct MainPreferencesView: View {
       BrowsersSettingsView()
     case .security:
       ProtectionSettingsView()
+    case .extensionsAndIntegrations:
+      ExtensionsAndIntegrationsSettingsView()
     }
   }
 }

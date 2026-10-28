@@ -30,6 +30,12 @@ browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
+**Extensions and Integrations** (opener-0185) has its own read-only
+preferences page covering the existing Finder scan action, verified PDF
+handoff to a chosen browser/application, and extension management boundaries.
+Viewing it does not activate extensions, change browser selections, or alter
+the installed AppKit/ClamAV scanning workflow.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
