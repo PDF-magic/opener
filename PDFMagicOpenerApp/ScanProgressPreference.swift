@@ -57,7 +57,7 @@ enum SuccessfulScanNotificationPreference {
     return defaults.synchronize() && isEnabled(defaults: defaults) == enabled
   }
 
-  // Only a completed scan-and-open process with a zero exit status may
+  // Only a completed native request with a zero exit status may
   // produce a success notification. A cancelled process returns nil as its
   // failure message, so cancellation MUST be checked independently.
   static func shouldNotify(
