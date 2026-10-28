@@ -90,21 +90,3 @@ The test also checks stable JSON output, unchanged custom target contents, and
 that application executables are never launched. This tests the no-third-party
 environment without changing real macOS installations, registrations,
 preferences, scanners, or quarantine rules; it does not test PDF rendering.
-
-## Multiple Chromium-based browser discovery regression (opener-0155)
-
-The macOS CI job compiles `test-multiple-chromium-discovery.swift` with
-the existing discovery implementation. It constructs a temporary installation
-containing Brave, Google Chrome, Chromium, Microsoft Edge, and Vivaldi across
-system, user, and explicitly supplied custom locations. The test verifies
-that **all five exact bundle IDs** remain distinct, multiple discovery paths
-do not duplicate applications, results are sorted consistently, and inventory
-JSON round-trips. A similarly named impostor, a non-browser application, and
-a browser without an executable must not enter the inventory.
-
-The test also disables one Chromium executable and checks that only that
-installation disappears, with the other browsers unaffected. Synthetic app
-executables would record a marker if launched; no marker may appear during
-discovery. No real applications, Launch Services registrations, saved PDF
-targets, scanner behavior, or quarantine handling are modified. This does
-not test actual browser rendering or claim those browsers are installed on CI.
