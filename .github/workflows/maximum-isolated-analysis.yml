@@ -24,3 +24,5 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
       - name: Verify real isolated PDF subprocess boundaries
         run: python3 test-maximum-isolated-analysis.py -v
+      - name: Terminate worker groups on policy limits
+        run: python3 test-maximum-process-termination.py -v
