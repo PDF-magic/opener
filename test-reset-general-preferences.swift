@@ -8,15 +8,19 @@ struct ResetGeneralPreferencesTests {
     defer { defaults.removePersistentDomain(forName: name) }
     let progress = ScanProgressPreference.key
     let notifications = SuccessfulScanNotificationPreference.key
+    let blocked = BlockedFileNotificationPreference.key
     let unrelated = "preferredPDFBrowser"
     defaults.set(false, forKey: progress)
     defaults.set(true, forKey: notifications)
+    defaults.set(true, forKey: blocked)
     defaults.set("org.mozilla.firefox", forKey: unrelated)
     precondition(GeneralPreferencesReset.reset(defaults: defaults))
     precondition(defaults.object(forKey: progress) == nil)
     precondition(defaults.object(forKey: notifications) == nil)
+    precondition(defaults.object(forKey: blocked) == nil)
     precondition(ScanProgressPreference.isEnabled(defaults: defaults))
     precondition(!SuccessfulScanNotificationPreference.isEnabled(defaults: defaults))
+    precondition(!BlockedFileNotificationPreference.isEnabled(defaults: defaults))
     precondition(defaults.string(forKey: unrelated) == "org.mozilla.firefox")
     // Idempotent reset; other customizations are never removed.
     precondition(GeneralPreferencesReset.reset(defaults: defaults))

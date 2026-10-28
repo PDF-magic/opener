@@ -16,12 +16,14 @@ class GeneralResetTests(unittest.TestCase):
     self.assertIn('Button("Reset General Preferences", role: .destructive)', page)
     self.assertIn('accessibilityIdentifier("resetGeneralPreferencesStatus")', page)
     self.assertIn('if GeneralPreferencesReset.reset() {', page)
+    self.assertIn("loadBlockedFileNotificationPreference()", page)
 
   def test_reset_cannot_change_scanner_or_custom_browser(self):
     source = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
     section = source.split("enum GeneralPreferencesReset {", 1)[1]
     self.assertIn("ScanProgressPreference.key", section)
     self.assertIn("SuccessfulScanNotificationPreference.key", section)
+    self.assertIn("BlockedFileNotificationPreference.key", section)
     self.assertIn("defaults.removeObject(forKey: key)", section)
     self.assertNotIn("removePersistentDomain", section)
     for forbidden in ("preferredPDFBrowser", "LSSetDefault", "Process(", "scan-and-open",

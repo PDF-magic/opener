@@ -68,6 +68,8 @@ struct GeneralSettingsView: View {
   @State private var scanProgressMessage: String?
   @State private var showSuccessfulScanNotifications = false
   @State private var successfulScanNotificationMessage: String?
+  @State private var showBlockedFileNotifications = false
+  @State private var blockedFileNotificationMessage: String?
   @State private var showResetConfirmation = false
   @State private var resetGeneralMessage: String?
   @State private var browserOptions: [PDFBrowserOption] = []
@@ -104,17 +106,34 @@ struct GeneralSettingsView: View {
     }
   }
 
+  private func loadBlockedFileNotificationPreference() {
+    showBlockedFileNotifications = BlockedFileNotificationPreference.isEnabled()
+  }
+
+  private func updateBlockedFileNotificationPreference(_ enabled: Bool) {
+    if BlockedFileNotificationPreference.save(enabled) {
+      showBlockedFileNotifications = enabled
+      blockedFileNotificationMessage = "Blocked-file notification preference saved."
+    } else {
+      showBlockedFileNotifications = BlockedFileNotificationPreference.isEnabled()
+      blockedFileNotificationMessage = "Could not save the notification preference. Your previous choice is unchanged."
+    }
+  }
+
   private func resetGeneralPreferences() {
     if GeneralPreferencesReset.reset() {
       loadScanProgressPreference()
       loadSuccessfulScanNotificationPreference()
+      loadBlockedFileNotificationPreference()
       scanProgressMessage = nil
       successfulScanNotificationMessage = nil
+      blockedFileNotificationMessage = nil
       resetGeneralMessage = "General preferences restored to defaults."
     } else {
       // Never present a reset as successful if persistence failed.
       loadScanProgressPreference()
       loadSuccessfulScanNotificationPreference()
+      loadBlockedFileNotificationPreference()
       resetGeneralMessage = "Could not reset General preferences. Check your saved settings."
     }
   }
@@ -305,9 +324,33 @@ struct GeneralSettingsView: View {
         .accessibilityIdentifier("showSuccessfulScanNotificationsSection")
         .onAppear(perform: loadSuccessfulScanNotificationPreference)
 
+        GroupBox("Blocked file notifications") {
+          VStack(alignment: .leading, spacing: 12) {
+            Toggle("Show Blocked File Notifications", isOn: Binding(
+              get: { showBlockedFileNotifications },
+              set: { updateBlockedFileNotificationPreference($0) }
+            ))
+            .accessibilityIdentifier("showBlockedFileNotificationsToggle")
+
+            Text("Optionally show a generic macOS notification when a PDF is blocked. Existing blocking, cancellation, and failure warning dialogs remain unchanged. No document names or paths are sent in notifications.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            if let blockedFileNotificationMessage {
+              Text(blockedFileNotificationMessage)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("showBlockedFileNotificationsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("showBlockedFileNotificationsSection")
+        .onAppear(perform: loadBlockedFileNotificationPreference)
+
         GroupBox("Reset General Preferences") {
           VStack(alignment: .leading, spacing: 12) {
-            Text("Restore Show Scan Progress to on and Show Successful Scan Notifications to off. Your PDF browser selection, default PDF handler, scanner protections, and other preferences will not be changed.")
+            Text("Restore Show Scan Progress to on and both successful-scan and blocked-file notifications to off. Your PDF browser selection, default PDF handler, scanner protections, and other preferences will not be changed.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
 
@@ -325,7 +368,7 @@ struct GeneralSettingsView: View {
               }
               Button("Cancel", role: .cancel) {}
             } message: {
-              Text("Only the two General scan display and success notification preferences will be restored to defaults. Other settings remain unchanged.")
+              Text("Only the three General scan display and notification preferences will be restored to defaults. Other settings remain unchanged.")
             }
 
             if let resetGeneralMessage {
