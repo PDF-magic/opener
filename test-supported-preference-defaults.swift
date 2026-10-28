@@ -1,6 +1,9 @@
 import Foundation
 
 // Use an isolated volatile domain; never alter a user's installed preferences.
+@main
+struct TestSupportedPreferenceDefaults {
+ static func main() {
 let suite = "local.studio.pdf-magic-opener.defaults-test.\(UUID().uuidString)"
 guard let defaults = UserDefaults(suiteName: suite) else {
   fatalError("Could not create isolated preferences")
@@ -27,3 +30,6 @@ assert(!SuccessfulScanNotificationPreference.isEnabled(defaults: defaults))
 assert(defaults.string(forKey: "unrelatedPreference") == "custom-preference")
 
 print("Supported preference defaults and saved user overrides verified")
+
+ }
+}
