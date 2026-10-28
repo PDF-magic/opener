@@ -41,7 +41,8 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
                   of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
                   options: .regularExpression
               ) != nil,
-              record.bundleIdentifier != "local.studio.brave-pdf-opener",
+              !record.bundleIdentifier.contains(".."),
+          record.bundleIdentifier != "local.studio.brave-pdf-opener",
               let name = safeBrowserDisplayText(record.name, limit: 128) else { return nil }
 
         // The version is an optional detail, never a reason to invent one.
