@@ -232,16 +232,22 @@ restore it later if another application takes over.
 
 ## Browser preference display (read-only)
 
-The optional native macOS browser-list view displays **each supplied installed browser's icon and name**, with its reported version behind a **Show version** disclosure. It consumes a JSON array of application metadata objects with `bundleIdentifier`, `name`, optional `version`, and optional base64 `iconTIFFBase64` fields. These match the read-only metadata contract in the separate opener-0129 work. Example input for a caller that already has browser discovery results:
+The native macOS browser-list view **refreshes discovery every time preferences opens** and checks again every five seconds while the window remains open. It reads the current installed-browser inventory and the current metadata for each verified bundle, so newly installed, removed and updated browsers appear without reopening the window. Only changed results rebuild rows; the current scroll position and open version disclosures are preserved. Scanning stops when the window closes. The primary list still excludes unsupported browsers; an empty result shows the existing **No browsers found** recovery guidance, and the saved PDF target stays unchanged.
+
+Launch the installed preferences window without arguments:
+
+```sh
+"$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
+```
+
+For callers explicitly supplying a JSON metadata snapshot, the existing behavior is available as `--metadata-stdin`. This opt-in snapshot mode never polls or changes the supplied rows. A metadata array contains `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
 
 ```sh
 printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
-  "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
+  "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list" --metadata-stdin
 ```
 
-When discovery supplies an empty array (`[]`), the view shows **No browsers found** with guidance to install a browser, check custom installation locations, and run discovery again. It also confirms that the existing PDF application preference remains unchanged. Invalid discovery data still fails closed instead of appearing to be an empty result.
-
-Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
+Icons and names come from macOS; version appears only through the optional Show version disclosure. If discovery finds no supported browsers, the window provides guidance without resetting any preference. Invalid explicit JSON fails closed instead of appearing as an empty result. Reinstall to deploy this behavior. The read-only discovery path does not edit `target-app.txt`, alter system default handlers, open documents, or bypass malware scanning or quarantine.
 
 ## PDF target application
 

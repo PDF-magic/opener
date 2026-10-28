@@ -81,15 +81,64 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     return items
 }
 
+// Load a fresh inventory on each preferences open, not the previous window's
+// snapshot. Installed apps can appear, disappear, or change while the app runs.
+func refreshedBrowserPreferenceItems(
+    discover: () -> [InstalledBrowser],
+    metadata: (URL) -> BrowserApplicationMetadata?
+) -> [BrowserPreferenceItem] {
+    var items = [BrowserPreferenceItem]()
+    for browser in discover() {
+        if items.count >= 100 { break }
+        let url = URL(fileURLWithPath: browser.path, isDirectory: true)
+        guard url.pathExtension.lowercased() == "app",
+              let details = metadata(url),
+              details.bundleIdentifier == browser.bundleIdentifier,
+              details.bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+                  == url.standardizedFileURL.resolvingSymlinksInPath(),
+              let name = safeBrowserDisplayText(details.name, limit: 128),
+              browser.bundleIdentifier != "local.studio.brave-pdf-opener",
+              supportedBrowserBundleIDs.contains(browser.bundleIdentifier),
+              browser.bundleIdentifier.count <= 255,
+              browser.bundleIdentifier.range(
+                  of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
+                  options: .regularExpression
+              ) != nil,
+              browser.bundleIdentifier.contains("."),
+              !browser.bundleIdentifier.contains("..") else { continue }
+        items.append(BrowserPreferenceItem(
+            bundleIdentifier: browser.bundleIdentifier, name: name,
+            version: details.version.flatMap {
+                safeBrowserDisplayText($0, limit: 64)
+            }, icon: details.icon
+        ))
+    }
+    return items
+}
+
+func refreshedBrowserPreferenceItems() -> [BrowserPreferenceItem] {
+    refreshedBrowserPreferenceItems(
+        discover: {
+            discoverInstalledBrowsers(
+                searchDirectories: browserSearchDirectories(),
+                registeredApplications: registeredBrowserApplications()
+            )
+        },
+        metadata: { browserApplicationMetadata(at: $0) }
+    )
+}
+
 // The browser's actual macOS icon and human-readable name are always in the
 // main row. Version appears only when the user requests optional details.
 final class BrowserPreferenceRow: NSStackView {
+    let bundleIdentifier: String
     let nameField: NSTextField
     let iconView: NSImageView
     let versionField: NSTextField?
     let detailsButton: NSButton?
 
     init(item: BrowserPreferenceItem) {
+        bundleIdentifier = item.bundleIdentifier
         nameField = NSTextField(labelWithString: item.name)
         iconView = NSImageView()
         if let version = item.version {
@@ -205,7 +254,10 @@ final class BrowserPreferenceListView: NSStackView {
 
 #if !BROWSER_PREFERENCE_TESTING
 private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate {
+    var onClose: (() -> Void)?
+
     func windowWillClose(_ notification: Notification) {
+        onClose?()
         NSApp.terminate(nil)
     }
 }
@@ -213,12 +265,23 @@ private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate 
 @main
 struct ShowBrowserPreferences {
     static func main() {
-        // Explicit input only: never inspect user configuration or select a PDF
-        // destination. Callers can aggregate the read-only metadata JSON.
-        let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
-        guard let items = browserPreferenceItems(from: input) else {
-            fputs("Expected a JSON array of discovered browser metadata.\n", stderr)
+        // The normal window-open path always refreshes discovery. Explicit
+        // stdin mode retains compatibility with callers supplying metadata.
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        guard arguments.isEmpty || arguments == ["--metadata-stdin"] else {
+            fputs("Usage: browser-preference-list [--metadata-stdin]\n", stderr)
             exit(EXIT_FAILURE)
+        }
+        let items: [BrowserPreferenceItem]
+        if arguments == ["--metadata-stdin"] {
+            let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
+            guard let supplied = browserPreferenceItems(from: input) else {
+                fputs("Expected a JSON array of discovered browser metadata.\n", stderr)
+                exit(EXIT_FAILURE)
+            }
+            items = supplied
+        } else {
+            items = refreshedBrowserPreferenceItems()
         }
 
         let app = NSApplication.shared
@@ -231,25 +294,65 @@ struct ShowBrowserPreferences {
         window.title = "Installed browser preferences"
         window.minSize = NSSize(width: 420, height: 220)
 
-        let list = BrowserPreferenceListView(items: items)
-        let contentHeight = max(120, CGFloat(max(items.count, 1)) * 84 + 32)
-        let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: contentHeight))
-        list.frame = NSRect(x: 16, y: 16, width: 488, height: contentHeight - 32)
-        document.addSubview(list)
+        // Rebuild the visible document only after the installed-browser list
+        // actually changes. Keep optional disclosures and the scroll position.
+        func makeDocument(_ results: [BrowserPreferenceItem],
+                          expanded: Set<String> = []) -> (NSView, BrowserPreferenceListView) {
+            let list = BrowserPreferenceListView(items: results)
+            for row in list.rows where expanded.contains(row.bundleIdentifier) {
+                if let button = row.detailsButton {
+                    row.toggleDetails(button)
+                }
+            }
+            let height = max(120, CGFloat(max(results.count, 1)) * 84 + 32)
+            let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: height))
+            list.frame = NSRect(x: 16, y: 16, width: 488, height: height - 32)
+            document.addSubview(list)
+            return (document, list)
+        }
 
+        let (initialDocument, initialList) = makeDocument(items)
+        var visibleList = initialList
         let scrolling = NSScrollView(frame: window.contentView?.bounds ?? .zero)
         scrolling.autoresizingMask = [.width, .height]
         scrolling.hasVerticalScroller = true
-        scrolling.documentView = document
+        scrolling.documentView = initialDocument
         window.contentView = scrolling
 
+        // Explicit --metadata-stdin snapshots remain static by design.
+        // Only the normal live inventory is rescanned while preferences stay open.
+        let refresher: BrowserPreferenceLiveRefresher? = arguments.isEmpty
+            ? BrowserPreferenceLiveRefresher(
+                initialItems: items,
+                discover: { refreshedBrowserPreferenceItems() },
+                update: { nextItems in
+                    let expanded = Set(visibleList.rows.compactMap { row in
+                        row.versionField?.isHidden == false ? row.bundleIdentifier : nil
+                    })
+                    let previousOffset = scrolling.contentView.bounds.origin.y
+                    let (document, list) = makeDocument(nextItems, expanded: expanded)
+                    scrolling.documentView = document
+                    visibleList = list
+                    let limit = max(0, document.frame.height - scrolling.contentView.bounds.height)
+                    scrolling.contentView.scroll(
+                        to: NSPoint(x: 0, y: min(previousOffset, limit))
+                    )
+                    scrolling.reflectScrolledClipView(scrolling.contentView)
+                }
+              ) : nil
+
         let closeHandler = BrowserPreferenceWindowDelegate()
+        closeHandler.onClose = { refresher?.stop() }
         window.delegate = closeHandler
         window.center()
         window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
+        refresher?.start()
         app.run()
-        withExtendedLifetime(closeHandler) {}
+        refresher?.stop()
+        withExtendedLifetime(closeHandler) {
+            withExtendedLifetime(refresher) {}
+        }
     }
 }
 #endif
