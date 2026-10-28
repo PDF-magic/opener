@@ -4,6 +4,22 @@ Safe & reliable document launcher for macOS.
 
 Scan PDFs locally with ClamAV before opening them in a configurable application (Brave by default), with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
 
+## SwiftUI application target (opener-0163)
+
+The repository includes a standalone macOS SwiftUI application target in
+`PDFMagicOpener.xcodeproj` with a shared `PDFMagicOpener` scheme. Open it in
+Xcode, or build an unsigned development app with:
+
+```sh
+xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Debug -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build
+```
+
+This is an initial settings-window shell, **not** a replacement for the
+installed AppKit PDF handler. It has a separate bundle identifier, does not
+register PDF document types or accept document opens, and is not installed
+by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
+verification, selected application, and Finder behavior are unchanged.
+
 ## Art
 
 `twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
