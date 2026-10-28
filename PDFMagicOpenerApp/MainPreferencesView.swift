@@ -82,8 +82,8 @@ private struct PreferenceOverviewPane: View {
 
 struct MainPreferencesView: View {
   @State private var selection: MainPreferenceSection? = .general
-  // Follow macOS text-size accessibility preferences instead of assuming
-  // the sidebar always fits a fixed 170-point column.
+  // Follow increased macOS system text sizes rather than assuming a fixed
+  // 170-point sidebar can fit every label.
   @ScaledMetric(relativeTo: .body) private var sidebarMinimumWidth: CGFloat = 230
   @FocusState private var sidebarFocused: Bool
 
@@ -108,8 +108,12 @@ struct MainPreferencesView: View {
           .lineLimit(nil)
           .fixedSize(horizontal: false, vertical: true)
           .tag(section)
+          // Read the page title, not the decorative SF Symbol name.
+          .accessibilityLabel("\(section.title) settings")
+          .accessibilityHint("Show the \(section.title) settings page")
       }
       .listStyle(.sidebar)
+      .accessibilityLabel("Preferences sections")
       .focused($sidebarFocused)
       .onAppear { sidebarFocused = true }
       .navigationTitle("Preferences")

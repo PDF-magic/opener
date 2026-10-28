@@ -21,8 +21,8 @@ struct UpdatesSettingsView: View {
 
         GroupBox("Application updates") {
           VStack(alignment: .leading, spacing: 10) {
-            // Keep the version readable if a large system text size
-            // cannot fit a horizontal label/value row.
+            // Permit a stacked label/value when system text cannot fit
+            // the default horizontal presentation.
             ViewThatFits(in: .horizontal) {
               LabeledContent("Installed version", value: applicationVersion)
               VStack(alignment: .leading, spacing: 4) {
