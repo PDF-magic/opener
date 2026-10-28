@@ -18,6 +18,10 @@ jobs:
           python-version: "3.11"
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Install maintained PDF parser for isolated Enhanced structure tests
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Verify strict PDF structure parsing with the maintained library
+        run: python3 test-pdf-structure-parser.py -v
       - name: Verify built-in active protection profile label and unchanged scanner gates
         run: python3 test-active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
@@ -34,10 +38,6 @@ jobs:
         run: python3 test-protection-stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
         run: python3 test-required-optional-profile-checks.py -v
-      - name: Install maintained PDF parser for isolated Enhanced structure tests
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
-      - name: Verify strict PDF structure parsing with the maintained library
-        run: python3 test-pdf-structure-parser.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: python3 test-reference-pdf-profiles.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
