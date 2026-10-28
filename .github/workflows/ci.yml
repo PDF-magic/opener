@@ -220,6 +220,8 @@ jobs:
 
       - name: Verify scan result contract
         run: python3 test-scan-results.py
+      - name: Verify effective protection policy identifier in scan results
+        run: python3 test-effective-policy-scan-results.py -v
       - name: Verify responses for every detection remain fail-closed
         run: python3 test-detection-responses.py -v
 
