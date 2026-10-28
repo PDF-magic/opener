@@ -123,11 +123,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Refresh native browser preferences on open and explicit action
+      - name: Verify on-open, live and manual browser refresh actions
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
           "$RUNNER_TEMP/TestBrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift test-browser-preference-live-refresh.swift -o "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
+          "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
       - name: Compile native PDF opener
@@ -208,6 +210,10 @@ jobs:
           "$RUNNER_TEMP/DiscoverInstalledBrowsers" | python3 -c 'import json, sys; assert isinstance(json.load(sys.stdin), list)'
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --application relative.app; then exit 1; fi
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --search-directory; then exit 1; fi
+      - name: Test browser discovery with Brave only
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
+          "$RUNNER_TEMP/TestBraveOnlyDiscovery"
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"

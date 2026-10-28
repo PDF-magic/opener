@@ -232,98 +232,58 @@ final class BrowserPreferenceEmptyStateView: NSStackView {
 }
 
 final class BrowserPreferenceListView: NSStackView {
-    private(set) var rows = [BrowserPreferenceRow]()
-    let refreshButton: NSButton?
-    let refreshStatus: NSTextField?
-    var onItemsChanged: ((Int) -> Void)?
-    private let refreshProvider: ((@escaping ([BrowserPreferenceItem]?) -> Void) -> Void)?
-    private(set) var emptyState: BrowserPreferenceEmptyStateView?
+    let rows: [BrowserPreferenceRow]
+    let emptyState: BrowserPreferenceEmptyStateView?
 
-    init(
-        items: [BrowserPreferenceItem],
-        refreshProvider: ((@escaping ([BrowserPreferenceItem]?) -> Void) -> Void)? = nil
-    ) {
-        self.refreshProvider = refreshProvider
-        if refreshProvider != nil {
-            refreshButton = NSButton(title: "Refresh Browsers", target: nil, action: nil)
-            refreshStatus = NSTextField(labelWithString: "")
-        } else {
-            refreshButton = nil
-            refreshStatus = nil
-        }
+    init(items: [BrowserPreferenceItem]) {
+        rows = items.map { BrowserPreferenceRow(item: $0) }
+        emptyState = items.isEmpty ? BrowserPreferenceEmptyStateView(frame: .zero) : nil
         super.init(frame: .zero)
         orientation = .vertical
         alignment = .leading
         spacing = 12
-
-        if let button = refreshButton {
-            button.target = self
-            button.action = #selector(refreshBrowsers(_:))
-            button.setAccessibilityLabel("Refresh Browsers")
-            addArrangedSubview(button)
+        if let emptyState = emptyState {
+            addArrangedSubview(emptyState)
+        } else {
+            rows.forEach { addArrangedSubview($0) }
         }
-        if let status = refreshStatus {
-            status.textColor = .secondaryLabelColor
-            status.setAccessibilityLabel("Browser refresh status")
-            addArrangedSubview(status)
-        }
-        replaceItems(items)
     }
 
     required init?(coder: NSCoder) { return nil }
+}
 
-    private func replaceItems(_ items: [BrowserPreferenceItem]) {
-        // Preserve the user's open version details for surviving browsers.
-        let expanded = Set(rows.filter { $0.versionField?.isHidden == false }
-            .map { $0.bundleIdentifier })
-        for row in rows {
-            removeArrangedSubview(row)
-            row.removeFromSuperview()
-        }
-        if let oldEmptyState = emptyState {
-            removeArrangedSubview(oldEmptyState)
-            oldEmptyState.removeFromSuperview()
-            emptyState = nil
-        }
-        rows = items.map { BrowserPreferenceRow(item: $0) }
-        if rows.isEmpty {
-            let view = BrowserPreferenceEmptyStateView(frame: .zero)
-            emptyState = view
-            addArrangedSubview(view)
-        } else {
-            for row in rows {
-                if expanded.contains(row.bundleIdentifier), let button = row.detailsButton {
-                    row.toggleDetails(button)
-                }
-                addArrangedSubview(row)
-            }
-        }
-        onItemsChanged?(rows.count)
+
+ // A manual refresh uses the same read-only discovery as live polling. The
+ // control itself neither chooses a PDF target nor touches user preferences.
+final class BrowserPreferenceRefreshAction: NSObject {
+    let button = NSButton(title: "Refresh Browsers", target: nil, action: nil)
+    let status = NSTextField(labelWithString: "")
+    private let refresh: () -> Bool
+
+    init(refresh: @escaping () -> Bool) {
+        self.refresh = refresh
+        super.init()
+        button.target = self
+        button.action = #selector(refreshBrowsers(_:))
+        button.setAccessibilityLabel("Refresh Browsers")
+        status.textColor = .secondaryLabelColor
+        status.setAccessibilityLabel("Browser refresh status")
     }
 
     @objc func refreshBrowsers(_ sender: NSButton) {
-        guard let provider = refreshProvider, sender.isEnabled else { return }
-        sender.isEnabled = false
-        refreshStatus?.stringValue = "Refreshing browsers…"
-        provider { [weak self] updated in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                if let updated = updated {
-                    self.replaceItems(updated)
-                    self.refreshStatus?.stringValue = "Browser list refreshed."
-                } else {
-                    // Failed/invalid discovery is not an empty inventory.
-                    self.refreshStatus?.stringValue = "Refresh failed. Existing list kept."
-                }
-                self.refreshButton?.isEnabled = true
-            }
-        }
+        status.stringValue = refresh()
+            ? "Browser list refreshed."
+            : "Browser list is up to date."
     }
 }
 
+
 #if !BROWSER_PREFERENCE_TESTING
 private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate {
+    var onClose: (() -> Void)?
+
     func windowWillClose(_ notification: Notification) {
+        onClose?()
         NSApp.terminate(nil)
     }
 }
@@ -360,36 +320,93 @@ struct ShowBrowserPreferences {
         window.title = "Installed browser preferences"
         window.minSize = NSSize(width: 420, height: 220)
 
-        let list = BrowserPreferenceListView(items: items, refreshProvider: { completion in
-            DispatchQueue.global(qos: .userInitiated).async {
-                completion(refreshedBrowserPreferenceItems())
+        // Rebuild the visible document only after the installed-browser list
+        // actually changes. Keep optional disclosures and the scroll position.
+        func makeDocument(_ results: [BrowserPreferenceItem],
+                          expanded: Set<String> = []) -> (NSView, BrowserPreferenceListView) {
+            let list = BrowserPreferenceListView(items: results)
+            for row in list.rows where expanded.contains(row.bundleIdentifier) {
+                if let button = row.detailsButton {
+                    row.toggleDetails(button)
+                }
             }
-        })
-        let contentHeight = max(120, CGFloat(max(items.count, 1)) * 84 + 100)
-        let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: contentHeight))
-        list.frame = NSRect(x: 16, y: 16, width: 488, height: contentHeight - 32)
-        document.addSubview(list)
-        list.onItemsChanged = { [weak document, weak list] count in
-            let height = max(120, CGFloat(max(count, 1)) * 84 + 100)
-            document?.setFrameSize(NSSize(width: 520, height: height))
-            if let list = list {
-                list.frame = NSRect(x: 16, y: 16, width: 488, height: height - 32)
-            }
+            let height = max(120, CGFloat(max(results.count, 1)) * 84 + 32)
+            let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: height))
+            list.frame = NSRect(x: 16, y: 16, width: 488, height: height - 32)
+            document.addSubview(list)
+            return (document, list)
         }
 
+        let (initialDocument, initialList) = makeDocument(items)
+        var visibleList = initialList
         let scrolling = NSScrollView(frame: window.contentView?.bounds ?? .zero)
         scrolling.autoresizingMask = [.width, .height]
         scrolling.hasVerticalScroller = true
-        scrolling.documentView = document
+        scrolling.documentView = initialDocument
+        // The scroll view remains the document container even when an explicit
+        // refresh control is added above it.
         window.contentView = scrolling
 
+        // Explicit --metadata-stdin snapshots remain static by design.
+        // Only the normal live inventory is rescanned while preferences stay open.
+        let refresher: BrowserPreferenceLiveRefresher? = arguments.isEmpty
+            ? BrowserPreferenceLiveRefresher(
+                initialItems: items,
+                discover: { refreshedBrowserPreferenceItems() },
+                update: { nextItems in
+                    let expanded = Set(visibleList.rows.compactMap { row in
+                        row.versionField?.isHidden == false ? row.bundleIdentifier : nil
+                    })
+                    let previousOffset = scrolling.contentView.bounds.origin.y
+                    let (document, list) = makeDocument(nextItems, expanded: expanded)
+                    scrolling.documentView = document
+                    visibleList = list
+                    let limit = max(0, document.frame.height - scrolling.contentView.bounds.height)
+                    scrolling.contentView.scroll(
+                        to: NSPoint(x: 0, y: min(previousOffset, limit))
+                    )
+                    scrolling.reflectScrolledClipView(scrolling.contentView)
+                }
+              ) : nil
+
+        // Keep Refresh Browsers outside the periodically rebuilt document so
+        // the control remains accessible after installs/removals and scrolling.
+        let manualAction = refresher.map { current in
+            BrowserPreferenceRefreshAction(refresh: {
+                current.refreshIfChanged()
+            })
+        }
+        if let action = manualAction {
+            let container = NSView(frame: window.contentView?.bounds ?? .zero)
+            let header = NSStackView(views: [action.button, action.status])
+            header.orientation = .horizontal
+            header.alignment = .centerY
+            header.spacing = 12
+            header.frame = NSRect(x: 16, y: container.bounds.height - 44,
+                                  width: max(0, container.bounds.width - 32), height: 32)
+            header.autoresizingMask = [.width, .minYMargin]
+            scrolling.frame = NSRect(x: 0, y: 0, width: container.bounds.width,
+                                     height: max(0, container.bounds.height - 56))
+            scrolling.autoresizingMask = [.width, .height]
+            container.addSubview(scrolling)
+            container.addSubview(header)
+            window.contentView = container
+        }
+
         let closeHandler = BrowserPreferenceWindowDelegate()
+        closeHandler.onClose = { refresher?.stop() }
         window.delegate = closeHandler
         window.center()
         window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
+        refresher?.start()
         app.run()
-        withExtendedLifetime(closeHandler) {}
+        refresher?.stop()
+        withExtendedLifetime(closeHandler) {
+            withExtendedLifetime(refresher) {
+                withExtendedLifetime(manualAction) {}
+            }
+        }
     }
 }
 #endif

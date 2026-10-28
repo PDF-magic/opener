@@ -192,43 +192,23 @@ struct BrowserPreferenceListTests {
             metadata: { _ in nil }).isEmpty,
             "An application that vanished after discovery must not be displayed")
 
-        // The refresh button invokes the provider on demand, updates rows,
-        // preserves expanded details, and never treats a provider failure as
-        // successful discovery of an empty list.
-        var pendingRefresh: (([BrowserPreferenceItem]?) -> Void)?
-        var refreshCalls = 0
-        let refreshing = BrowserPreferenceListView(items: valid!) { completion in
-            refreshCalls += 1
-            pendingRefresh = completion
-        }
-        precondition(refreshing.refreshButton?.title == "Refresh Browsers")
-        precondition(refreshCalls == 0, "Discovery must not run until requested")
-        let refreshButton = refreshing.refreshButton!
-        refreshing.rows[0].toggleDetails(refreshing.rows[0].detailsButton!)
-        refreshing.refreshBrowsers(refreshButton)
-        precondition(refreshCalls == 1 && !refreshButton.isEnabled)
-        refreshing.refreshBrowsers(refreshButton)
-        precondition(refreshCalls == 1, "Do not start concurrent refreshes")
-        pendingRefresh?([valid![0]])
-        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
-        precondition(refreshButton.isEnabled && refreshing.rows.count == 1)
-        precondition(refreshing.rows[0].versionField?.isHidden == false,
-                     "Keep existing version disclosure open after refresh")
-        precondition(refreshing.refreshStatus?.stringValue == "Browser list refreshed.")
-
-        refreshing.refreshBrowsers(refreshButton)
-        pendingRefresh?(nil)
-        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
-        precondition(refreshing.rows.count == 1, "Failed discovery must retain rows")
-        precondition(refreshing.refreshStatus?.stringValue.contains("Existing list kept") == true)
-
-        refreshing.refreshBrowsers(refreshButton)
-        pendingRefresh?([])
-        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
-        precondition(refreshing.rows.isEmpty, "A valid empty inventory may clear rows")
-        precondition(refreshButton.isEnabled)
-        precondition(BrowserPreferenceListView(items: valid!).refreshButton == nil,
-                     "Existing callers without a refresh provider remain unchanged")
+        // The explicit Refresh Browsers control must invoke discovery on
+        // every click, including when a previous scan found no differences.
+        var manualScans = 0
+        var inventoryChanged = false
+        let refreshAction = BrowserPreferenceRefreshAction(refresh: {
+            manualScans += 1
+            return inventoryChanged
+        })
+        precondition(refreshAction.button.title == "Refresh Browsers")
+        precondition(manualScans == 0, "Never scan before the user clicks")
+        refreshAction.refreshBrowsers(refreshAction.button)
+        precondition(manualScans == 1)
+        precondition(refreshAction.status.stringValue == "Browser list is up to date.")
+        inventoryChanged = true
+        refreshAction.refreshBrowsers(refreshAction.button)
+        precondition(manualScans == 2, "Refresh must not reuse a cached result")
+        precondition(refreshAction.status.stringValue == "Browser list refreshed.")
 
         print("PASS: refreshed browser discovery, empty-state guidance and safe preferences.")
     }

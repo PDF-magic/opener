@@ -8,16 +8,20 @@ itself is a separate installed-applications checklist requirement.
 
 import argparse
 import json
+import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
 
-from browser_registry import SUPPORTED_BROWSER_BUNDLE_IDS
+from browser_registry import DEFAULT_BROWSER_BUNDLE_ID, SUPPORTED_BROWSER_BUNDLE_IDS
 
 MAX_DISCOVERY_BYTES = 256 * 1024
 MAX_BROWSER_RESULTS = 2048
 OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
+SAVED_BROWSER_PREFERENCE = (Path.home() /
+    "Library/Application Support/Studio/allow-and-open/target-app.txt")
 # Reuse the installed, read-only HTTPS default-browser resolver. Do not query
 # PDF associations: PDF Magic Opener may itself be the default PDF handler.
 DEFAULT_BROWSER_RESOLVER = (Path.home() /
@@ -58,6 +62,52 @@ def selector_choices(discovery_results):
             found[bundle_id] = name
     return tuple(sorted(((name, bundle_id) for bundle_id, name in found.items()),
                         key=lambda item: (item[0].casefold(), item[1])))
+
+
+def saved_browser_preference(destination=None):
+    """Read the selected PDF bundle ID on each invocation, including restarts.
+
+    The existing verified manual chooser owns writing this file. Never follow
+    symlinks or substitute an unrelated browser for an invalid saved setting.
+    An absent setting is the launcher's documented Brave default.
+    """
+    path = Path(destination) if destination is not None else SAVED_BROWSER_PREFERENCE
+    try:
+        parent_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return DEFAULT_BROWSER_BUNDLE_ID
+    except OSError:
+        return None
+    try:
+        try:
+            descriptor = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent_fd)
+        except FileNotFoundError:
+            return DEFAULT_BROWSER_BUNDLE_ID
+    except OSError:
+        return None
+    finally:
+        os.close(parent_fd)
+    try:
+        with os.fdopen(descriptor, "rb") as source:
+            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                return None
+            data = source.read(257)
+    except OSError:
+        return None
+    if len(data) > 256:
+        return None
+    try:
+        identifier = data.decode("ascii").strip()
+    except UnicodeDecodeError:
+        return None
+    # Following the macOS default web browser is a distinct, dynamic choice.
+    # The existing system-default marker displays that browser separately.
+    if identifier == "system-default-browser":
+        return None
+    if (not BUNDLE_ID.fullmatch(identifier) or "." not in identifier
+            or ".." in identifier or identifier == OPENER_BUNDLE_ID):
+        return None
+    return identifier
 
 
 def system_default_browser():
@@ -103,7 +153,7 @@ def choose_browser(choices, current=None, *, system_default=None,
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--current", help="Existing preferred browser bundle identifier")
+    parser.add_argument("--current", help="Explicit current browser (otherwise read saved preference)")
     args = parser.parse_args(argv)
     # Accept bounded discovery data only on stdin; do not inspect user settings.
     payload = sys.stdin.buffer.read(MAX_DISCOVERY_BYTES + 1)
@@ -119,7 +169,8 @@ def main(argv=None):
     try:
         with open("/dev/tty", "r", encoding="utf-8") as keyboard:
             selected = choose_browser(
-                choices, current=args.current,
+                choices, current=(args.current if args.current is not None
+                                  else saved_browser_preference()),
                 system_default=system_default_browser(), source=keyboard)
     except OSError:
         print("Interactive terminal is required to choose a browser.", file=sys.stderr)

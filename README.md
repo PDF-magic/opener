@@ -232,7 +232,7 @@ restore it later if another application takes over.
 
 ## Browser preference display (read-only)
 
-The native macOS browser-list view **refreshes discovery every time preferences opens**. It reads the current installed-browser inventory and the current metadata for each verified bundle, so newly installed, removed and updated browsers are reflected on the next open. The primary list still excludes unsupported browsers; an empty result shows the existing **No browsers found** recovery guidance, and the saved PDF target stays unchanged.
+The native macOS browser-list view **refreshes discovery every time preferences opens** and checks again every five seconds while the window remains open. It reads the current installed-browser inventory and the current metadata for each verified bundle, so newly installed, removed and updated browsers appear without reopening the window. Only changed results rebuild rows; the current scroll position and open version disclosures are preserved. Scanning stops when the window closes. The primary list still excludes unsupported browsers; an empty result shows the existing **No browsers found** recovery guidance, and the saved PDF target stays unchanged.
 
 Launch the installed preferences window without arguments:
 
@@ -240,7 +240,7 @@ Launch the installed preferences window without arguments:
 "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
 ```
 
-For callers explicitly supplying a JSON metadata snapshot, the existing behavior is available as `--metadata-stdin`. A metadata array contains `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
+For callers explicitly supplying a JSON metadata snapshot, the existing behavior is available as `--metadata-stdin`. This opt-in snapshot mode never polls or changes the supplied rows. A metadata array contains `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
 
 ```sh
 printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
@@ -249,7 +249,7 @@ printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","
 
 Icons and names come from macOS; version appears only through the optional Show version disclosure. If discovery finds no supported browsers, the window provides guidance without resetting any preference. Invalid explicit JSON fails closed instead of appearing as an empty result. Reinstall to deploy this behavior. The read-only discovery path does not edit `target-app.txt`, alter system default handlers, open documents, or bypass malware scanning or quarantine.
 
-**Refresh Browsers (opener-0149):** Use **Refresh Browsers** in the native preferences window to run the same read-only installed-browser discovery and bundle-metadata checks again without closing the window. The list updates to show newly installed browsers, removed browsers, and fresh names, icons, and versions; supported-browser filtering and the actionable empty state are preserved. An unsuccessful refresh retains the prior rows and shows an error; the button prevents overlapping requests and preserves expanded version details. This action cannot reset a saved PDF target, change Launch Services settings, open a browser, or bypass scanner protections.
+**Refresh Browsers (opener-0149):** The native preferences window provides a **Refresh Browsers** button above the scrollable browser list. Clicking it reruns the same read-only installed-browser discovery used by the window's live refresh and immediately updates visible rows when the installed inventory changes. The button works even when no changes were found by the previous scan, leaves the current PDF application selection and other preferences untouched, and does not open a PDF or bypass any scanning protections. It is separate from the automatic polling while the window is open.
 
 ## PDF target application
 
@@ -301,7 +301,14 @@ supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
-`python3 browser_preference_selector.py --current com.brave.Browser < discovered-browsers.json`.
+`python3 browser_preference_selector.py < discovered-browsers.json`.
+When opened again, the selector reads the previously saved browser from
+`target-app.txt` and marks it `(current)` without changing the file.
+The existing verified manual-app chooser and preference workflow own writes;
+the selector itself remains read-only. An absent preference uses the launcher's
+Brave default, while invalid, unreadable, or symlinked preferences do not
+silently pick another browser. The optional `--current` parameter overrides
+the saved current marker for integrations that already know the current choice.
 The selector labels the current macOS **default web browser** with
 `(system default)` using the installed read-only `resolve-default-browser`
 helper, independently of the saved `(current)` preference. If both are the
