@@ -30,6 +30,11 @@ browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
+**Advanced Scanning** (opener-0181) is a separate read-only preferences
+destination covering local ClamAV malware checks, file readiness, and
+scan results. It does not expose unimplemented scan overrides or change
+scanner policy, quarantine checks, or saved PDF application choices.
+
 **Privacy and Logs** (opener-0184) is a separate, read-only sidebar page
 describing local document processing, diagnostic-log visibility, and current
 limitations on privacy and log controls. It does not display, collect,
