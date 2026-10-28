@@ -715,14 +715,23 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     performed_scan = False
     scanner_version = None
     signature_version = None
+    # Preserve the ordinary scanner's cache-miss check; generated copies must
+    # run a fresh scan even if another request cached their identical content.
+    def requires_scan():
+        if force_rescan:
+            return True
+        if not cached_clean(cache_id):
+            return True
+        return False
+
     # Do not serialize an already cached clean hit. For a miss, a cross-process
     # lock prevents another identical-content request from racing its scan.
-    if force_rescan or not cached_clean(cache_id):
+    if requires_scan():
         with active_scan_lock(cache_id):
             # Recheck after waiting: the selected file may have changed.
             verify_file_integrity(path, before, identity)
             # Only a completed clean result under this exact policy is reusable.
-            if force_rescan or not cached_clean(cache_id):
+            if requires_scan():
                 signature_version_before = read_signature_database_version()
                 if is_pdf:
                     # The engine still alerts on its internal file-size limit (~2 GB).
