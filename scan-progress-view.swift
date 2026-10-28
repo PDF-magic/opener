@@ -432,9 +432,24 @@ final class ScanProgressPanel: NSPanel {
         destinationBrowserLabel.setAccessibilityLabel(destinationBrowserLabel.stringValue)
     }
 
+    // Blocked files need an explicit Close, not a scan retry or automatic exit.
+    func showAttentionRequired(documentDescription: String) {
+        filenameLabel.stringValue = documentDescription
+        stageLabel.stringValue = "Attention required — opening stopped"
+        activeScansLabel.stringValue = "Active scans: 0"
+        activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
+        queuedDocumentCountLabel.stringValue = "0 documents queued"
+        queuedDocumentCountLabel.setAccessibilityLabel(queuedDocumentCountLabel.stringValue)
+        progressIndicator.isHidden = true
+        cancelButton.title = "Close"
+        orderFrontRegardless()
+    }
+
     // Set only display state. Callers own the scan lifecycle and Cancel action.
     func show(documentDescription: String, stage: ScanProgressStage = .queued,
               queuedDocumentCount: Int = 0, activeScans: Int = 0) {
+        progressIndicator.isHidden = false
+        cancelButton.title = "Cancel"
         filenameLabel.stringValue = documentDescription
         stageLabel.stringValue = stage.label
         // Count only processes confirmed launched by the native owner, never
