@@ -74,7 +74,8 @@ class PerformanceImplicationsTests(unittest.TestCase):
     def test_native_view_loads_only_valid_evidence_and_preserves_unknown_state(self):
         source = (ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift").read_text()
         for term in (
-            'Bundle.main.url(forResource: "protection-performance", withExtension: "json")',
+            "Bundle.main.url(",
+            'forResource: "protection-performance", withExtension: "json"',
             "JSONDecoder().decode(ProtectionPerformanceEvidence.self, from: contents)",
             "sampleCount >= 5", "milliseconds.isFinite", "p90.isFinite",
             'scope == "instrumentedAdditionalStages"',
