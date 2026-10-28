@@ -38,6 +38,9 @@ chmod 755 "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/resolve-default-browser"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/discover-installed-browsers.swift" -o "$install_dir/discover-installed-browsers"
 chmod 755 "$install_dir/discover-installed-browsers"
+# Read-only installed application discovery uses the macOS Spotlight index.
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/installed-applications.swift" -o "$install_dir/installed-applications"
+chmod 755 "$install_dir/installed-applications"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
 chmod 755 "$install_dir/identify-pdf-handler"
 # Read-only detector reuses the same Launch Services lookup; it never resets associations.

@@ -193,6 +193,15 @@ jobs:
           "$RUNNER_TEMP/DiscoverInstalledBrowsers" | python3 -c 'import json, sys; assert isinstance(json.load(sys.stdin), list)'
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --application relative.app; then exit 1; fi
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --search-directory; then exit 1; fi
+      - name: Query and validate installed macOS applications
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING installed-applications.swift test-installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
+          "$RUNNER_TEMP/TestInstalledApplications"
+          if "$RUNNER_TEMP/InstalledApplications" >/dev/null 2>&1; then exit 1; fi
+          if "$RUNNER_TEMP/InstalledApplications" " " >/dev/null 2>&1; then exit 1; fi
+          "$RUNNER_TEMP/InstalledApplications" "__pdf_magic_uninstalled_app_0123__" > "$RUNNER_TEMP/installed-apps.json"
+          python3 -c 'import json, sys; assert json.load(open(sys.argv[1], encoding="utf-8")) == []' "$RUNNER_TEMP/installed-apps.json"
       - name: Verify PDF handoff to an already-running browser process
         timeout-minutes: 3
         run: python3 test-browser-already-running.py -v
