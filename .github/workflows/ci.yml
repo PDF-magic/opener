@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Verify safe versioned configuration loading
+        run: python3 -m unittest discover -p 'test-configuration-loading.py' -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify main Dock icon and invisible PDF scan-helper policy
