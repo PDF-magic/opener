@@ -28,7 +28,7 @@ class PreferencesDuringScanTests(unittest.TestCase):
     self.suite = "local.studio.pdf-magic-opener.active-scan-test." + uuid4().hex
     self.addCleanup(self.run_helper, "cleanup")
     self.run_helper("seed")
-    self.document = Path(self.temp.name) / "test.pdf"
+    self.document = (Path(self.temp.name) / "test.pdf").resolve()
     self.document.write_bytes(b"%PDF-1.4\nsynthetic document")
     self.original = self.document.read_bytes()
     cache = patch.object(opener, "CACHE_DB", Path(self.temp.name) / "clean-cache.sqlite3")
