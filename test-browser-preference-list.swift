@@ -176,6 +176,60 @@ struct BrowserPreferenceListTests {
             fatalError("Could not create test icon fixture")
         }
 
-        print("PASS: browser icons, names and optional version disclosure; no selection side effects.")
+        // Opening preferences multiple times must query a fresh browser list
+        // and fresh metadata; never cache a prior installed-app snapshot.
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pref-refresh-" + UUID().uuidString, isDirectory: true)
+        let braveURL = root.appendingPathComponent("Brave.app", isDirectory: true)
+        let safariURL = root.appendingPathComponent("Safari.app", isDirectory: true)
+        var installed = [InstalledBrowser(bundleIdentifier: "com.brave.Browser",
+                                          path: braveURL.path)]
+        var version = "1.0"
+        var discoveryCount = 0
+        var metadataCount = 0
+        let discover: () -> [InstalledBrowser] = {
+            discoveryCount += 1
+            return installed
+        }
+        let lookup: (URL) -> BrowserApplicationMetadata? = { url in
+            metadataCount += 1
+            guard url == braveURL || url == safariURL else { return nil }
+            let id = url == braveURL ? "com.brave.Browser" : "com.apple.Safari"
+            return BrowserApplicationMetadata(
+                bundleIdentifier: id, bundleURL: url,
+                name: url == braveURL ? "Brave" : "Safari",
+                icon: nil, version: version,
+                executableURL: url.appendingPathComponent("Contents/MacOS/Browser")
+            )
+        }
+        let first = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(first.map(\.bundleIdentifier) == ["com.brave.Browser"])
+        precondition(first[0].version == "1.0")
+        installed.append(InstalledBrowser(bundleIdentifier: "com.apple.Safari",
+                                          path: safariURL.path))
+        version = "2.0"
+        let second = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(second.map(\.bundleIdentifier) ==
+                     ["com.brave.Browser", "com.apple.Safari"],
+                     "An installed browser must appear on the next preferences open")
+        precondition(second[0].version == "2.0",
+                     "Browser version changes must be reflected on reopen")
+        installed.removeFirst()
+        let third = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(third.map(\.bundleIdentifier) == ["com.apple.Safari"],
+                     "Removed browsers must disappear on the next open")
+        precondition(discoveryCount == 3 && metadataCount == 4,
+                     "Discovery and metadata must run again on every open")
+        precondition(refreshedBrowserPreferenceItems(
+            discover: { [InstalledBrowser(bundleIdentifier: "com.fake.Impostor",
+                                          path: braveURL.path)] },
+            metadata: lookup).isEmpty, "Mismatched bundle identities must not be displayed")
+        precondition(refreshedBrowserPreferenceItems(
+            discover: { [InstalledBrowser(bundleIdentifier: "com.brave.Browser",
+                                          path: braveURL.path)] },
+            metadata: { _ in nil }).isEmpty,
+            "An application that vanished after discovery must not be displayed")
+
+        print("PASS: refreshed browser discovery, empty-state guidance and safe preferences.")
     }
 }

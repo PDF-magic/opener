@@ -98,6 +98,53 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     return items
 }
 
+// Load a fresh inventory on each preferences open, not the previous window's
+// snapshot. Installed apps can appear, disappear, or change while the app runs.
+func refreshedBrowserPreferenceItems(
+    discover: () -> [InstalledBrowser],
+    metadata: (URL) -> BrowserApplicationMetadata?
+) -> [BrowserPreferenceItem] {
+    var items = [BrowserPreferenceItem]()
+    for browser in discover() {
+        if items.count >= 100 { break }
+        let url = URL(fileURLWithPath: browser.path, isDirectory: true)
+        guard url.pathExtension.lowercased() == "app",
+              let details = metadata(url),
+              details.bundleIdentifier == browser.bundleIdentifier,
+              details.bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+                  == url.standardizedFileURL.resolvingSymlinksInPath(),
+              let name = safeBrowserDisplayText(details.name, limit: 128),
+              browser.bundleIdentifier != "local.studio.brave-pdf-opener",
+              supportedBrowserBundleIDs.contains(browser.bundleIdentifier),
+              browser.bundleIdentifier.count <= 255,
+              browser.bundleIdentifier.range(
+                  of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
+                  options: .regularExpression
+              ) != nil,
+              browser.bundleIdentifier.contains("."),
+              !browser.bundleIdentifier.contains("..") else { continue }
+        items.append(BrowserPreferenceItem(
+            bundleIdentifier: browser.bundleIdentifier, name: name,
+            version: details.version.flatMap {
+                safeBrowserDisplayText($0, limit: 64)
+            }, icon: details.icon
+        ))
+    }
+    return items
+}
+
+func refreshedBrowserPreferenceItems() -> [BrowserPreferenceItem] {
+    refreshedBrowserPreferenceItems(
+        discover: {
+            discoverInstalledBrowsers(
+                searchDirectories: browserSearchDirectories(),
+                registeredApplications: registeredBrowserApplications()
+            )
+        },
+        metadata: { browserApplicationMetadata(at: $0) }
+    )
+}
+
  // Keep legacy browser-array input supported. A caller may instead supply
  // {"browsers": [...], "applications": [...]} from read-only discovery.
  func browserPreferenceDisplay(from data: Data) -> (
@@ -304,12 +351,27 @@ private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate 
 @main
 struct ShowBrowserPreferences {
     static func main() {
-        // Explicit input only: never inspect user configuration or select a PDF
-        // destination. Callers can aggregate the read-only metadata JSON.
-        let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
-        guard let display = browserPreferenceDisplay(from: input) else {
-            fputs("Expected discovered browser metadata and optional additional applications.\n", stderr)
+        // The normal window-open path always refreshes discovery. Explicit
+        // stdin mode retains compatibility with callers supplying metadata.
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        guard arguments.isEmpty || arguments == ["--metadata-stdin"] else {
+            fputs("Usage: browser-preference-list [--metadata-stdin]\n", stderr)
             exit(EXIT_FAILURE)
+        }
+        let items: [BrowserPreferenceItem]
+        let additionalApplications: [AdditionalApplicationItem]
+        if arguments == ["--metadata-stdin"] {
+            let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
+            guard let display = browserPreferenceDisplay(from: input) else {
+                fputs("Expected browser metadata with optional additional applications.\n",
+                      stderr)
+                exit(EXIT_FAILURE)
+            }
+            items = display.browsers
+            additionalApplications = display.applications
+        } else {
+            items = refreshedBrowserPreferenceItems()
+            additionalApplications = []
         }
 
         let app = NSApplication.shared
@@ -323,9 +385,9 @@ struct ShowBrowserPreferences {
         window.minSize = NSSize(width: 420, height: 220)
 
         let list = BrowserPreferenceListView(
-            items: display.browsers, additionalApplications: display.applications)
-        let contentHeight = max(120, CGFloat(max(display.browsers.count, 1) * 84
-            + display.applications.count * 36 + 140))
+            items: items, additionalApplications: additionalApplications)
+        let contentHeight = max(120, CGFloat(max(items.count, 1) * 84
+            + additionalApplications.count * 36 + 140))
         let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: contentHeight))
         list.frame = NSRect(x: 16, y: 16, width: 488, height: contentHeight - 32)
         document.addSubview(list)
