@@ -54,6 +54,23 @@ are not changed.
 
 The macOS CI suite runs `test-safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of a non-executable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
 
+## Firefox and Chromium installed together (opener-0156)
+
+The macOS CI job compiles `discover-installed-browsers.swift` with
+`test-firefox-chromium-discovery.swift` and constructs **Firefox.app**
+(`org.mozilla.firefox`) and **Chromium.app** (`org.chromium.Chromium`)
+in separate disposable system-style and user-style Applications folders.
+The test verifies that both are discovered at once under distinct identifiers
+and correct paths, regardless of duplicate discovery inputs, with stable
+ordering and valid JSON output. Unrelated applications with browser-like names
+must not appear.
+
+It then removes Firefox and Chromium in turn to confirm the surviving browser
+is retained independently; it also checks that a nonexecutable bundle is
+excluded and no application executable is launched. The fixtures do not install
+real browsers, register apps with macOS, change saved PDF targets, or test PDF
+rendering. Scanner and quarantine behavior remain unchanged.
+
 ## Selected browser removed (opener-0159)
 
 CI exercises a **previously selected** Brave bundle disappearing while Safari remains installed, using only disposable application fixtures and a temporary `target-app.txt`. The macOS test verifies fresh discovery and the open preferences view omit the removed bundle, stale Launch Services paths cannot authorize it as a PDF handler, Safari is not silently substituted, and the saved preference survives removal. Removing the final browser yields the existing empty-state guidance. A separate scanner-gate regression verifies that an unavailable selected browser stops PDF opening before quarantine removal or native launch and retains the saved bundle ID. Neither test changes real browser installations, macOS associations, actual user preferences, nor scanner policy.

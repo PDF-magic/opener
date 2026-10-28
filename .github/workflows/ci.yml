@@ -220,6 +220,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
           "$RUNNER_TEMP/TestSafariOnlyDiscovery"
+      - name: Test Firefox and Chromium installed together
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-firefox-chromium-discovery.swift -o "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
+          "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
       - name: Verify removal of the selected installed browser
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
