@@ -220,6 +220,26 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     activeScans: launchedScans.count)
     }
 
+    // UI policy lives above the scan queue, never inside scanner execution.
+    private func noteAttentionRequired(for path: String) {
+        guard panel != nil, ScanProgressPreference.isEnabled() else { return }
+        attentionRequired = true
+        attentionDocumentName = URL(
+            fileURLWithPath: requestedPaths[path] ?? path
+        ).lastPathComponent
+    }
+
+    private func updateProgressAfterCompletion(hasUncancelled: Bool) {
+        if hasUncancelled {
+            showProgress()
+        } else if attentionRequired && ScanProgressPreference.isEnabled() {
+            panel?.showAttentionRequired(documentDescription: attentionDocumentName)
+        } else {
+            attentionRequired = false
+            panel?.orderOut(nil)
+        }
+    }
+
     private func startQueuedScans() {
         guard !terminating else { return }
         // All queue mutations happen on the application's main thread.
@@ -294,13 +314,7 @@ DispatchQueue.main.async {
                 if let pipe = self.scanLifetimes.removeValue(forKey: path) {
                     try? pipe.fileHandleForWriting.close()
                 }
-                // Capture the original file name before request metadata cleanup.
-                if failure != nil, self.panel != nil, ScanProgressPreference.isEnabled() {
-                    self.attentionRequired = true
-                    self.attentionDocumentName = URL(
-                        fileURLWithPath: self.requestedPaths[path] ?? path
-                    ).lastPathComponent
-                }
+                if failure != nil { self.noteAttentionRequired(for: path) }
                 self.running.remove(path)
                 self.launchedScans.remove(path)
                 self.pending.remove(path)
@@ -314,16 +328,7 @@ DispatchQueue.main.async {
                 self.processLock.lock()
                 let hasUncancelled = self.pending.contains { !self.cancelledRequests.contains($0) }
                 self.processLock.unlock()
-                if hasUncancelled {
-                    self.showProgress()
-                } else if self.attentionRequired && ScanProgressPreference.isEnabled() {
-                    self.panel?.showAttentionRequired(documentDescription: self.attentionDocumentName)
-                } else {
-                    // Honor hidden-progress preferences; the warning dialog
-                    // remains visible even when the progress panel is hidden.
-                    self.attentionRequired = false
-                    self.panel?.orderOut(nil)
-                }
+                self.updateProgressAfterCompletion(hasUncancelled: hasUncancelled)
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
                     let alert = NSAlert()
