@@ -230,6 +230,24 @@ struct BrowserPreferenceListTests {
             metadata: { _ in nil }).isEmpty,
             "An application that vanished after discovery must not be displayed")
 
+        // The explicit Refresh Browsers control must invoke discovery on
+        // every click, including when a previous scan found no differences.
+        var manualScans = 0
+        var inventoryChanged = false
+        let refreshAction = BrowserPreferenceRefreshAction(refresh: {
+            manualScans += 1
+            return inventoryChanged
+        })
+        precondition(refreshAction.button.title == "Refresh Browsers")
+        precondition(manualScans == 0, "Never scan before the user clicks")
+        refreshAction.refreshBrowsers(refreshAction.button)
+        precondition(manualScans == 1)
+        precondition(refreshAction.status.stringValue == "Browser list is up to date.")
+        inventoryChanged = true
+        refreshAction.refreshBrowsers(refreshAction.button)
+        precondition(manualScans == 2, "Refresh must not reuse a cached result")
+        precondition(refreshAction.status.stringValue == "Browser list refreshed.")
+
         print("PASS: refreshed browser discovery, empty-state guidance and safe preferences.")
     }
 }

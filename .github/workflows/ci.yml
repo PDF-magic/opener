@@ -123,7 +123,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Refresh discovery on every native preferences open and verify empty-state guidance
+      - name: Verify on-open, live and manual browser refresh actions
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
@@ -214,6 +214,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
           "$RUNNER_TEMP/TestBraveOnlyDiscovery"
+      - name: Verify Safari-only installed browser discovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
+          "$RUNNER_TEMP/TestSafariOnlyDiscovery"
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
