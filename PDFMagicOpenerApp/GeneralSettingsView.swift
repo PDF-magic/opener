@@ -1,3 +1,4 @@
+import AppKit
 import CoreServices
 import SwiftUI
 import UniformTypeIdentifiers
@@ -61,7 +62,6 @@ func readGeneralPDFHandlerStatus(
 // General preferences are informational until configuration workflows are
 // implemented. Never mutate the active PDF handler, saved browser, or scanner.
 struct GeneralSettingsView: View {
-  @Environment(\.scenePhase) private var scenePhase
   @State private var pdfHandlerStatus: GeneralPDFHandlerStatus = .unknown
 
   private func refreshPDFHandlerStatus() {
@@ -137,10 +137,10 @@ struct GeneralSettingsView: View {
     }
     .accessibilityIdentifier("generalSettingsPage")
     .onAppear(perform: refreshPDFHandlerStatus)
-    .onChange(of: scenePhase) { phase in
-      if phase == .active {
-        refreshPDFHandlerStatus()
-      }
+    .onReceive(NotificationCenter.default.publisher(
+      for: NSApplication.didBecomeActiveNotification
+    )) { _ in
+      refreshPDFHandlerStatus()
     }
   }
 }
