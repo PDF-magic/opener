@@ -26,8 +26,12 @@ jobs:
         run: python3 test-missing-dependency-policy.py -v
       - name: Verify structured policies for every planned protection profile
         run: python3 test-structured-protection-policy.py -v
+      - name: Verify maximum processing time for each protection stage
+        run: python3 test-protection-stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
         run: python3 test-required-optional-profile-checks.py -v
+      - name: Resolve the effective protection policy without weakening mandatory checks
+        run: python3 test-effective-protection-policy.py -v
       - name: Verify fail-closed response to unsupported PDF features
         run: python3 test-unsupported-pdf-features.py -v
       - name: Verify General reset confirmation and scanner isolation
