@@ -13,17 +13,8 @@ from unittest.mock import patch
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True
-BROWSERS = {
-    "brave": "com.brave.Browser",
-    "chrome": "com.google.Chrome",
-    "firefox": "org.mozilla.firefox",
-    "safari": "com.apple.Safari",
-    "edge": "com.microsoft.edgemac",
-    "chromium": "org.chromium.Chromium",
-    "vivaldi": "com.vivaldi.Vivaldi",
-    "opera": "com.operasoftware.Opera",
-    "arc": "company.thebrowser.Browser",
-}
+from browser_registry import SUPPORTED_BROWSERS as BROWSERS
+
 selected = os.environ.get("PDF_MAGIC_TEST_BROWSER")
 if selected not in BROWSERS:
     raise SystemExit("Select one PDF_MAGIC_TEST_BROWSER: " + ", ".join(BROWSERS))

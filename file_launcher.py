@@ -4,6 +4,7 @@ Application selection belongs here, not in the ClamAV scan engine. Retain the
 PDF-to-Brave default while allowing a user-selected PDF bundle ID.
 """
 
+from browser_registry import DEFAULT_BROWSER_BUNDLE_ID
 from pathlib import Path
 import os
 import re
@@ -11,7 +12,7 @@ import stat
 import subprocess
 import sys
 
-PDF_DEFAULT_BUNDLE_ID = "com.brave.Browser"
+PDF_DEFAULT_BUNDLE_ID = DEFAULT_BROWSER_BUNDLE_ID
 PDF_OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
 PDF_SYSTEM_DEFAULT_BROWSER = "system-default-browser"
 DEFAULT_BROWSER_RESOLVER = Path(__file__).with_name("resolve-default-browser")
