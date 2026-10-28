@@ -24,7 +24,7 @@ class MainPreferencesWindowTests(unittest.TestCase):
         "NavigationSplitView",
         "List(MainPreferenceSection.allCases",
         "case general", "case browsers", "case security",
-        'title: "PDF Magic Opener"',
+        "GeneralSettingsView()",
         'title: "Browsers"',
         'case .security: return "Protection"',
         'ProtectionSettingsView()',
