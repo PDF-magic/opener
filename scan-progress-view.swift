@@ -68,16 +68,28 @@ enum ScanProgressStage {
     }
 }
 
+// The installed scan gate has one built-in, mandatory protection policy.
+// This is a display descriptor, NOT a selectable or health-verified profile:
+// a missing or failed scanner still blocks opening via the existing scan gate.
+private enum BuiltInProtectionProfile {
+    static let name = "Built-in"
+    static let details = "ClamAV malware scanning · fail-closed"
+}
+
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
     let queuedDocumentCountLabel = NSTextField(labelWithString: "0 documents queued")
+    let protectionProfileLabel = NSTextField(
+        labelWithString: "Active protection profile: " + BuiltInProtectionProfile.name)
+    let protectionProfileDetailsLabel = NSTextField(
+        labelWithString: BuiltInProtectionProfile.details)
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 362),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 406),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -85,24 +97,35 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 142, width: 300, height: 205)))
+            frame: NSRect(x: 30, y: 186, width: 300, height: 205)))
         stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         stageLabel.alignment = .center
-        stageLabel.frame = NSRect(x: 20, y: 117, width: 320, height: 22)
+        stageLabel.frame = NSRect(x: 20, y: 161, width: 320, height: 22)
         stageLabel.setAccessibilityLabel("Current scanning stage")
         contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 91, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 135, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
         queuedDocumentCountLabel.alignment = .center
         queuedDocumentCountLabel.font = .systemFont(ofSize: 12)
         queuedDocumentCountLabel.textColor = .secondaryLabelColor
-        queuedDocumentCountLabel.frame = NSRect(x: 20, y: 67, width: 320, height: 20)
+        queuedDocumentCountLabel.frame = NSRect(x: 20, y: 111, width: 320, height: 20)
         queuedDocumentCountLabel.setAccessibilityIdentifier("queuedDocumentCount")
         queuedDocumentCountLabel.setAccessibilityLabel(queuedDocumentCountLabel.stringValue)
         contentView?.addSubview(queuedDocumentCountLabel)
+        protectionProfileLabel.alignment = .center
+        protectionProfileLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        protectionProfileLabel.textColor = .secondaryLabelColor
+        protectionProfileLabel.frame = NSRect(x: 20, y: 85, width: 320, height: 20)
+        protectionProfileLabel.setAccessibilityLabel(protectionProfileLabel.stringValue)
+        contentView?.addSubview(protectionProfileLabel)
+        protectionProfileDetailsLabel.alignment = .center
+        protectionProfileDetailsLabel.font = .systemFont(ofSize: 11)
+        protectionProfileDetailsLabel.textColor = .secondaryLabelColor
+        protectionProfileDetailsLabel.frame = NSRect(x: 20, y: 65, width: 320, height: 18)
+        contentView?.addSubview(protectionProfileDetailsLabel)
         progressIndicator.style = .bar
         progressIndicator.isIndeterminate = true
         progressIndicator.startAnimation(nil)
