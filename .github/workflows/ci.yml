@@ -38,8 +38,6 @@ jobs:
         run: python3 test-pdf-embedded-executable-content.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
-      - name: Inspect PDF annotations without evaluating their contents
-        run: python3 test-pdf-annotations.py -v
       - name: Detect malformed PDF structures in the planned Enhanced stage
         run: python3 test-pdf-malformed-structures.py -v
       - name: Distinguish dangerous PDF behavior from legitimate features
@@ -242,6 +240,8 @@ jobs:
         run: python3 test-effective-policy-scan-results.py -v
       - name: Verify responses for every detection remain fail-closed
         run: python3 test-detection-responses.py -v
+      - name: Inspect PDF annotations without evaluating their contents
+        run: python3 test-pdf-annotations.py -v
 
   macos-build:
     runs-on: macos-latest
