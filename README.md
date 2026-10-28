@@ -226,6 +226,17 @@ It does not open any PDF, run a scan, or modify your selected post-scan browser
 Installation still registers the opener as before; this action allows you to
 restore it later if another application takes over.
 
+## Browser preference display (read-only)
+
+The optional native macOS browser-list view displays **each supplied installed browser's icon and name**, with its reported version behind a **Show version** disclosure. It consumes a JSON array of application metadata objects with `bundleIdentifier`, `name`, optional `version`, and optional base64 `iconTIFFBase64` fields. These match the read-only metadata contract in the separate opener-0129 work. Example input for a caller that already has browser discovery results:
+
+```sh
+printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
+  "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
+```
+
+Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
+
 ## PDF target application
 
 For a comparison of viewer capabilities, browser-specific settings, and
