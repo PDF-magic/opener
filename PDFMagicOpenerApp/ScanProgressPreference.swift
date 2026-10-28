@@ -125,6 +125,27 @@ enum GeneralPreferencesReset {
   }
 }
 
+// Create persisted presentation preferences on first launch without overwriting
+// user choices. The installed scanner continues to own its separate settings.
+enum InitialConfiguration {
+  @discardableResult
+  static func createIfNeeded(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    if defaults.object(forKey: ScanProgressPreference.key) == nil {
+      defaults.set(SupportedPreferenceDefaults.showScanProgress, forKey: ScanProgressPreference.key)
+    }
+    if defaults.object(forKey: SuccessfulScanNotificationPreference.key) == nil {
+      defaults.set(SupportedPreferenceDefaults.showSuccessfulScanNotifications, forKey: SuccessfulScanNotificationPreference.key)
+    }
+    if defaults.object(forKey: BlockedFileNotificationPreference.key) == nil {
+      defaults.set(false, forKey: BlockedFileNotificationPreference.key)
+    }
+    return defaults.synchronize()
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.
@@ -181,23 +202,5 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
 
   static func decoded(from data: Data) throws -> Self {
     return try JSONDecoder().decode(Self.self, from: data)
-  }
-}
-
-// Create persisted presentation preferences on first launch without overwriting
-// user choices. The installed scanner continues to own its separate settings.
-enum InitialConfiguration {
-  @discardableResult
-  static func createIfNeeded(
-    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
-  ) -> Bool {
-    guard let defaults else { return false }
-    if defaults.object(forKey: ScanProgressPreference.key) == nil {
-      defaults.set(true, forKey: ScanProgressPreference.key)
-    }
-    if defaults.object(forKey: SuccessfulScanNotificationPreference.key) == nil {
-      defaults.set(false, forKey: SuccessfulScanNotificationPreference.key)
-    }
-    return defaults.synchronize()
   }
 }
