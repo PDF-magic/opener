@@ -7,6 +7,7 @@ import tempfile
 source = Path(__file__).with_name('brave-pdf-opener.swift').read_text()
 classes = source.split("@main\nstruct PDFMagicOpenerEntry {")[0]
 classes += "\n" + Path(__file__).with_name("scan-progress-view.swift").read_text()
+classes += "\n" + (Path(__file__).parent / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text().replace("import Foundation\n", "")
 with tempfile.TemporaryDirectory(prefix='studio-opener-test-') as directory:
     root = Path(directory)
     (root / "twilight-reading.png").write_bytes(
@@ -52,10 +53,67 @@ DispatchQueue.main.async {{
             .contains(where: {{ $0.stringValue == "selected alias.pdf" }}) == true else {{
         fatalError("Progress must display the original requested alias filename")
     }}
+    precondition((panel as? ScanProgressPanel)?.stageLabel.stringValue == ScanProgressStage.starting.label,
+                 "Native scan must start in the pending-launch stage")
     delegate.application(app, open: [extraOne, extraTwo, extraThree])
+    guard let progress = panel as? ScanProgressPanel,
+          progress.filenameLabel.stringValue.contains("4 documents"),
+          ["selected alias.pdf", "Quarterly report – 2026.PDF"].contains(where: {{
+              progress.filenameLabel.stringValue.contains($0)
+          }}) else {{
+        fatalError("Concurrent scans must show an active filename and the document count")
+    }}
+    precondition(progress.queuedDocumentCountLabel.stringValue == "2 documents queued",
+                 "Two active scans leave exactly two queued documents")
+    precondition(progress.queuedDocumentCountLabel.accessibilityLabel() == "2 documents queued",
+                 "VoiceOver must receive the actual queued document count")
 }}
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {{
     delegate.application(app, open: [document, alias])
+    guard let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first,
+          progress.filenameLabel.stringValue.contains("4 documents"),
+          ["selected alias.pdf", "Quarterly report – 2026.PDF"].contains(where: {{
+              progress.filenameLabel.stringValue.contains($0)
+          }}) else {{
+        fatalError("Duplicate events must preserve active filename and pending count")
+    }}
+    precondition(progress.queuedDocumentCountLabel.stringValue == "2 documents queued",
+                 "Duplicate opens must not increase the queue count")
+}}
+// Assert the stage advances only when the harmless native scan child launches.
+func verifyLaunchedStage(_ attempts: Int = 0) {{
+    guard let panel = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first else {{
+        fatalError("Expected native progress panel")
+    }}
+    if panel.stageLabel.stringValue == ScanProgressStage.scanning.label {{
+        return
+    }}
+    precondition(attempts < 30, "Native scan never reported its launched stage")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
+        verifyLaunchedStage(attempts + 1)
+    }}
+}}
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
+    verifyLaunchedStage()
+}}
+// Observe the queue draining on the main run loop rather than assuming the
+// CI runner dispatches all four subprocesses within a bounded window.
+var observedQueueDrained = false
+func verifyWaitingQueueDrained(_ attempts: Int = 0) {{
+    guard let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first else {{
+        fatalError("Expected native progress panel while scans are queued")
+    }}
+    if progress.queuedDocumentCountLabel.stringValue == "0 documents queued" {{
+        observedQueueDrained = true
+        return
+    }}
+    precondition(attempts < 150, "Newly dispatched files must leave the waiting count")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {{
+        verifyWaitingQueueDrained(attempts + 1)
+    }}
+}}
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {{
+    verifyWaitingQueueDrained()
 }}
 // Capture an offscreen rendering of the drawing, without reading the desktop.
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{
@@ -66,12 +124,14 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{
     }}
 }}
 app.run()
+precondition(observedQueueDrained,
+             "Native scans finished before the queued document count reached zero")
 '''
     swift = root / 'test.swift'
     swift.write_text(harness)
     binary = root / 'opener'
     subprocess.run(['/usr/bin/xcrun', 'swiftc', str(swift), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True, timeout=15)
+    subprocess.run([str(binary)], check=True, timeout=35)
     events = [line.split(' ', 1) for line in calls.read_text().splitlines()]
     active = 0
     peak = 0

@@ -16,10 +16,64 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Verify safe versioned configuration loading
+        run: python3 -m unittest discover -p 'test-configuration-loading.py' -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Install maintained PDF parser for isolated Enhanced structure tests
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Verify strict PDF structure parsing with the maintained library
+        run: python3 test-pdf-structure-parser.py -v
+      - name: Verify built-in active protection profile label and unchanged scanner gates
+        run: python3 test-active-protection-profile.py -v
+      - name: Verify planned protection profile catalog and existing fail-closed policy
+        run: python3 test-protection-profiles.py -v
+      - name: Verify signature update check is within the existing 48-hour window
+        run: python3 test-signature-freshness-window.py -v
+      - name: Verify scanner-failure response policy and existing fail-closed gate
+        run: python3 test-scanner-failure-policy.py -v
+      - name: Verify fail-closed responses for missing protection dependencies
+        run: python3 test-missing-dependency-policy.py -v
+      - name: Verify structured policies for every planned protection profile
+        run: python3 test-structured-protection-policy.py -v
+      - name: Inspect embedded PDF attachments under the planned Enhanced policy
+        run: |
+          python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+          python3 test-enhanced-embedded-files.py -v
+      - name: Detect excessive PDF decompression requirements safely
+        run: python3 test-pdf-decompression-requirements.py -v
+      - name: Detect unexpected executable signatures in embedded PDF streams
+        run: python3 test-pdf-embedded-executable-content.py -v
+      - name: Inspect external PDF launch actions without executing targets
+        run: python3 test-pdf-external-launch-actions.py -v
+      - name: Detect malformed PDF structures in the planned Enhanced stage
+        run: python3 test-pdf-malformed-structures.py -v
+      - name: Distinguish dangerous PDF behavior from legitimate features
+        run: python3 test-pdf-behavior-classification.py -v
+      - name: Verify maximum processing time for each protection stage
+        run: python3 test-protection-stage-time-limits.py -v
+      - name: Verify required and optional checks for each protection profile
+        run: python3 test-required-optional-profile-checks.py -v
+      - name: Verify Maximum inherits every Enhanced protection requirement
+        run: python3 test-maximum-inherits-enhanced.py -v
+      - name: Test every planned profile admission against one reference PDF collection
+        run: python3 test-reference-pdf-profiles.py -v
+      - name: Identify PDF format and declared version from file bytes
+        run: python3 test-pdf-format-identification.py -v
+      - name: Resolve the effective protection policy without weakening mandatory checks
+        run: python3 test-effective-protection-policy.py -v
+      - name: Verify fail-closed response to unsupported PDF features
+        run: python3 test-unsupported-pdf-features.py -v
+      - name: Verify resource budgets for every protection policy stage
+        run: python3 test-protection-stage-resource-budgets.py -v
+      - name: Verify General reset confirmation and scanner isolation
+        run: python3 test-reset-general-preferences.py -v
+      - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
+        run: python3 test-reset-to-defaults.py -v
       - name: Verify main Dock icon and invisible PDF scan-helper policy
         run: python3 test-dock-behavior.py -v
+      - name: Verify selected destination browser display never changes scanner policy
+        run: python3 test-selected-destination-browser.py -v
       - name: Verify native window title and bundled application icon
         run: python3 test-native-window-branding.py -v
       - name: Verify independent SwiftUI application target
@@ -28,6 +82,10 @@ jobs:
         run: python3 test-about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: python3 test-main-preferences-window.py -v
+      - name: Audit increased system text size layout
+        run: python3 test-preferences-large-text.py -v
+      - name: Verify VoiceOver navigation labels
+        run: python3 test-voiceover-preferences-navigation.py -v
       - name: Verify keyboard navigation through preferences
         run: python3 test-preferences-keyboard-navigation.py -v
       - name: Verify About and Diagnostics settings page
@@ -38,12 +96,40 @@ jobs:
         run: python3 test-updates-settings-page.py -v
       - name: Verify dedicated General settings page
         run: python3 test-general-settings-page.py -v
+      - name: Verify persistent configuration storage location and user customizations
+        run: python3 test-configuration-location.py -v
+      - name: Verify upgrade preserves the installed PDF browser choice
+        run: python3 test-persistent-installer-preferences.py -v
+      - name: Verify versioned configuration contract without rewriting preferences
+        run: python3 test-configuration-schema.py -v
+      - name: Verify active scan count reports launched scans only
+        run: python3 test-active-scan-count.py -v
+      - name: Verify Show Scan Progress option and scanner safety
+        run: python3 test-show-scan-progress.py -v
+      - name: Verify Show Successful Scan Notifications option and fail-closed behavior
+        run: |
+          python3 test-show-successful-scan-notifications.py -v
+          python3 test-show-blocked-file-notifications.py -v
+      - name: Verify verified default PDF browser selector
+        run: python3 test-default-pdf-browser-selector.py -v
+      - name: Verify default PDF handler indicator is read-only
+        run: python3 test-general-pdf-handler-indicator.py -v
+      - name: Verify explicit General default PDF association action
+        run: python3 test-general-default-pdf-action.py -v
+      - name: Verify opt-in Restore Previous Default action
+        run: python3 test-general-restore-previous-default.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: python3 test-browsers-settings-page.py -v
+      - name: Verify explanatory help for technical preferences
+        run: python3 test-technical-preferences-help.py -v
+      - name: Verify Extensions and Integrations settings page
+        run: python3 test-extensions-integrations-settings-page.py -v
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
       - name: Verify menu-bar status item decision
         run: python3 test-menu-bar-decision.py -v
+      - name: Verify Launch at Login is unnecessary for the standalone preferences app
+        run: python3 test-launch-at-login-decision.py -v
       - name: Verify native application Quit action
         run: python3 test-native-quit-action.py -v
       - name: Verify opt-in PDF default-handler action
@@ -56,13 +142,23 @@ jobs:
         run: python3 test-offer-restore-pdf-handler.py -v
       - name: Verify macOS PDF default-handler status reporting
         run: python3 test-pdf-handler-status.py -v
+      - name: Verify active scan policy cannot change during execution
+        run: python3 test-scan-policy-snapshot.py -v
+      - name: Verify macOS quarantine remains after clean, cached, and blocked scans
+        run: python3 test-retain-os-quarantine.py -v
+      - name: Verify Standard baseline parity with the existing scanner
+        run: python3 test-standard-scanner-parity.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
+      - name: Verify Standard signature database files exist before scanning
+        run: python3 test-signature-database-existence.py -v
       - name: Verify cancellation and scanner process-group cleanup
         timeout-minutes: 2
         run: python3 test-cancellation.py -v
       - name: Verify detection and opening decisions are separate
         run: python3 test-detection-policy.py -v
+      - name: Verify scanner errors are not presented as malware detections
+        run: python3 test-scan-failure-presentation.py -v
       - name: Verify optional browser download identifiers
         run: python3 test-browser-download-id.py -v
       - name: Verify supported browser bundle identifier registry
@@ -73,10 +169,16 @@ jobs:
         run: python3 test-external-drives.py -v
       - name: Verify download-availability launch gate
         run: python3 test-download-availability.py -v
+      - name: Inspect PDF annotations without evaluating their contents
+        run: python3 test-pdf-annotations.py -v
       - name: Verify locally accessible iCloud Drive PDFs
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
         run: python3 test-pdf-filename-paths.py -v
+      - name: Reject unsupported configuration values and fill absent keys safely
+        run: python3 test-configuration-values.py -v
+      - name: Validate persisted PDF application configuration and reject unsafe files
+        run: python3 test-configuration-validation.py -v
       - name: Verify configurable PDF targets including Arc and Opera
         run: python3 test-target-app.py
       - name: Verify Microsoft Edge PDF launch routing and fail-closed behavior
@@ -141,6 +243,8 @@ jobs:
         run: python3 test-scan-request.py
       - name: Verify file lifecycle state transitions
         run: python3 test-file-lifecycle.py
+      - name: Measure extra Enhanced analysis time without changing scan outcomes
+        run: python3 test-enhanced-analysis-timing.py -v
       - name: Verify cross-process scan concurrency
         run: python3 test-scan-concurrency.py
       - name: Verify native owner termination aborts active scans
@@ -148,6 +252,18 @@ jobs:
 
       - name: Verify scan result contract
         run: python3 test-scan-results.py
+      - name: Verify structured Enhanced analysis findings and incomplete-stage safety
+        run: python3 test-enhanced-analysis-findings.py -v
+      - name: Explain each Enhanced analysis finding with safe handling guidance
+        run: python3 test-enhanced-finding-explanations.py -v
+      - name: Determine which Enhanced findings require additional inspection
+        run: python3 test-enhanced-additional-inspections.py -v
+      - name: Verify effective protection policy identifier in scan results
+        run: python3 test-effective-policy-scan-results.py -v
+      - name: Verify responses for every detection remain fail-closed
+        run: python3 test-detection-responses.py -v
+      - name: Inspect suspicious embedded PDF URLs without fetching destinations
+        run: python3 test-pdf-suspicious-urls.py -v
 
   macos-build:
     runs-on: macos-latest
@@ -162,6 +278,10 @@ jobs:
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
+      - name: Verify atomic and cross-process configuration persistence and failure safety
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift test-atomic-configuration-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
+          "$RUNNER_TEMP/TestAtomicConfigurationWriter"
       - name: Build SwiftUI application target without registering PDF handling
         run: |
           plutil -lint PDFMagicOpener.xcodeproj/project.pbxproj
@@ -169,6 +289,22 @@ jobs:
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
+      - name: Exercise SwiftUI preferences at increased text sizes
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors \
+            PDFMagicOpenerApp/*SettingsView.swift PDFMagicOpenerApp/MainPreferencesView.swift \
+            PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
+            PDFMagicOpenerApp/ScanProgressPreference.swift \
+            test-preferences-large-text.swift -o "$RUNNER_TEMP/TestPreferencesLargeText"
+          "$RUNNER_TEMP/TestPreferencesLargeText"
+      - name: Test General PDF handler status against Launch Services
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors \
+            PDFMagicOpenerApp/GeneralSettingsView.swift PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
+            PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift \
+            PDFMagicOpenerApp/ScanProgressPreference.swift \
+            test-general-pdf-handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
+          "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
       - name: Verify built app icon and macOS window branding
         run: |
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
@@ -195,10 +331,67 @@ jobs:
           assert "CFBundleDocumentTypes" not in info
           ABOUT_PLIST
           cmp LICENSE "$app/Contents/Resources/LICENSE"
+      - name: Verify opt-in successful scan notifications in isolated user defaults
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+          "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+      - name: Verify confirmed General preference reset preserves customizations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
+          "$RUNNER_TEMP/TestResetGeneralPreferences"
+      - name: Test versioned configuration serialization and compatibility
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
+          "$RUNNER_TEMP/TestConfigurationSchema"
+      - name: Verify active configuration schema version is persisted safely
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-active-schema-version.swift -o "$RUNNER_TEMP/TestActiveSchemaVersion"
+          "$RUNNER_TEMP/TestActiveSchemaVersion"
+      - name: Verify safe malformed configuration recovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+          "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+      - name: Test legacy configuration schema upgrades without resetting preferences
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
+          "$RUNNER_TEMP/TestConfigurationMigration"
+      - name: Verify additive policy settings upgrade preserves saved preferences
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-policy-settings-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
+          "$RUNNER_TEMP/TestPolicySettingsUpgrade"
+      - name: Verify all processes refresh the same effective configuration
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
+          "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
+          python3 test-cross-process-configuration.py -v
+      - name: Verify shared scan-progress setting uses isolated user defaults
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
+          "$RUNNER_TEMP/TestShowScanProgress"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-initial-configuration.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
+          "$RUNNER_TEMP/TestInitialConfiguration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
+          "$RUNNER_TEMP/TestSelectedProtectionProfile"
+      - name: Verify settings survive app restart and replacement executable
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+          "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+      - name: Verify editing preferences while the malware scan is running
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-preferences-during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
+          PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" python3 test-preferences-during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           python3 test-scan-progress-component.py -v
+      - name: Verify General PDF association action with synthetic apps only
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-default-pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
+          "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
+      - name: Verify Restore Previous Default safely with synthetic handler status
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-restore-previous-default.swift -o "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
+          "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
@@ -337,12 +530,24 @@ jobs:
       - name: Verify PDF drop onto an explicitly selected macOS app
         timeout-minutes: 3
         run: python3 test-pdf-drag-drop.py
+      - name: Display native scanner initialization failures and preserve fail-closed scan behavior
+        run: python3 test-scanner-initialization-errors.py -v
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
+      - name: Verify actual multi-document progress and unknown single-file progress
+        timeout-minutes: 3
+        run: python3 test-native-determinate-progress.py -v
+      - name: Verify scan failures identify the PDF and show useful details
+        timeout-minutes: 2
+        run: python3 test-native-scan-failure.py
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: python3 test-native-cancellation.py
+      - name: Verify hidden progress does not bypass native scan dispatch
+        run: python3 test-native-hidden-scan-progress.py
+      - name: Verify quarantine extended attributes remain intact on macOS
+        run: python3 test-retain-os-quarantine.py -v
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: python3 test-scan-resource-cleanup.py
@@ -356,3 +561,8 @@ jobs:
       - name: Verify per-request timestamps and duplicate suppression
         timeout-minutes: 5
         run: python3 test-request-timestamp.py
+
+      - name: Verify supported setting defaults and existing user overrides
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
+          "$RUNNER_TEMP/TestSupportedPreferenceDefaults"

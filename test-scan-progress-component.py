@@ -32,16 +32,176 @@ precondition(panel.title == "PDF Magic Opener — Scanning")
 precondition(!panel.hidesOnDeactivate && panel.level == .floating)
 precondition(panel.progressIndicator.isIndeterminate)
 precondition(panel.cancelButton.title == "Cancel")
+precondition(panel.protectionProfileLabel.stringValue == "Active protection profile: Built-in")
+precondition(panel.protectionProfileDetailsLabel.stringValue == "ClamAV malware scanning · fail-closed")
+precondition(panel.protectionProfileLabel.accessibilityLabel() == "Active protection profile: Built-in")
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.protectionProfileLabel }) == true)
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.protectionProfileDetailsLabel }) == true)
+precondition(panel.protectionProfileLabel.frame.minY > panel.progressIndicator.frame.maxY)
+precondition(panel.filenameLabel.frame.minY > panel.protectionProfileLabel.frame.maxY)
+precondition(panel.activeScansLabel.stringValue == "Active scans: 0")
+precondition(panel.activeScansLabel.accessibilityLabel() == "Active scans: 0")
+precondition(panel.activeScansLabel.accessibilityIdentifier() == "activeScanCount")
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.activeScansLabel }) == true)
+precondition(panel.activeScansLabel.frame.minY > panel.protectionProfileLabel.frame.maxY)
+precondition(panel.queuedDocumentCountLabel.stringValue == "0 documents queued")
+precondition(panel.queuedDocumentCountLabel.accessibilityLabel() == "0 documents queued")
+precondition(panel.queuedDocumentCountLabel.accessibilityIdentifier() == "queuedDocumentCount")
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.queuedDocumentCountLabel }) == true)
+precondition(panel.queuedDocumentCountLabel.frame.minY > panel.protectionProfileLabel.frame.maxY)
+precondition(panel.activeScansLabel.frame.minY > panel.queuedDocumentCountLabel.frame.maxY)
+precondition(panel.filenameLabel.frame.minY > panel.activeScansLabel.frame.maxY)
+precondition(panel.stageLabel.stringValue == ScanProgressStage.queued.label)
+precondition(panel.stageLabel.accessibilityLabel() == "Current scanning stage")
 precondition(panel.contentView?.subviews.contains(where: { $0 is TwilightReadingView }) == true)
-panel.show(documentDescription: "folder/Unicode – report.pdf")
+panel.updateBatchProgress((completed: 0, total: 1))
+precondition(panel.progressIndicator.isIndeterminate)
+panel.updateBatchProgress((completed: 0, total: 2))
+precondition(!panel.progressIndicator.isIndeterminate)
+precondition(panel.progressIndicator.minValue == 0)
+precondition(panel.progressIndicator.maxValue == 2)
+precondition(panel.progressIndicator.doubleValue == 0)
+panel.updateBatchProgress((completed: 1, total: 2))
+precondition(panel.progressIndicator.doubleValue == 1)
+precondition(panel.progressIndicator.accessibilityLabel()
+             == "1 of 2 document requests processed")
+panel.updateBatchProgress((completed: 3, total: 2))
+precondition(panel.progressIndicator.isIndeterminate)
+panel.updateBatchProgress(nil)
+precondition(panel.progressIndicator.isIndeterminate)
+precondition(panel.progressIndicator.accessibilityLabel()
+             == "Individual scan progress is unknown")
+panel.show(documentDescription: "folder/Unicode – report.pdf", stage: .starting,
+           queuedDocumentCount: 1, activeScans: 0)
+precondition(panel.queuedDocumentCountLabel.stringValue == "1 document queued")
+precondition(panel.activeScansLabel.stringValue == "Active scans: 0")
 precondition(panel.filenameLabel.stringValue == "folder/Unicode – report.pdf")
-panel.show(documentDescription: "3 documents")
+precondition(panel.stageLabel.stringValue == "Starting safety checks…")
+panel.show(documentDescription: "3 documents", stage: .scanning,
+           queuedDocumentCount: 3, activeScans: 1)
+precondition(panel.queuedDocumentCountLabel.stringValue == "3 documents queued")
+precondition(panel.queuedDocumentCountLabel.accessibilityLabel() == "3 documents queued")
+precondition(panel.activeScansLabel.stringValue == "Active scans: 1")
+panel.show(documentDescription: "3 documents", stage: .scanning, activeScans: 2)
+precondition(panel.activeScansLabel.stringValue == "Active scans: 2")
+precondition(panel.activeScansLabel.accessibilityLabel() == "Active scans: 2")
 precondition(panel.filenameLabel.stringValue == "3 documents")
+panel.show(documentDescription: "last.pdf", stage: .starting,
+           queuedDocumentCount: 0, activeScans: 0)
+precondition(panel.queuedDocumentCountLabel.stringValue == "0 documents queued")
+precondition(panel.activeScansLabel.stringValue == "Active scans: 0")
+precondition(panel.filenameLabel.stringValue == "last.pdf")
+panel.show(documentDescription: "3 documents", stage: .scanning, activeScans: 2)
+precondition(panel.protectionProfileLabel.stringValue == "Active protection profile: Built-in")
+precondition(panel.protectionProfileDetailsLabel.stringValue == "ClamAV malware scanning · fail-closed")
+precondition(panel.stageLabel.stringValue == "Scanning and verifying document…")
+precondition(panel.destinationBrowserLabel.stringValue == "Destination browser: Unavailable")
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.destinationBrowserLabel }) == true)
+precondition(panel.destinationBrowserLabel.frame.minY > panel.progressIndicator.frame.maxY)
+precondition(panel.filenameLabel.frame.minY > panel.destinationBrowserLabel.frame.maxY)
+
+let fixture = FileManager.default.temporaryDirectory
+    .appendingPathComponent("selected-browser-\\(UUID().uuidString)", isDirectory: true)
+try FileManager.default.createDirectory(at: fixture, withIntermediateDirectories: true)
+let preference = fixture.appendingPathComponent("target-app.txt")
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Brave",
+             "missing preferences must use the established Brave default")
+try "com.google.Chrome\\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Google Chrome")
+panel.updateDestinationBrowser(SelectedDestinationBrowser.displayName(in: fixture))
+precondition(panel.destinationBrowserLabel.stringValue == "Destination browser: Google Chrome")
+precondition(panel.destinationBrowserLabel.accessibilityLabel() == "Destination browser: Google Chrome")
+try "system-default-browser\\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "System default browser")
+try "org.mozilla.firefox\\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Firefox")
+try "com.example.viewer\\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) ==
+             "Custom application (com.example.viewer)", "custom selection must not be overwritten")
+for invalid in ["local.studio.brave-pdf-opener", "bad..identifier", "invalid path", ""] {
+    try invalid.write(to: preference, atomically: true, encoding: .ascii)
+    precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Unavailable",
+                 "invalid identifiers must never appear as selected browsers")
+}
+try FileManager.default.removeItem(at: preference)
+let elsewhere = fixture.appendingPathComponent("elsewhere")
+try "com.apple.Safari\\n".write(to: elsewhere, atomically: true, encoding: .ascii)
+try FileManager.default.createSymbolicLink(at: preference, withDestinationURL: elsewhere)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Unavailable",
+             "never follow a symlinked preference file")
+try FileManager.default.removeItem(at: fixture)
+precondition(panel.protectionProfileDetailsLabel.frame.minY > panel.destinationBrowserLabel.frame.maxY)
 precondition(panel.contentView?.subviews.contains(where: { $0 === panel.cancelButton }) == true)
+precondition(panel.enhancedFindingsLabel.isHidden)
+precondition(panel.enhancedFindingsScrollView.isHidden)
+precondition(panel.contentView?.frame.height == 458)
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.enhancedFindingsScrollView }) == true)
+let findingReport: [String: Any] = [
+    "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": true,
+    "stageResults": [
+        [
+            "stage": "embeddedUrls", "outcome": "completed",
+            "findings": [[
+                "code": "suspiciousUrl", "severity": "suspicious",
+                "objectNumber": 12, "pageNumber": NSNull(),
+                "result": [
+                    "outcome": "reviewRequired",
+                    "nextAction": "requestReviewBeforeOpening",
+                    "explanation": "https://sensitive.invalid/never-display",
+                ],
+            ]],
+        ],
+        ["stage": "javascriptActions", "outcome": "notRun", "findings": []],
+    ],
+]
+let findingData = try JSONSerialization.data(withJSONObject: findingReport)
+panel.updateEnhancedFindings(from: findingData)
+precondition(panel.contentView?.frame.height == 650)
+precondition(!panel.enhancedFindingsLabel.isHidden)
+precondition(!panel.enhancedFindingsScrollView.isHidden)
+precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 1"))
+precondition(panel.enhancedFindingsLabel.stringValue.contains("incomplete stages: 1"))
+precondition(panel.enhancedFindingsLabel.accessibilityIdentifier() == "enhancedFindingsSummary")
+precondition(panel.enhancedFindingsTextView.accessibilityIdentifier() == "enhancedFindingsDetails")
+precondition(panel.enhancedFindingsTextView.string.contains("Embedded URLs"))
+precondition(panel.enhancedFindingsTextView.string.contains("Suspicious URL"))
+precondition(panel.enhancedFindingsTextView.string.contains("Review required"))
+precondition(panel.enhancedFindingsTextView.string.contains("JavaScript actions: inspection not run"))
+precondition(!panel.enhancedFindingsTextView.string.contains("sensitive.invalid"))
+precondition(panel.protectionProfileLabel.stringValue == "Active protection profile: Built-in")
+precondition(panel.cancelButton.title == "Cancel")
+var badReport = findingReport
+badReport["stageResults"] = [[
+    "stage": "embeddedUrls", "outcome": "completed",
+    "findings": [[
+        "code": "suspiciousUrl", "severity": "critical",
+        "result": ["outcome": "recorded", "nextAction": "continueRequiredChecks",
+                   "explanation": "SECRET /Users/private/input.pdf"],
+    ]],
+]]
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: badReport))
+precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+precondition(panel.enhancedFindingsTextView.string.contains("could not be verified"))
+precondition(!panel.enhancedFindingsTextView.string.contains("SECRET"))
+panel.updateEnhancedFindings(from: Data(repeating: 65, count: 256 * 1024 + 1))
+precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+let emptyReport: [String: Any] = [
+    "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": false,
+    "stageResults": [["stage": "annotations", "outcome": "completed", "findings": []]],
+]
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: emptyReport))
+precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 0"))
+precondition(panel.enhancedFindingsTextView.string.contains("not a clean verdict"))
+panel.updateEnhancedFindings(from: nil)
+precondition(panel.enhancedFindingsLabel.isHidden)
+precondition(panel.enhancedFindingsScrollView.isHidden)
+precondition(panel.enhancedFindingsTextView.string.isEmpty)
+precondition(panel.contentView?.frame.height == 458)
+precondition(panel.progressIndicator.isIndeterminate)
 panel.cancelButton.performClick(nil)
 precondition(owner.pressed, "The caller owns cancellation")
 panel.orderOut(nil)
-print("PASS: one shared native progress panel, animation, updates and caller-owned Cancel")
+print("PASS: one shared native progress panel, stage transitions, animation and caller-owned Cancel")
 """)
             binary = root / "progress"
             subprocess.run(["/usr/bin/xcrun", "swiftc", "-warnings-as-errors",

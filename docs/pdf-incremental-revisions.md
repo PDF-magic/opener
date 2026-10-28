@@ -1,0 +1,7 @@
+# Incremental PDF revision inspection — opener-0291
+
+This planned Enhanced-only, passive building block inspects actual historical cross-reference structures through the final startxref and /Prev chain rather than assuming the last PDF object graph is the whole document. The immutable report counts revisions, distinct newly indexed and overwritten object IDs, and chronological xref table/stream/hybrid formats.
+
+The inspector supports ordinary xref tables, xref streams with uncompressed or bounded FlateDecode indexing data, and hybrid tables. It fails closed on invalid historical pointers, unreadable or encrypted PDFs, unsupported filters/predictors, compressed object streams, overlarge data, excess objects or revisions, and missing parser dependencies. Budgets: 16 MiB input, 1,024 pages, 64 revisions, 8,192 xref entries per section. Errors have fixed, non-document-derived text.
+
+A replacement count is structural evidence only, not proof of malicious activity or a clean document. Historical object *contents* still require separate analysis before any profile can rely on them. No scripts, actions, files, or PDF content are executed. The inspector always returns permits_open=False. It is not wired into the active scan and launch path, and no Standard/Enhanced/Maximum policy becomes selectable. Future activation requires isolated memory/time budgets and integration with the complete scanning pipeline. Built-in ClamAV, signatures, cache, quarantine, handoff, saved user preferences and browser customization remain unchanged.

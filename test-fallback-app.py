@@ -94,7 +94,10 @@ class FallbackTests(unittest.TestCase):
         launches = [c[2] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)]
         self.assertEqual(launches, ["com.brave.Browser", "com.apple.Preview"])
         self.assertEqual(self.destinations(), ["com.brave.Browser", "com.apple.Preview"])
-        self.assertTrue(any(call.kwargs.get("allow_ctime_change") is True for call in check.call_args_list))
+        # Quarantine stays intact through primary and fallback handoffs.
+        self.assertGreaterEqual(check.call_count, 2)
+        self.assertFalse(any(call.kwargs.get("allow_ctime_change") is True
+                             for call in check.call_args_list))
         quarantine.assert_called_once()
 
     def test_unverified_fallback_does_not_displace_working_primary(self):

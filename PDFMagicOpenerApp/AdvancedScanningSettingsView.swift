@@ -18,7 +18,8 @@ struct AdvancedScanningSettingsView: View {
         GroupBox {
           scanningDetail(
             "Local malware checks",
-            "The installed workflow runs ClamAV before handing a document to the selected application. Opening this page does not start or skip a scan."
+            "The installed workflow runs ClamAV before handing a document to the selected application. Opening this page does not start or skip a scan.",
+            helpText: "Malware signatures are local definitions used by ClamAV to check files. The settings page does not inspect signature freshness."
           )
         } label: {
           Label("Malware scanning", systemImage: "checkmark.shield")
@@ -28,7 +29,8 @@ struct AdvancedScanningSettingsView: View {
         GroupBox {
           scanningDetail(
             "Files awaiting download",
-            "Files must be available locally before the existing workflow can scan and open them. This page does not override those readiness checks."
+            "Files must be available locally before the existing workflow can scan and open them. This page does not override those readiness checks.",
+            helpText: "A cloud placeholder or unfinished download may not contain readable file data yet; the installed handler waits for a locally available file."
           )
         } label: {
           Label("File readiness", systemImage: "doc.badge.clock")
@@ -38,7 +40,8 @@ struct AdvancedScanningSettingsView: View {
         GroupBox {
           scanningDetail(
             "Unsuccessful scans",
-            "The existing opening workflow decides whether a file can be handed off after scanning. No bypass, approval, or exception control is offered here."
+            "The existing opening workflow decides whether a file can be handed off after scanning. No bypass, approval, or exception control is offered here.",
+            helpText: "An inconclusive or interrupted scan is not a clean result. This page cannot approve a file or override the opening decision."
           )
         } label: {
           Label("Scan results", systemImage: "exclamationmark.shield")
@@ -56,13 +59,18 @@ struct AdvancedScanningSettingsView: View {
     .accessibilityIdentifier("advancedScanningSettingsPage")
   }
 
-  private func scanningDetail(_ title: String, _ detail: String) -> some View {
+  private func scanningDetail(_ title: String, _ detail: String, helpText: String) -> some View {
     VStack(alignment: .leading, spacing: 8) {
       Text(title)
         .font(.headline)
       Text(detail)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
+      Label(helpText, systemImage: "info.circle")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+        .help(helpText)
     }
     .padding(12)
     .frame(maxWidth: .infinity, alignment: .leading)

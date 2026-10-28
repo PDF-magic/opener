@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the standalone, read-only General preferences page (opener-0178)."""
+"""Verify the General preferences page and unrelated scanner safety."""
 
 from pathlib import Path
 import unittest
@@ -30,6 +30,8 @@ class GeneralSettingsPageTests(unittest.TestCase):
         'Label("Current configuration", systemImage: "gearshape")',
         "ClamAV",
         "selected application",
+        'Picker("Browser for scanned PDFs", selection: Binding(',
+        'accessibilityIdentifier("defaultPDFBrowserSelector")',
         'accessibilityIdentifier("generalSettingsPage")',
     ):
       with self.subTest(expected=expected):
@@ -38,6 +40,7 @@ class GeneralSettingsPageTests(unittest.TestCase):
   def test_page_is_compiled_in_xcode_target(self):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = GeneralSettingsView.swift;", project)
+    self.assertIn("path = DefaultPDFBrowserPreferences.swift;", project)
     self.assertIn("fileRef = A1000000000000000000001B;", project)
     sources = project.split("isa = PBXSourcesBuildPhase;", 1)[1].split(
         "runOnlyForDeploymentPostprocessing", 1)[0]
@@ -45,11 +48,11 @@ class GeneralSettingsPageTests(unittest.TestCase):
 
   def test_general_page_cannot_mutate_preferences_or_bypass_scanning(self):
     page = GENERAL.read_text(encoding="utf-8")
+    self.assertIn('Toggle("Show Scan Progress"', page)
     for prohibited in (
         "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
         "Process(", "write(to:", "LSSetDefault", "setDefault",
         "onOpenURL", "DocumentGroup", "target-app.txt",
-        "Button(", "Toggle(", "Picker(",
     ):
       with self.subTest(prohibited=prohibited):
         self.assertNotIn(prohibited, page)

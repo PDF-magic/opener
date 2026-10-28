@@ -1,5 +1,58 @@
 import AppKit
 import Carbon.HIToolbox
+import UserNotifications
+
+// The native PDF owner (not the standalone Settings app) requests macOS
+// notification authorization on the first opted-in successful handoff.
+// Notification delivery is best effort, never part of the scan verdict.
+// Never put document paths, names, or scan diagnostics in notifications.
+func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
+    let center = UNUserNotificationCenter.current()
+    func enqueue() {
+        let content = UNMutableNotificationContent()
+        content.title = "PDF Magic Opener"
+        content.body = "A PDF passed scanning and was handed off to your chosen application."
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                            content: content, trigger: nil)
+        center.add(request) { _ in completion() }
+    }
+    center.getNotificationSettings { settings in
+        switch settings.authorizationStatus {
+        case .authorized, .provisional:
+            enqueue()
+        case .notDetermined:
+            center.requestAuthorization(options: [.alert]) { allowed, _ in
+                if allowed { enqueue() } else { completion() }
+            }
+        default:
+            // Denied or restricted by macOS: never bypass system permissions.
+            completion()
+        }
+    }
+}
+
+// This notice is optional and deliberately contains no scan diagnostics or file names.
+func deliverBlockedFileNotification(completion: @escaping () -> Void) {
+    let center = UNUserNotificationCenter.current()
+    func enqueue() {
+        let content = UNMutableNotificationContent()
+        content.title = "PDF Magic Opener"
+        content.body = "A PDF could not be opened because its safety check failed."
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                            content: content, trigger: nil)
+        center.add(request) { _ in completion() }
+    }
+    center.getNotificationSettings { settings in
+        switch settings.authorizationStatus {
+        case .authorized, .provisional: enqueue()
+        case .notDetermined:
+            center.requestAuthorization(options: [.alert]) { allowed, _ in
+                if allowed { enqueue() } else { completion() }
+            }
+        default: completion()
+        }
+    }
+}
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
 struct ScanRequest {
@@ -14,6 +67,29 @@ func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows ->
         errors.fileHandleForWriting.closeFile()
     }
     return try operation(errors)
+}
+
+// Initialization diagnostics are selected from known, path-free scanner messages.
+// Do not present arbitrary process errors as verified initialization diagnoses.
+enum ScannerInitializationError {
+    static let missingHelper = "The installed scan helper is missing. Reinstall PDF Magic Opener."
+    static let launchFailed = "The scan helper could not start. Reinstall PDF Magic Opener."
+
+    private static let knownScannerMessages: Set<String> = [
+        "ClamAV is unavailable. Run the Allow and Open installer again.",
+        "Malware signatures are unavailable. Run update-malware-signatures.sh.",
+        "Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.",
+        "The malware signature database is incomplete. Run update-malware-signatures.sh."
+    ]
+
+    static func displayedMessage(for failure: String) -> String? {
+        let message = failure.trimmingCharacters(in: .whitespacesAndNewlines)
+        if message == missingHelper || message == launchFailed ||
+            knownScannerMessages.contains(message) {
+            return message
+        }
+        return nil
+    }
 }
 
 // Preserve the sending application reported by macOS, never infer a source
@@ -50,13 +126,39 @@ func currentRequestSource() -> String {
     return "unknown"
 }
 
+// Present the requested filename, not the canonical scan target or a generic
+// progress count. Failure alerts remain visible even if progress is disabled.
+func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
+    let filename = URL(fileURLWithPath: requestedPath).lastPathComponent
+    let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
+    let explanation = reason.isEmpty
+        ? "The scan or file handoff returned no additional error details."
+        : String(reason.prefix(1600))
+    let alert = NSAlert()
+    alert.alertStyle = .critical
+    alert.messageText = "PDF could not be opened"
+    alert.informativeText = "File: \(filename)\n\nThe safety scan or destination handoff failed. "
+        + "PDF Magic Opener did not open this file.\n\nDetails: \(explanation)"
+    if let initialization = ScannerInitializationError.displayedMessage(for: reason) {
+        alert.messageText = "Scanner initialization failed"
+        alert.informativeText = "File: \(filename)\n\nThe scanner could not initialize. "
+            + "PDF Magic Opener did not open this file.\n\nDetails: \(initialization)"
+    }
+    alert.addButton(withTitle: "OK")
+    return alert
+}
+
 final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
+    // A finished request is not necessarily a safe or approved document.
+    private var finishedRequests = 0
     private let maxConcurrentScans = 2
     private var queued = [String]()
     private var running = Set<String>()
+    // Main-thread-only: requests whose native scan-gate child has actually launched.
+    private var launchedScans = Set<String>()
     private let processLock = NSLock()
     private var activeProcesses = [String: Process]()
     private var cancelledRequests = Set<String>()
@@ -73,6 +175,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     // Hold the native scan-gate stdin writer open while its owner is alive.
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
+    private var pendingSuccessNotifications = 0
 
     func applicationWillTerminate(_ notification: Notification) {
         terminating = true
@@ -106,6 +209,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             }
         }
         queued.removeAll()
+        launchedScans.removeAll()
         processLock.lock()
         for path in running {
             cancelledRequests.insert(path)
@@ -119,17 +223,47 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     private func showProgress() {
+        // Presentation only: hidden progress must not skip or cancel scans.
+        // Each request still enters the unchanged queue and scanner gate.
+        guard ScanProgressPreference.isEnabled() else {
+            panel?.orderOut(nil)
+            return
+        }
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
         }
-        let description: String
-        if pending.count == 1, let path = pending.first {
-            description = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
-        } else {
-            description = "\(pending.count) documents"
+        // Prefer a currently scanning file; use a queued request before launch.
+        // Sorting makes the displayed filename stable when two scans run together.
+        guard let path = running.sorted().first ?? queued.first ?? pending.sorted().first else {
+            panel?.orderOut(nil)
+            return
         }
-        panel?.show(documentDescription: description)
+        let filename = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
+        let description = pending.count == 1
+            ? filename
+            : "\(filename) (\(pending.count) documents)"
+        // A queued request is not a running scan; a scheduled worker is not
+        // a launched scanner. Never infer an internal ClamAV substage.
+        let stage: ScanProgressStage
+        if !launchedScans.isEmpty {
+            stage = .scanning
+        } else if !running.isEmpty {
+            stage = .starting
+        } else {
+            stage = .queued
+        }
+        // Display the read-only selection, never substitute a launch destination.
+        panel?.updateDestinationBrowser(SelectedDestinationBrowser.displayName())
+        panel?.show(documentDescription: description, stage: stage,
+                    queuedDocumentCount: queued.count,
+                    activeScans: launchedScans.count)
+        // The scan gate provides no per-file percentage; only requests
+        // actually finished within a multi-document batch are measurable.
+        let totalRequests = finishedRequests + pending.count
+        let batchProgress: (completed: Int, total: Int)? = totalRequests > 1
+            ? (completed: finishedRequests, total: totalRequests) : nil
+        panel?.updateBatchProgress(batchProgress)
     }
 
     private func startQueuedScans() {
@@ -170,13 +304,30 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     self.processLock.unlock()
                     return nil
                 }
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: script.path, isDirectory: &isDirectory),
+                      !isDirectory.boolValue else {
+                    self.processLock.unlock()
+                    return ScannerInitializationError.missingHelper
+                }
                 do {
                     try process.run()
                     self.activeProcesses[path] = process
                     self.processLock.unlock()
+                    DispatchQueue.main.async {
+                        // Cancel or completion may have already hidden the panel.
+                        self.processLock.lock()
+                        let cancelled = self.cancelledRequests.contains(path)
+                        self.processLock.unlock()
+                        guard !cancelled, !self.terminating, self.pending.contains(path) else {
+                            return
+                        }
+                        self.launchedScans.insert(path)
+                        self.showProgress()
+                    }
                 } catch {
                     self.processLock.unlock()
-                    return error.localizedDescription
+                    return ScannerInitializationError.launchFailed
                 }
                 errors.fileHandleForWriting.closeFile()
                 let output = errors.fileHandleForReading.readDataToEndOfFile()
@@ -195,7 +346,14 @@ DispatchQueue.main.async {
                 if let pipe = self.scanLifetimes.removeValue(forKey: path) {
                     try? pipe.fileHandleForWriting.close()
                 }
+                // Capture the user's original filename before per-request cleanup.
+                let requestedPath = self.requestedPaths[path] ?? path
                 self.running.remove(path)
+                self.launchedScans.remove(path)
+                self.processLock.lock()
+                let wasCancelled = self.cancelledRequests.contains(path)
+                self.processLock.unlock()
+                if !wasCancelled { self.finishedRequests += 1 }
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
                 self.requestOrigins.removeValue(forKey: path)
@@ -211,14 +369,47 @@ DispatchQueue.main.async {
                 else { self.panel?.orderOut(nil) }
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
-                    let alert = NSAlert()
-                    alert.alertStyle = .warning
-                    alert.messageText = "Opening stopped"
-                    alert.informativeText = failure
-                    alert.addButton(withTitle: "OK")
+                    let alert = makeScanFailureAlert(
+                        requestedPath: requestedPath, details: failure)
                     alert.runModal()
                 }
-                if self.pending.isEmpty { NSApp.terminate(nil) }
+                // A nil error may also indicate cancellation. Only a zero
+                // status scan-and-open completion with no cancellation can
+                // publish an opt-in success notification.
+                self.processLock.lock()
+                let cancelled = self.cancelledRequests.contains(path)
+                self.processLock.unlock()
+                if BlockedFileNotificationPreference.shouldNotify(
+                    failure: failure, cancelled: cancelled
+                ) {
+                    self.pendingSuccessNotifications += 1
+                    deliverBlockedFileNotification { [weak self] in
+                        DispatchQueue.main.async {
+                            guard let self else { return }
+                            self.pendingSuccessNotifications -= 1
+                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                                NSApp.terminate(nil)
+                            }
+                        }
+                    }
+                }
+                if SuccessfulScanNotificationPreference.shouldNotify(
+                    failure: failure, cancelled: cancelled
+                ) {
+                    self.pendingSuccessNotifications += 1
+                    deliverSuccessfulScanNotification { [weak self] in
+                        DispatchQueue.main.async {
+                            guard let self else { return }
+                            self.pendingSuccessNotifications -= 1
+                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                                NSApp.terminate(nil)
+                            }
+                        }
+                    }
+                }
+                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                    NSApp.terminate(nil)
+                }
             }
         }
     }
@@ -246,6 +437,8 @@ DispatchQueue.main.async {
             showProgress()
         }
         startQueuedScans()
+        // Update the initial "queued" stage after dispatching scheduled work.
+        if !pending.isEmpty { showProgress() }
     }
 }
 

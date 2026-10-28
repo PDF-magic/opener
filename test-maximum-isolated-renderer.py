@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+"""Real PDF rasterization and isolation regressions for opener-0314."""
+
+from dataclasses import FrozenInstanceError
+import json
+import os
+from pathlib import Path
+import struct
+import subprocess
+import sys
+import unittest
+from unittest.mock import patch
+
+import pymupdf
+
+import maximum_isolated_renderer as renderer
+
+
+ROOT = Path(__file__).resolve().parent
+
+
+def sample_pdf(*, oversized_page=False):
+    document = pymupdf.open()
+    for i in range(2):
+        page = document.new_page(
+            width=(4096 if oversized_page else 200), height=150,
+        )
+        if i == 0:
+            page.draw_rect(pymupdf.Rect(15, 15, 95, 95),
+                           color=(1, 0, 0), fill=(1, 0, 0))
+        else:
+            page.draw_rect(pymupdf.Rect(30, 30, 120, 120),
+                           color=(0, 0, 1), fill=(0, 0, 1))
+    body = document.tobytes(garbage=3, deflate=True)
+    document.close()
+    return body
+
+
+def frame(png, **changes):
+    metadata = {
+        "version": 1, "pageIndex": 0, "pageCount": 2,
+        "width": 200, "height": 150, "workerPid": 123,
+        "permitsOpen": False,
+    }
+    metadata.update(changes)
+    data = json.dumps(metadata, separators=(",", ":")).encode()
+    return struct.pack(">8sII", renderer.MAGIC, len(data), len(png)) + data + png
+
+
+class MaximumRendererTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.pdf = sample_pdf()
+
+    def test_real_page_rasterization_uses_separate_process(self):
+        render = renderer.render_isolated_pdf_page(self.pdf, 0)
+        self.assertNotEqual(render.worker_pid, os.getpid())
+        self.assertGreater(render.worker_pid, 0)
+        self.assertEqual((render.page_index, render.page_count), (0, 2))
+        self.assertEqual((render.width, render.height), (200, 150))
+        self.assertTrue(render.png_bytes.startswith(renderer.PNG_SIGNATURE))
+        self.assertLessEqual(len(render.png_bytes), renderer.MAX_PNG_BYTES)
+        self.assertFalse(render.permits_open)
+        # Decoding via an independent trusted image parser confirms actual PNG
+        # content and the rendered page's expected colored rectangle.
+        pix = pymupdf.Pixmap(render.png_bytes)
+        self.assertEqual((pix.width, pix.height), (200, 150))
+        self.assertNotEqual(pix.pixel(25, 25), pix.pixel(190, 140))
+
+    def test_two_pages_are_different_and_each_runs_in_separate_child(self):
+        results = renderer.render_isolated_pdf_pages(self.pdf, (1, 0))
+        self.assertEqual(tuple(x.page_index for x in results), (1, 0))
+        self.assertEqual(len({x.worker_pid for x in results}), 2)
+        self.assertNotEqual(results[0].png_bytes, results[1].png_bytes)
+        self.assertTrue(all(x.permits_open is False for x in results))
+
+    def test_large_page_is_downscaled_before_rasterization(self):
+        render = renderer.render_isolated_pdf_page(sample_pdf(oversized_page=True), 0)
+        self.assertLessEqual(render.width, renderer.MAX_RENDER_SIDE)
+        self.assertLessEqual(render.height, renderer.MAX_RENDER_SIDE)
+        self.assertLessEqual(render.width * render.height, renderer.MAX_RENDER_PIXELS)
+
+    def test_rejects_untrusted_inputs_without_starting_child(self):
+        invalid = (
+            ("not bytes", 0),
+            (bytearray(self.pdf), 0),
+            (b"", 0),
+            (b"!" * (renderer.MAX_PDF_BYTES + 1), 0),
+            (self.pdf, True),
+            (self.pdf, -1),
+            (self.pdf, renderer.MAX_DOCUMENT_PAGES),
+            (self.pdf, "0"),
+            (self.pdf, 1.0),
+        )
+        with patch.object(renderer.subprocess, "run") as run:
+            for body, index in invalid:
+                with self.subTest(index=index, size=len(body)), self.assertRaises(
+                    renderer.MaximumPDFRenderError
+                ):
+                    renderer.render_isolated_pdf_page(body, index)
+            run.assert_not_called()
+
+    def test_batch_bounds_and_duplicates_fail_before_starting_child(self):
+        invalid = (
+            [], (), (0, 0), tuple(range(renderer.MAX_REQUEST_PAGES + 1)),
+            (True,), (0, 512), ("1",), (0, 1, 1),
+        )
+        with patch.object(renderer.subprocess, "run") as run:
+            for pages in invalid:
+                with self.subTest(pages=pages), self.assertRaises(
+                    renderer.MaximumPDFRenderError
+                ):
+                    renderer.render_isolated_pdf_pages(self.pdf, pages)
+            run.assert_not_called()
+
+    def test_child_starts_with_isolation_flags_and_private_bytes(self):
+        real_run = subprocess.run
+        calls = []
+        def observe(command, **kwargs):
+            calls.append((tuple(command), kwargs.copy()))
+            return real_run(command, **kwargs)
+        with patch.object(renderer.subprocess, "run", side_effect=observe):
+            renderer.render_isolated_pdf_page(self.pdf, 0)
+        command, opts = calls[0]
+        self.assertEqual(command[:3], (sys.executable, "-I", "-B"))
+        self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
+        self.assertEqual(command[-1], "0")
+        self.assertIs(opts["input"], self.pdf)
+        self.assertEqual(opts["cwd"], "/")
+        self.assertTrue(opts["close_fds"])
+        self.assertTrue(opts["start_new_session"])
+        self.assertEqual(opts["stderr"], subprocess.DEVNULL)
+        self.assertEqual(opts["timeout"], renderer.WORKER_WALL_SECONDS)
+        self.assertEqual(set(opts["env"]), {
+            "PATH", "HOME", "LANG", "PYTHONDONTWRITEBYTECODE",
+            "PYTHONNOUSERSITE",
+        })
+
+    def test_bad_pdf_and_out_of_range_page_fail_closed(self):
+        for data, page in ((b"%PDF-1.4\nPrivate content", 0), (self.pdf, 2),
+                           (b"%PDF-1.4\n", 0)):
+            with self.subTest(page=page), self.assertRaises(
+                renderer.MaximumPDFRenderError
+            ) as failure:
+                renderer.render_isolated_pdf_page(data, page)
+            self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
+            self.assertNotIn("Private", str(failure.exception))
+
+    def test_password_protected_document_is_not_rendered(self):
+        doc = pymupdf.open(stream=self.pdf, filetype="pdf")
+        locked = doc.tobytes(
+            encryption=pymupdf.PDF_ENCRYPT_AES_256,
+            owner_pw="hidden-owner", user_pw="hidden-user",
+        )
+        doc.close()
+        with self.assertRaises(renderer.MaximumPDFRenderError) as e:
+            renderer.render_isolated_pdf_page(locked, 0)
+        self.assertEqual(str(e.exception), renderer.BLOCK_MESSAGE)
+
+    def test_timeout_crash_and_missing_worker_fail_closed_without_details(self):
+        for error in (subprocess.TimeoutExpired("private", 1),
+                      OSError("/private/filename.pdf"), RuntimeError("secret")):
+            with self.subTest(error=type(error).__name__), patch.object(
+                renderer.subprocess, "run", side_effect=error
+            ), self.assertRaises(renderer.MaximumPDFRenderError) as failure:
+                renderer.render_isolated_pdf_page(self.pdf, 0)
+            self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
+        with patch.object(
+            renderer.subprocess, "run",
+            return_value=subprocess.CompletedProcess([], 137, b""),
+        ), self.assertRaises(renderer.MaximumPDFRenderError):
+            renderer.render_isolated_pdf_page(self.pdf, 0)
+
+    def test_rejects_forged_protocol_and_oversized_output(self):
+        # This protocol test needs a valid PNG fixture, not another worker
+        # launch; real child rasterization is verified in dedicated tests.
+        document = pymupdf.open(stream=self.pdf, filetype="pdf")
+        try:
+            png = document[0].get_pixmap(
+                colorspace=pymupdf.csRGB, alpha=False, annots=False,
+            ).tobytes("png")
+        finally:
+            document.close()
+        valid = frame(png)
+        broken = (
+            b"", b"notpng", valid + b"tampered", valid[:-1],
+            valid.replace(renderer.MAGIC, b"BADMAGC1", 1),
+            frame(png, permitsOpen=True),
+            frame(png, pageIndex=1),
+            frame(png, pageCount=True),
+            frame(png, width=0),
+            frame(png, width=True),
+            frame(png, workerPid=-5),
+            frame(png, secret="private.pdf"),
+            struct.pack(">8sII", renderer.MAGIC, 1,
+                        renderer.MAX_PNG_BYTES + 1) + b"x",
+            b"X" * (renderer.MAX_PNG_BYTES + renderer.MAX_METADATA_BYTES + 17),
+        )
+        for output in broken:
+            with self.subTest(size=len(output)), patch.object(
+                renderer.subprocess, "run",
+                return_value=subprocess.CompletedProcess([], 0, output),
+            ), self.assertRaises(renderer.MaximumPDFRenderError):
+                renderer.render_isolated_pdf_page(self.pdf, 0)
+
+    def test_response_is_immutable_and_non_authorizing(self):
+        r = renderer.render_isolated_pdf_page(self.pdf, 0)
+        meta = r.to_metadata()
+        self.assertEqual(meta["pngBytes"], len(r.png_bytes))
+        self.assertFalse(meta["permitsOpen"])
+        meta["pageCount"] = 99
+        self.assertEqual(r.to_metadata()["pageCount"], 2)
+        with self.assertRaises(FrozenInstanceError):
+            r.png_bytes = b"tampered"
+        with self.assertRaises(ValueError):
+            renderer.RenderedPDFPage(
+                r.page_index, r.page_count, r.width, r.height,
+                r.worker_pid, r.png_bytes, permits_open=True,
+            )
+
+    def test_direct_worker_rejects_bad_commands_without_output(self):
+        worker = ROOT / "maximum_render_worker.py"
+        for index, contents in (("false", self.pdf), ("-1", self.pdf),
+                                ("0", b"garbage"), ("3", self.pdf)):
+            with self.subTest(index=index):
+                finished = subprocess.run(
+                    (sys.executable, "-I", "-B", str(worker), index),
+                    input=contents, stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL, timeout=15, cwd="/",
+                )
+                self.assertNotEqual(finished.returncode, 0)
+                self.assertEqual(finished.stdout, b"")
+
+    def test_worker_applies_limits_before_raster_import_and_deployed_gate_untouched(self):
+        worker = (ROOT / "maximum_render_worker.py").read_text()
+        self.assertLess(worker.index("_apply_limits()"), worker.index("import pymupdf"))
+        self.assertIn("annots=False", worker)
+        self.assertIn("MAX_RENDER_PIXELS", worker)
+        self.assertIn("doc.needs_pass", worker)
+        scan = (ROOT / "scan-and-open.py").read_text()
+        self.assertNotIn("maximum_render_worker", scan)
+        self.assertNotIn("maximum_isolated_renderer", scan)
+        self.assertIn("if not cached_clean(cache_id):", scan)
+        from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
+        self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
+
+    @unittest.skipUnless(sys.platform == "darwin", "Late SIGALRM is macOS-only")
+    def test_worker_alarm_is_disarmed_before_process_shutdown(self):
+        # Regression: the worker used to emit a complete PNG and then die
+        # from SIGALRM during Python interpreter teardown.
+        for i in range(16):
+            with self.subTest(attempt=i):
+                page = renderer.render_isolated_pdf_page(self.pdf, 0)
+                self.assertEqual(page.page_index, 0)
+                self.assertTrue(page.png_bytes.startswith(renderer.PNG_SIGNATURE))
+
+    def test_ci_renders_real_pdf_on_linux_and_macos(self):
+        ci = (ROOT / ".github/workflows/maximum-isolated-renderer.yml").read_text()
+        self.assertIn("ubuntu-latest", ci)
+        self.assertIn("macos-latest", ci)
+        self.assertIn("test-maximum-isolated-renderer.py -v", ci)
+        self.assertIn("pymupdf==1.26.7", ci)
+
+
+if __name__ == "__main__":
+    unittest.main()
