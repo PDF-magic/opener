@@ -149,6 +149,34 @@ enum InitialConfiguration {
   }
 }
 
+// Record the schema version in the same shared defaults suite as the active
+// preferences. This metadata does not migrate or reset any user setting.
+enum ActiveConfigurationSchemaVersion {
+  static let key = "schemaVersion"
+
+  static func read(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Int? {
+    guard let defaults, let version = defaults.object(forKey: key) as? Int,
+          version > 0 else { return nil }
+    return version
+  }
+
+  @discardableResult
+  static func recordIfNeeded(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    if defaults.object(forKey: key) != nil {
+      // Keep future, older and malformed values intact; refuse silent migration.
+      return read(defaults: defaults) == PDFMagicConfigurationSchema.currentVersion
+    }
+    defaults.set(PDFMagicConfigurationSchema.currentVersion, forKey: key)
+    return defaults.synchronize() &&
+      read(defaults: defaults) == PDFMagicConfigurationSchema.currentVersion
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.
@@ -205,33 +233,5 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
 
   static func decoded(from data: Data) throws -> Self {
     return try JSONDecoder().decode(Self.self, from: data)
-  }
-}
-
-// Record the schema version in the same shared defaults suite as the active
-// preferences. This metadata does not migrate or reset any user setting.
-enum ActiveConfigurationSchemaVersion {
-  static let key = "schemaVersion"
-
-  static func read(
-    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
-  ) -> Int? {
-    guard let defaults, let version = defaults.object(forKey: key) as? Int,
-          version > 0 else { return nil }
-    return version
-  }
-
-  @discardableResult
-  static func recordIfNeeded(
-    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
-  ) -> Bool {
-    guard let defaults else { return false }
-    if defaults.object(forKey: key) != nil {
-      // Keep future, older and malformed values intact; refuse silent migration.
-      return read(defaults: defaults) == PDFMagicConfigurationSchema.currentVersion
-    }
-    defaults.set(PDFMagicConfigurationSchema.currentVersion, forKey: key)
-    return defaults.synchronize() &&
-      read(defaults: defaults) == PDFMagicConfigurationSchema.currentVersion
   }
 }
