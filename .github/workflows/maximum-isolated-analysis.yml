@@ -22,5 +22,40 @@ jobs:
           python-version: "3.11"
       - name: Install pinned PDF parser
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Diagnose macOS resource ceilings with synthetic imports
+        if: runner.os == 'macOS'
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+          code = """
+          import os, resource, sys
+          sys.path.insert(0, sys.argv[2])
+          try:
+              for name, cap in [('RLIMIT_CORE', 0), ('RLIMIT_FSIZE', 0), ('RLIMIT_CPU', 25)]:
+                  kind = getattr(resource, name)
+                  _, hard = resource.getrlimit(kind)
+                  resource.setrlimit(kind, (min(cap, hard) if hard >= 0 else cap, min(cap, hard) if hard >= 0 else cap))
+              name = sys.argv[1]
+              if name != 'none':
+                  kind = getattr(resource, name)
+                  _, hard = resource.getrlimit(kind)
+                  cap = 1024 * 1024 * 1024
+                  resource.setrlimit(kind, (min(cap, hard) if hard >= 0 else cap, min(cap, hard) if hard >= 0 else cap))
+              import maximum_isolated_analysis
+              import pypdf
+              print('import-success')
+          except BaseException as error:
+              print('import-failed:' + type(error).__name__)
+              sys.exit(2)
+          """
+          for name in ('none', 'RLIMIT_DATA', 'RLIMIT_AS', 'RLIMIT_RSS'):
+              result = subprocess.run([sys.executable, '-I', '-B', '-c', code, name, os.getcwd()],
+                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10,
+                  cwd='/', env={'PATH':'/usr/bin:/bin','HOME':'/nonexistent',
+                      'LANG':'C','PYTHONDONTWRITEBYTECODE':'1','PYTHONNOUSERSITE':'1'})
+              print(name, result.returncode, result.stdout.decode('utf-8', errors='replace')[:200])
+          PY
       - name: Verify real isolated PDF subprocess boundaries
         run: python3 test-maximum-isolated-analysis.py -v
