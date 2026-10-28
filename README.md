@@ -35,6 +35,11 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+**VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
+group label and each page entry announces its section name and a navigation
+hint. Labels are derived from the existing page titles and preserve native
+sidebar selection, keyboard navigation, and current-page state.
+
 The **Updates** sidebar entry (opener-0182) provides a read-only page
 showing the installed application version and explaining application
 and ClamAV definition updates. It does not check for, download, or
