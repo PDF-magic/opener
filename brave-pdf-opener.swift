@@ -31,6 +31,29 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
     }
 }
 
+// This notice is optional and deliberately contains no scan diagnostics or file names.
+func deliverBlockedFileNotification(completion: @escaping () -> Void) {
+    let center = UNUserNotificationCenter.current()
+    func enqueue() {
+        let content = UNMutableNotificationContent()
+        content.title = "PDF Magic Opener"
+        content.body = "A PDF could not be opened because its safety check failed."
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                            content: content, trigger: nil)
+        center.add(request) { _ in completion() }
+    }
+    center.getNotificationSettings { settings in
+        switch settings.authorizationStatus {
+        case .authorized, .provisional: enqueue()
+        case .notDetermined:
+            center.requestAuthorization(options: [.alert]) { allowed, _ in
+                if allowed { enqueue() } else { completion() }
+            }
+        default: completion()
+        }
+    }
+}
+
 // A request's arrival time is distinct from its eventual clean-scan cache time.
 struct ScanRequest {
     let requestTimestamp: Date
@@ -261,6 +284,20 @@ DispatchQueue.main.async {
                 self.processLock.lock()
                 let cancelled = self.cancelledRequests.contains(path)
                 self.processLock.unlock()
+                if BlockedFileNotificationPreference.shouldNotify(
+                    failure: failure, cancelled: cancelled
+                ) {
+                    self.pendingSuccessNotifications += 1
+                    deliverBlockedFileNotification { [weak self] in
+                        DispatchQueue.main.async {
+                            guard let self else { return }
+                            self.pendingSuccessNotifications -= 1
+                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                                NSApp.terminate(nil)
+                            }
+                        }
+                    }
+                }
                 if SuccessfulScanNotificationPreference.shouldNotify(
                     failure: failure, cancelled: cancelled
                 ) {
