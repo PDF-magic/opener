@@ -189,6 +189,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         } else {
             description = "\(pending.count) documents"
         }
+        // Refresh only the displayed destination; the installed scan gate
+        // remains authoritative for validated post-scan application selection.
+        panel?.updateDestinationBrowser(SelectedDestinationBrowser.displayName())
         panel?.show(documentDescription: description)
     }
 
