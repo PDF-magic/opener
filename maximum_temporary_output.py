@@ -161,7 +161,7 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
                     if file_path is not None and created_identity is not None:
                         try:
                             actual = os.stat(file_path, follow_symlinks=False)
-                            if (_file_identity(actual) == created_identity and
+                            if (_identity(actual) == created_identity[:3] and
                                     _is_private_file(actual)):
                                 os.unlink(file_path)
                         except OSError:
