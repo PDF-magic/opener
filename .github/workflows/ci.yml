@@ -295,6 +295,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
           "$RUNNER_TEMP/TestConfigurationMigration"
+      - name: Verify additive policy settings upgrade preserves saved preferences
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-policy-settings-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
+          "$RUNNER_TEMP/TestPolicySettingsUpgrade"
       - name: Verify all processes refresh the same effective configuration
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
