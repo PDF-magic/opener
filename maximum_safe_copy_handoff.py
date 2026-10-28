@@ -43,7 +43,7 @@ class MaximumSafeCopyHandoff:
     original_opened: bool = False
 
     def __post_init__(self):
-        if (type(self.copy_path) is not Path or not self.copy_path.is_absolute() or
+        if (not isinstance(self.copy_path, Path) or not self.copy_path.is_absolute() or
                 self.copy_path.suffix.lower() != ".pdf" or
                 self.scanned is not True or self.original_opened is not False):
             raise ValueError("Only a separate scanned copy can be a Maximum handoff")
@@ -56,7 +56,7 @@ def _source_identity(info):
 
 def _read_source(path):
     """Read one unchanged ordinary PDF without following its final symlink."""
-    if (type(path) not in (str, Path) or
+    if (not (type(path) is str or isinstance(path, Path)) or
             not str(path).startswith("/") or "\x00" in str(path) or
             Path(path).suffix.lower() != ".pdf"):
         raise MaximumSafeCopyError(BLOCK_MESSAGE)
