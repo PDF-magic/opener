@@ -1,5 +1,35 @@
 import AppKit
 import Carbon.HIToolbox
+import UserNotifications
+
+// The native PDF owner (not the standalone Settings app) requests macOS
+// notification authorization on the first opted-in successful handoff.
+// Notification delivery is best effort, never part of the scan verdict.
+// Never put document paths, names, or scan diagnostics in notifications.
+func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
+    let center = UNUserNotificationCenter.current()
+    func enqueue() {
+        let content = UNMutableNotificationContent()
+        content.title = "PDF Magic Opener"
+        content.body = "A PDF passed scanning and was handed off to your chosen application."
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                            content: content, trigger: nil)
+        center.add(request) { _ in completion() }
+    }
+    center.getNotificationSettings { settings in
+        switch settings.authorizationStatus {
+        case .authorized, .provisional:
+            enqueue()
+        case .notDetermined:
+            center.requestAuthorization(options: [.alert]) { allowed, _ in
+                if allowed { enqueue() } else { completion() }
+            }
+        default:
+            // Denied or restricted by macOS: never bypass system permissions.
+            completion()
+        }
+    }
+}
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
 struct ScanRequest {
@@ -73,6 +103,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     // Hold the native scan-gate stdin writer open while its owner is alive.
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
+    private var pendingSuccessNotifications = 0
 
     func applicationWillTerminate(_ notification: Notification) {
         terminating = true
@@ -224,7 +255,29 @@ DispatchQueue.main.async {
                     alert.addButton(withTitle: "OK")
                     alert.runModal()
                 }
-                if self.pending.isEmpty { NSApp.terminate(nil) }
+                // A nil error may also indicate cancellation. Only a zero
+                // status scan-and-open completion with no cancellation can
+                // publish an opt-in success notification.
+                self.processLock.lock()
+                let cancelled = self.cancelledRequests.contains(path)
+                self.processLock.unlock()
+                if SuccessfulScanNotificationPreference.shouldNotify(
+                    failure: failure, cancelled: cancelled
+                ) {
+                    self.pendingSuccessNotifications += 1
+                    deliverSuccessfulScanNotification { [weak self] in
+                        DispatchQueue.main.async {
+                            guard let self else { return }
+                            self.pendingSuccessNotifications -= 1
+                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                                NSApp.terminate(nil)
+                            }
+                        }
+                    }
+                }
+                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                    NSApp.terminate(nil)
+                }
             }
         }
     }
