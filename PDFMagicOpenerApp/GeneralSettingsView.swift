@@ -68,6 +68,8 @@ struct GeneralSettingsView: View {
   @State private var scanProgressMessage: String?
   @State private var showSuccessfulScanNotifications = false
   @State private var successfulScanNotificationMessage: String?
+  @State private var showBlockedFileNotifications = false
+  @State private var blockedFileNotificationMessage: String?
   @State private var browserOptions: [PDFBrowserOption] = []
   @State private var selectedBrowserID = ""
   @State private var browserMessage = ""
@@ -99,6 +101,20 @@ struct GeneralSettingsView: View {
     } else {
       showSuccessfulScanNotifications = SuccessfulScanNotificationPreference.isEnabled()
       successfulScanNotificationMessage = "Could not save the notification preference. Your previous choice is unchanged."
+    }
+  }
+
+  private func loadBlockedFileNotificationPreference() {
+    showBlockedFileNotifications = BlockedFileNotificationPreference.isEnabled()
+  }
+
+  private func updateBlockedFileNotificationPreference(_ enabled: Bool) {
+    if BlockedFileNotificationPreference.save(enabled) {
+      showBlockedFileNotifications = enabled
+      blockedFileNotificationMessage = "Blocked-file notification preference saved."
+    } else {
+      showBlockedFileNotifications = BlockedFileNotificationPreference.isEnabled()
+      blockedFileNotificationMessage = "Could not save the notification preference. Your previous choice is unchanged."
     }
   }
 
@@ -287,6 +303,30 @@ struct GeneralSettingsView: View {
         }
         .accessibilityIdentifier("showSuccessfulScanNotificationsSection")
         .onAppear(perform: loadSuccessfulScanNotificationPreference)
+
+        GroupBox("Blocked file notifications") {
+          VStack(alignment: .leading, spacing: 12) {
+            Toggle("Show Blocked File Notifications", isOn: Binding(
+              get: { showBlockedFileNotifications },
+              set: { updateBlockedFileNotificationPreference($0) }
+            ))
+            .accessibilityIdentifier("showBlockedFileNotificationsToggle")
+
+            Text("Optionally show a generic macOS notification when a PDF is blocked. Existing blocking, cancellation, and failure warning dialogs remain unchanged. No document names or paths are sent in notifications.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            if let blockedFileNotificationMessage {
+              Text(blockedFileNotificationMessage)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("showBlockedFileNotificationsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("showBlockedFileNotificationsSection")
+        .onAppear(perform: loadBlockedFileNotificationPreference)
 
         PDFDefaultApplicationSettingsView()
 

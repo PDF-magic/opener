@@ -46,6 +46,7 @@ jobs:
         run: python3 test-show-scan-progress.py -v
       - name: Verify Show Successful Scan Notifications option and fail-closed behavior
         run: python3 test-show-successful-scan-notifications.py -v
+          python3 test-show-blocked-file-notifications.py -v
       - name: Verify verified default PDF browser selector
         run: python3 test-default-pdf-browser-selector.py -v
       - name: Verify default PDF handler indicator is read-only
