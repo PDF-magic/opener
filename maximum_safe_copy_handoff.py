@@ -138,8 +138,8 @@ _SCAN_GATE = None
 _SCAN_GATE_LOCK = threading.Lock()
 
 
-def _scan_staged_copy(path, scanner):
-    """Use a shared installed scanner gate, retaining its concurrency limit."""
+def _scan_staged_copy(path, offer):
+    """Use the shared mandatory fresh-generated-copy scan and launch gate."""
     global _SCAN_GATE
     with _SCAN_GATE_LOCK:
         if _SCAN_GATE is None:
@@ -157,14 +157,15 @@ def _scan_staged_copy(path, scanner):
                 raise
             _SCAN_GATE = module
         module = _SCAN_GATE
-    return module.scan_and_open(str(path), scanner)
+    return module.scan_and_open_generated_copy(str(path), offer)
 
 
-def open_required_maximum_safe_copy(source_path, scanner, *, disposition):
+def open_required_maximum_safe_copy(source_path, *, disposition):
     """Open only a newly reconstructed copy after its own mandatory scan.
 
     The future Maximum policy coordinator must first finish the source's
-    mandatory checks and select REQUIRED. This building block does not
+    mandatory checks and select REQUIRED. The generated file is freshly
+    scanned even if a matching clean-cache entry already exists. This building block does not
     activate an unavailable profile or infer policy from request metadata.
     Neither scan failure nor converter failure can open the original file.
     """
@@ -188,9 +189,10 @@ def open_required_maximum_safe_copy(source_path, scanner, *, disposition):
         path = _stage_private_copy(offer.pdf_bytes)
         if Path(source_path).samefile(path):
             raise MaximumSafeCopyError(BLOCK_MESSAGE)
-        result = _scan_staged_copy(path, scanner)
+        result = _scan_staged_copy(path, offer)
         if (getattr(result, "status", None) != "clean" or
-                getattr(result, "effective_policy_id", None) != EFFECTIVE_POLICY_ID):
+                getattr(result, "effective_policy_id", None) != EFFECTIVE_POLICY_ID or
+                getattr(result, "from_cache", None) is not False):
             raise MaximumSafeCopyError(BLOCK_MESSAGE)
         success = True
         # Leave only the copy available to the launched viewer. The parent

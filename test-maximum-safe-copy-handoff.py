@@ -39,29 +39,31 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
     def _open(self, scan=None):
         if scan is None:
             scan = lambda p, s: SimpleNamespace(
-                status="clean", effective_policy_id=EFFECTIVE_POLICY_ID)
+                status="clean", effective_policy_id=EFFECTIVE_POLICY_ID,
+                from_cache=False)
         with patch.object(route, "offer_sanitized_pdf_copy", return_value=self._offer()), \
                 patch.object(route, "_passive_pages", return_value=True), \
                 patch.object(route, "_scan_staged_copy", side_effect=scan):
             return route.open_required_maximum_safe_copy(
-                self.source, "/scanner",
+                self.source,
                 disposition=route.MaximumCopyDisposition.REQUIRED)
 
     def test_required_policy_opens_only_private_separately_scanned_copy(self):
         requests = []
-        def scan(path, scanner):
+        def scan(path, offer):
             path = Path(path)
-            requests.append((path, scanner, path.read_bytes()))
+            requests.append((path, offer.pdf_bytes, path.read_bytes()))
             self.assertNotEqual(path.resolve(), self.source.resolve())
             self.assertEqual(path.name, "safe-copy.pdf")
             self.assertEqual(stat_mode(path), 0o600)
             self.assertEqual(stat_mode(path.parent), 0o700)
             self.assertEqual(self.source.read_bytes(), self.original)
-            return SimpleNamespace(status="clean", effective_policy_id=EFFECTIVE_POLICY_ID)
+            return SimpleNamespace(status="clean", effective_policy_id=EFFECTIVE_POLICY_ID,
+                from_cache=False)
         handoff = self._open(scan)
         self.addCleanup(route._discard_private_copy, handoff.copy_path)
         self.assertEqual(requests[0][2], self._offer().pdf_bytes)
-        self.assertEqual(requests[0][1], "/scanner")
+        self.assertEqual(requests[0][1], self._offer().pdf_bytes)
         self.assertEqual(handoff.copy_path, requests[0][0])
         self.assertTrue(handoff.scanned)
         self.assertFalse(handoff.original_opened)
@@ -74,7 +76,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 route, "_read_source"
             ) as read, self.assertRaises(route.MaximumSafeCopyError):
                 route.open_required_maximum_safe_copy(
-                    self.source, "/scanner", disposition=value)
+                    self.source, disposition=value)
             read.assert_not_called()
 
     def test_unavailable_or_invalid_copy_never_scans_or_opens_source(self):
@@ -86,17 +88,20 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
             ), patch.object(route, "_scan_staged_copy") as launch:
                 with self.assertRaises(route.MaximumSafeCopyError):
                     route.open_required_maximum_safe_copy(
-                        self.source, "/scanner",
+                        self.source,
                         disposition=route.MaximumCopyDisposition.REQUIRED)
                 launch.assert_not_called()
 
     def test_failed_copy_scan_or_launch_never_retries_original(self):
         for response in (None, SimpleNamespace(status="infected",
-                                                effective_policy_id=EFFECTIVE_POLICY_ID),
+                                                effective_policy_id=EFFECTIVE_POLICY_ID,
+                                   from_cache=False),
                          SimpleNamespace(status="clean", effective_policy_id="maximum"),
+                         SimpleNamespace(status="clean", effective_policy_id=EFFECTIVE_POLICY_ID,
+                                         from_cache=True),
                          RuntimeError("private original source filename")):
             paths = []
-            def scan(path, scanner):
+            def scan(path, offer):
                 paths.append(Path(path))
                 if isinstance(response, Exception):
                     raise response
@@ -119,14 +124,14 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 route, "offer_sanitized_pdf_copy"
             ) as converter, self.assertRaises(route.MaximumSafeCopyError):
                 route.open_required_maximum_safe_copy(
-                    item, "/scanner",
+                    item,
                     disposition=route.MaximumCopyDisposition.REQUIRED)
             converter.assert_not_called()
         self.source.write_bytes(b"%PDF-bad")
         with patch.object(route, "offer_sanitized_pdf_copy") as converter, \
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
-                self.source, "/scanner",
+                self.source,
                 disposition=route.MaximumCopyDisposition.REQUIRED)
         # The converter is allowed to reject malformed input, never open it.
         self.assertEqual(converter.call_count, 1)
@@ -140,7 +145,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 patch.object(route, "_scan_staged_copy") as scan, \
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
-                self.source, "/scanner",
+                self.source,
                 disposition=route.MaximumCopyDisposition.REQUIRED)
         scan.assert_not_called()
 
@@ -158,7 +163,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 patch.object(route, "_scan_staged_copy") as scanner, \
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
-                self.source, "/scanner",
+                self.source,
                 disposition=route.MaximumCopyDisposition.REQUIRED)
         self.assertEqual(len(created), 1)
         self.assertFalse(created[0].exists())
@@ -168,18 +173,19 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                          "Native sanitized conversion only runs on macOS")
     def test_real_rebuilt_copy_is_the_only_scanner_target(self):
         destination = []
-        def scanner(path, executable):
+        def scanner(path, offer):
             file = Path(path)
             destination.append(file)
             self.assertNotEqual(file, self.source)
             self.assertNotEqual(file.read_bytes(), self.source.read_bytes())
             self.assertTrue(file.read_bytes().startswith(b"%PDF-"))
-            self.assertEqual(executable, "/scanner")
+            self.assertEqual(offer.pdf_bytes, file.read_bytes())
             return SimpleNamespace(status="clean",
-                                   effective_policy_id=EFFECTIVE_POLICY_ID)
+                                   effective_policy_id=EFFECTIVE_POLICY_ID,
+                                   from_cache=False)
         with patch.object(route, "_scan_staged_copy", side_effect=scanner):
             result = route.open_required_maximum_safe_copy(
-                self.source, "/scanner",
+                self.source,
                 disposition=route.MaximumCopyDisposition.REQUIRED)
         self.addCleanup(route._discard_private_copy, result.copy_path)
         self.assertEqual(destination, [result.copy_path])
@@ -188,9 +194,10 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
     def test_normal_gate_is_the_real_existing_scanner_not_new_launcher(self):
         text = Path(route.__file__).read_text()
         self.assertIn('with_name("scan-and-open.py")', text)
-        self.assertIn("module.scan_and_open(str(path), scanner)", text)
+        self.assertIn("module.scan_and_open_generated_copy(str(path), offer)", text)
         self.assertNotIn("launch_clean_file(source_path", text)
         scanner = (Path(route.__file__).parent / "scan-and-open.py").read_text()
+        self.assertIn("def scan_and_open_generated_copy(item, offer):", scanner)
         self.assertNotIn("maximum_safe_copy_handoff", scanner)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
