@@ -16,9 +16,11 @@ xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configurati
 
 The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
-Each section provides a read-only overview of the existing workflow; this
-foundational window does not alter configured browser choices or security
-controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+The **General** sidebar entry now opens a dedicated read-only settings page
+(opener-0178), describing PDF scanning and preserved application choices.
+Browsers and Security retain their existing overview panes. General does not
+change configured browser choices, PDF associations, or security controls.
+Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
 The **Advanced Scanning** page (opener-0181) is available from the
 preferences sidebar. It explains local malware scanning, file readiness,

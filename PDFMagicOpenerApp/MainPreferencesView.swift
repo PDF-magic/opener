@@ -95,17 +95,7 @@ struct MainPreferencesView: View {
   private var currentPane: some View {
     switch selection ?? .general {
     case .general:
-      PreferenceOverviewPane(
-        title: "PDF Magic Opener",
-        description: "Preferences for the local document-opening workflow.",
-        explanations: [
-          PreferenceExplanation(
-            title: "Opening documents",
-            detail: "The installed PDF opener checks files before handing them to your chosen application."),
-          PreferenceExplanation(
-            title: "Existing configuration",
-            detail: "Your current browser choices and application associations remain unchanged when viewing preferences."),
-        ])
+      GeneralSettingsView()
     case .browsers:
       PreferenceOverviewPane(
         title: "Browsers",
