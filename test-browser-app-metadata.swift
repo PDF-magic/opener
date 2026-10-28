@@ -37,7 +37,7 @@ struct BrowserApplicationMetadataTests {
             if executable {
                 let path = macos.appendingPathComponent("Browser Engine")
                 try "#!/bin/sh\nexit 0\n".write(to: path, atomically: true, encoding: .utf8)
-                try fileManager.setAttributes([.posixPermissions: 0o755], atPath: path.path)
+                try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path.path)
             }
             return app
         }
@@ -109,7 +109,7 @@ struct BrowserApplicationMetadataTests {
         let linkBundle = try makeApp("Linked Executable", executable: false)
         let externalExecutable = root.appendingPathComponent("outside-script")
         try "#!/bin/sh\n".write(to: externalExecutable, atomically: true, encoding: .utf8)
-        try fileManager.setAttributes([.posixPermissions: 0o755], atPath: externalExecutable.path)
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: externalExecutable.path)
         try fileManager.createSymbolicLink(
             at: linkBundle.appendingPathComponent("Contents/MacOS/Browser Engine"),
             withDestinationURL: externalExecutable)
