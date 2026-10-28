@@ -34,6 +34,8 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
           python3 test-enhanced-embedded-files.py -v
+      - name: Inspect external PDF launch actions without executing targets
+        run: python3 test-pdf-external-launch-actions.py -v
       - name: Verify maximum processing time for each protection stage
         run: python3 test-protection-stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
@@ -126,6 +128,8 @@ jobs:
         run: python3 test-pdf-handler-status.py -v
       - name: Verify active scan policy cannot change during execution
         run: python3 test-scan-policy-snapshot.py -v
+      - name: Verify macOS quarantine remains after clean, cached, and blocked scans
+        run: python3 test-retain-os-quarantine.py -v
       - name: Verify Standard baseline parity with the existing scanner
         run: python3 test-standard-scanner-parity.py -v
       - name: Run scan-gate and request-metadata tests
@@ -506,11 +510,16 @@ jobs:
       - name: Verify actual multi-document progress and unknown single-file progress
         timeout-minutes: 3
         run: python3 test-native-determinate-progress.py -v
+      - name: Verify scan failures identify the PDF and show useful details
+        timeout-minutes: 2
+        run: python3 test-native-scan-failure.py
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: python3 test-native-cancellation.py
       - name: Verify hidden progress does not bypass native scan dispatch
         run: python3 test-native-hidden-scan-progress.py
+      - name: Verify quarantine extended attributes remain intact on macOS
+        run: python3 test-retain-os-quarantine.py -v
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: python3 test-scan-resource-cleanup.py

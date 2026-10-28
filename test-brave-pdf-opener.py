@@ -96,12 +96,24 @@ func verifyLaunchedStage(_ attempts: Int = 0) {{
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
     verifyLaunchedStage()
 }}
-// Check the queue drains after the first pair completes while the next
-// pair continues scanning. This count describes only waiting documents.
-DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {{
-    let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first
-    precondition(progress?.queuedDocumentCountLabel.stringValue == "0 documents queued",
-                 "Newly dispatched files must leave the waiting count")
+// Observe the queue draining on the main run loop rather than assuming the
+// CI runner dispatches all four subprocesses within a bounded window.
+var observedQueueDrained = false
+func verifyWaitingQueueDrained(_ attempts: Int = 0) {{
+    guard let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first else {{
+        fatalError("Expected native progress panel while scans are queued")
+    }}
+    if progress.queuedDocumentCountLabel.stringValue == "0 documents queued" {{
+        observedQueueDrained = true
+        return
+    }}
+    precondition(attempts < 150, "Newly dispatched files must leave the waiting count")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {{
+        verifyWaitingQueueDrained(attempts + 1)
+    }}
+}}
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {{
+    verifyWaitingQueueDrained()
 }}
 // Capture an offscreen rendering of the drawing, without reading the desktop.
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{
@@ -112,12 +124,14 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{
     }}
 }}
 app.run()
+precondition(observedQueueDrained,
+             "Native scans finished before the queued document count reached zero")
 '''
     swift = root / 'test.swift'
     swift.write_text(harness)
     binary = root / 'opener'
     subprocess.run(['/usr/bin/xcrun', 'swiftc', str(swift), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True, timeout=15)
+    subprocess.run([str(binary)], check=True, timeout=35)
     events = [line.split(' ', 1) for line in calls.read_text().splitlines()]
     active = 0
     peak = 0
