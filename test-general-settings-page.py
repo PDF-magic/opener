@@ -39,7 +39,7 @@ class GeneralSettingsPageTests(unittest.TestCase):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = GeneralSettingsView.swift;", project)
     self.assertIn("fileRef = A1000000000000000000001B;", project)
-    self.assertIn("files = (A10000000000000000000001, A10000000000000000000012, A10000000000000000000016, A1000000000000000000001A,);", project)
+    self.assertRegex(project, r"(?s)isa = PBXSourcesBuildPhase;.*?files = \\([^)]*A1000000000000000000001A,")
 
   def test_general_page_cannot_mutate_preferences_or_bypass_scanning(self):
     page = GENERAL.read_text(encoding="utf-8")

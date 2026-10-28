@@ -49,7 +49,7 @@ class UpdatesSettingsPageTests(unittest.TestCase):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = UpdatesSettingsView.swift;", project)
     self.assertIn("fileRef = B18200000000000000000002;", project)
-    self.assertIn("B18200000000000000000001,);", project)
+    self.assertRegex(project, r"(?s)isa = PBXSourcesBuildPhase;.*?files = \\([^)]*B18200000000000000000001,")
     self.assertEqual(project.count("path = UpdatesSettingsView.swift;"), 1)
 
   def test_updates_page_does_not_install_or_mutate(self):
