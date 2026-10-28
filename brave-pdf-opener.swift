@@ -69,6 +69,29 @@ func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows ->
     return try operation(errors)
 }
 
+// Initialization diagnostics are selected from known, path-free scanner messages.
+// Do not present arbitrary process errors as verified initialization diagnoses.
+enum ScannerInitializationError {
+    static let missingHelper = "The installed scan helper is missing. Reinstall PDF Magic Opener."
+    static let launchFailed = "The scan helper could not start. Reinstall PDF Magic Opener."
+
+    private static let knownScannerMessages: Set<String> = [
+        "ClamAV is unavailable. Run the Allow and Open installer again.",
+        "Malware signatures are unavailable. Run update-malware-signatures.sh.",
+        "Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.",
+        "The malware signature database is incomplete. Run update-malware-signatures.sh."
+    ]
+
+    static func displayedMessage(for failure: String) -> String? {
+        let message = failure.trimmingCharacters(in: .whitespacesAndNewlines)
+        if message == missingHelper || message == launchFailed ||
+            knownScannerMessages.contains(message) {
+            return message
+        }
+        return nil
+    }
+}
+
 // Preserve the sending application reported by macOS, never infer a source
 // from the frontmost window or the file extension.
 func requestSource(forBundleIdentifier identifier: String?) -> String {
@@ -116,6 +139,11 @@ func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
     alert.messageText = "PDF could not be opened"
     alert.informativeText = "File: \(filename)\n\nThe safety scan or destination handoff failed. "
         + "PDF Magic Opener did not open this file.\n\nDetails: \(explanation)"
+    if let initialization = ScannerInitializationError.displayedMessage(for: reason) {
+        alert.messageText = "Scanner initialization failed"
+        alert.informativeText = "File: \(filename)\n\nThe scanner could not initialize. "
+            + "PDF Magic Opener did not open this file.\n\nDetails: \(initialization)"
+    }
     alert.addButton(withTitle: "OK")
     return alert
 }
@@ -274,6 +302,12 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     self.processLock.unlock()
                     return nil
                 }
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: script.path, isDirectory: &isDirectory),
+                      !isDirectory.boolValue else {
+                    self.processLock.unlock()
+                    return ScannerInitializationError.missingHelper
+                }
                 do {
                     try process.run()
                     self.activeProcesses[path] = process
@@ -291,7 +325,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     }
                 } catch {
                     self.processLock.unlock()
-                    return error.localizedDescription
+                    return ScannerInitializationError.launchFailed
                 }
                 errors.fileHandleForWriting.closeFile()
                 let output = errors.fileHandleForReading.readDataToEndOfFile()
