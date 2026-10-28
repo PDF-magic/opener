@@ -90,3 +90,18 @@ The test also checks stable JSON output, unchanged custom target contents, and
 that application executables are never launched. This tests the no-third-party
 environment without changing real macOS installations, registrations,
 preferences, scanners, or quarantine rules; it does not test PDF rendering.
+
+## Renamed browser discovery regression (opener-0160)
+
+The macOS CI suite builds and runs `test-renamed-browser-discovery.swift` against
+the production `discoverInstalledBrowsers` function. A disposable Brave
+application bundle is discovered, renamed from `Brave Browser.app` to an
+unrelated `.app` filename containing spaces and Unicode, and rediscovered under
+its **new physical path** while retaining the original `com.brave.Browser`
+bundle identifier. The former path must disappear; repeated discovery and JSON
+serialization must reflect the renamed location. Temporarily removing the
+`.app` extension excludes the bundle until the extension is restored.
+
+A browser-like filename with an unrelated bundle identifier remains excluded.
+No real installation, Launch Services registration, user preference, scan,
+PDF handler, or application executable is changed or invoked.
