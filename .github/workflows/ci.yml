@@ -18,6 +18,8 @@ jobs:
           python-version: "3.11"
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify main Dock icon and invisible PDF scan-helper policy
+        run: python3 test-dock-behavior.py -v
       - name: Verify independent SwiftUI application target
         run: python3 test-swiftui-app-target.py -v
       - name: Verify SwiftUI About window, version and AGPL license
@@ -154,7 +156,7 @@ jobs:
           xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Debug -destination 'generic/platform=macOS' -derivedDataPath "$RUNNER_TEMP/PDFMagicOpenerDerived" CODE_SIGNING_ALLOWED=NO build
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
-          python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p' "$app/Contents/Info.plist"
+          python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
       - name: Verify built About version and bundled license
         run: |
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
