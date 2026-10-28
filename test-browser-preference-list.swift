@@ -138,6 +138,60 @@ struct BrowserPreferenceListTests {
             fatalError("Could not create test icon fixture")
         }
 
+        // Opening preferences multiple times must query a fresh browser list
+        // and fresh metadata; never cache a prior installed-app snapshot.
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pref-refresh-" + UUID().uuidString, isDirectory: true)
+        let braveURL = root.appendingPathComponent("Brave.app", isDirectory: true)
+        let safariURL = root.appendingPathComponent("Safari.app", isDirectory: true)
+        var installed = [InstalledBrowser(bundleIdentifier: "com.brave.Browser",
+                                          path: braveURL.path)]
+        var version = "1.0"
+        var discoveryCount = 0
+        var metadataCount = 0
+        let discover: () -> [InstalledBrowser] = {
+            discoveryCount += 1
+            return installed
+        }
+        let lookup: (URL) -> BrowserApplicationMetadata? = { url in
+            metadataCount += 1
+            guard url == braveURL || url == safariURL else { return nil }
+            let id = url == braveURL ? "com.brave.Browser" : "com.apple.Safari"
+            return BrowserApplicationMetadata(
+                bundleIdentifier: id, bundleURL: url,
+                name: url == braveURL ? "Brave" : "Safari",
+                icon: nil, version: version,
+                executableURL: url.appendingPathComponent("Contents/MacOS/Browser")
+            )
+        }
+        let first = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(first.map(\.bundleIdentifier) == ["com.brave.Browser"])
+        precondition(first[0].version == "1.0")
+        installed.append(InstalledBrowser(bundleIdentifier: "com.apple.Safari",
+                                          path: safariURL.path))
+        version = "2.0"
+        let second = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(second.map(\.bundleIdentifier) ==
+                     ["com.brave.Browser", "com.apple.Safari"],
+                     "An installed browser must appear on the next preferences open")
+        precondition(second[0].version == "2.0",
+                     "Browser version changes must be reflected on reopen")
+        installed.removeFirst()
+        let third = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(third.map(\.bundleIdentifier) == ["com.apple.Safari"],
+                     "Removed browsers must disappear on the next open")
+        precondition(discoveryCount == 3 && metadataCount == 4,
+                     "Discovery and metadata must run again on every open")
+        precondition(refreshedBrowserPreferenceItems(
+            discover: { [InstalledBrowser(bundleIdentifier: "com.fake.Impostor",
+                                          path: braveURL.path)] },
+            metadata: lookup).isEmpty, "Mismatched bundle identities must not be displayed")
+        precondition(refreshedBrowserPreferenceItems(
+            discover: { [InstalledBrowser(bundleIdentifier: "com.brave.Browser",
+                                          path: braveURL.path)] },
+            metadata: { _ in nil }).isEmpty,
+            "An application that vanished after discovery must not be displayed")
+
         // The refresh button invokes the provider on demand, updates rows,
         // preserves expanded details, and never treats a provider failure as
         // successful discovery of an empty list.
@@ -176,62 +230,6 @@ struct BrowserPreferenceListTests {
         precondition(BrowserPreferenceListView(items: valid!).refreshButton == nil,
                      "Existing callers without a refresh provider remain unchanged")
 
-        // Build an isolated fake .app and an explicit discovery helper to
-        // exercise the real refresh pipeline without querying installed user
-        // browsers, changing settings, or launching a browser.
-        let manager = FileManager.default
-        let root = manager.temporaryDirectory.appendingPathComponent(
-            "opener-refresh-test-" + UUID().uuidString)
-        try! manager.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? manager.removeItem(at: root) }
-        let app = root.appendingPathComponent("Refresh Browser.app")
-        let macos = app.appendingPathComponent("Contents/MacOS")
-        try! manager.createDirectory(at: macos, withIntermediateDirectories: true)
-        let info: [String: String] = [
-            "CFBundleIdentifier": "com.brave.Browser",
-            "CFBundleExecutable": "Browser",
-            "CFBundleDisplayName": "Refreshed Browser",
-            "CFBundleShortVersionString": "2.1",
-            "CFBundlePackageType": "APPL",
-        ]
-        let plist = try! PropertyListSerialization.data(
-            fromPropertyList: info, format: .xml, options: 0)
-        try! plist.write(to: app.appendingPathComponent("Contents/Info.plist"))
-        let browserExecutable = macos.appendingPathComponent("Browser")
-        try! "#!/bin/sh\nexit 0\n".write(
-            to: browserExecutable, atomically: true, encoding: .utf8)
-        try! manager.setAttributes(
-            [.posixPermissions: 0o755], ofItemAtPath: browserExecutable.path)
-        let discoveredData = encode([[
-            "bundleIdentifier": "com.brave.Browser",
-            "path": app.path,
-        ]])
-        let decoded = refreshedBrowserPreferenceItems(from: discoveredData)
-        precondition(decoded?.count == 1 && decoded?.first?.name == "Refreshed Browser")
-        precondition(decoded?.first?.version == "2.1")
-        precondition(refreshedBrowserPreferenceItems(from: encode([[
-            "bundleIdentifier": "com.google.Chrome",
-            "path": app.path,
-        ]]))?.isEmpty == true, "Mismatched bundle identities never become rows")
-        precondition(refreshedBrowserPreferenceItems(from: Data("bad".utf8)) == nil)
-        precondition(refreshedBrowserPreferenceItems(
-            from: Data(repeating: 0, count: 256 * 1024 + 1)) == nil)
-
-        let inventory = root.appendingPathComponent("inventory.json")
-        try! discoveredData.write(to: inventory)
-        let helper = root.appendingPathComponent("discover-browser-fixture.sh")
-        try! ("#!/bin/sh\n/bin/cat \"" + inventory.path + "\"\n").write(
-            to: helper, atomically: true, encoding: .utf8)
-        try! manager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: helper.path)
-        precondition(rediscoverBrowserPreferenceItems(executable: helper)?.first?.name
-                     == "Refreshed Browser", "Refresh executes read-only discovery again")
-        try! "#!/bin/sh\nexit 3\n".write(
-            to: helper, atomically: true, encoding: .utf8)
-        precondition(rediscoverBrowserPreferenceItems(executable: helper) == nil,
-                     "A failed discovery process leaves previous rows untouched")
-        precondition(rediscoverBrowserPreferenceItems(
-            executable: root.appendingPathComponent("missing-helper")) == nil)
-
-        print("PASS: browser icons, names and optional version disclosure; no selection side effects.")
+        print("PASS: refreshed browser discovery, empty-state guidance and safe preferences.")
     }
 }

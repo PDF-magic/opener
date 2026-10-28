@@ -39,7 +39,7 @@ private func safeBrowserDisplayText(_ raw: String, limit: Int) -> String? {
     return value
 }
 
-// The initial list never reads bundle paths or executes applications.
+// Never read bundle paths or execute an application while displaying entries.
 // A malformed list is rejected as a whole rather than showing misleading names.
 func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     guard data.count <= 4 * 1024 * 1024,
@@ -81,86 +81,51 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     return items
 }
 
-private struct BrowserDiscoveryLocation: Decodable {
-    let bundleIdentifier: String
-    let path: String
-}
-
-// Convert a fresh, bounded inventory into the same read-only list items.
-// Recheck each executable and bundle identity; discovery output alone never
-// gives an application permission to open a scanned PDF.
+// Load a fresh inventory on each preferences open, not the previous window's
+// snapshot. Installed apps can appear, disappear, or change while the app runs.
 func refreshedBrowserPreferenceItems(
-    from data: Data,
-    metadataLookup: (URL) -> BrowserApplicationMetadata? = {
-        browserApplicationMetadata(at: $0)
-    }
-) -> [BrowserPreferenceItem]? {
-    guard data.count <= 256 * 1024,
-          let found = try? JSONDecoder().decode([BrowserDiscoveryLocation].self, from: data),
-          found.count <= 2048 else { return nil }
-
-    var identifiers = Set<String>()
+    discover: () -> [InstalledBrowser],
+    metadata: (URL) -> BrowserApplicationMetadata?
+) -> [BrowserPreferenceItem] {
     var items = [BrowserPreferenceItem]()
-    for location in found {
-        guard location.path.hasPrefix("/"),
-              location.path.utf8.count <= 4096,
-              !location.path.unicodeScalars.contains(where: {
-                  CharacterSet.controlCharacters.contains($0)
-              }),
-              supportedBrowserBundleIDs.contains(location.bundleIdentifier),
-              let metadata = metadataLookup(URL(fileURLWithPath: location.path)),
-              metadata.bundleIdentifier == location.bundleIdentifier,
-              !identifiers.contains(metadata.bundleIdentifier),
-              let name = safeBrowserDisplayText(metadata.name, limit: 128) else { continue }
-
-        identifiers.insert(metadata.bundleIdentifier)
+    for browser in discover() {
+        if items.count >= 100 { break }
+        let url = URL(fileURLWithPath: browser.path, isDirectory: true)
+        guard url.pathExtension.lowercased() == "app",
+              let details = metadata(url),
+              details.bundleIdentifier == browser.bundleIdentifier,
+              details.bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+                  == url.standardizedFileURL.resolvingSymlinksInPath(),
+              let name = safeBrowserDisplayText(details.name, limit: 128),
+              browser.bundleIdentifier != "local.studio.brave-pdf-opener",
+              supportedBrowserBundleIDs.contains(browser.bundleIdentifier),
+              browser.bundleIdentifier.count <= 255,
+              browser.bundleIdentifier.range(
+                  of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
+                  options: .regularExpression
+              ) != nil,
+              browser.bundleIdentifier.contains("."),
+              !browser.bundleIdentifier.contains("..") else { continue }
         items.append(BrowserPreferenceItem(
-            bundleIdentifier: metadata.bundleIdentifier,
-            name: name,
-            version: metadata.version.flatMap { safeBrowserDisplayText($0, limit: 64) },
-            icon: metadata.icon
+            bundleIdentifier: browser.bundleIdentifier, name: name,
+            version: details.version.flatMap {
+                safeBrowserDisplayText($0, limit: 64)
+            }, icon: details.icon
         ))
-        // Match the existing preference-view limit instead of rendering a
-        // surprise unbounded list when a discovery provider malfunctions.
-        guard items.count <= 100 else { return nil }
     }
     return items
 }
 
-// Rerun the installed discovery helper only after an explicit Refresh action.
-// No selection, preference file, PDF association, or scan state is touched.
-func rediscoverBrowserPreferenceItems(
-    executable: URL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/Studio/allow-and-open/discover-installed-browsers")
-) -> [BrowserPreferenceItem]? {
-    guard executable.isFileURL,
-          FileManager.default.isExecutableFile(atPath: executable.path) else { return nil }
-    let process = Process()
-    process.executableURL = executable
-    process.standardError = FileHandle.nullDevice
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    do {
-        try process.run()
-    } catch {
-        return nil
-    }
-    // Drain before waiting: a large inventory could otherwise block the
-    // discovery process on a full stdout pipe.
-    var data = Data()
-    let limit = 256 * 1024
-    while data.count <= limit {
-        let chunk = pipe.fileHandleForReading.readData(
-            ofLength: min(65536, limit + 1 - data.count))
-        if chunk.isEmpty { break }
-        data.append(chunk)
-    }
-    if data.count > limit && process.isRunning {
-        process.terminate()
-    }
-    process.waitUntilExit()
-    guard data.count <= limit, process.terminationStatus == 0 else { return nil }
-    return refreshedBrowserPreferenceItems(from: data)
+func refreshedBrowserPreferenceItems() -> [BrowserPreferenceItem] {
+    refreshedBrowserPreferenceItems(
+        discover: {
+            discoverInstalledBrowsers(
+                searchDirectories: browserSearchDirectories(),
+                registeredApplications: registeredBrowserApplications()
+            )
+        },
+        metadata: { browserApplicationMetadata(at: $0) }
+    )
 }
 
 // The browser's actual macOS icon and human-readable name are always in the
@@ -366,12 +331,23 @@ private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate 
 @main
 struct ShowBrowserPreferences {
     static func main() {
-        // Explicit input only: never inspect user configuration or select a PDF
-        // destination. Callers can aggregate the read-only metadata JSON.
-        let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
-        guard let items = browserPreferenceItems(from: input) else {
-            fputs("Expected a JSON array of discovered browser metadata.\n", stderr)
+        // The normal window-open path always refreshes discovery. Explicit
+        // stdin mode retains compatibility with callers supplying metadata.
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        guard arguments.isEmpty || arguments == ["--metadata-stdin"] else {
+            fputs("Usage: browser-preference-list [--metadata-stdin]\n", stderr)
             exit(EXIT_FAILURE)
+        }
+        let items: [BrowserPreferenceItem]
+        if arguments == ["--metadata-stdin"] {
+            let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
+            guard let supplied = browserPreferenceItems(from: input) else {
+                fputs("Expected a JSON array of discovered browser metadata.\n", stderr)
+                exit(EXIT_FAILURE)
+            }
+            items = supplied
+        } else {
+            items = refreshedBrowserPreferenceItems()
         }
 
         let app = NSApplication.shared
@@ -386,7 +362,7 @@ struct ShowBrowserPreferences {
 
         let list = BrowserPreferenceListView(items: items, refreshProvider: { completion in
             DispatchQueue.global(qos: .userInitiated).async {
-                completion(rediscoverBrowserPreferenceItems())
+                completion(refreshedBrowserPreferenceItems())
             }
         })
         let contentHeight = max(120, CGFloat(max(items.count, 1)) * 84 + 100)
