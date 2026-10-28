@@ -20,6 +20,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
+      - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
+        run: python3 test-reset-to-defaults.py -v
       - name: Verify main Dock icon and invisible PDF scan-helper policy
         run: python3 test-dock-behavior.py -v
       - name: Verify native window title and bundled application icon
@@ -46,6 +48,8 @@ jobs:
         run: python3 test-general-settings-page.py -v
       - name: Verify persistent configuration storage location and user customizations
         run: python3 test-configuration-location.py -v
+      - name: Verify upgrade preserves the installed PDF browser choice
+        run: python3 test-persistent-installer-preferences.py -v
       - name: Verify versioned configuration contract without rewriting preferences
         run: python3 test-configuration-schema.py -v
       - name: Verify Show Scan Progress option and scanner safety
@@ -261,12 +265,20 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
+      - name: Test legacy configuration schema upgrades without resetting preferences
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
+          "$RUNNER_TEMP/TestConfigurationMigration"
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
           "$RUNNER_TEMP/TestShowScanProgress"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-initial-configuration.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
           "$RUNNER_TEMP/TestInitialConfiguration"
+      - name: Verify settings survive app restart and replacement executable
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+          "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
       - name: Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
