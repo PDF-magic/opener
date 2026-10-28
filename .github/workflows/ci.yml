@@ -22,6 +22,8 @@ jobs:
         run: python3 test-swiftui-app-target.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: python3 test-main-preferences-window.py -v
+      - name: Verify native Settings shortcut
+        run: python3 test-settings-keyboard-shortcut.py -v
       - name: Verify opt-in PDF default-handler action
         run: python3 test-pdf-default-user-action.py -v
       - name: Verify application naming and migration

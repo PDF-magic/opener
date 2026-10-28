@@ -20,6 +20,12 @@ Each section provides a read-only overview of the existing workflow; this
 foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
+Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
+to open the native macOS Settings window. The shortcut uses SwiftUI's
+system-managed Settings scene and displays the existing preferences view;
+it does not start a scan, choose a different browser, or change saved
+configuration.
+
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed

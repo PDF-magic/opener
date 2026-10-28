@@ -8,6 +8,14 @@ struct PDFMagicOpenerApp: App {
     WindowGroup("PDF Magic Opener") {
       MainPreferencesView()
     }
+
+    // SwiftUI supplies the native macOS Settings menu and brings its
+    // managed window forward. Use the standard Command-comma shortcut;
+    // do not route a keyboard event through the PDF-opening process.
+    Settings {
+      MainPreferencesView()
+    }
+    .keyboardShortcut(",", modifiers: .command)
   }
 }
 
