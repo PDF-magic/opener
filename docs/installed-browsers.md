@@ -50,6 +50,10 @@ installation exists on the CI runner or test PDF rendering. The production
 scanner, PDF verification, Launch Services registrations and user preferences
 are not changed.
 
+## Safari-only discovery regression (opener-0154)
+
+The macOS CI suite runs `test-safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of a non-executable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
+
 ## Multiple Chromium-based browser discovery regression (opener-0155)
 
 The macOS CI job compiles `test-multiple-chromium-discovery.swift` with
