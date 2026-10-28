@@ -222,6 +222,7 @@ def inspect_embedded_files(
         return EmbeddedFileInspection(len(specs), total)
     except EmbeddedFileInspectionError:
         raise
-    except (OSError, ValueError, TypeError, KeyError, IndexError,
-            AttributeError, RecursionError, subprocess.SubprocessError) as exc:
+    except Exception as exc:
+        # Strict PDF parsing can raise its own exception classes. Any such
+        # failure is an incomplete inspection, never a clean verdict.
         raise EmbeddedFileInspectionError(BLOCK_MESSAGE) from exc
