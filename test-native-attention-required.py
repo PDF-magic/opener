@@ -68,7 +68,7 @@ func verifyAttention(_ tries: Int = 0) {{
         precondition(panel.activeScansLabel.stringValue == "Active scans: 0")
         // The button immediately terminates NSApplication, so mark the
         // planned acknowledgement before performing the actual Close action.
-        print("PASS: user explicitly closed the failed scan window", flush: true)
+        print("PASS: user explicitly closed the failed scan window")
         panel.cancelButton.performClick(nil)
         return
     }}
