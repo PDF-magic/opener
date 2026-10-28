@@ -10,29 +10,27 @@ import sys
 
 
 def _apply_limits():
-    # Limits are applied before importing project PDF parsing modules.
-    # When the OS cannot enforce the isolation contract, fail closed.
+    # Fail closed on any missing OS resource limit. Apply CPU and no-file
+    # limits before bringing in the memory guard and PDF parser modules.
     import resource
+    from maximum_isolated_analysis import WORKER_CPU_SECONDS
+    from maximum_memory_limits import impose_maximum_worker_memory_limit
 
-    from maximum_isolated_analysis import (
-        WORKER_CPU_SECONDS, WORKER_MEMORY_MIB,
-    )
     ceilings = (
         (resource.RLIMIT_CORE, 0),
         (resource.RLIMIT_FSIZE, 0),
         (resource.RLIMIT_CPU, WORKER_CPU_SECONDS),
-        # On macOS, a fresh interpreter maps a large shared dyld cache into
-        # virtual address space. RLIMIT_AS can therefore reject innocent
-        # parser imports despite tiny resident memory. Bound the data segment
-        # there; Linux enforces the whole address space instead.
-        (resource.RLIMIT_DATA if sys.platform == "darwin" else resource.RLIMIT_AS,
-         WORKER_MEMORY_MIB * 1024 * 1024),
     )
     for name, ceiling in ceilings:
-        _, hard = resource.getrlimit(name)
-        effective = ceiling if hard == resource.RLIM_INFINITY else min(ceiling, hard)
+        soft, hard = resource.getrlimit(name)
+        effective = ceiling
+        for existing in (soft, hard):
+            if existing != resource.RLIM_INFINITY:
+                effective = min(effective, existing)
         resource.setrlimit(name, (effective, effective))
 
+    # The child, not the caller or the deployed scanner, receives the cap.
+    impose_maximum_worker_memory_limit()
 
 def main():
     if len(sys.argv) != 2:
