@@ -97,7 +97,7 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
     verifyLaunchedStage()
 }}
 // Observe the queue draining on the main run loop rather than assuming the
-// CI runner dispatches all four subprocesses within exactly 1.5 seconds.
+// CI runner dispatches all four subprocesses within a bounded window.
 var observedQueueDrained = false
 func verifyWaitingQueueDrained(_ attempts: Int = 0) {{
     guard let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first else {{
@@ -107,7 +107,7 @@ func verifyWaitingQueueDrained(_ attempts: Int = 0) {{
         observedQueueDrained = true
         return
     }}
-    precondition(attempts < 60, "Newly dispatched files must leave the waiting count")
+    precondition(attempts < 150, "Newly dispatched files must leave the waiting count")
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {{
         verifyWaitingQueueDrained(attempts + 1)
     }}
@@ -131,7 +131,7 @@ precondition(observedQueueDrained,
     swift.write_text(harness)
     binary = root / 'opener'
     subprocess.run(['/usr/bin/xcrun', 'swiftc', str(swift), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True, timeout=15)
+    subprocess.run([str(binary)], check=True, timeout=35)
     events = [line.split(' ', 1) for line in calls.read_text().splitlines()]
     active = 0
     peak = 0

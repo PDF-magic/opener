@@ -131,6 +131,141 @@ enum SelectedDestinationBrowser {
     }
 }
 
+// Future Enhanced producers may hand the panel a v2 explainable findings
+// snapshot. This adapter never authorizes a PDF, trusts no document-provided
+// strings, and accepts only the fixed stage/code/outcome vocabulary.
+struct EnhancedFindingsProgressSnapshot {
+    let summary: String
+    let details: String
+
+    private static let stages = [
+        "pdfStructure": "PDF structure",
+        "objectRelationships": "Object relationships",
+        "embeddedFiles": "Embedded files",
+        "automaticActions": "Automatic actions",
+        "javascriptActions": "JavaScript actions",
+        "formActions": "Form actions",
+        "annotations": "Annotations",
+        "incrementalRevisions": "Incremental revisions",
+        "embeddedUrls": "Embedded URLs",
+        "malformedStructures": "Malformed structures",
+        "ambiguousStructures": "Ambiguous structures",
+        "executableContent": "Executable content",
+    ]
+    private static let codes = [
+        "malformedStructure": "Malformed structure",
+        "conflictingStructure": "Conflicting structure",
+        "unresolvedReference": "Unresolved reference",
+        "activeContent": "Active content",
+        "suspiciousUrl": "Suspicious URL",
+        "unexpectedEmbeddedFile": "Unexpected embedded file",
+        "incrementalRevision": "Incremental revision",
+        "unsupportedFeature": "Unsupported feature",
+        "resourceLimit": "Resource limit",
+        "inspectionFailure": "Inspection failure",
+    ]
+    private static let severities = [
+        "informational": "Informational",
+        "suspicious": "Suspicious",
+        "critical": "Critical",
+    ]
+    private static let actions = [
+        "recorded": ("continueRequiredChecks", "Recorded; other checks required"),
+        "reviewRequired": ("requestReviewBeforeOpening", "Review required"),
+        "blocking": ("stopOpening", "Opening stopped"),
+        "inspectionIncomplete": ("rerunOrRepairInspection", "Inspection incomplete"),
+    ]
+    private static let maxDisplayedRows = 64
+
+    static func decode(_ data: Data) -> EnhancedFindingsProgressSnapshot? {
+        guard data.count <= 256 * 1024,
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              payload["schemaVersion"] as? Int == 2,
+              payload["authorizesOpen"] as? Bool == false,
+              let requiresBlock = payload["requiresBlock"] as? Bool,
+              let stages = payload["stageResults"] as? [[String: Any]],
+              !stages.isEmpty, stages.count <= 32 else {
+            return nil
+        }
+        var seen = Set<String>()
+        var rows = [String]()
+        var findings = 0
+        var incomplete = 0
+        var calculatedBlock = false
+
+        // Validate ALL entries even when only the first few fit the view.
+        for stage in stages {
+            guard let identifier = stage["stage"] as? String,
+                  let stageName = Self.stages[identifier],
+                  seen.insert(identifier).inserted,
+                  let outcome = stage["outcome"] as? String,
+                  ["completed", "incomplete", "notRun"].contains(outcome),
+                  let entries = stage["findings"] as? [[String: Any]],
+                  entries.count <= 128,
+                  outcome != "notRun" || entries.isEmpty else {
+                return nil
+            }
+            if outcome != "completed" {
+                incomplete += 1
+                calculatedBlock = true
+                if rows.count < maxDisplayedRows {
+                    rows.append("\(stageName): inspection \(outcome == "notRun" ? "not run" : "incomplete")")
+                }
+            }
+            for finding in entries {
+                guard let code = finding["code"] as? String,
+                      let codeName = Self.codes[code],
+                      let severity = finding["severity"] as? String,
+                      let severityName = Self.severities[severity],
+                      let result = finding["result"] as? [String: Any],
+                      let resultID = result["outcome"] as? String,
+                      let nextAction = result["nextAction"] as? String,
+                      let (expectedAction, resultLabel) = Self.actions[resultID] else {
+                    return nil
+                }
+                // A malicious or mismatched producer cannot downgrade a
+                // critical result or an incomplete-inspection finding.
+                let expectedResult: String
+                if code == "resourceLimit" || code == "inspectionFailure" {
+                    expectedResult = "inspectionIncomplete"
+                } else if severity == "critical" {
+                    expectedResult = "blocking"
+                } else if severity == "suspicious" {
+                    expectedResult = "reviewRequired"
+                } else {
+                    expectedResult = "recorded"
+                }
+                guard resultID == expectedResult, nextAction == expectedAction else {
+                    return nil
+                }
+                findings += 1
+                if resultID != "recorded" {
+                    calculatedBlock = true
+                }
+                if rows.count < maxDisplayedRows {
+                    rows.append("\(stageName) · \(severityName) · \(codeName) — \(resultLabel)")
+                }
+            }
+        }
+        guard calculatedBlock == requiresBlock else { return nil }
+        let summary = "Enhanced findings: \(findings) · incomplete stages: \(incomplete)"
+        if findings == 0 && incomplete == 0 {
+            rows.append("No findings reported for these stages. This is not a clean verdict.")
+        }
+        if rows.count < maxDisplayedRows && (findings > 0 || incomplete > 0) {
+            rows.insert("Inspection evidence only; opening is never authorized here.", at: 0)
+        }
+        let undisplayed = findings + incomplete - min(findings + incomplete, maxDisplayedRows)
+        if undisplayed > 0 {
+            rows.append("\(undisplayed) additional results not displayed; review the full report.")
+        }
+        return EnhancedFindingsProgressSnapshot(
+            summary: summary,
+            details: rows.joined(separator: "\n")
+        )
+    }
+}
+
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
     let destinationBrowserLabel = NSTextField(labelWithString: "Destination browser: Unavailable")
@@ -143,6 +278,14 @@ final class ScanProgressPanel: NSPanel {
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
+    // Hidden for the deployed Built-in scanner: Enhanced is not selectable.
+    // These views display only validated, fixed-vocabulary inspection metadata.
+    let enhancedFindingsLabel = NSTextField(labelWithString: "")
+    let enhancedFindingsScrollView = NSScrollView(
+        frame: NSRect(x: 20, y: 462, width: 320, height: 139))
+    let enhancedFindingsTextView = NSTextView(frame: NSRect(x: 0, y: 0, width: 314, height: 139))
+    private static let originalHeight: CGFloat = 458
+    private static let findingsHeight: CGFloat = 650
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
@@ -204,7 +347,55 @@ final class ScanProgressPanel: NSPanel {
         cancelButton.bezelStyle = .rounded
         cancelButton.frame = NSRect(x: 136, y: 8, width: 88, height: 28)
         contentView?.addSubview(cancelButton)
+        enhancedFindingsLabel.frame = NSRect(x: 20, y: 608, width: 320, height: 22)
+        enhancedFindingsLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        enhancedFindingsLabel.alignment = .center
+        enhancedFindingsLabel.lineBreakMode = .byTruncatingTail
+        enhancedFindingsLabel.setAccessibilityIdentifier("enhancedFindingsSummary")
+        enhancedFindingsLabel.isHidden = true
+        contentView?.addSubview(enhancedFindingsLabel)
+        enhancedFindingsTextView.isEditable = false
+        enhancedFindingsTextView.isSelectable = true
+        enhancedFindingsTextView.isRichText = false
+        enhancedFindingsTextView.drawsBackground = false
+        enhancedFindingsTextView.font = .systemFont(ofSize: 11)
+        enhancedFindingsTextView.isVerticallyResizable = true
+        enhancedFindingsTextView.isHorizontallyResizable = false
+        enhancedFindingsTextView.autoresizingMask = [.width]
+        enhancedFindingsTextView.textContainer?.widthTracksTextView = true
+        enhancedFindingsTextView.textContainer?.containerSize = NSSize(
+            width: 314, height: CGFloat.greatestFiniteMagnitude)
+        enhancedFindingsTextView.setAccessibilityIdentifier("enhancedFindingsDetails")
+        enhancedFindingsScrollView.documentView = enhancedFindingsTextView
+        enhancedFindingsScrollView.hasVerticalScroller = true
+        enhancedFindingsScrollView.drawsBackground = false
+        enhancedFindingsScrollView.isHidden = true
+        contentView?.addSubview(enhancedFindingsScrollView)
         center()
+    }
+
+    // Presentation only: callers must supply validated v2 analysis evidence
+    // from a trusted, separate Enhanced producer. No parser/scanner policy
+    // changes or automatic file opening can result from this method.
+    func updateEnhancedFindings(from report: Data?) {
+        guard let report else {
+            enhancedFindingsLabel.stringValue = ""
+            enhancedFindingsLabel.setAccessibilityLabel("")
+            enhancedFindingsTextView.string = ""
+            enhancedFindingsLabel.isHidden = true
+            enhancedFindingsScrollView.isHidden = true
+            setContentSize(NSSize(width: 360, height: Self.originalHeight))
+            return
+        }
+        let snapshot = EnhancedFindingsProgressSnapshot.decode(report)
+        enhancedFindingsLabel.stringValue = snapshot?.summary
+            ?? "Enhanced findings unavailable"
+        enhancedFindingsLabel.setAccessibilityLabel(enhancedFindingsLabel.stringValue)
+        enhancedFindingsTextView.string = snapshot?.details
+            ?? "Inspection report could not be verified. No opening decision follows."
+        enhancedFindingsLabel.isHidden = false
+        enhancedFindingsScrollView.isHidden = false
+        setContentSize(NSSize(width: 360, height: Self.findingsHeight))
     }
 
     // An individual scan has no trustworthy percentage. For a batch, only
