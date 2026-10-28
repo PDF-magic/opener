@@ -21,6 +21,8 @@ enum ScanProgressPreference {
   static func isEnabled(
     defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
   ) -> Bool {
+    // Read changes from other running processes before choosing presentation.
+    _ = defaults?.synchronize()
     guard let defaults,
           let setting = defaults.object(forKey: key) as? Bool else {
       return SupportedPreferenceDefaults.showScanProgress
@@ -50,6 +52,7 @@ enum SuccessfulScanNotificationPreference {
   static func isEnabled(
     defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
   ) -> Bool {
+    _ = defaults?.synchronize()
     guard let defaults,
           let setting = defaults.object(forKey: key) as? Bool else {
       return SupportedPreferenceDefaults.showSuccessfulScanNotifications
@@ -85,6 +88,7 @@ enum BlockedFileNotificationPreference {
   static let key = "showBlockedFileNotifications"
 
   static func isEnabled(defaults: UserDefaults? = UserDefaults(suiteName: suiteName)) -> Bool {
+    _ = defaults?.synchronize()
     guard let defaults, let setting = defaults.object(forKey: key) as? Bool else { return false }
     return setting
   }
@@ -98,6 +102,25 @@ enum BlockedFileNotificationPreference {
 
   static func shouldNotify(failure: String?, cancelled: Bool, enabled: Bool = isEnabled()) -> Bool {
     return enabled && failure != nil && !cancelled
+  }
+}
+
+// A read-only effective view shared by the preferences app and native PDF
+// opener. Each setting uses the same per-user domain, defaults and validation.
+// It cannot modify a scanner verdict or any persisted configuration.
+struct EffectivePresentationConfiguration: Equatable {
+  let showScanProgress: Bool
+  let showSuccessfulScanNotifications: Bool
+  let showBlockedFileNotifications: Bool
+
+  static func read(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Self {
+    return Self(
+      showScanProgress: ScanProgressPreference.isEnabled(defaults: defaults),
+      showSuccessfulScanNotifications: SuccessfulScanNotificationPreference.isEnabled(defaults: defaults),
+      showBlockedFileNotifications: BlockedFileNotificationPreference.isEnabled(defaults: defaults)
+    )
   }
 }
 
@@ -134,7 +157,7 @@ enum InitialConfiguration {
     defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
   ) -> Bool {
     guard let defaults else { return false }
-    // Record the active version without resetting settings on incompatible metadata.
+    // Record the active version without overwriting incompatible metadata.
     guard ActiveConfigurationSchemaVersion.recordIfNeeded(defaults: defaults) else { return false }
     var initializedMissingSetting = false
     if defaults.object(forKey: ScanProgressPreference.key) == nil {
@@ -309,5 +332,45 @@ enum PDFMagicConfigurationMigration {
       showSuccessfulScanNotifications: savedBool(SuccessfulScanNotificationPreference.key),
       showBlockedFileNotifications: savedBool(BlockedFileNotificationPreference.key)
     ).encoded()
+  }
+}
+
+// Explicit in-memory fallback; do not modify persisted preferences.
+enum MalformedConfigurationRecovery {
+  enum RecoveryError: Error, Equatable {
+    case unsupportedVersion(Int)
+    case oversized
+  }
+  enum Outcome: Equatable {
+    case loaded(PDFMagicConfigurationSchema)
+    case recovered(PDFMagicConfigurationSchema)
+  }
+  private struct VersionProbe: Decodable {
+    let schemaVersion: Int?
+  }
+  static func decode(_ data: Data) throws -> Outcome {
+    guard data.count <= 65_536 else { throw RecoveryError.oversized }
+    if let probe = try? JSONDecoder().decode(VersionProbe.self, from: data),
+       let version = probe.schemaVersion,
+       version != PDFMagicConfigurationSchema.currentVersion {
+      throw RecoveryError.unsupportedVersion(version)
+    }
+    if let valid = try? PDFMagicConfigurationSchema.decoded(from: data) {
+      return .loaded(valid)
+    }
+    // Salvage valid presentation choices and default only invalid fields.
+    // Preserve the original bytes, including any unknown future fields.
+    let fields = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    return .recovered(PDFMagicConfigurationSchema(
+      showScanProgress: boolean(fields?["showScanProgress"]),
+      showSuccessfulScanNotifications: boolean(fields?["showSuccessfulScanNotifications"]),
+      showBlockedFileNotifications: boolean(fields?["showBlockedFileNotifications"])
+    ))
+  }
+  private static func boolean(_ value: Any?) -> Bool? {
+    // Do not mistake JSON integers for booleans via NSNumber bridging.
+    guard let number = value as? NSNumber,
+          CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }
+    return number.boolValue
   }
 }
