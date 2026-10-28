@@ -15,17 +15,22 @@ xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configurati
 ```
 
 The standalone SwiftUI application now opens a **main preferences window**
-(opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
-The **General** sidebar entry now opens a dedicated read-only settings page
-(opener-0178), describing PDF scanning and preserved application choices.
-Browsers and Security retain their existing overview panes. General does not
-change configured browser choices, PDF associations, or security controls.
-The **Updates** sidebar entry (opener-0182) opens a dedicated read-only
-page with the installed app version from its bundle metadata, information
-about application updates, and an explanation of the existing ClamAV
-definition-update workflow. It does not check for, download, or install
-updates, claim an update status, or modify preferences or scan protections.
-Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+(opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
+The **General** sidebar entry opens a dedicated read-only settings page
+(opener-0178) describing PDF scanning and preserved application choices.
+**Protection** (opener-0180) opens a separate informational page explaining
+local ClamAV scanning, fail-closed handling of unsafe or unverified files,
+and verified PDF application handoff. The installed PDF opener still owns all
+scanner and quarantine safeguards; viewing Protection cannot change them
+or modify saved application preferences. Browsers retains its existing
+overview pending its separate page. Rebuild and run the `PDFMagicOpener`
+Xcode scheme to see the navigation.
+
+The **Updates** sidebar entry (opener-0182) provides a dedicated, read-only
+page showing the installed app version and explaining application updates
+and the existing ClamAV definition-update workflow. It does not check
+for, download, or install updates, claim an update status, or change
+preferences, scanning safeguards, or PDF associations.
 
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
