@@ -39,6 +39,15 @@ classes = classes.replace(
                      "Failure must preserve the scanner-provided diagnostic")
     }
     print("PASS: native failure alert identifies requested PDF and explains the error")
+    // The progress panel intentionally stays open after a blocked scan.
+    // The test harness must acknowledge it just as a user would.
+    DispatchQueue.main.async {
+        guard let progress = NSApp.windows.compactMap({ $0 as? ScanProgressPanel }).first,
+              progress.isVisible, progress.cancelButton.title == "Close" else {
+            fatalError("The blocked scan must retain a visible Close action")
+        }
+        progress.cancelButton.performClick(nil)
+    }
     """,
     1,
 )
