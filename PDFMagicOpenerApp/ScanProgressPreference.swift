@@ -156,16 +156,22 @@ enum InitialConfiguration {
     defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
   ) -> Bool {
     guard let defaults else { return false }
+    var initializedMissingSetting = false
     if defaults.object(forKey: ScanProgressPreference.key) == nil {
       defaults.set(SupportedPreferenceDefaults.showScanProgress, forKey: ScanProgressPreference.key)
+      initializedMissingSetting = true
     }
     if defaults.object(forKey: SuccessfulScanNotificationPreference.key) == nil {
       defaults.set(SupportedPreferenceDefaults.showSuccessfulScanNotifications, forKey: SuccessfulScanNotificationPreference.key)
+      initializedMissingSetting = true
     }
     if defaults.object(forKey: BlockedFileNotificationPreference.key) == nil {
       defaults.set(false, forKey: BlockedFileNotificationPreference.key)
+      initializedMissingSetting = true
     }
-    return defaults.synchronize()
+    // A relaunch or an in-place upgrade must not re-save already persisted
+    // preferences. Only the first creation of missing keys needs a flush.
+    return !initializedMissingSetting || defaults.synchronize()
   }
 }
 
