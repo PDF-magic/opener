@@ -25,7 +25,7 @@ class MainPreferencesWindowTests(unittest.TestCase):
         "List(MainPreferenceSection.allCases",
         "case general", "case browsers", "case security",
         'title: "PDF Magic Opener"',
-        'title: "Browsers"',
+        'BrowsersSettingsView()',
         'title: "Security"',
         'accessibilityIdentifier("mainPreferencesSidebar")',
     ):
