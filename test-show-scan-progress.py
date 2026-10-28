@@ -35,7 +35,8 @@ class ShowScanProgressTests(unittest.TestCase):
     self.assertIn('suiteName = "local.studio.pdf-magic-opener"', preference)
     self.assertIn('key = "showScanProgress"', preference)
     self.assertIn("let setting = defaults.object(forKey: key) as? Bool", preference)
-    self.assertIn("return true", preference)
+    self.assertIn("static let showScanProgress = true", preference)
+    self.assertIn("return SupportedPreferenceDefaults.showScanProgress", preference)
     self.assertIn("defaults.set(enabled, forKey: key)", preference)
     self.assertIn("defaults.synchronize()", preference)
     for disallowed in ("target-app.txt", "scan-and-open", "clamscan", "Process(",
