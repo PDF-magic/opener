@@ -18,6 +18,8 @@ jobs:
           python-version: "3.11"
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify built-in active protection profile label and unchanged scanner gates
+        run: python3 test-active-protection-profile.py -v
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
@@ -267,6 +269,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
+      - name: Verify safe malformed configuration recovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+          "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
       - name: Test legacy configuration schema upgrades without resetting preferences
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
@@ -281,6 +287,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
           "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+      - name: Verify editing preferences while the malware scan is running
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-preferences-during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
+          PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" python3 test-preferences-during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"

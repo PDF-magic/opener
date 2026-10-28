@@ -69,6 +69,14 @@ enum ScanProgressStage {
     }
 }
 
+// The installed scan gate has one built-in, mandatory protection policy.
+// This is a display descriptor, NOT a selectable or health-verified profile:
+// a missing or failed scanner still blocks opening via the existing scan gate.
+private enum BuiltInProtectionProfile {
+    static let name = "Built-in"
+    static let details = "ClamAV malware scanning · fail-closed"
+}
+
 // Read-only presentation of the installed scanner's selected PDF destination.
 // Mirror the verified chooser's target-app.txt contract; never use this label
 // to select a launcher, authorize opening, or change the scanner's fail-closed gate.
@@ -126,13 +134,17 @@ enum SelectedDestinationBrowser {
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
     let destinationBrowserLabel = NSTextField(labelWithString: "Destination browser: Unavailable")
+    let protectionProfileLabel = NSTextField(
+        labelWithString: "Active protection profile: " + BuiltInProtectionProfile.name)
+    let protectionProfileDetailsLabel = NSTextField(
+        labelWithString: BuiltInProtectionProfile.details)
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 364),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 408),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -140,17 +152,28 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 144, width: 300, height: 205)))
+            frame: NSRect(x: 30, y: 188, width: 300, height: 205)))
         stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         stageLabel.alignment = .center
-        stageLabel.frame = NSRect(x: 20, y: 119, width: 320, height: 22)
+        stageLabel.frame = NSRect(x: 20, y: 163, width: 320, height: 22)
         stageLabel.setAccessibilityLabel("Current scanning stage")
         contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 93, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 137, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
+        protectionProfileLabel.alignment = .center
+        protectionProfileLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        protectionProfileLabel.textColor = .secondaryLabelColor
+        protectionProfileLabel.frame = NSRect(x: 20, y: 111, width: 320, height: 20)
+        protectionProfileLabel.setAccessibilityLabel(protectionProfileLabel.stringValue)
+        contentView?.addSubview(protectionProfileLabel)
+        protectionProfileDetailsLabel.alignment = .center
+        protectionProfileDetailsLabel.font = .systemFont(ofSize: 11)
+        protectionProfileDetailsLabel.textColor = .secondaryLabelColor
+        protectionProfileDetailsLabel.frame = NSRect(x: 20, y: 91, width: 320, height: 18)
+        contentView?.addSubview(protectionProfileDetailsLabel)
         destinationBrowserLabel.alignment = .center
         destinationBrowserLabel.font = .systemFont(ofSize: 12)
         destinationBrowserLabel.lineBreakMode = .byTruncatingMiddle
