@@ -63,10 +63,16 @@ class MainPreferencesWindowTests(unittest.TestCase):
         "Process(", "NSWorkspace", "FileHandle(", "UserDefaults",
         "onOpenURL", "DocumentGroup", "clamscan(", "LSSetDefault",
         "write(to:", "removeItem(", "setDefault", "target-app.txt",
-        "Toggle(", "Button(",
+        "Toggle(", "Picker(", "Slider(", "@AppStorage",
+        "SelectedProtectionProfilePreference.save", "save(",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, protection)
+    # Three intentional preview buttons are now present, but no scanner
+    # preference write or policy activation is available from this page.
+    self.assertIn("Button {", protection)
+    self.assertIn("selectedPreview = tier", protection)
+    self.assertIn('GroupBox("Planned protection levels")', protection)
 
   def test_protection_page_is_compiled_into_native_preferences_target(self):
     project = PROJECT.read_text(encoding="utf-8")
