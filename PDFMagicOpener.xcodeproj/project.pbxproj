@@ -161,6 +161,7 @@
         MARKETING_VERSION = 0.1.0;
         CURRENT_PROJECT_VERSION = 1;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
+        INFOPLIST_KEY_LSUIElement = NO;
         INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
         MACOSX_DEPLOYMENT_TARGET = 13.0;
         PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui;
@@ -183,6 +184,7 @@
         MARKETING_VERSION = 0.1.0;
         CURRENT_PROJECT_VERSION = 1;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
+        INFOPLIST_KEY_LSUIElement = NO;
         INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
         MACOSX_DEPLOYMENT_TARGET = 13.0;
         PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui;
