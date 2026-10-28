@@ -6,7 +6,7 @@ Defining the vocabulary does not change how the current scanner runs or
 assign outcomes to requests; integration belongs to separate checklist work.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import re
 
@@ -33,6 +33,11 @@ class ScanResultStatus(str, Enum):
 
 # Only ordinary ClamAV signature identifiers belong in structured results.
 # Exclude scanned paths, arbitrary diagnostics, and malformed FOUND lines.
+# This is the *enforced* scan-gate policy, not a requested or persisted tier.
+# Standard/Enhanced/Maximum exist only as inactive definitions.
+EFFECTIVE_POLICY_ID = "built-in"
+
+
 _DETECTION_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._!+@-]{0,254}\Z")
 
 
@@ -41,6 +46,8 @@ class ScanResult:
     """In-memory result metadata; detection names never authorize opening."""
 
     detection_names: tuple[str, ...] = ()
+    # Derived from the installed scan gate, never supplied by the caller.
+    effective_policy_id: str = field(default=EFFECTIVE_POLICY_ID, init=False)
 
     @classmethod
     def from_clamav_output(cls, output):
