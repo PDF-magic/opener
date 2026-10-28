@@ -49,3 +49,20 @@ This synthetic fixture is deterministic and does **not** claim a real Brave
 installation exists on the CI runner or test PDF rendering. The production
 scanner, PDF verification, Launch Services registrations and user preferences
 are not changed.
+
+## Firefox and Chromium installed together (opener-0156)
+
+The macOS CI job compiles `discover-installed-browsers.swift` with
+`test-firefox-chromium-discovery.swift` and constructs **Firefox.app**
+(`org.mozilla.firefox`) and **Chromium.app** (`org.chromium.Chromium`)
+in separate disposable system-style and user-style Applications folders.
+The test verifies that both are discovered at once under distinct identifiers
+and correct paths, regardless of duplicate discovery inputs, with stable
+ordering and valid JSON output. Unrelated applications with browser-like names
+must not appear.
+
+It then removes Firefox and Chromium in turn to confirm the surviving browser
+is retained independently; it also checks that a nonexecutable bundle is
+excluded and no application executable is launched. The fixtures do not install
+real browsers, register apps with macOS, change saved PDF targets, or test PDF
+rendering. Scanner and quarantine behavior remain unchanged.
