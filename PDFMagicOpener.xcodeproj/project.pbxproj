@@ -119,6 +119,7 @@
         DEBUG_INFORMATION_FORMAT = dwarf;
         GENERATE_INFOPLIST_FILE = YES;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
+        INFOPLIST_KEY_LSUIElement = NO;
         INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
         MACOSX_DEPLOYMENT_TARGET = 13.0;
         PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui;
@@ -139,6 +140,7 @@
         DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
         GENERATE_INFOPLIST_FILE = YES;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
+        INFOPLIST_KEY_LSUIElement = NO;
         INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
         MACOSX_DEPLOYMENT_TARGET = 13.0;
         PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui;

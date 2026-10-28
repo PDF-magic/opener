@@ -25,6 +25,17 @@ standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored
 browser preferences, or scanner configuration.
 
+**Dock behavior (opener-0174):** The standalone SwiftUI preferences app is a
+regular macOS application **with a Dock icon** when launched, so users can
+return to its window and standard application menu. Both Debug and Release
+builds explicitly set `LSUIElement = NO`. The separately installed AppKit
+PDF scan helper intentionally remains an **accessory without a Dock icon**:
+its bundle still sets `LSUIElement = YES` and its process uses
+`NSApplication.ActivationPolicy.accessory`. Opening a PDF therefore does not
+introduce a second persistent Dock item. The two apps retain their distinct
+bundle identifiers and roles; these settings do not alter PDF associations,
+browser choices, scan gates, cancellation, or quarantine behavior.
+
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
