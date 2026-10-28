@@ -39,7 +39,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
                 with patch.object(sandbox.subprocess, "run") as run:
                     with self.assertRaises(sandbox.MaximumFilesystemSandboxError):
                         sandbox.run_maximum_filesystem_confined_worker(
-                            "/bin/sh", arguments, body, timeout_seconds=timeout
+                            "/bin/bash", arguments, body, timeout_seconds=timeout
                         )
                     run.assert_not_called()
 
@@ -48,26 +48,26 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
             with patch.object(sandbox.subprocess, "run") as run:
                 with self.assertRaises(sandbox.MaximumFilesystemSandboxError):
                     sandbox.run_maximum_filesystem_confined_worker(
-                        "/bin/sh", ("-c", ":"), b"safe input"
+                        "/bin/bash", ("-c", ":"), b"safe input"
                     )
                 run.assert_not_called()
         with patch.object(sandbox, "SANDBOX_EXEC", "/definitely-missing/sandbox-exec"):
             with patch.object(sandbox.subprocess, "run") as run:
                 with self.assertRaises(sandbox.MaximumFilesystemSandboxError):
                     sandbox.run_maximum_filesystem_confined_worker(
-                        "/bin/sh", ("-c", ":"), b"safe input"
+                        "/bin/bash", ("-c", ":"), b"safe input"
                     )
                 run.assert_not_called()
 
     def test_rejects_symlink_and_nonexecutables(self):
         with tempfile.TemporaryDirectory() as directory:
             link = Path(directory) / "worker"
-            link.symlink_to("/bin/sh")
+            link.symlink_to("/bin/bash")
             self.assertFalse(sandbox._trusted_executable(str(link)))
             plain = Path(directory) / "plain"
             plain.write_bytes(b"not a program")
             self.assertFalse(sandbox._trusted_executable(str(plain)))
-            self.assertFalse(sandbox._trusted_executable("/bin/../bin/sh"))
+            self.assertFalse(sandbox._trusted_executable("/bin/../bin/bash"))
 
     def test_result_is_non_authorizing_and_immutable(self):
         result = sandbox.MaximumFilesystemWorkerExit(0)
@@ -98,7 +98,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
             written = root / "should-not-exist"
             def execute(script, *arguments):
                 return sandbox.run_maximum_filesystem_confined_worker(
-                    "/bin/sh", ("-c", script, "probe", *map(str, arguments)),
+                    "/bin/bash", ("-c", script, "probe", *map(str, arguments)),
                     b"harmless stdin\n", timeout_seconds=15,
                 )
             permitted = execute('IFS= read -r line; [ "$line" = "harmless stdin" ]')
@@ -107,7 +107,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
                 # run diagnostics on a user PDF or echo arbitrary worker stderr.
                 probe = sandbox.subprocess.run(
                     [sandbox.SANDBOX_EXEC, "-p", sandbox.SANDBOX_PROFILE,
-                     "-D", "WORKER=/bin/sh", "/bin/sh", "-c",
+                     "-D", "WORKER=/bin/bash", "/bin/bash", "-c",
                      'IFS= read -r line; [ "$line" = "harmless stdin" ]'],
                     input=b"harmless stdin\\n", capture_output=True, timeout=10,
                     cwd="/", env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty", "LC_ALL": "C"},
@@ -134,12 +134,12 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
         with patch.object(sandbox.subprocess, "run") as run:
             run.return_value.returncode = 0
             outcome = sandbox.run_maximum_filesystem_confined_worker(
-                "/bin/sh", ("-c", ":"), b"safe input", timeout_seconds=5,
+                "/bin/bash", ("-c", ":"), b"safe input", timeout_seconds=5,
             )
             call = run.call_args
             self.assertEqual(call.args[0][0], "/usr/bin/sandbox-exec")
             self.assertIn("(deny default)", call.args[0][2])
-            self.assertIn("WORKER=/bin/sh", call.args[0])
+            self.assertIn("WORKER=/bin/bash", call.args[0])
             self.assertEqual(call.kwargs["cwd"], "/")
             self.assertTrue(call.kwargs["close_fds"])
             self.assertNotIn("PYTHONPATH", call.kwargs["env"])
