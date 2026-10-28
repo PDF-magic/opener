@@ -344,7 +344,8 @@ DispatchQueue.main.async {
                 else { self.panel?.orderOut(nil) }
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
-                    scanFailureAlert(for: failure).runModal()
+                    let alert = scanFailureAlert(for: failure)
+                    alert.runModal()
                 }
                 // A nil error may also indicate cancellation. Only a zero
                 // status scan-and-open completion with no cancellation can
