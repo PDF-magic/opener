@@ -459,9 +459,9 @@ jobs:
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
-      - name: Verify scan failures identify the PDF and show useful details
-        timeout-minutes: 2
-        run: python3 test-native-scan-failure.py
+      - name: Verify actual multi-document progress and unknown single-file progress
+        timeout-minutes: 3
+        run: python3 test-native-determinate-progress.py -v
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: python3 test-native-cancellation.py
