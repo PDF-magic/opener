@@ -107,6 +107,8 @@ jobs:
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
         run: python3 test-pdf-filename-paths.py -v
+      - name: Reject unsupported configuration values and fill absent keys safely
+        run: python3 test-configuration-values.py -v
       - name: Validate persisted PDF application configuration and reject unsafe files
         run: python3 test-configuration-validation.py -v
       - name: Verify configurable PDF targets including Arc and Opera
