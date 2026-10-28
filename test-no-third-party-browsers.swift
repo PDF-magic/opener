@@ -80,7 +80,8 @@ struct NoThirdPartyBrowsersTests {
         precondition(discover() == expected,
                      "Repeat discovery must not invent uninstalled browser choices")
         let encoded = try JSONEncoder().encode(discover())
-        precondition(try JSONDecoder().decode([InstalledBrowser].self, from: encoded) == expected,
+        let decoded = try JSONDecoder().decode([InstalledBrowser].self, from: encoded)
+        precondition(decoded == expected,
                      "Safari-only discovery must preserve the JSON inventory contract")
         let items = preferences()
         precondition(items.count == 1 && items[0].bundleIdentifier == "com.apple.Safari",
@@ -108,7 +109,8 @@ struct NoThirdPartyBrowsersTests {
         precondition(emptyList.emptyState?.preferenceNote.stringValue.contains(
             "has not changed") == true,
                      "Empty results must not suggest that the saved target was reset")
-        precondition(try String(contentsOf: savedTarget, encoding: .utf8) == originalTarget,
+        let persistedTarget = try String(contentsOf: savedTarget, encoding: .utf8)
+        precondition(persistedTarget == originalTarget,
                      "Discovery and display must not change saved custom browser choices")
         precondition(!files.fileExists(atPath: launchMarker.path),
                      "Discovery and preferences must never execute an app")
