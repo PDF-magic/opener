@@ -22,9 +22,13 @@ The **General** sidebar entry opens a dedicated read-only settings page
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
 scanner and quarantine safeguards; viewing Protection cannot change them
-or modify saved application preferences. Browsers retains its existing
-overview pending its separate page. Rebuild and run the `PDFMagicOpener`
-Xcode scheme to see the navigation.
+or modify saved application preferences. The **Browsers** sidebar entry
+now opens a dedicated read-only settings page (opener-0179), with sections
+for installed browser discovery, the preferred PDF destination, and custom
+applications. Actual discovery and selection remain with the installed
+browser preference tools; opening this page does not reset user choices,
+change system associations, or bypass any scan protections. Rebuild and
+run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
 **Privacy and Logs** (opener-0184) is a separate, read-only sidebar page
 describing local document processing, diagnostic-log visibility, and current
