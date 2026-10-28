@@ -37,6 +37,8 @@ jobs:
         run: python3 test-detection-policy.py -v
       - name: Verify optional browser download identifiers
         run: python3 test-browser-download-id.py -v
+      - name: Verify supported browser bundle identifier registry
+        run: python3 test-browser-registry.py -v
       - name: Verify browser-independent scan engine and launch defaults
         run: python3 test-file-launcher.py
       - name: Verify PDF scan gates on external-drive paths
@@ -91,6 +93,8 @@ jobs:
         env:
           PDF_MAGIC_TEST_BROWSER: arc
         run: python3 test-browser-pdf-behavior.py
+      - name: Verify stable and preview browser release classification
+        run: python3 test-browser-release.py -v
       - name: Verify browser PDF viewer comparison documentation
         run: python3 test-browser-viewer-docs.py -v
       - name: Verify optional PDF fallback selection and safety
@@ -191,7 +195,7 @@ jobs:
       - name: Verify PDF handoff to an already-running browser process
         timeout-minutes: 3
         run: python3 test-browser-already-running.py -v
-      - name: Verify bundle-identifier resolution and app existence
+      - name: Verify bundle-identifier resolution, duplicate installations and app existence
         run: python3 test-bundle-target.py
       - name: Verify Finder-style PDF open-event delivery through Launch Services
         timeout-minutes: 3

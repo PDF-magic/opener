@@ -37,21 +37,39 @@ final class LaunchCompletion: @unchecked Sendable {
  // alone is not proof that the app remains installed at its recorded URL.
 func resolveTargetApplication(
     bundleIdentifier: String,
-    lookup: (String) -> URL? = { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+    lookup: ((String) -> URL?)? = nil,
+    lookupAll: ((String) -> [URL])? = nil
 ) -> URL? {
-    guard !bundleIdentifier.isEmpty,
-          bundleIdentifier != openerBundleIdentifier,
-          let target = lookup(bundleIdentifier)?.standardizedFileURL.resolvingSymlinksInPath(),
-          target.pathExtension.lowercased() == "app" else { return nil }
+    guard !bundleIdentifier.isEmpty, bundleIdentifier != openerBundleIdentifier else {
+        return nil
+    }
 
-    var isDirectory: ObjCBool = false
-    guard FileManager.default.fileExists(atPath: target.path, isDirectory: &isDirectory),
-          isDirectory.boolValue,
-          let bundle = Bundle(url: target),
-          bundle.bundleIdentifier == bundleIdentifier,
-          let executable = bundle.executableURL,
-          FileManager.default.isExecutableFile(atPath: executable.path) else { return nil }
-    return target
+    let candidates: [URL]
+    if let lookupAll = lookupAll {
+        candidates = lookupAll(bundleIdentifier)
+    } else if let lookup = lookup {
+        // Preserve the single-location test hook for existing callers.
+        candidates = lookup(bundleIdentifier).map { [$0] } ?? []
+    } else {
+        candidates = NSWorkspace.shared.urlsForApplications(withBundleIdentifier: bundleIdentifier)
+    }
+    // Launch Services ranks all registered copies by suitability. Skip stale
+    // registrations, mismatched IDs, and nonexecutable bundles while retaining
+    // that order; never substitute another browser or the PDF scan gate.
+    for candidate in candidates {
+        guard candidate.isFileURL else { continue }
+        let target = candidate.standardizedFileURL.resolvingSymlinksInPath()
+        var isDirectory: ObjCBool = false
+        guard target.pathExtension.lowercased() == "app",
+              FileManager.default.fileExists(atPath: target.path, isDirectory: &isDirectory),
+              isDirectory.boolValue,
+              let bundle = Bundle(url: target),
+              bundle.bundleIdentifier == bundleIdentifier,
+              let executable = bundle.executableURL,
+              FileManager.default.isExecutableFile(atPath: executable.path) else { continue }
+        return target
+    }
+    return nil
 }
 
 // Inspect metadata only. Reading an iCloud placeholder can itself start a
