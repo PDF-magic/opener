@@ -98,7 +98,6 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
         completed = subprocess.run(
             command,
             input=contents,
-            stdin=subprocess.PIPE if False else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             timeout=WORKER_WALL_TIMEOUT_SECONDS,
@@ -134,5 +133,5 @@ def run_isolated_pdf_analysis(contents: bytes, inspection: str) -> IsolatedPDFAn
             tuple((key, response["metrics"][key])
                   for key in _INSPECTORS[inspection][2]),
         )
-    except (Exception,) as exc:
+    except Exception:
         raise IsolatedPDFAnalysisError(BLOCK_MESSAGE) from None

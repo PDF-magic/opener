@@ -21,7 +21,12 @@ def _apply_limits():
         (resource.RLIMIT_CORE, 0),
         (resource.RLIMIT_FSIZE, 0),
         (resource.RLIMIT_CPU, WORKER_CPU_SECONDS),
-        (resource.RLIMIT_AS, WORKER_MEMORY_MIB * 1024 * 1024),
+        # On macOS, a fresh interpreter maps a large shared dyld cache into
+        # virtual address space. RLIMIT_AS can therefore reject innocent
+        # parser imports despite tiny resident memory. Bound the data segment
+        # there; Linux enforces the whole address space instead.
+        (resource.RLIMIT_DATA if sys.platform == "darwin" else resource.RLIMIT_AS,
+         WORKER_MEMORY_MIB * 1024 * 1024),
     )
     for name, ceiling in ceilings:
         _, hard = resource.getrlimit(name)
