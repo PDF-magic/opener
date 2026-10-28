@@ -36,6 +36,8 @@ jobs:
           python3 test-enhanced-embedded-files.py -v
       - name: Verify structured Enhanced analysis findings and incomplete-stage safety
         run: python3 test-enhanced-analysis-findings.py -v
+      - name: Explain each Enhanced analysis finding with safe handling guidance
+        run: python3 test-enhanced-finding-explanations.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
       - name: Verify maximum processing time for each protection stage
