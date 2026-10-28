@@ -185,6 +185,12 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
       - name: Verify native PDF cloud download-state decisions
         run: python3 test-native-file-availability.py
+      - name: Verify browser names, icons, versions and executable paths
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING browser-app-metadata.swift test-browser-app-metadata.swift -o "$RUNNER_TEMP/TestBrowserApplicationMetadata"
+          BROWSER_METADATA_TOOL="$RUNNER_TEMP/ReadBrowserApplicationMetadata" "$RUNNER_TEMP/TestBrowserApplicationMetadata"
+          if "$RUNNER_TEMP/ReadBrowserApplicationMetadata"; then exit 1; fi
       - name: Compile and test system-default-browser resolution
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
