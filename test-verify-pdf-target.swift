@@ -24,6 +24,86 @@ struct PDFTargetVerificationTests {
         precondition(!targetSupportsPDF(application: pdfViewer,
                                         registeredPDFHandlers: []),
                      "No PDF registrations must fail closed")
+        // Discovery must filter stale Launch Services paths before reporting
+        // installed PDF handlers. Do not mutate the real macOS registrations.
+        let discoveryFiles = FileManager.default
+        let discoveryRoot = discoveryFiles.temporaryDirectory
+            .appendingPathComponent("opener-discovery-" + UUID().uuidString, isDirectory: true)
+        try! discoveryFiles.createDirectory(
+            at: discoveryRoot, withIntermediateDirectories: true)
+        defer { try? discoveryFiles.removeItem(at: discoveryRoot) }
+
+        func makeDiscoveredApp(
+            _ name: String, identifier: String = "com.example.browser"
+        ) -> URL {
+            let app = discoveryRoot.appendingPathComponent(name + ".app", isDirectory: true)
+            let macos = app.appendingPathComponent("Contents/MacOS", isDirectory: true)
+            try! discoveryFiles.createDirectory(at: macos, withIntermediateDirectories: true)
+            let info: [String: Any] = [
+                "CFBundleIdentifier": identifier,
+                "CFBundleExecutable": "Browser",
+                "CFBundlePackageType": "APPL",
+            ]
+            let plist = try! PropertyListSerialization.data(
+                fromPropertyList: info, format: .xml, options: 0)
+            try! plist.write(to: app.appendingPathComponent("Contents/Info.plist"))
+            let program = macos.appendingPathComponent("Browser")
+            try! "#!/bin/sh\\nexit 0\\n".write(
+                to: program, atomically: true, encoding: .utf8)
+            try! discoveryFiles.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: program.path)
+            return app
+        }
+
+        let live = makeDiscoveredApp("Live")
+        let deleted = makeDiscoveredApp("Deleted")
+        try! discoveryFiles.removeItem(at: deleted)
+        let missingExecutable = makeDiscoveredApp("MissingExecutable")
+        try! discoveryFiles.removeItem(
+            at: missingExecutable.appendingPathComponent("Contents/MacOS/Browser"))
+        let nonexecutable = makeDiscoveredApp("Nonexecutable")
+        try! discoveryFiles.setAttributes(
+            [.posixPermissions: 0o644],
+            ofItemAtPath: nonexecutable.appendingPathComponent("Contents/MacOS/Browser").path)
+        let invalidPlist = makeDiscoveredApp("InvalidPlist")
+        try! "not a property list".write(
+            to: invalidPlist.appendingPathComponent("Contents/Info.plist"),
+            atomically: true, encoding: .utf8)
+        let inaccessible = makeDiscoveredApp("Inaccessible")
+        let inaccessibleInfo = inaccessible.appendingPathComponent("Contents/Info.plist")
+        try! discoveryFiles.setAttributes(
+            [.posixPermissions: 0o000], ofItemAtPath: inaccessibleInfo.path)
+        defer {
+            try? discoveryFiles.setAttributes(
+                [.posixPermissions: 0o644], ofItemAtPath: inaccessibleInfo.path)
+        }
+        let emptyDirectory = discoveryRoot.appendingPathComponent("Empty.app")
+        try! discoveryFiles.createDirectory(
+            at: emptyDirectory, withIntermediateDirectories: true)
+        let dangling = discoveryRoot.appendingPathComponent("Dangling.app")
+        try! discoveryFiles.createSymbolicLink(at: dangling, withDestinationURL: deleted)
+        let alias = discoveryRoot.appendingPathComponent("Alias.app")
+        try! discoveryFiles.createSymbolicLink(at: alias, withDestinationURL: live)
+
+        precondition(verifiedDiscoveredApplication(at: live) == live,
+                     "Readable and executable discovered app must remain available")
+        precondition(verifiedDiscoveredApplication(
+            at: live, expectedBundleIdentifier: "com.example.other") == nil,
+            "Discovered path whose identity no longer matches must be excluded")
+        precondition(verifiedDiscoveredApplication(
+            at: live, expectedBundleIdentifier: "com.example.browser") == live,
+            "Matching bundle identity must remain supported")
+        precondition(usableDiscoveredApplications([
+            deleted, missingExecutable, nonexecutable, invalidPlist,
+            inaccessible, emptyDirectory, dangling, live, alias
+        ]) == [live, live],
+        "Only live usable bundles (including working aliases) should survive discovery")
+        precondition(usableDiscoveredApplications([
+            discoveryRoot.appendingPathComponent("Missing.app"),
+            discoveryRoot.appendingPathComponent("document.pdf")
+        ]).isEmpty, "Uninstalled and non-app paths must be excluded")
+        print("PASS: stale, broken and inaccessible discovered bundles are excluded.")
+
         // Build unsigned fixtures to prove the Safari exception is both narrow
         // and dependent on a trusted signature.
         let fileManager = FileManager.default

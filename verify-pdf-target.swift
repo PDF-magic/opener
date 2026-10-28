@@ -2,6 +2,41 @@ import AppKit
 import Security
 import UniformTypeIdentifiers
 
+// Launch Services may keep registrations for deleted, moved, or damaged apps.
+// Validate each discovered bundle without opening it or changing preferences.
+// Resolve symlinks to support real installations reached through aliases.
+func verifiedDiscoveredApplication(
+    at url: URL, expectedBundleIdentifier: String? = nil
+) -> URL? {
+    let target = url.standardizedFileURL.resolvingSymlinksInPath()
+    guard target.isFileURL, target.pathExtension.lowercased() == "app" else {
+        return nil
+    }
+    let files = FileManager.default
+    var isDirectory: ObjCBool = false
+    let info = target.appendingPathComponent("Contents/Info.plist")
+    guard files.fileExists(atPath: target.path, isDirectory: &isDirectory),
+          isDirectory.boolValue,
+          files.isReadableFile(atPath: target.path),
+          files.isReadableFile(atPath: info.path),
+          (try? info.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+          let bundle = Bundle(url: target),
+          let identifier = bundle.bundleIdentifier, !identifier.isEmpty,
+          expectedBundleIdentifier == nil || identifier == expectedBundleIdentifier,
+          let executable = bundle.executableURL?.resolvingSymlinksInPath(),
+          (try? executable.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+          files.isExecutableFile(atPath: executable.path) else {
+        return nil
+    }
+    return target
+}
+
+// Preserve discovery order and the user's installed-app choices while omitting
+// entries for stale or unusable bundle paths.
+func usableDiscoveredApplications(_ candidates: [URL]) -> [URL] {
+    candidates.compactMap { verifiedDiscoveredApplication(at: $0) }
+}
+
 // Compare the selected application to Launch Services' registered PDF handlers.
 // A name, installed bundle, or generic browser category alone is not proof.
 func targetSupportsPDF(application: URL?, registeredPDFHandlers: [URL]) -> Bool {
@@ -157,10 +192,17 @@ func trustedFirefoxPDFTarget(
 
 func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
     let workspace = NSWorkspace.shared
-    let application = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier)
+    // A Launch Services result is only a candidate, never proof of a live app.
+    // This also catches an application replaced by another bundle at its path.
+    guard let found = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier),
+          let application = verifiedDiscoveredApplication(
+              at: found, expectedBundleIdentifier: bundleIdentifier
+          ) else { return false }
     return targetSupportsPDF(
         application: application,
-        registeredPDFHandlers: workspace.urlsForApplications(toOpen: UTType.pdf)
+        registeredPDFHandlers: usableDiscoveredApplications(
+            workspace.urlsForApplications(toOpen: UTType.pdf)
+        )
     ) || trustedSafariPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || trustedArcPDFTarget(application: application, bundleIdentifier: bundleIdentifier)
       || verifiedVivaldiPDFViewer(bundleIdentifier: bundleIdentifier, application: application) ||
