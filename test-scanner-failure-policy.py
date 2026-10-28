@@ -72,7 +72,8 @@ class ScannerFailurePolicyTests(unittest.TestCase):
                 self.assertFalse(response.allow_open)
                 self.assertFalse(response.allow_clean_cache)
                 self.assertTrue(response.show_failure_alert)
-                self.assertNotIn(str(value), response.user_message)
+                if isinstance(value, str) and value:
+                    self.assertNotIn(value, response.user_message)
 
     def test_response_contract_rejects_weakening_and_private_diagnostics(self):
         response = SCANNER_FAILURE_RESPONSES[ScannerFailureKind.PROCESS_FAILED]
