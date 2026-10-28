@@ -53,3 +53,18 @@ are not changed.
 ## Safari-only discovery regression (opener-0154)
 
 The macOS CI suite runs `test-safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of a non-executable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
+
+## Renamed browser discovery regression (opener-0160)
+
+The macOS CI suite builds and runs `test-renamed-browser-discovery.swift` against
+the production `discoverInstalledBrowsers` function. A disposable Brave
+application bundle is discovered, renamed from `Brave Browser.app` to an
+unrelated `.app` filename containing spaces and Unicode, and rediscovered under
+its **new physical path** while retaining the original `com.brave.Browser`
+bundle identifier. The former path must disappear; repeated discovery and JSON
+serialization must reflect the renamed location. Temporarily removing the
+`.app` extension excludes the bundle until the extension is restored.
+
+A browser-like filename with an unrelated bundle identifier remains excluded.
+No real installation, Launch Services registration, user preference, scan,
+PDF handler, or application executable is changed or invoked.
