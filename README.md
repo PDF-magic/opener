@@ -18,6 +18,14 @@ The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
 The **General** sidebar entry opens a dedicated read-only settings page
 (opener-0178) describing PDF scanning and preserved application choices.
+The **Default PDF browser** selector (opener-0195) lists only registered,
+installed supported browser bundles. Choosing one explicitly calls the installed
+PDF application selection utility to verify eligibility and atomically update
+the existing `target-app.txt` preference. A rejected choice leaves the previous
+preference intact; opening General or using its other sections never changes
+the selected browser. Existing custom choices remain displayed without being
+silently replaced. Install the PDF Magic Opener scanner tools before using
+this selector.
 **Protection** (opener-0180) opens a separate informational page explaining
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
@@ -29,6 +37,17 @@ applications. Actual discovery and selection remain with the installed
 browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
+
+**Set as Default PDF App (opener-0197):** General has a separate, explicit
+button that asks macOS to make the **installed, scanning PDF Magic Opener
+handler** the default application for .pdf files. This is different from
+the Default PDF browser selector, which chooses the viewer for a PDF *after*
+the scan. The button launches the validated installed `MakePDFMagicDefault`
+helper and checks the actual macOS association before reporting success.
+If the handler is not installed or a change cannot be verified, the page
+reports an error. Opening settings does not change the default. The
+standalone preferences app is never registered as a PDF handler, and saved
+browser choices and scanning safeguards remain unchanged.
 
 **Advanced Scanning** (opener-0181) is a separate read-only preferences
 destination covering local ClamAV malware checks, file readiness, and
