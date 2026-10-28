@@ -79,6 +79,7 @@ private enum BuiltInProtectionProfile {
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
     let activeScansLabel = NSTextField(labelWithString: "Active scans: 0")
+    let queuedDocumentCountLabel = NSTextField(labelWithString: "0 documents queued")
     let protectionProfileLabel = NSTextField(
         labelWithString: "Active protection profile: " + BuiltInProtectionProfile.name)
     let protectionProfileDetailsLabel = NSTextField(
@@ -89,7 +90,7 @@ final class ScanProgressPanel: NSPanel {
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 408),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 432),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -97,24 +98,31 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 188, width: 300, height: 205)))
+            frame: NSRect(x: 30, y: 212, width: 300, height: 205)))
         stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         stageLabel.alignment = .center
-        stageLabel.frame = NSRect(x: 20, y: 163, width: 320, height: 22)
+        stageLabel.frame = NSRect(x: 20, y: 187, width: 320, height: 22)
         stageLabel.setAccessibilityLabel("Current scanning stage")
         contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 137, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 161, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
         activeScansLabel.alignment = .center
         activeScansLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         activeScansLabel.textColor = .secondaryLabelColor
-        activeScansLabel.frame = NSRect(x: 20, y: 111, width: 320, height: 20)
+        activeScansLabel.frame = NSRect(x: 20, y: 135, width: 320, height: 20)
         activeScansLabel.setAccessibilityIdentifier("activeScanCount")
         activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
         contentView?.addSubview(activeScansLabel)
+        queuedDocumentCountLabel.alignment = .center
+        queuedDocumentCountLabel.font = .systemFont(ofSize: 12)
+        queuedDocumentCountLabel.textColor = .secondaryLabelColor
+        queuedDocumentCountLabel.frame = NSRect(x: 20, y: 111, width: 320, height: 20)
+        queuedDocumentCountLabel.setAccessibilityIdentifier("queuedDocumentCount")
+        queuedDocumentCountLabel.setAccessibilityLabel(queuedDocumentCountLabel.stringValue)
+        contentView?.addSubview(queuedDocumentCountLabel)
         protectionProfileLabel.alignment = .center
         protectionProfileLabel.font = .systemFont(ofSize: 12, weight: .medium)
         protectionProfileLabel.textColor = .secondaryLabelColor
@@ -138,7 +146,7 @@ final class ScanProgressPanel: NSPanel {
 
     // Set only display state. Callers own the scan lifecycle and Cancel action.
     func show(documentDescription: String, stage: ScanProgressStage = .queued,
-              activeScans: Int = 0) {
+              queuedDocumentCount: Int = 0, activeScans: Int = 0) {
         filenameLabel.stringValue = documentDescription
         stageLabel.stringValue = stage.label
         // Count only processes confirmed launched by the native owner, never
@@ -146,6 +154,11 @@ final class ScanProgressPanel: NSPanel {
         let count = max(0, activeScans)
         activeScansLabel.stringValue = "Active scans: \(count)"
         activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
+        // Only waiting documents are counted; active scans are displayed above.
+        let waiting = max(0, queuedDocumentCount)
+        let waitingText = "\(waiting) \(waiting == 1 ? "document" : "documents") queued"
+        queuedDocumentCountLabel.stringValue = waitingText
+        queuedDocumentCountLabel.setAccessibilityLabel(waitingText)
         orderFrontRegardless()
     }
 }
