@@ -66,6 +66,8 @@ struct GeneralSettingsView: View {
   @State private var pdfHandlerStatus: GeneralPDFHandlerStatus = .unknown
   @State private var showScanProgress = true
   @State private var scanProgressMessage: String?
+  @State private var showSuccessfulScanNotifications = false
+  @State private var successfulScanNotificationMessage: String?
   @State private var browserOptions: [PDFBrowserOption] = []
   @State private var selectedBrowserID = ""
   @State private var browserMessage = ""
@@ -83,6 +85,20 @@ struct GeneralSettingsView: View {
     } else {
       scanProgressMessage = "Could not save scan progress preference. The previous setting is unchanged."
       showScanProgress = ScanProgressPreference.isEnabled()
+    }
+  }
+
+  private func loadSuccessfulScanNotificationPreference() {
+    showSuccessfulScanNotifications = SuccessfulScanNotificationPreference.isEnabled()
+  }
+
+  private func updateSuccessfulScanNotificationPreference(_ enabled: Bool) {
+    if SuccessfulScanNotificationPreference.save(enabled) {
+      showSuccessfulScanNotifications = enabled
+      successfulScanNotificationMessage = "Successful scan notification preference saved."
+    } else {
+      showSuccessfulScanNotifications = SuccessfulScanNotificationPreference.isEnabled()
+      successfulScanNotificationMessage = "Could not save the notification preference. Your previous choice is unchanged."
     }
   }
 
@@ -245,6 +261,32 @@ struct GeneralSettingsView: View {
         }
         .accessibilityIdentifier("showScanProgressSection")
         .onAppear(perform: loadScanProgressPreference)
+
+        GroupBox("Scan notifications") {
+          VStack(alignment: .leading, spacing: 12) {
+            Toggle("Show Successful Scan Notifications", isOn: Binding(
+              get: { showSuccessfulScanNotifications },
+              set: { updateSuccessfulScanNotificationPreference($0) }
+            ))
+            .accessibilityIdentifier("showSuccessfulScanNotificationsToggle")
+
+            Text("When enabled, request macOS notification permission and show a generic notification only after a PDF passes scanning and is handed off successfully. Filenames and paths are never included. Cancelled, unsafe, and failed opens do not produce success notifications; failure warnings remain unchanged.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let successfulScanNotificationMessage {
+              Text(successfulScanNotificationMessage)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("showSuccessfulScanNotificationsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("showSuccessfulScanNotificationsSection")
+        .onAppear(perform: loadSuccessfulScanNotificationPreference)
 
         PDFDefaultApplicationSettingsView()
 

@@ -197,6 +197,17 @@ Double-click PDFs to scan them locally with ClamAV and open them in the selected
 For the Finder double-click verification procedure and its automated Launch Services
 regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf-drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
+**Show Successful Scan Notifications (opener-0201):** General offers an
+**opt-in**, default-off setting shared with the installed native PDF opener.
+When enabled, a PDF scan-and-open process that exits successfully may
+request macOS notification permission and publish a generic success message.
+Cancelled requests, malware detections, scanner failures, and unsuccessful
+application handoffs never produce a success notification. Notification
+contents contain no document names or paths; a denied macOS notification
+permission is respected. Failure warnings, scan gating, and the saved
+browser choice remain unchanged. The Settings app does not send scan alerts.
+Reinstall the native PDF opener after updating to include this behavior.
+
 **Show Scan Progress (opener-0200):** General settings includes a toggle
 that is **on by default**, preserving the existing animated scan window and
 Cancel button. Turning it off hides only that native progress window
