@@ -6,7 +6,8 @@ import subprocess
 import tempfile
 
 source = Path(__file__).with_name("brave-pdf-opener.swift").read_text()
-classes = source.split("let app = NSApplication.shared\n")[0]
+classes = source.split("@main\nstruct PDFMagicOpenerEntry {")[0]
+classes += "\n" + Path(__file__).with_name("scan-progress-view.swift").read_text()
 with tempfile.TemporaryDirectory(prefix="opener-native-cancel-") as directory:
     root = Path(directory)
     (root / "twilight-reading.png").write_bytes(
