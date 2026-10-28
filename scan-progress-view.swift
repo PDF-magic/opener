@@ -52,8 +52,25 @@ final class TwilightReadingView: NSView {
     }
 }
 
+// These stages describe the native owner's observable process lifecycle, not
+// ClamAV internals or a prediction that a document will be approved.
+enum ScanProgressStage {
+    case queued
+    case starting
+    case scanning
+
+    var label: String {
+        switch self {
+        case .queued: return "Waiting to scan…"
+        case .starting: return "Starting safety checks…"
+        case .scanning: return "Scanning and verifying document…"
+        }
+    }
+}
+
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
+    let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
 
@@ -68,11 +85,11 @@ final class ScanProgressPanel: NSPanel {
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
             frame: NSRect(x: 30, y: 118, width: 300, height: 205)))
-        let status = NSTextField(labelWithString: "Checking for malware…")
-        status.font = .systemFont(ofSize: 15, weight: .semibold)
-        status.alignment = .center
-        status.frame = NSRect(x: 20, y: 93, width: 320, height: 22)
-        contentView?.addSubview(status)
+        stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        stageLabel.alignment = .center
+        stageLabel.frame = NSRect(x: 20, y: 93, width: 320, height: 22)
+        stageLabel.setAccessibilityLabel("Current scanning stage")
+        contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
@@ -88,9 +105,10 @@ final class ScanProgressPanel: NSPanel {
         center()
     }
 
-    // Set only display text. Callers own the document queue and Cancel action.
-    func show(documentDescription: String) {
+    // Set only display state. Callers own the scan lifecycle and Cancel action.
+    func show(documentDescription: String, stage: ScanProgressStage = .queued) {
         filenameLabel.stringValue = documentDescription
+        stageLabel.stringValue = stage.label
         orderFrontRegardless()
     }
 }
