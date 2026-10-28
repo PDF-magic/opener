@@ -30,7 +30,7 @@ class SettingsShortcutTests(unittest.TestCase):
     self.assertIn("struct MainPreferencesView: View", view)
     self.assertIn("NavigationSplitView", view)
     for forbidden in (
-      "CommandGroup(replacing:", "NSEvent", "NSWorkspace", "openURL(",
+      "CommandGroup(replacing: .appSettings)", "NSEvent", "NSWorkspace", "openURL(",
       "onOpenURL", "Process(", "clamscan", "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):

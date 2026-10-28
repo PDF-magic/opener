@@ -21,10 +21,14 @@ foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
-to open the native macOS Settings window. The shortcut uses SwiftUI's
-system-managed Settings scene and displays the existing preferences view;
-it does not start a scan, choose a different browser, or change saved
-configuration.
+to open the native macOS Settings window. This standard system command shows
+the existing preferences view without changing browser choices, running a
+scan, or modifying saved configuration.
+
+Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
+standalone preferences app. This standard macOS Quit action terminates
+that application only; it does not change the chosen PDF handler, stored
+browser preferences, or scanner configuration.
 
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
@@ -48,7 +52,7 @@ Double-click PDFs to scan them locally with ClamAV and open them in the selected
 For the Finder double-click verification procedure and its automated Launch Services
 regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf-drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
-The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
+The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
