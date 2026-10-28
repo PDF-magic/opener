@@ -55,6 +55,13 @@ and ClamAV definition updates. It does not check for, download, or
 install updates, claim unverified update status, or modify any scan
 protections or saved preferences.
 
+**Technical help text (opener-0194):** Inline, accessible informational notes
+clarify ClamAV malware scans, fail-closed behavior, locally available files,
+verified PDF handoff, discovered versus preferred applications, and the
+difference between app updates and malware definition updates. Help appears
+beside the relevant read-only sections; no settings are changed and the
+installed PDF scanner remains authoritative.
+
 **Extensions and Integrations** (opener-0185) has a dedicated read-only
 settings page for Finder scan actions, verified PDF handoff and
 extension-management boundaries. Viewing it cannot install or enable
