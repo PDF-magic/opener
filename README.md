@@ -30,11 +30,15 @@ browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
-**Extensions and Integrations** (opener-0185) has its own read-only
-preferences page covering the existing Finder scan action, verified PDF
-handoff to a chosen browser/application, and extension management boundaries.
-Viewing it does not activate extensions, change browser selections, or alter
-the installed AppKit/ClamAV scanning workflow.
+**Extensions and Integrations** (opener-0185) has a dedicated read-only
+settings page covering the existing Finder scan action, verified PDF handoff,
+and the boundaries of extension management. Viewing the page does not install
+or enable extensions, change browser preferences, or bypass scan safeguards.
+
+**Advanced Scanning** (opener-0181) is a separate read-only preferences
+destination covering local ClamAV malware checks, file readiness, and
+scan results. It does not expose unimplemented scan overrides or change
+scanner policy, quarantine checks, or saved PDF application choices.
 
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
