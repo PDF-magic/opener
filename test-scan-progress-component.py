@@ -32,6 +32,29 @@ precondition(panel.title == "PDF Magic Opener — Scanning")
 precondition(!panel.hidesOnDeactivate && panel.level == .floating)
 precondition(panel.progressIndicator.isIndeterminate)
 precondition(panel.cancelButton.title == "Cancel")
+panel.show(documentDescription: "one.pdf", stage: .scanning,
+           batchProgress: (completed: 0, total: 1))
+precondition(panel.progressIndicator.isIndeterminate,
+             "A single file has no measured scan percentage")
+panel.show(documentDescription: "2 files", stage: .scanning,
+           batchProgress: (completed: 0, total: 2))
+precondition(!panel.progressIndicator.isIndeterminate)
+precondition(panel.progressIndicator.minValue == 0)
+precondition(panel.progressIndicator.maxValue == 2)
+precondition(panel.progressIndicator.doubleValue == 0)
+panel.show(documentDescription: "2 files", stage: .scanning,
+           batchProgress: (completed: 1, total: 2))
+precondition(panel.progressIndicator.doubleValue == 1)
+precondition(panel.progressIndicator.accessibilityLabel()
+             == "1 of 2 document requests processed")
+panel.show(documentDescription: "invalid", stage: .scanning,
+           batchProgress: (completed: 3, total: 2))
+precondition(panel.progressIndicator.isIndeterminate,
+             "Invalid counts must never imply measured scan progress")
+panel.show(documentDescription: "unknown", stage: .scanning)
+precondition(panel.progressIndicator.isIndeterminate)
+precondition(panel.progressIndicator.accessibilityLabel()
+             == "Individual scan progress is unknown")
 precondition(panel.stageLabel.stringValue == ScanProgressStage.queued.label)
 precondition(panel.stageLabel.accessibilityLabel() == "Current scanning stage")
 precondition(panel.contentView?.subviews.contains(where: { $0 is TwilightReadingView }) == true)

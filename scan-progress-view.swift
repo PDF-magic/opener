@@ -106,9 +106,34 @@ final class ScanProgressPanel: NSPanel {
     }
 
     // Set only display state. Callers own the scan lifecycle and Cancel action.
-    func show(documentDescription: String, stage: ScanProgressStage = .queued) {
+    // Per-file scan percentage is unavailable. Only a batch's finished
+    // request count is measurable; this value never represents ClamAV bytes
+    // examined, a safety verdict, or an estimate of remaining scan time.
+    func show(documentDescription: String, stage: ScanProgressStage = .queued,
+              batchProgress: (completed: Int, total: Int)? = nil) {
         filenameLabel.stringValue = documentDescription
         stageLabel.stringValue = stage.label
+        if let batchProgress, batchProgress.total > 1,
+           batchProgress.completed >= 0,
+           batchProgress.completed <= batchProgress.total {
+            if progressIndicator.isIndeterminate {
+                progressIndicator.stopAnimation(nil)
+                progressIndicator.isIndeterminate = false
+            }
+            progressIndicator.minValue = 0
+            progressIndicator.maxValue = Double(batchProgress.total)
+            progressIndicator.doubleValue = Double(batchProgress.completed)
+            let description = "\(batchProgress.completed) of \(batchProgress.total) document requests processed"
+            progressIndicator.setAccessibilityLabel(description)
+            progressIndicator.toolTip = description
+        } else {
+            if !progressIndicator.isIndeterminate {
+                progressIndicator.isIndeterminate = true
+                progressIndicator.startAnimation(nil)
+            }
+            progressIndicator.setAccessibilityLabel("Individual scan progress is unknown")
+            progressIndicator.toolTip = "Individual scan progress is unknown"
+        }
         orderFrontRegardless()
     }
 }
