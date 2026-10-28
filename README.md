@@ -18,6 +18,15 @@ The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
 The **General** sidebar entry opens a dedicated read-only settings page
 (opener-0178) describing PDF scanning and preserved application choices.
+**General PDF handler status (opener-0196):** General now displays whether
+Launch Services currently associates the **PDF** content type with the installed
+PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), a different
+application (including its bundle identifier), or an unknown/unavailable
+association. The indicator refreshes when General appears and when the app
+becomes active again. It is read-only: it never changes file associations,
+scanner behavior, or saved browser choices. The standalone Settings app has
+its own distinct bundle identifier and is not the PDF handler.
+
 **Protection** (opener-0180) opens a separate informational page explaining
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
 and verified PDF application handoff. The installed PDF opener still owns all
