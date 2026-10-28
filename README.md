@@ -49,6 +49,14 @@ not inspect logs, documents, or saved application choices. The existing
 **About PDF Magic Opener** menu command still displays the version and the
 bundled AGPL-3.0 license; it has not been replaced.
 
+**Keyboard navigation (opener-0189):** When the preferences window opens,
+the sidebar receives keyboard focus. Use **↑/↓** to select a page and
+**Tab/Shift-Tab** to move focus between the sidebar and page controls.
+From anywhere in the window, **⌘[** opens the previous preferences section
+and **⌘]** opens the next section. Previous/Next controls disable at the
+first and last section rather than wrapping. The shortcuts only change
+the visible page; they never change saved preferences or scanning policy.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
