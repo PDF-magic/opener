@@ -46,6 +46,11 @@ and ClamAV definition updates. It does not check for, download, or
 install updates, claim unverified update status, or modify any scan
 protections or saved preferences.
 
+**Extensions and Integrations** (opener-0185) has a dedicated read-only
+settings page for Finder scan actions, verified PDF handoff and
+extension-management boundaries. Viewing it cannot install or enable
+extensions, change chosen applications, or bypass scanning safeguards.
+
 The **About and Diagnostics** page (opener-0186) is a separate read-only
 preferences destination showing the running app version, build, bundle identifier,
 macOS version, and an explanation of the separate PDF-scanning handler.
