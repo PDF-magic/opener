@@ -34,16 +34,16 @@ struct AtomicConfigurationWriterTests {
       try AtomicConfigurationWriter.save(first, in: root, named: "linked.json")
       fatalError("accepted symlink destination")
     } catch AtomicConfigurationWriter.SaveError.unsafeDestination {}
-    let secondRead = try Data(contentsOf: target)
-    assert(secondRead == second)
+    let secondRead2 = try Data(contentsOf: target)
+    assert(secondRead2 == second)
 
     let missing = root.appendingPathComponent("missing", isDirectory: true)
     do {
       try AtomicConfigurationWriter.save(first, in: missing, named: "settings.json")
       fatalError("accepted missing directory")
     } catch AtomicConfigurationWriter.SaveError.unsafeDirectory {}
-    let secondRead = try Data(contentsOf: target)
-    assert(secondRead == second)
+    let secondRead3 = try Data(contentsOf: target)
+    assert(secondRead3 == second)
 
     let empty = Data()
     try AtomicConfigurationWriter.save(empty, in: root, named: "empty.json")
