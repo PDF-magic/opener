@@ -51,6 +51,17 @@ class BrowserRegistryTests(unittest.TestCase):
                          registry.SUPPORTED_BROWSER_BUNDLE_IDS)
         self.assertIn("../browser_registry.py", guide)
 
+    def test_native_primary_list_matches_supported_registry(self):
+        source = (ROOT / "browser-preference-list.swift").read_text(encoding="utf-8")
+        match = re.search(
+            r"private let supportedBrowserBundleIDs: Set<String> = \[([^\]]+)\]",
+            source,
+        )
+        self.assertIsNotNone(match, "Native primary list must declare known IDs")
+        identifiers = re.findall(r'"([^"]+)"', match.group(1))
+        self.assertEqual(set(identifiers), registry.SUPPORTED_BROWSER_BUNDLE_IDS)
+        self.assertEqual(len(identifiers), len(registry.SUPPORTED_BROWSER_BUNDLE_IDS))
+
     def test_registry_is_deployed_with_launcher(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         line = next(line for line in installer.splitlines()
