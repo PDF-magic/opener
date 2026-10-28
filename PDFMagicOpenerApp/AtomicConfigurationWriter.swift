@@ -40,6 +40,16 @@ enum AtomicConfigurationWriter {
     defer { unlinkat(parent, temporary, 0) }
     defer { close(fd) }
 
+    // Enforce owner-only configuration access independent of process umask.
+    // Fail closed before publishing if permission enforcement cannot succeed.
+    guard fchmod(fd, mode_t(0o600)) == 0 else { throw SaveError.io(errno) }
+    var temporaryInfo = stat()
+    guard fstat(fd, &temporaryInfo) == 0 else { throw SaveError.io(errno) }
+    guard (temporaryInfo.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+          (temporaryInfo.st_mode & mode_t(0o7777)) == mode_t(0o600) else {
+      throw SaveError.unsafeDestination
+    }
+
     try contents.withUnsafeBytes { buffer in
       guard let start = buffer.baseAddress else { return }
       var offset = 0
