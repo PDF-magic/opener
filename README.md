@@ -20,6 +20,13 @@ Each section provides a read-only overview of the existing workflow; this
 foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
+**Menu-bar decision (opener-0176):** No persistent menu-bar status item is
+enabled or required. The standalone application only presents preferences;
+the installed PDF-scanning handler operates independently. This avoids a
+redundant background presence and additional menu-bar clutter. See
+[menu-bar decision](docs/menu-bar-decision.md) for the rationale and conditions
+that would justify enabling one in the future.
+
 Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
 standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored
@@ -41,6 +48,13 @@ installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
 by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
+
+The SwiftUI application also includes an **About PDF Magic Opener** command
+in its application menu. About shows the version from the built app bundle,
+names the GNU Affero General Public License v3 and its no-warranty notice,
+and provides an offline full-license viewer using the original `LICENSE`
+resource. This target starts at version `0.1.0` (build `1`) and does not
+change the installed PDF handler or scanner.
 
 ## Art
 
