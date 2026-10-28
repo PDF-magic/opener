@@ -724,6 +724,36 @@ start scans, remove quarantine or authorize opening. The existing installed
 scanner remains authoritative. Only separately implemented and verified future
 work may make additional profiles active.
 
+## Protection-stage resource budgets (section 5.1)
+
+`protection_stage_resource_budgets.py` defines validated, immutable, JSON-safe
+resource ceilings for all six policy controls (signature freshness, integrity,
+ClamAV scanning, PDF structure validation, isolated behavior analysis, and
+fail-closed handoff), in the required stage order for each inactive profile.
+Each dimension explicitly says `current`, `planned`, `not_configured`,
+or `not_applicable`. Proposed values are **per-stage design targets**,
+not live enforcement, guarantees, or selectable settings.
+
+| Protection stage | CPU seconds | Memory MiB | Temporary disk MiB | Concurrent requests |
+| --- | --- | --- | --- | --- |
+| Signature freshness | 5 (planned) | 64 (planned) | N/A | 2 (planned) |
+| File integrity | 120 (planned) | 256 (planned) | 16 (planned) | 2 (planned) |
+| ClamAV malware scan | Not configured | Not configured | Not configured | **2 (current)** |
+| PDF structure validation | 90 (planned) | 256 (planned) | 512 (planned) | 1 (planned) |
+| Isolated behavior analysis | 300 (planned) | 1,024 (planned) | 2,048 (planned) | 1 (planned) |
+| Fail-closed handoff | 10 (planned) | 128 (planned) | N/A | 2 (planned) |
+
+**Only two concurrent scanner processes are enforced today** from this table.
+The installed scanner has no application-enforced CPU, memory, or temporary-disk
+ceiling. Its existing wall-clock scan timeouts (30 minutes for standalone PDFs,
+three minutes for other scans) are unchanged; the separate stage elapsed-time
+contract in opener-0257 covers per-stage wall-time limits. The two declarative
+contracts must not be mistaken for CPU, memory, or temporary-disk enforcement.
+Current size constraints, file-integrity checks, ClamAV limits, quarantine
+handling, and preferences remain untouched. Planned structure and behavioral
+analysis controls are **not implemented** and the planned protection profiles
+remain non-selectable.
+
 ## Scan result vocabulary (section 1.3)
 
 The canonical terminal result names are defined in `scan_results.py` as
