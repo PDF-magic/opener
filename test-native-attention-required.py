@@ -24,7 +24,8 @@ class AttentionRequiredTests(unittest.TestCase):
         native = native.replace(
             "alert.runModal()",
             """
-            precondition(alert.alertStyle == .warning)
+            precondition(alert.buttons.first?.title == "OK",
+                         "The native failure alert must still require acknowledgement")
             let panels = NSApp.windows.compactMap { $0 as? ScanProgressPanel }
             precondition(panels.count == 1 && panels[0].isVisible,
                          "Failure warning must keep the progress window open")

@@ -103,6 +103,23 @@ func currentRequestSource() -> String {
     return "unknown"
 }
 
+// Present the requested filename, not the canonical scan target or a generic
+// progress count. Failure alerts remain visible even if progress is disabled.
+func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
+    let filename = URL(fileURLWithPath: requestedPath).lastPathComponent
+    let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
+    let explanation = reason.isEmpty
+        ? "The scan or file handoff returned no additional error details."
+        : String(reason.prefix(1600))
+    let alert = NSAlert()
+    alert.alertStyle = .critical
+    alert.messageText = "PDF could not be opened"
+    alert.informativeText = "File: \(filename)\n\nThe safety scan or destination handoff failed. "
+        + "PDF Magic Opener did not open this file.\n\nDetails: \(explanation)"
+    alert.addButton(withTitle: "OK")
+    return alert
+}
+
 final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
@@ -125,7 +142,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     // Session-only metadata keyed by canonical path; duplicate events keep the first time.
     private(set) var scanRequests = [String: ScanRequest]()
     private var panel: ScanProgressPanel?
-    // Presentation-only acknowledgement; scan-gate decisions remain unchanged.
+    // UI-only acknowledgement; scanner and launch policy remain unchanged.
     private var attentionRequired = false
     private var attentionDocumentName = ""
     // Hold the native scan-gate stdin writer open while its owner is alive.
@@ -153,7 +170,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     @objc private func cancelScans(_ sender: NSButton) {
-        // The finished blocked scan stays visible until the user clicks Close.
+        // Once scanning is finished, Close explicitly acknowledges the warning.
         if pending.isEmpty && attentionRequired {
             attentionRequired = false
             panel?.orderOut(nil)
@@ -217,10 +234,12 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             stage = .queued
         }
         panel?.show(documentDescription: description, stage: stage,
+                    queuedDocumentCount: queued.count,
                     activeScans: launchedScans.count)
     }
 
-    // UI policy lives above the scan queue, never inside scanner execution.
+    // All visibility preferences stay in this presentation-only helper,
+    // never in the scan gate, scanner process, or launch decision.
     private func noteAttentionRequired(for path: String) {
         guard panel != nil, ScanProgressPreference.isEnabled() else { return }
         attentionRequired = true
@@ -314,6 +333,8 @@ DispatchQueue.main.async {
                 if let pipe = self.scanLifetimes.removeValue(forKey: path) {
                     try? pipe.fileHandleForWriting.close()
                 }
+                // Capture the user's original filename before per-request cleanup.
+                let requestedPath = self.requestedPaths[path] ?? path
                 if failure != nil { self.noteAttentionRequired(for: path) }
                 self.running.remove(path)
                 self.launchedScans.remove(path)
@@ -331,11 +352,8 @@ DispatchQueue.main.async {
                 self.updateProgressAfterCompletion(hasUncancelled: hasUncancelled)
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
-                    let alert = NSAlert()
-                    alert.alertStyle = .warning
-                    alert.messageText = "Opening stopped"
-                    alert.informativeText = failure
-                    alert.addButton(withTitle: "OK")
+                    let alert = makeScanFailureAlert(
+                        requestedPath: requestedPath, details: failure)
                     alert.runModal()
                 }
                 // A nil error may also indicate cancellation. Only a zero
