@@ -18,6 +18,8 @@ jobs:
           python-version: "3.11"
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify General reset confirmation and scanner isolation
+        run: python3 test-reset-general-preferences.py -v
       - name: Verify main Dock icon and invisible PDF scan-helper policy
         run: python3 test-dock-behavior.py -v
       - name: Verify native window title and bundled application icon
@@ -190,6 +192,10 @@ jobs:
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
+      - name: Verify atomic configuration persistence and failure safety
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift test-atomic-configuration-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
+          "$RUNNER_TEMP/TestAtomicConfigurationWriter"
       - name: Build SwiftUI application target without registering PDF handling
         run: |
           plutil -lint PDFMagicOpener.xcodeproj/project.pbxproj
@@ -243,6 +249,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
           "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+      - name: Verify confirmed General preference reset preserves customizations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
+          "$RUNNER_TEMP/TestResetGeneralPreferences"
       - name: Test versioned configuration serialization and compatibility
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
@@ -422,3 +432,8 @@ jobs:
       - name: Verify per-request timestamps and duplicate suppression
         timeout-minutes: 5
         run: python3 test-request-timestamp.py
+
+      - name: Verify supported setting defaults and existing user overrides
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
+          "$RUNNER_TEMP/TestSupportedPreferenceDefaults"

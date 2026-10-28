@@ -55,11 +55,11 @@ enum DefaultPDFBrowserPreferences {
   // Corrupt or unreadable settings never reset to a different browser.
   static func currentSelection() -> String? {
     let parentFD = open(preferenceDirectory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
-    guard parentFD >= 0 else { return errno == ENOENT ? "com.brave.Browser" : nil }
+    guard parentFD >= 0 else { return errno == ENOENT ? SupportedPreferenceDefaults.pdfBrowserBundleIdentifier : nil }
     defer { close(parentFD) }
 
     let fileFD = openat(parentFD, "target-app.txt", O_RDONLY | O_NOFOLLOW)
-    guard fileFD >= 0 else { return errno == ENOENT ? "com.brave.Browser" : nil }
+    guard fileFD >= 0 else { return errno == ENOENT ? SupportedPreferenceDefaults.pdfBrowserBundleIdentifier : nil }
     defer { close(fileFD) }
 
     var info = stat()

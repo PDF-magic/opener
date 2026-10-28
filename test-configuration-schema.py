@@ -13,6 +13,7 @@ class ConfigurationSchemaContractTests(unittest.TestCase):
     for token in ("struct PDFMagicConfigurationSchema: Codable, Equatable",
                   "static let currentVersion = 1", "case schemaVersion",
                   "case showScanProgress", "case showSuccessfulScanNotifications",
+                  "case showBlockedFileNotifications",
                   "guard version == Self.currentVersion",
                   "decodeIfPresent(Bool.self", "encoder.outputFormatting = [.sortedKeys]"):
       self.assertIn(token, SOURCE)
@@ -22,8 +23,8 @@ class ConfigurationSchemaContractTests(unittest.TestCase):
     self.assertIn('key = "showScanProgress"', SOURCE)
     self.assertIn('key = "showSuccessfulScanNotifications"', SOURCE)
     self.assertIn('suiteName = "local.studio.pdf-magic-opener"', SOURCE)
-    self.assertIn("return true", SOURCE)
-    self.assertIn("return false", SOURCE)
+    self.assertIn("SupportedPreferenceDefaults.showScanProgress", SOURCE)
+    self.assertIn("SupportedPreferenceDefaults.showSuccessfulScanNotifications", SOURCE)
     schema = SOURCE.split("struct PDFMagicConfigurationSchema", 1)[1]
     for forbidden in ("defaults.set(", "synchronize()", "clamscan", "target-app.txt",
                       "FileManager", "Process(", "NSWorkspace"):

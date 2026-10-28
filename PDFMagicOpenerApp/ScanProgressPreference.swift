@@ -2,6 +2,15 @@ import Foundation
 
 // A cosmetic setting shared by the standalone preferences UI and the
 // separately installed PDF scan handler. It does not change scan policy.
+// Defaults for every currently configurable preference. No registration or
+// persistence is performed here: absent keys use these values, while existing
+// user overrides remain authoritative. Scanner safety controls are not settings.
+enum SupportedPreferenceDefaults {
+  static let showScanProgress = true
+  static let showSuccessfulScanNotifications = false
+  static let pdfBrowserBundleIdentifier = "com.brave.Browser"
+}
+
 enum ScanProgressPreference {
   static let suiteName = "local.studio.pdf-magic-opener"
   static let key = "showScanProgress"
@@ -13,7 +22,7 @@ enum ScanProgressPreference {
   ) -> Bool {
     guard let defaults,
           let setting = defaults.object(forKey: key) as? Bool else {
-      return true
+      return SupportedPreferenceDefaults.showScanProgress
     }
     return setting
   }
@@ -42,7 +51,7 @@ enum SuccessfulScanNotificationPreference {
   ) -> Bool {
     guard let defaults,
           let setting = defaults.object(forKey: key) as? Bool else {
-      return false
+      return SupportedPreferenceDefaults.showSuccessfulScanNotifications
     }
     return setting
   }
@@ -90,6 +99,32 @@ enum BlockedFileNotificationPreference {
     return enabled && failure != nil && !cancelled
   }
 }
+
+// General reset is intentionally limited to presentation preferences. Removing
+// overrides restores their documented defaults without touching any PDF target,
+// Launch Services association, malware scanner configuration or unrelated keys.
+enum GeneralPreferencesReset {
+  static func reset(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    let keys = [ScanProgressPreference.key, SuccessfulScanNotificationPreference.key, BlockedFileNotificationPreference.key]
+    let previous = keys.map { defaults.object(forKey: $0) }
+    for key in keys { defaults.removeObject(forKey: key) }
+    if defaults.synchronize() &&
+        keys.allSatisfy({ defaults.object(forKey: $0) == nil }) {
+      return true
+    }
+    // Best effort rollback if persistence fails, instead of reporting success.
+    for (key, value) in zip(keys, previous) {
+      if let value { defaults.set(value, forKey: key) }
+      else { defaults.removeObject(forKey: key) }
+    }
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.
@@ -100,20 +135,24 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
   let schemaVersion: Int
   var showScanProgress: Bool?
   var showSuccessfulScanNotifications: Bool?
+  var showBlockedFileNotifications: Bool?
 
   init(
     showScanProgress: Bool? = nil,
-    showSuccessfulScanNotifications: Bool? = nil
+    showSuccessfulScanNotifications: Bool? = nil,
+    showBlockedFileNotifications: Bool? = nil
   ) {
     schemaVersion = Self.currentVersion
     self.showScanProgress = showScanProgress
     self.showSuccessfulScanNotifications = showSuccessfulScanNotifications
+    self.showBlockedFileNotifications = showBlockedFileNotifications
   }
 
   private enum CodingKeys: String, CodingKey {
     case schemaVersion
     case showScanProgress
     case showSuccessfulScanNotifications
+    case showBlockedFileNotifications
   }
 
   init(from decoder: Decoder) throws {
@@ -131,6 +170,7 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
     showSuccessfulScanNotifications = try values.decodeIfPresent(
       Bool.self, forKey: .showSuccessfulScanNotifications
     )
+    showBlockedFileNotifications = try values.decodeIfPresent(Bool.self, forKey: .showBlockedFileNotifications)
   }
 
   func encoded() throws -> Data {

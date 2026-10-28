@@ -31,7 +31,8 @@ class SuccessfulScanNotificationsTests(unittest.TestCase):
     self.assertNotIn(".save(", load)
     self.assertIn('key = "showSuccessfulScanNotifications"', PREF)
     self.assertIn("static let suiteName = ScanProgressPreference.suiteName", PREF)
-    self.assertIn("return false", PREF)
+    self.assertIn("static let showSuccessfulScanNotifications = false", PREF)
+    self.assertIn("return SupportedPreferenceDefaults.showSuccessfulScanNotifications", PREF)
     self.assertIn("defaults.synchronize()", PREF)
 
   def test_success_notification_is_best_effort_and_path_free(self):

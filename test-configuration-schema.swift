@@ -11,13 +11,15 @@ struct ConfigurationSchemaTests {
     check(empty.schemaVersion == 1, "version must begin at one")
     check(empty.showScanProgress == nil, "legacy progress preference must be unset")
     check(empty.showSuccessfulScanNotifications == nil, "legacy notification preference must be unset")
+    check(empty.showBlockedFileNotifications == nil, "legacy blocked notification preference must be unset")
     let emptyJSON = try empty.encoded()
     let emptyDictionary = try JSONSerialization.jsonObject(with: emptyJSON) as! [String: Any]
     check(emptyDictionary["schemaVersion"] as? Int == 1, "version must be serialized")
     check(emptyDictionary["showScanProgress"] == nil, "unset settings must not be materialized")
 
     let explicit = PDFMagicConfigurationSchema(
-      showScanProgress: false, showSuccessfulScanNotifications: true
+      showScanProgress: false, showSuccessfulScanNotifications: true,
+      showBlockedFileNotifications: true
     )
     let decoded = try PDFMagicConfigurationSchema.decoded(from: explicit.encoded())
     check(decoded == explicit, "explicit choices must round-trip")
