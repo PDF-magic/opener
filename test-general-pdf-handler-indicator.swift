@@ -24,7 +24,7 @@ struct GeneralPDFHandlerIndicatorTests {
                    "A different PDF handler should be identified for troubleshooting")
     }
 
-    for invalid in [nil, "", " ", "com..broken", "com.apple.Preview\\n",
+    for invalid in [nil, "", " ", "com..broken", "com.apple.Preview\n",
                     " com.apple.Preview"] as [String?] {
       let status = readGeneralPDFHandlerStatus { _ in invalid }
       precondition(status == .unknown, "Unavailable or malformed associations must not show success")
