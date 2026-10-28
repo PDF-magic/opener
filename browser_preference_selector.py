@@ -9,11 +9,17 @@ itself is a separate installed-applications checklist requirement.
 import argparse
 import json
 import re
+import subprocess
 import sys
+from pathlib import Path
 
 MAX_DISCOVERY_BYTES = 256 * 1024
 MAX_BROWSER_RESULTS = 2048
 OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
+# Reuse the installed, read-only HTTPS default-browser resolver. Do not query
+# PDF associations: PDF Magic Opener may itself be the default PDF handler.
+DEFAULT_BROWSER_RESOLVER = (Path.home() /
+    "Library/Application Support/Studio/allow-and-open/resolve-default-browser")
 BUNDLE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}\Z")
 
 
@@ -49,7 +55,28 @@ def selector_choices(discovery_results):
                         key=lambda item: (item[0].casefold(), item[1])))
 
 
-def choose_browser(choices, current=None, *, source=None, destination=None):
+def system_default_browser():
+    """Read the macOS default web browser without changing any preferences.
+
+    An absent, failing, or malformed resolver means no browser gets the marker;
+    it never substitutes a different browser or modifies discovery results.
+    """
+    try:
+        completed = subprocess.run(
+            [str(DEFAULT_BROWSER_RESOLVER)], capture_output=True, text=True,
+            check=True, timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return None
+    identifier = completed.stdout.strip()
+    if (not BUNDLE_ID.fullmatch(identifier) or "." not in identifier
+            or ".." in identifier or identifier == OPENER_BUNDLE_ID):
+        return None
+    return identifier
+
+
+def choose_browser(choices, current=None, *, system_default=None,
+                   source=None, destination=None):
     """Show discovered choices; return one bundle ID only on explicit selection."""
     source = source or sys.stdin
     destination = destination or sys.stderr
@@ -58,7 +85,8 @@ def choose_browser(choices, current=None, *, source=None, destination=None):
         return None
     for index, (name, bundle_id) in enumerate(choices, start=1):
         marker = " (current)" if bundle_id == current else ""
-        print(f"{index}. {name} [{bundle_id}]{marker}", file=destination)
+        default_marker = " (system default)" if bundle_id == system_default else ""
+        print(f"{index}. {name} [{bundle_id}]{marker}{default_marker}", file=destination)
     print("Choose a browser number (Enter or q to cancel): ", end="", file=destination,
           flush=True)
     answer = source.readline().strip()
@@ -85,7 +113,9 @@ def main(argv=None):
     # Selection input must come from a controlling terminal, not discovery data.
     try:
         with open("/dev/tty", "r", encoding="utf-8") as keyboard:
-            selected = choose_browser(choices, current=args.current, source=keyboard)
+            selected = choose_browser(
+                choices, current=args.current,
+                system_default=system_default_browser(), source=keyboard)
     except OSError:
         print("Interactive terminal is required to choose a browser.", file=sys.stderr)
         return 1

@@ -58,6 +58,8 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Find installed applications:** The installed `"$HOME/Library/Application Support/Studio/allow-and-open/installed-applications"` command searches macOS Spotlight's indexed application bundles by display name, application-bundle name, or bundle identifier. For example, pass `"Safari"` or `"com.apple.Safari"` as a single argument. The command returns a JSON array of matching application names, bundle identifiers, and paths, sorted for display. It verifies each bundle still exists and has an executable; unavailable or stale entries are omitted. Spotlight results may be incomplete when indexing is disabled or an application is not indexed. This is read-only discovery, not PDF capability verification: searching does not choose a browser, change any preferences, or bypass malware scanning. Existing target and fallback settings remain unchanged.
 
+**Installed-browser metadata (opener-0129):** `browser-app-metadata.swift` provides a read-only lookup for an already-discovered macOS `.app` bundle. It reports the localized display name (falling back to bundle name or filename), the macOS application icon, the short version (falling back to the build version), and the executable's resolved location. For a command-line JSON response including a base64-encoded TIFF icon, build the helper with `xcrun swiftc -parse-as-library browser-app-metadata.swift -o ReadBrowserApplicationMetadata` and run `./ReadBrowserApplicationMetadata "/Applications/Brave Browser.app"`. Missing or non-executable bundles fail closed; an unavailable icon or version is reported as absent. This helper does not discover installation locations, define the supported-browser registry, authorize PDF launches, or change any saved browser selection.
+
 **Bundle-ID verification and duplicate installations:** If macOS registers several copies of a browser under the same bundle identifier, PDF Magic Opener examines them in Launch Services' preferred order and uses the first existing, executable app with the exact requested identifier. Stale registrations, missing executables, and mismatched identities are skipped, not treated as other browser choices. The PDF-capability preflight and the native launcher apply the same selection rule; if the chosen copy is not PDF-capable, opening stops rather than switching to an alternate copy or default PDF handler. Changing `target-app.txt` is not required, and existing choices remain intact. Reinstall to deploy the native helpers. Launch Services discovery also excludes paths that cannot be read as app bundles: each discovered application must have a readable regular `Info.plist` and a regular executable file with execute permission. Broken or dangling app links and inaccessible installations are omitted; working links to custom installations remain usable. The final native handoff independently rechecks the selected bundle.
 
 **External-drive PDFs:** Finder and native open events accept ordinary mounted-volume file URLs (including names containing spaces or Unicode), then resolve them to local paths and apply the same ClamAV, integrity, quarantine, and configured PDF-target checks as internal files. When macOS grants a security-scoped file URL, the opener retains that access throughout queued and running scans and releases it on completion, cancellation, or termination. A disconnected or unreadable drive blocks opening rather than falling back to an unscanned copy. No external drive is copied to the internal disk by the opener.
@@ -228,6 +230,17 @@ It does not open any PDF, run a scan, or modify your selected post-scan browser
 Installation still registers the opener as before; this action allows you to
 restore it later if another application takes over.
 
+## Browser preference display (read-only)
+
+The optional native macOS browser-list view displays **each supplied installed browser's icon and name**, with its reported version behind a **Show version** disclosure. It consumes a JSON array of application metadata objects with `bundleIdentifier`, `name`, optional `version`, and optional base64 `iconTIFFBase64` fields. These match the read-only metadata contract in the separate opener-0129 work. Example input for a caller that already has browser discovery results:
+
+```sh
+printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
+  "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
+```
+
+Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
+
 ## PDF target application
 
 For a comparison of viewer capabilities, browser-specific settings, and
@@ -277,6 +290,14 @@ while preview channels with distinct IDs remain separate.
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
 `python3 browser_preference_selector.py --current com.brave.Browser < discovered-browsers.json`.
+The selector labels the current macOS **default web browser** with
+`(system default)` using the installed read-only `resolve-default-browser`
+helper, independently of the saved `(current)` preference. If both are the
+same browser, both labels appear. If macOS cannot resolve its default or that
+browser is not among the discovered installed choices, no system-default label
+appears. The helper does not query PDF associations or modify browser defaults.
+The selector still requires an explicit user choice.
+
 The selector prints the explicitly chosen bundle identifier to stdout;
 Enter or `q` cancels without choosing anything. It does not update
 `target-app.txt`, substitute a default, modify macOS preferences, or launch

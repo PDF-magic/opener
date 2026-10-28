@@ -57,7 +57,7 @@ jobs:
         run: python3 test-chromium-launch.py -v
       - name: Verify system-default-browser selection and fail-closed handoff
         run: python3 test-system-default-browser.py -v
-      - name: Verify preference selector uses installed-browser discovery results
+      - name: Verify preference selector choices and macOS default-browser indicator
         run: python3 test-browser-preference-selector.py -v
       - name: Verify explicit custom application choice and atomic persistence
         run: python3 test-select-custom-pdf-application.py -v
@@ -123,6 +123,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Render browser preference names, icons and optional versions
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors browser-preference-list.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
+          "$RUNNER_TEMP/TestBrowserPreferenceList"
+          if "$RUNNER_TEMP/BrowserPreferenceList" </dev/null; then exit 1; fi
       - name: Compile native PDF opener
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
@@ -181,6 +187,12 @@ jobs:
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
       - name: Verify native PDF cloud download-state decisions
         run: python3 test-native-file-availability.py
+      - name: Verify browser names, icons, versions and executable paths
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING browser-app-metadata.swift test-browser-app-metadata.swift -o "$RUNNER_TEMP/TestBrowserApplicationMetadata"
+          BROWSER_METADATA_TOOL="$RUNNER_TEMP/ReadBrowserApplicationMetadata" "$RUNNER_TEMP/TestBrowserApplicationMetadata"
+          if "$RUNNER_TEMP/ReadBrowserApplicationMetadata"; then exit 1; fi
       - name: Compile and test system-default-browser resolution
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
