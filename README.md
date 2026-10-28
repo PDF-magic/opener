@@ -709,32 +709,35 @@ new queued request. Self-transitions and skipped stages are invalid.
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 
-## Protection stage resource budgets (section 5.1)
+## Protection-stage resource budgets (section 5.1)
 
-`protection_stage_budgets.py` defines an immutable, JSON-serializable
-resource-budget descriptor for **every file lifecycle state**. Each stage has
-explicit PDF and non-PDF wall-time ceilings (seconds), CPU time (seconds),
-memory (MiB), and simultaneous-request limits. Each limit is marked
-`current`, `planned`, `not_configured`, or `not_applicable`.
+`protection_stage_resource_budgets.py` defines validated, immutable, JSON-safe
+resource ceilings for all six policy controls (signature freshness, integrity,
+ClamAV scanning, PDF structure validation, isolated behavior analysis, and
+fail-closed handoff), in the required stage order for each inactive profile.
+Each dimension explicitly says `current`, `planned`, `not_configured`,
+or `not_applicable`. Proposed values are **per-stage design targets**,
+not live enforcement, guarantees, or selectable settings.
 
-| Stage | PDF / other wall time | CPU seconds | Memory MiB | Concurrent requests |
+| Protection stage | CPU seconds | Memory MiB | Temporary disk MiB | Concurrent requests |
 | --- | --- | --- | --- | --- |
-| queued | 3,600 / 3,600 (planned) | N/A | 64 (planned) | Not configured |
-| scanning | 1,800 / 180 (current) | Not configured | Not configured | 2 (current) |
-| analyzing | 300 / 300 (planned) | 240 (planned) | 512 (planned) | 2 (planned) |
-| ready | 30 / 30 (planned) | 10 (planned) | 64 (planned) | 2 (planned) |
-| opening | 60 / 60 (planned) | 30 (planned) | 128 (planned) | 2 (planned) |
-| blocked / completed | N/A (terminal) | N/A | N/A | N/A |
+| Signature freshness | 5 (planned) | 64 (planned) | N/A | 2 (planned) |
+| File integrity | 120 (planned) | 256 (planned) | 16 (planned) | 2 (planned) |
+| ClamAV malware scan | Not configured | Not configured | Not configured | **2 (current)** |
+| PDF structure validation | 90 (planned) | 256 (planned) | 512 (planned) | 1 (planned) |
+| Isolated behavior analysis | 300 (planned) | 1,024 (planned) | 2,048 (planned) | 1 (planned) |
+| Fail-closed handoff | 10 (planned) | 128 (planned) | N/A | 2 (planned) |
 
-**Only the existing scanner wall-time and two-scan concurrency limits are
-currently enforced.** Proposed values are design targets for future stage
-implementations, not active throttles, guarantees, or user-selectable modes.
-`not_configured` means no application-configured ceiling; OS
-and ClamAV limits still apply. In particular, the installed PDF scan has no
-configured ClamAV file-size or extracted-size cap, and there is no
-application-imposed memory/CPU cap; non-PDF size restrictions remain
-unchanged. This contract does not alter scanning, quarantine, cache,
-handoff, cancellation, preferences, or the inactive protection tiers.
+**Only two concurrent scanner processes are enforced today** from this table.
+The installed scanner has no application-enforced CPU, memory, or temporary-disk
+ceiling. Its existing wall-clock scan timeouts (30 minutes for standalone PDFs,
+three minutes for other scans) are unchanged; the separate stage elapsed-time
+contract in opener-0257 covers per-stage wall-time limits. The two declarative
+contracts must not be mistaken for CPU, memory, or temporary-disk enforcement.
+Current size constraints, file-integrity checks, ClamAV limits, quarantine
+handling, and preferences remain untouched. Planned structure and behavioral
+analysis controls are **not implemented** and the planned protection profiles
+remain non-selectable.
 
 ## Scan result vocabulary (section 1.3)
 
