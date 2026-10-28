@@ -20,6 +20,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify main Dock icon and invisible PDF scan-helper policy
         run: python3 test-dock-behavior.py -v
+      - name: Verify native window title and bundled application icon
+        run: python3 test-native-window-branding.py -v
       - name: Verify independent SwiftUI application target
         run: python3 test-swiftui-app-target.py -v
       - name: Verify SwiftUI About window, version and AGPL license
@@ -157,6 +159,19 @@ jobs:
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
+      - name: Verify built app icon and macOS window branding
+        run: |
+          app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          python3 - "$app/Contents/Info.plist" <<'ICON_PLIST'
+          import plistlib
+          import sys
+          with open(sys.argv[1], "rb") as stream:
+              info = plistlib.load(stream)
+          assert info["CFBundleDisplayName"] == "PDF Magic Opener", info
+          assert info["CFBundleIconFile"] in ("PDFMagicOpenerIcon", "PDFMagicOpenerIcon.icns"), info
+          ICON_PLIST
+          cmp PDFMagicOpenerApp/PDFMagicOpenerIcon.icns "$app/Contents/Resources/PDFMagicOpenerIcon.icns"
+          iconutil --convert iconset "$app/Contents/Resources/PDFMagicOpenerIcon.icns" --output "$RUNNER_TEMP/PDFMagicOpenerIcon.iconset"
       - name: Verify built About version and bundled license
         run: |
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"

@@ -39,6 +39,13 @@ standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored
 browser preferences, or scanner configuration.
 
+**Window branding (opener-0166):** The standalone preferences window is titled
+**PDF Magic Opener**, matching the app display name and its application menu.
+Both Debug and Release builds bundle a dedicated multiresolution macOS
+`PDFMagicOpenerIcon.icns` (document, verification checkmark, and sparkle).
+The icon appears in Finder, the Dock, and the macOS application switcher;
+the separate PDF scan helper, browser preferences, and ClamAV gate are unchanged.
+
 **Dock behavior (opener-0174):** The standalone SwiftUI preferences app is a
 regular macOS application **with a Dock icon** when launched, so users can
 return to its window and standard application menu. Both Debug and Release
