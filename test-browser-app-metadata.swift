@@ -68,8 +68,10 @@ struct BrowserApplicationMetadataTests {
                 process.standardOutput = output
                 process.standardError = Pipe()
                 try process.run()
+                // Icon TIFFs may exceed the pipe capacity: drain before waiting.
+                let data = output.fileHandleForReading.readDataToEndOfFile()
                 process.waitUntilExit()
-                return (process.terminationStatus, output.fileHandleForReading.readDataToEndOfFile())
+                return (process.terminationStatus, data)
             }
             let (status, data) = try execute(browser.path)
             precondition(status == 0)
