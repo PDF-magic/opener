@@ -26,6 +26,13 @@ or modify saved application preferences. Browsers retains its existing
 overview pending its separate page. Rebuild and run the `PDFMagicOpener`
 Xcode scheme to see the navigation.
 
+**Privacy and Logs** (opener-0184) is a separate, read-only sidebar page
+describing local document processing, diagnostic-log visibility, and current
+limitations on privacy and log controls. It does not display, collect,
+export, erase, or change log records, and does not claim a particular log
+retention duration. The installed scanner and operating system retain their
+existing behavior. No document or scanner preferences are modified.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
