@@ -137,17 +137,48 @@ final class BrowserPreferenceRow: NSStackView {
     }
 }
 
+// The discovery consumer may receive a valid empty list. Explain how to
+// recover without treating the empty result as a reason to reset preferences.
+final class BrowserPreferenceEmptyStateView: NSStackView {
+    let heading = NSTextField(labelWithString: "No browsers found")
+    let guidance = NSTextField(wrappingLabelWithString:
+        "Install a browser or check that discovery includes its installation location, then run browser discovery again.")
+    let preferenceNote = NSTextField(wrappingLabelWithString:
+        "Your existing PDF application preference has not changed.")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        orientation = .vertical
+        alignment = .leading
+        spacing = 8
+
+        heading.font = .systemFont(ofSize: 15, weight: .semibold)
+        guidance.textColor = .secondaryLabelColor
+        preferenceNote.textColor = .secondaryLabelColor
+        guidance.preferredMaxLayoutWidth = 440
+        preferenceNote.preferredMaxLayoutWidth = 440
+
+        addArrangedSubview(heading)
+        addArrangedSubview(guidance)
+        addArrangedSubview(preferenceNote)
+    }
+
+    required init?(coder: NSCoder) { return nil }
+}
+
 final class BrowserPreferenceListView: NSStackView {
     let rows: [BrowserPreferenceRow]
+    let emptyState: BrowserPreferenceEmptyStateView?
 
     init(items: [BrowserPreferenceItem]) {
         rows = items.map { BrowserPreferenceRow(item: $0) }
+        emptyState = items.isEmpty ? BrowserPreferenceEmptyStateView(frame: .zero) : nil
         super.init(frame: .zero)
         orientation = .vertical
         alignment = .leading
         spacing = 12
-        if rows.isEmpty {
-            addArrangedSubview(NSTextField(labelWithString: "No discovered browsers to display."))
+        if let emptyState = emptyState {
+            addArrangedSubview(emptyState)
         } else {
             rows.forEach { addArrangedSubview($0) }
         }

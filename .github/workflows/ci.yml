@@ -123,7 +123,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Render browser preference names, icons and optional versions
+      - name: Render browser preference details and actionable empty state
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors browser-preference-list.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"

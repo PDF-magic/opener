@@ -44,7 +44,25 @@ struct BrowserPreferenceListTests {
         precondition(list.rows[1].detailsButton == nil,
                      "Do not present a fake version or disclosure when unavailable")
         precondition(list.rows[1].nameField.stringValue == "Safari")
-        precondition(BrowserPreferenceListView(items: []).rows.isEmpty)
+        // A valid empty discovery result gets actionable guidance, not a
+        // blank list or a synthetic browser choice.
+        precondition(list.emptyState == nil, "Nonempty results never show an empty state")
+        precondition(browserPreferenceItems(from: encode([]))?.isEmpty == true,
+                     "Valid empty discovery results remain distinct from malformed data")
+        let emptyList = BrowserPreferenceListView(items: [])
+        precondition(emptyList.rows.isEmpty, "Empty results cannot create a fake browser row")
+        guard let emptyState = emptyList.emptyState else {
+            fatalError("An empty list must render recovery guidance")
+        }
+        precondition(emptyList.arrangedSubviews.count == 1,
+                     "The empty state replaces browser rows")
+        precondition(emptyState.heading.stringValue == "No browsers found")
+        precondition(emptyState.guidance.stringValue.contains("Install a browser"),
+                     "Suggest an actionable installation check")
+        precondition(emptyState.guidance.stringValue.contains("discovery again"),
+                     "Explain how to retry browser discovery")
+        precondition(emptyState.preferenceNote.stringValue.contains("has not changed"),
+                     "Do not imply the saved PDF target was reset")
 
         let blankVersion = encode([[
             "bundleIdentifier": "com.example.Browser",
