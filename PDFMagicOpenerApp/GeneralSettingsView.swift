@@ -1,14 +1,78 @@
+import AppKit
+import CoreServices
 import SwiftUI
+import UniformTypeIdentifiers
+
+// Query the macOS *PDF* Launch Services association. The scanning helper
+// owns this bundle ID; the standalone SwiftUI preferences app does not.
+// This status lookup is read-only and can be injected for CI tests.
+private let expectedPDFScanHandlerBundleID = "local.studio.brave-pdf-opener"
+
+enum GeneralPDFHandlerStatus: Equatable {
+  case isDefault
+  case other(String)
+  case unknown
+
+  var title: String {
+    switch self {
+    case .isDefault: return "PDF Magic Opener is the default PDF handler"
+    case .other: return "Another application is the default PDF handler"
+    case .unknown: return "Default PDF handler could not be determined"
+    }
+  }
+
+  var detail: String {
+    switch self {
+    case .isDefault:
+      return "macOS routes PDFs to the installed PDF Magic Opener scanning handler."
+    case .other(let identifier):
+      return "Current handler: \(identifier). This status does not change your selected PDF application."
+    case .unknown:
+      return "macOS did not provide a valid PDF association. The default is not assumed to be PDF Magic Opener."
+    }
+  }
+
+  var symbol: String {
+    switch self {
+    case .isDefault: return "checkmark.circle"
+    case .other: return "info.circle"
+    case .unknown: return "questionmark.circle"
+    }
+  }
+}
+
+func readGeneralPDFHandlerStatus(
+  lookup: (String) -> String? = { contentType in
+    LSCopyDefaultRoleHandlerForContentType(contentType as CFString, .all)?
+      .takeRetainedValue() as String?
+  }
+) -> GeneralPDFHandlerStatus {
+  guard let identifier = lookup(UTType.pdf.identifier),
+        !identifier.isEmpty,
+        identifier.contains("."),
+        !identifier.contains(".."),
+        !identifier.contains(where: { $0.isWhitespace || $0.isNewline }) else {
+    return .unknown
+  }
+
+  return identifier == expectedPDFScanHandlerBundleID
+    ? .isDefault : .other(identifier)
+}
 
 // Only explicit user actions may change either the saved PDF browser or the
 // macOS PDF file association. Neither action changes scanner protections,
 // and the PDF default action targets the separate installed scan handler.
 struct GeneralSettingsView: View {
+  @State private var pdfHandlerStatus: GeneralPDFHandlerStatus = .unknown
   @State private var browserOptions: [PDFBrowserOption] = []
   @State private var selectedBrowserID = ""
   @State private var browserMessage = ""
   @State private var savingBrowser = false
   @State private var loaded = false
+
+  private func refreshPDFHandlerStatus() {
+    pdfHandlerStatus = readGeneralPDFHandlerStatus()
+  }
 
   private func loadBrowserSelection() {
     guard !loaded else { return }
@@ -105,6 +169,29 @@ struct GeneralSettingsView: View {
 
         GroupBox {
           VStack(alignment: .leading, spacing: 12) {
+            Label(pdfHandlerStatus.title, systemImage: pdfHandlerStatus.symbol)
+              .font(.headline)
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("defaultPDFHandlerStatus")
+
+            Text(pdfHandlerStatus.detail)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("Read-only macOS PDF association status. The preferences app itself is not registered as a PDF handler.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        } label: {
+          Label("Default PDF handler", systemImage: "doc.badge.gearshape")
+        }
+        .accessibilityIdentifier("defaultPDFHandlerSection")
+
+        GroupBox {
+          VStack(alignment: .leading, spacing: 12) {
             Label("Saved application choices", systemImage: "app.badge")
               .font(.headline)
             Text("Your selected browser, default PDF handler, and existing application preferences remain unchanged when viewing this page.")
@@ -126,5 +213,11 @@ struct GeneralSettingsView: View {
     }
     .accessibilityIdentifier("generalSettingsPage")
     .onAppear { loadBrowserSelection() }
+    .onAppear(perform: refreshPDFHandlerStatus)
+    .onReceive(NotificationCenter.default.publisher(
+      for: NSApplication.didBecomeActiveNotification
+    )) { _ in
+      refreshPDFHandlerStatus()
+    }
   }
 }
