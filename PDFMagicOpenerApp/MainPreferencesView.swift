@@ -7,6 +7,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
   case general
   case browsers
   case security
+  case advancedScanning
 
   var id: Self { self }
 
@@ -15,6 +16,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .general: return "General"
     case .browsers: return "Browsers"
     case .security: return "Security"
+    case .advancedScanning: return "Advanced Scanning"
     }
   }
 
@@ -23,6 +25,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .general: return "gearshape"
     case .browsers: return "globe"
     case .security: return "checkmark.shield"
+    case .advancedScanning: return "magnifyingglass.circle"
     }
   }
 }
@@ -127,6 +130,8 @@ struct MainPreferencesView: View {
             title: "Verified handoff",
             detail: "The established native checks and quarantine protections are not bypassed by displaying preferences."),
         ])
+    case .advancedScanning:
+      AdvancedScanningSettingsView()
     }
   }
 }

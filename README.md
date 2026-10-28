@@ -20,6 +20,12 @@ Each section provides a read-only overview of the existing workflow; this
 foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
+The **Advanced Scanning** page (opener-0181) is available from the
+preferences sidebar. It explains local malware scanning, file readiness,
+and scan results. This page is informational: it does not expose unimplemented
+scan overrides or change the existing ClamAV policy, scan gate, quarantine
+checks, or saved browser preferences.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
