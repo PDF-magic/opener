@@ -55,6 +55,93 @@ class SanitizedCopyOffer:
             raise ValueError("Sanitized copies never grant scan or open approval")
 
 
+class SanitizerFailureKind(str, Enum):
+    """No sanitizer failure is a malware scan verdict."""
+
+    UNSUPPORTED_INPUT = "unsupportedInput"
+    UNAVAILABLE = "sanitizerUnavailable"
+    CRASHED = "sanitizerCrashed"
+    TIMED_OUT = "sanitizerTimedOut"
+    LAUNCH_FAILED = "sanitizerLaunchFailed"
+    PROCESS_FAILED = "sanitizerProcessFailed"
+    INVALID_OUTPUT = "sanitizerInvalidOutput"
+
+
+# Fixed, path-free user messages; never interpolate a source pathname,
+# worker stdout/stderr, PDF text, signal details, or scanner signatures.
+_FAILURE_MESSAGES = {
+    SanitizerFailureKind.UNSUPPORTED_INPUT: (
+        "This PDF cannot be converted to a sanitized copy; no copy was offered."
+    ),
+    SanitizerFailureKind.UNAVAILABLE: (
+        "The PDF sanitizer is unavailable; no copy was offered."
+    ),
+    SanitizerFailureKind.CRASHED: (
+        "The PDF sanitizer crashed; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.TIMED_OUT: (
+        "The PDF sanitizer timed out; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.LAUNCH_FAILED: (
+        "The PDF sanitizer could not start; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.PROCESS_FAILED: (
+        "The PDF sanitizer failed during conversion. This is not a malware detection."
+    ),
+    SanitizerFailureKind.INVALID_OUTPUT: (
+        "The PDF sanitizer did not produce a verified copy. This is not a malware detection."
+    ),
+}
+
+
+@dataclass(frozen=True)
+class SanitizerFailureReport:
+    """Sanitizer diagnostic only; never a scan result or opening permission."""
+
+    kind: SanitizerFailureKind
+    message: str
+    permits_open: bool = False
+    scan_verdict: str = "notAssessed"
+
+    def __post_init__(self):
+        if (type(self.kind) is not SanitizerFailureKind or
+                self.message != _FAILURE_MESSAGES[self.kind] or
+                self.permits_open is not False or
+                self.scan_verdict != "notAssessed"):
+            raise ValueError("Sanitizer failures cannot become malware or clean verdicts")
+
+    def to_dict(self) -> dict:
+        return {
+            "status": "sanitizerFailure",
+            "kind": self.kind.value,
+            "message": self.message,
+            "scanVerdict": "notAssessed",
+            "permitsOpen": False,
+        }
+
+
+@dataclass(frozen=True)
+class SanitizerAttempt:
+    """Exactly one verified offer or a separately typed sanitizer failure."""
+
+    offer: SanitizedCopyOffer | None
+    failure: SanitizerFailureReport | None
+
+    def __post_init__(self):
+        if ((self.offer is None) == (self.failure is None) or
+                (self.offer is not None and type(self.offer) is not SanitizedCopyOffer) or
+                (self.failure is not None and type(self.failure) is not SanitizerFailureReport)):
+            raise ValueError("A sanitizer attempt needs exactly one outcome")
+
+    @property
+    def permits_open(self) -> bool:
+        return False
+
+
+def _failed(kind: SanitizerFailureKind) -> SanitizerAttempt:
+    return SanitizerAttempt(None, SanitizerFailureReport(kind, _FAILURE_MESSAGES[kind]))
+
+
 class SanitizationBlockReason(str, Enum):
     """Fixed, source-independent reasons why a Maximum copy is unavailable."""
 
@@ -261,13 +348,92 @@ def _passive_pages(pdf_bytes: bytes, count: int) -> bool:
         return False
 
 
-def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
-    """Block every unsupported/incomplete sanitization; never infer clean.
+def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
+    """Report converter crashes separately, never infer malware from a crash.
 
-    Only a fully verified, *new* visual PDF becomes a non-opening offer.
-    Encryption, dynamic content, malformed structures, failed converters and
-    unverified output have explicit fixed reasons. No source bytes, paths,
-    parser diagnostics or filesystem output enter the decision.
+    A verified offer is distinct from sanitization failures; neither
+    authorizes opening or changes the installed ClamAV scan result. Only
+    the scanner may assign a malware-detected status. All diagnostics use
+    fixed messages without paths, PDF text or worker output.
+    """
+    if (type(source_bytes) is not bytes or
+            not 0 < len(source_bytes) <= MAX_SOURCE_BYTES or
+            not source_bytes.startswith(b"%PDF-")):
+        return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
+    try:
+        converter = _trusted_converter()
+    except Exception:
+        return _failed(SanitizerFailureKind.UNAVAILABLE)
+    if converter is None:
+        return _failed(SanitizerFailureKind.UNAVAILABLE)
+    try:
+        from pypdf import PdfReader
+        original = PdfReader(BytesIO(source_bytes), strict=True)
+        if original.is_encrypted or not 1 <= len(original.pages) <= MAX_PAGES:
+            return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
+        if _unsupported_source_features(original):
+            # Unsupported dynamic features and unknown filters must never
+            # reach a converter that could silently drop their content.
+            return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
+        count = len(original.pages)
+    except Exception:
+        return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
+
+    try:
+        converted = subprocess.run(
+            [str(converter)],
+            input=source_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=CONVERSION_TIMEOUT_SECONDS,
+            close_fds=True,
+            start_new_session=True,
+            check=False,
+            cwd="/",
+            env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
+                 "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+    except subprocess.TimeoutExpired:
+        return _failed(SanitizerFailureKind.TIMED_OUT)
+    except (OSError, subprocess.SubprocessError):
+        return _failed(SanitizerFailureKind.LAUNCH_FAILED)
+    except Exception:
+        return _failed(SanitizerFailureKind.LAUNCH_FAILED)
+
+    if type(converted.returncode) is not int:
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+    if converted.returncode < 0:
+        # POSIX negative exit status means the child died from a signal.
+        # Never present this as a ClamAV malware detection.
+        return _failed(SanitizerFailureKind.CRASHED)
+    if converted.returncode != 0:
+        return _failed(SanitizerFailureKind.PROCESS_FAILED)
+    if (type(converted.stdout) is not bytes or
+            not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
+            converted.stdout == source_bytes):
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+
+    try:
+        # The opt-in converter's output is never itself offered. Keep only
+        # decoded raster pixels through a new PDF construction.
+        cleaned = remove_active_pdf_functionality(converted.stdout, count)
+        if cleaned is None or not _passive_pages(cleaned, count):
+            return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+        # Preserve opener-0319's independent verification of final output.
+        structure = verify_sanitized_pdf_structure(cleaned, count)
+        if structure.page_count != count:
+            return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+        return SanitizerAttempt(SanitizedCopyOffer(cleaned, count), None)
+    except Exception:
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+
+
+def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
+    """Classify unsupported sanitization without changing crash-reporting.
+
+    Only verified offers from the existing sanitizer attempt may be
+    published. Other conditions are fixed blocked codes; no original
+    document, unverified conversion, or malware/clean verdict is exposed.
     """
     if (type(source_bytes) is not bytes or
             not 0 < len(source_bytes) <= MAX_SOURCE_BYTES or
@@ -288,54 +454,28 @@ def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
             return _blocked(SanitizationBlockReason.unsupportedPages)
         if _unsupported_source_features(original):
             return _blocked(SanitizationBlockReason.unsupportedFeature)
-        count = len(original.pages)
     except Exception:
         return _blocked(SanitizationBlockReason.unreadableSource)
 
-    try:
-        converted = subprocess.run(
-            [str(converter)],
-            input=source_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=CONVERSION_TIMEOUT_SECONDS,
-            close_fds=True,
-            start_new_session=True,
-            check=False,
-            cwd="/",
-            env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
-                 "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
-        )
-        if (converted.returncode != 0 or
-                type(converted.stdout) is not bytes or
-                not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
-                converted.stdout == source_bytes):
-            return _blocked(SanitizationBlockReason.conversionFailed)
-    except Exception:
-        return _blocked(SanitizationBlockReason.conversionFailed)
-
-    try:
-        # Never offer raw converter output. Reconstruct from decoded raster
-        # pixels and independently verify the new passive output.
-        cleaned = remove_active_pdf_functionality(converted.stdout, count)
-        if (type(cleaned) is not bytes or
-                not 0 < len(cleaned) <= MAX_OUTPUT_BYTES or
-                cleaned == source_bytes or
-                not _passive_pages(cleaned, count)):
-            return _blocked(SanitizationBlockReason.outputUnverified)
-        # Preserve opener-0319's independent post-rebuild structure gate.
-        structure = verify_sanitized_pdf_structure(cleaned, count)
-        if structure.page_count != count:
-            return _blocked(SanitizationBlockReason.outputUnverified)
-        return SanitizationDecision(SanitizedCopyOffer(cleaned, count), None)
-    except Exception:
+    attempt = attempt_sanitized_pdf_copy(source_bytes)
+    if attempt.offer is not None:
+        return SanitizationDecision(attempt.offer, None)
+    # Keep the separately typed sanitizer-crash result on
+    # attempt_sanitized_pdf_copy(); this policy must not conflate it with
+    # either a clean scan or malware detection.
+    if attempt.failure.kind is SanitizerFailureKind.UNAVAILABLE:
+        return _blocked(SanitizationBlockReason.converterUnavailable)
+    if attempt.failure.kind is SanitizerFailureKind.UNSUPPORTED_INPUT:
+        return _blocked(SanitizationBlockReason.unreadableSource)
+    if attempt.failure.kind is SanitizerFailureKind.INVALID_OUTPUT:
         return _blocked(SanitizationBlockReason.outputUnverified)
+    return _blocked(SanitizationBlockReason.conversionFailed)
 
 
 def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
-    """Compatibility API: unavailable/unsupported cases NEVER offer a copy.
+    """Compatibility API: an unsuccessful conversion still offers nothing.
 
-    Call assess_sanitized_pdf_copy() when an explicit block reason and
-    fail-closed decision are needed. The existing opt-in UI is unchanged.
+    Use attempt_sanitized_pdf_copy() when callers need to show a specific
+    sanitizer failure without conflating it with malware detections.
     """
-    return assess_sanitized_pdf_copy(source_bytes).offer
+    return attempt_sanitized_pdf_copy(source_bytes).offer

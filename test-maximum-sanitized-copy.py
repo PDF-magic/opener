@@ -70,7 +70,9 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
                               return_value=subprocess.CompletedProcess([], 0, different)), \
                     patch.object(copies, "_passive_pages", return_value=True), \
                     patch.object(copies, "remove_active_pdf_functionality",
-                                 return_value=different):
+                                 return_value=different), \
+                    patch.object(copies, "verify_sanitized_pdf_structure") as verify:
+                verify.return_value.page_count = 1
                 offer = copies.offer_sanitized_pdf_copy(original)
         self.assertIsNotNone(offer)
         self.assertEqual(offer.pdf_bytes, different)

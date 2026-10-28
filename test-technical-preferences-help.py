@@ -62,9 +62,15 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
     )
     for filename in pages:
       source = (APP / filename).read_text(encoding="utf-8")
-      for term in forbidden:
+      for term in forbidden + ("Button {",):
+        # Protection's buttons select in-memory comparison previews only.
+        if filename == "ProtectionSettingsView.swift" and term.startswith("Button"):
+          continue
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
+      if filename == "ProtectionSettingsView.swift":
+        self.assertIn("selectedPreview = tier", source)
+        self.assertNotIn("SelectedProtectionProfilePreference.save", source)
 
 
 if __name__ == "__main__":
