@@ -19,6 +19,11 @@ annotating, printing, and saving are controlled by the destination application.
 | Mozilla Firefox | `org.mozilla.firefox` | Built-in **PDF.js** reader rather than Chromium's viewer; supports forms, text/drawing annotations, highlights, and visible signature marks. |
 | Apple Safari | `com.apple.Safari` | PDF display in Safari's macOS interface; **Preview** is a separate app for more extensive Markup and page rearrangement. |
 
+The canonical, machine-readable [supported browser registry](../browser_registry.py)
+keeps these bundle identifiers consistent across the launcher and its tests.
+It is a catalog, not an installation check or an allowlist; verified custom
+applications remain configurable.
+
 These identifiers are **installed application bundle IDs**, not commands or
 promises that every browser is supported on every Mac. Chromium-derived
 browsers share a lineage, but their viewers are **not identical**: feature
