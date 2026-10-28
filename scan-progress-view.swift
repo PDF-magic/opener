@@ -134,6 +134,7 @@ enum SelectedDestinationBrowser {
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
     let destinationBrowserLabel = NSTextField(labelWithString: "Destination browser: Unavailable")
+    let activeScansLabel = NSTextField(labelWithString: "Active scans: 0")
     let protectionProfileLabel = NSTextField(
         labelWithString: "Active protection profile: " + BuiltInProtectionProfile.name)
     let protectionProfileDetailsLabel = NSTextField(
@@ -144,7 +145,7 @@ final class ScanProgressPanel: NSPanel {
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 408),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 434),
                    styleMask: [.titled], backing: .buffered, defer: false)
         title = "PDF Magic Opener — Scanning"
         level = .floating
@@ -152,17 +153,24 @@ final class ScanProgressPanel: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
         contentView?.addSubview(TwilightReadingView(
-            frame: NSRect(x: 30, y: 188, width: 300, height: 205)))
+            frame: NSRect(x: 30, y: 214, width: 300, height: 205)))
         stageLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         stageLabel.alignment = .center
-        stageLabel.frame = NSRect(x: 20, y: 163, width: 320, height: 22)
+        stageLabel.frame = NSRect(x: 20, y: 189, width: 320, height: 22)
         stageLabel.setAccessibilityLabel("Current scanning stage")
         contentView?.addSubview(stageLabel)
         filenameLabel.alignment = .center
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         filenameLabel.textColor = .secondaryLabelColor
-        filenameLabel.frame = NSRect(x: 20, y: 137, width: 320, height: 20)
+        filenameLabel.frame = NSRect(x: 20, y: 163, width: 320, height: 20)
         contentView?.addSubview(filenameLabel)
+        activeScansLabel.alignment = .center
+        activeScansLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        activeScansLabel.textColor = .secondaryLabelColor
+        activeScansLabel.frame = NSRect(x: 20, y: 137, width: 320, height: 20)
+        activeScansLabel.setAccessibilityIdentifier("activeScanCount")
+        activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
+        contentView?.addSubview(activeScansLabel)
         protectionProfileLabel.alignment = .center
         protectionProfileLabel.font = .systemFont(ofSize: 12, weight: .medium)
         protectionProfileLabel.textColor = .secondaryLabelColor
@@ -199,9 +207,15 @@ final class ScanProgressPanel: NSPanel {
     }
 
     // Set only display state. Callers own the scan lifecycle and Cancel action.
-    func show(documentDescription: String, stage: ScanProgressStage = .queued) {
+    func show(documentDescription: String, stage: ScanProgressStage = .queued,
+              activeScans: Int = 0) {
         filenameLabel.stringValue = documentDescription
         stageLabel.stringValue = stage.label
+        // Count only processes confirmed launched by the native owner, never
+        // queued documents, scheduled workers, or duplicate open events.
+        let count = max(0, activeScans)
+        activeScansLabel.stringValue = "Active scans: \(count)"
+        activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
         orderFrontRegardless()
     }
 }

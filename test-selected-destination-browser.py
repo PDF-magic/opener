@@ -20,7 +20,7 @@ class DestinationBrowserDisplayTests(unittest.TestCase):
     presentation = OPENER.split("private func showProgress() {", 1)[1].split(
         "private func startQueuedScans()", 1)[0]
     self.assertIn("guard ScanProgressPreference.isEnabled() else {", presentation)
-    self.assertIn("panel?.show(documentDescription: description, stage: stage)", presentation)
+    self.assertIn("panel?.show(documentDescription: description, stage: stage,", presentation)
     self.assertNotIn("process.run()", presentation)
     self.assertNotIn("Process()", presentation)
 

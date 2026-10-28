@@ -206,10 +206,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         } else {
             stage = .queued
         }
-        // Read the configured destination for the label only; the installed scan
-        // gate still validates the actual application after a clean verdict.
+        // Display the read-only selection, never substitute a launch destination.
         panel?.updateDestinationBrowser(SelectedDestinationBrowser.displayName())
-        panel?.show(documentDescription: description, stage: stage)
+        panel?.show(documentDescription: description, stage: stage,
+                    activeScans: launchedScans.count)
     }
 
     private func startQueuedScans() {
