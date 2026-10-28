@@ -59,6 +59,8 @@ jobs:
         run: python3 test-system-default-browser.py -v
       - name: Verify selector hides unsupported browsers and marks macOS default
         run: python3 test-browser-preference-selector.py -v
+      - name: Verify selected-browser removal preserves preference and blocks PDF launch
+        run: python3 test-selected-browser-removed.py -v
       - name: Verify explicit custom application choice and atomic persistence
         run: python3 test-select-custom-pdf-application.py -v
       - name: Verify Brave PDF opening separately
@@ -222,6 +224,13 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-firefox-chromium-discovery.swift -o "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
           "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
+      - name: Verify removal of the selected installed browser
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
+            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-selected-browser-removed.swift \
+            -o "$RUNNER_TEMP/TestSelectedBrowserRemoved"
+          "$RUNNER_TEMP/TestSelectedBrowserRemoved"
+
       - name: Verify renamed browser bundles are rediscovered safely
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-renamed-browser-discovery.swift -o "$RUNNER_TEMP/TestRenamedBrowserDiscovery"

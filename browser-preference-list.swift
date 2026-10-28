@@ -4,11 +4,28 @@ import Foundation
 // Read-only presentation of already-discovered browser metadata. The discovery
 // provider and the user's selected PDF target remain separate responsibilities.
 // The JSON field names match browser-app-metadata.swift (opener-0129).
-struct BrowserPreferenceRecord: Decodable {
+struct BrowserPreferenceRecord: Codable {
     let bundleIdentifier: String
     let name: String
     let version: String?
     let iconTIFFBase64: String?
+}
+
+struct AdditionalApplicationRecord: Decodable {
+    let name: String
+    let bundleIdentifier: String
+    let path: String?
+    let installed: Bool?
+}
+
+struct AdditionalApplicationItem {
+    let name: String
+    let bundleIdentifier: String
+}
+
+private struct BrowserPreferenceEnvelope: Decodable {
+    let browsers: [BrowserPreferenceRecord]
+    let applications: [AdditionalApplicationRecord]?
 }
 
 struct BrowserPreferenceItem {
@@ -128,6 +145,48 @@ func refreshedBrowserPreferenceItems() -> [BrowserPreferenceItem] {
     )
 }
 
+ // Keep legacy browser-array input supported. A caller may instead supply
+ // {"browsers": [...], "applications": [...]} from read-only discovery.
+ func browserPreferenceDisplay(from data: Data) -> (
+     browsers: [BrowserPreferenceItem], applications: [AdditionalApplicationItem]
+ )? {
+     if let browsers = browserPreferenceItems(from: data) {
+         return (browsers, [])
+     }
+     guard data.count <= 4 * 1024 * 1024,
+           let envelope = try? JSONDecoder().decode(BrowserPreferenceEnvelope.self, from: data),
+           (envelope.applications?.count ?? 0) <= 100,
+           let browserData = try? JSONEncoder().encode(envelope.browsers),
+           let browsers = browserPreferenceItems(from: browserData) else { return nil }
+
+     var used = Set(browsers.map(\.bundleIdentifier))
+     var additional: [AdditionalApplicationItem] = []
+     for record in envelope.applications ?? [] {
+         // Only show explicitly discovered applications. Do not launch them,
+         // access their paths, or treat them as verified PDF destinations.
+         guard record.installed == true || record.path?.hasPrefix("/") == true,
+               record.bundleIdentifier.count <= 255,
+               record.bundleIdentifier.range(
+                   of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
+                   options: .regularExpression
+               ) != nil,
+               record.bundleIdentifier.contains("."),
+               !record.bundleIdentifier.contains(".."),
+               record.bundleIdentifier != "local.studio.brave-pdf-opener",
+               let name = safeBrowserDisplayText(record.name, limit: 128),
+               used.insert(record.bundleIdentifier).inserted else { continue }
+         additional.append(AdditionalApplicationItem(
+             name: name, bundleIdentifier: record.bundleIdentifier))
+     }
+     additional.sort {
+         let order = $0.name.localizedCaseInsensitiveCompare($1.name)
+         return order == .orderedSame
+             ? $0.bundleIdentifier < $1.bundleIdentifier
+             : order == .orderedAscending
+     }
+     return (browsers, additional)
+ }
+
 // The browser's actual macOS icon and human-readable name are always in the
 // main row. Version appears only when the user requests optional details.
 final class BrowserPreferenceRow: NSStackView {
@@ -234,10 +293,16 @@ final class BrowserPreferenceEmptyStateView: NSStackView {
 final class BrowserPreferenceListView: NSStackView {
     let rows: [BrowserPreferenceRow]
     let emptyState: BrowserPreferenceEmptyStateView?
+    let additionalButton: NSButton
+    let additionalSection: NSStackView
 
-    init(items: [BrowserPreferenceItem]) {
+    init(items: [BrowserPreferenceItem],
+         additionalApplications: [AdditionalApplicationItem] = []) {
         rows = items.map { BrowserPreferenceRow(item: $0) }
         emptyState = items.isEmpty ? BrowserPreferenceEmptyStateView(frame: .zero) : nil
+        additionalButton = NSButton(
+            title: "Show additional installed applications", target: nil, action: nil)
+        additionalSection = NSStackView()
         super.init(frame: .zero)
         orientation = .vertical
         alignment = .leading
@@ -247,11 +312,37 @@ final class BrowserPreferenceListView: NSStackView {
         } else {
             rows.forEach { addArrangedSubview($0) }
         }
+        additionalButton.target = self
+        additionalButton.action = #selector(toggleAdditionalApplications(_:))
+        additionalButton.setAccessibilityLabel(additionalButton.title)
+        addArrangedSubview(additionalButton)
+
+        additionalSection.orientation = .vertical
+        additionalSection.alignment = .leading
+        additionalSection.spacing = 6
+        if additionalApplications.isEmpty {
+            additionalSection.addArrangedSubview(NSTextField(
+                labelWithString: "No additional installed applications in discovery results."))
+        } else {
+            for item in additionalApplications {
+                additionalSection.addArrangedSubview(NSTextField(
+                    labelWithString: "\(item.name) [\(item.bundleIdentifier)]"))
+            }
+        }
+        additionalSection.isHidden = true
+        addArrangedSubview(additionalSection)
     }
 
     required init?(coder: NSCoder) { return nil }
-}
 
+    @objc func toggleAdditionalApplications(_ sender: NSButton) {
+        additionalSection.isHidden.toggle()
+        sender.title = additionalSection.isHidden
+            ? "Show additional installed applications"
+            : "Hide additional installed applications"
+        sender.setAccessibilityLabel(sender.title)
+    }
+}
 
  // A manual refresh uses the same read-only discovery as live polling. The
  // control itself neither chooses a PDF target nor touches user preferences.
@@ -299,15 +390,19 @@ struct ShowBrowserPreferences {
             exit(EXIT_FAILURE)
         }
         let items: [BrowserPreferenceItem]
+        let additionalApplications: [AdditionalApplicationItem]
         if arguments == ["--metadata-stdin"] {
             let input = FileHandle.standardInput.readData(ofLength: 4 * 1024 * 1024 + 1)
-            guard let supplied = browserPreferenceItems(from: input) else {
-                fputs("Expected a JSON array of discovered browser metadata.\n", stderr)
+            guard let display = browserPreferenceDisplay(from: input) else {
+                fputs("Expected browser metadata with optional additional applications.\n",
+                      stderr)
                 exit(EXIT_FAILURE)
             }
-            items = supplied
+            items = display.browsers
+            additionalApplications = display.applications
         } else {
             items = refreshedBrowserPreferenceItems()
+            additionalApplications = []
         }
 
         let app = NSApplication.shared
@@ -323,14 +418,20 @@ struct ShowBrowserPreferences {
         // Rebuild the visible document only after the installed-browser list
         // actually changes. Keep optional disclosures and the scroll position.
         func makeDocument(_ results: [BrowserPreferenceItem],
-                          expanded: Set<String> = []) -> (NSView, BrowserPreferenceListView) {
-            let list = BrowserPreferenceListView(items: results)
+                          expanded: Set<String> = [],
+                          expandedAdditional: Bool = false) -> (NSView, BrowserPreferenceListView) {
+            let list = BrowserPreferenceListView(
+                items: results, additionalApplications: additionalApplications)
+            if expandedAdditional {
+                list.toggleAdditionalApplications(list.additionalButton)
+            }
             for row in list.rows where expanded.contains(row.bundleIdentifier) {
                 if let button = row.detailsButton {
                     row.toggleDetails(button)
                 }
             }
-            let height = max(120, CGFloat(max(results.count, 1)) * 84 + 32)
+            let height = max(120, CGFloat(max(results.count, 1) * 84
+                + additionalApplications.count * 36 + 140))
             let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: height))
             list.frame = NSRect(x: 16, y: 16, width: 488, height: height - 32)
             document.addSubview(list)
@@ -358,7 +459,9 @@ struct ShowBrowserPreferences {
                         row.versionField?.isHidden == false ? row.bundleIdentifier : nil
                     })
                     let previousOffset = scrolling.contentView.bounds.origin.y
-                    let (document, list) = makeDocument(nextItems, expanded: expanded)
+                    let (document, list) = makeDocument(
+                        nextItems, expanded: expanded,
+                        expandedAdditional: !visibleList.additionalSection.isHidden)
                     scrolling.documentView = document
                     visibleList = list
                     let limit = max(0, document.frame.height - scrolling.contentView.bounds.height)

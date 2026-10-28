@@ -71,6 +71,10 @@ excluded and no application executable is launched. The fixtures do not install
 real browsers, register apps with macOS, change saved PDF targets, or test PDF
 rendering. Scanner and quarantine behavior remain unchanged.
 
+## Selected browser removed (opener-0159)
+
+CI exercises a **previously selected** Brave bundle disappearing while Safari remains installed, using only disposable application fixtures and a temporary `target-app.txt`. The macOS test verifies fresh discovery and the open preferences view omit the removed bundle, stale Launch Services paths cannot authorize it as a PDF handler, Safari is not silently substituted, and the saved preference survives removal. Removing the final browser yields the existing empty-state guidance. A separate scanner-gate regression verifies that an unavailable selected browser stops PDF opening before quarantine removal or native launch and retains the saved bundle ID. Neither test changes real browser installations, macOS associations, actual user preferences, nor scanner policy.
+
 ## Renamed browser discovery regression (opener-0160)
 
 The macOS CI suite builds and runs `test-renamed-browser-discovery.swift` against
