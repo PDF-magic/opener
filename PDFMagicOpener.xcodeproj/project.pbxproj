@@ -48,6 +48,16 @@
       path = GeneralSettingsView.swift;
       sourceTree = "<group>";
     };
+    A10000000000000000000022 = {
+      isa = PBXBuildFile;
+      fileRef = A10000000000000000000023;
+    };
+    A10000000000000000000023 = {
+      isa = PBXFileReference;
+      lastKnownFileType = sourcecode.swift;
+      path = ProtectionSettingsView.swift;
+      sourceTree = "<group>";
+    };
     A10000000000000000000002 = {
       isa = PBXFileReference;
       lastKnownFileType = sourcecode.swift;
@@ -74,7 +84,7 @@
     };
     A10000000000000000000006 = {
       isa = PBXGroup;
-      children = (A10000000000000000000002, A10000000000000000000013, A10000000000000000000017, A1000000000000000000001B,);
+      children = (A10000000000000000000002, A10000000000000000000013, A10000000000000000000017, A1000000000000000000001B, A10000000000000000000023,);
       path = PDFMagicOpenerApp;
       sourceTree = "<group>";
     };
@@ -98,7 +108,7 @@
     A10000000000000000000009 = {
       isa = PBXSourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = (A10000000000000000000001, A10000000000000000000012, A10000000000000000000016, A1000000000000000000001A,);
+      files = (A10000000000000000000001, A10000000000000000000012, A10000000000000000000016, A1000000000000000000001A, A10000000000000000000022,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     A1000000000000000000000A = {

@@ -14,7 +14,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     switch self {
     case .general: return "General"
     case .browsers: return "Browsers"
-    case .security: return "Security"
+    case .security: return "Protection"
     }
   }
 
@@ -106,17 +106,7 @@ struct MainPreferencesView: View {
             detail: "Opening this window never resets your configured destination or changes the system default browser."),
         ])
     case .security:
-      PreferenceOverviewPane(
-        title: "Security",
-        description: "The PDF-opening safeguards continue to operate independently of this window.",
-        explanations: [
-          PreferenceExplanation(
-            title: "Local scanning",
-            detail: "The existing scan workflow checks documents with ClamAV before opening them."),
-          PreferenceExplanation(
-            title: "Verified handoff",
-            detail: "The established native checks and quarantine protections are not bypassed by displaying preferences."),
-        ])
+      ProtectionSettingsView()
     }
   }
 }
