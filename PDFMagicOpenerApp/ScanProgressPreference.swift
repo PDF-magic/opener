@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 // A cosmetic setting shared by the standalone preferences UI and the
 // separately installed PDF scan handler. It does not change scan policy.
@@ -156,6 +157,8 @@ enum InitialConfiguration {
     defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
   ) -> Bool {
     guard let defaults else { return false }
+    // Record the active version without overwriting incompatible metadata.
+    guard ActiveConfigurationSchemaVersion.recordIfNeeded(defaults: defaults) else { return false }
     var initializedMissingSetting = false
     if defaults.object(forKey: ScanProgressPreference.key) == nil {
       defaults.set(SupportedPreferenceDefaults.showScanProgress, forKey: ScanProgressPreference.key)
@@ -172,6 +175,37 @@ enum InitialConfiguration {
     // A relaunch or an in-place upgrade must not re-save already persisted
     // preferences. Only the first creation of missing keys needs a flush.
     return !initializedMissingSetting || defaults.synchronize()
+  }
+}
+
+// Record the schema version in the same shared defaults suite as the active
+// preferences. This metadata does not migrate or reset any user setting.
+enum ActiveConfigurationSchemaVersion {
+  static let key = "schemaVersion"
+
+  static func read(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Int? {
+    guard let defaults,
+          let raw = defaults.object(forKey: key),
+          let numeric = raw as? NSNumber,
+          CFGetTypeID(numeric) != CFBooleanGetTypeID(),
+          let version = raw as? Int, version > 0 else { return nil }
+    return version
+  }
+
+  @discardableResult
+  static func recordIfNeeded(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    if defaults.object(forKey: key) != nil {
+      // Keep future, older and malformed values intact; refuse silent migration.
+      return read(defaults: defaults) == PDFMagicConfigurationSchema.currentVersion
+    }
+    defaults.set(PDFMagicConfigurationSchema.currentVersion, forKey: key)
+    return defaults.synchronize() &&
+      read(defaults: defaults) == PDFMagicConfigurationSchema.currentVersion
   }
 }
 
@@ -233,8 +267,6 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
     return try JSONDecoder().decode(Self.self, from: data)
   }
 }
-
-import CoreFoundation
 
 // Explicit, in-memory upgrades for legacy preference snapshots. This does not
 // read or write the live preference domain, scanner files, or chosen PDF viewer.

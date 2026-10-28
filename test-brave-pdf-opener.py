@@ -63,6 +63,10 @@ DispatchQueue.main.async {{
           }}) else {{
         fatalError("Concurrent scans must show an active filename and the document count")
     }}
+    precondition(progress.queuedDocumentCountLabel.stringValue == "2 documents queued",
+                 "Two active scans leave exactly two queued documents")
+    precondition(progress.queuedDocumentCountLabel.accessibilityLabel() == "2 documents queued",
+                 "VoiceOver must receive the actual queued document count")
 }}
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {{
     delegate.application(app, open: [document, alias])
@@ -73,6 +77,8 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {{
           }}) else {{
         fatalError("Duplicate events must preserve active filename and pending count")
     }}
+    precondition(progress.queuedDocumentCountLabel.stringValue == "2 documents queued",
+                 "Duplicate opens must not increase the queue count")
 }}
 // Assert the stage advances only when the harmless native scan child launches.
 func verifyLaunchedStage(_ attempts: Int = 0) {{
@@ -89,6 +95,13 @@ func verifyLaunchedStage(_ attempts: Int = 0) {{
 }}
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
     verifyLaunchedStage()
+}}
+// Check the queue drains after the first pair completes while the next
+// pair continues scanning. This count describes only waiting documents.
+DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {{
+    let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first
+    precondition(progress?.queuedDocumentCountLabel.stringValue == "0 documents queued",
+                 "Newly dispatched files must leave the waiting count")
 }}
 // Capture an offscreen rendering of the drawing, without reading the desktop.
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{
