@@ -31,7 +31,7 @@ struct AboutAndDiagnosticsSettingsView: View {
 
         GroupBox("Application") {
           VStack(alignment: .leading, spacing: 12) {
-            diagnosticDetail("PDF Magic Opener", "Version \\(appVersion) · Build \\(appBuild)")
+            diagnosticDetail("PDF Magic Opener", "Version \(appVersion) · Build \(appBuild)")
             diagnosticDetail("Bundle identifier", bundleIdentifier)
             Text("License: GNU Affero General Public License v3. Open About PDF Magic Opener from the application menu to view the complete bundled license.")
               .foregroundStyle(.secondary)
