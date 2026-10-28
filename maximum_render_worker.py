@@ -88,7 +88,10 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         code = main()
-    except BaseException:
-        # No PDF-controlled diagnostics or partial raster output on failure.
+    except BaseException as error:
+        # GitHub CI synthetic fixture diagnostics are explicitly opt-in;
+        # production launcher never forwards this environment variable.
+        if os.environ.get("OPENER_TEST_RENDER_DIAGNOSTICS") == "1":
+            sys.stderr.write(type(error).__name__ + "\n")
         code = 2
     raise SystemExit(code)
