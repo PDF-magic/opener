@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Scan selected local files before changing quarantine or launching an app."""
 from contextlib import contextmanager
-from scan_results import ScanResult
+from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from functools import wraps
-from dataclasses import dataclass
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import fcntl
 import hashlib
 from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
@@ -74,6 +73,9 @@ class CleanScanResult:
     scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
     detection_names: tuple[str, ...] = ()
+    # The same installed policy applies on fresh scans, cache hits and launch errors.
+    # Caller-provided ScanRequest.protection_level never selects scanner controls.
+    effective_policy_id: str = field(default=EFFECTIVE_POLICY_ID, init=False)
 
 
 class LaunchFailedError(RuntimeError):
