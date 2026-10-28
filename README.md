@@ -293,7 +293,14 @@ supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
-`python3 browser_preference_selector.py --current com.brave.Browser < discovered-browsers.json`.
+`python3 browser_preference_selector.py < discovered-browsers.json`.
+When opened again, the selector reads the previously saved browser from
+`target-app.txt` and marks it `(current)` without changing the file.
+The existing verified manual-app chooser and preference workflow own writes;
+the selector itself remains read-only. An absent preference uses the launcher's
+Brave default, while invalid, unreadable, or symlinked preferences do not
+silently pick another browser. The optional `--current` parameter overrides
+the saved current marker for integrations that already know the current choice.
 The selector labels the current macOS **default web browser** with
 `(system default)` using the installed read-only `resolve-default-browser`
 helper, independently of the saved `(current)` preference. If both are the

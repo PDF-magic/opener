@@ -2,6 +2,7 @@
 """Verify discovery-backed preference choices without touching user settings."""
 import importlib.util
 import subprocess
+import tempfile
 from io import StringIO
 from pathlib import Path
 import unittest
@@ -12,6 +13,11 @@ spec = importlib.util.spec_from_file_location("browser_preference_selector",
                                                ROOT / "browser_preference_selector.py")
 selector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selector)
+
+picker_spec = importlib.util.spec_from_file_location(
+    "select_custom_pdf_application", ROOT / "select-custom-pdf-application.py")
+picker = importlib.util.module_from_spec(picker_spec)
+picker_spec.loader.exec_module(picker)
 
 
 class BrowserSelectorTests(unittest.TestCase):
@@ -164,6 +170,66 @@ class BrowserSelectorTests(unittest.TestCase):
         self.assertIsNone(selector.choose_browser((), current="com.example.custom",
                           source=StringIO("1\n"), destination=screen))
         self.assertIn("No installed browsers", screen.getvalue())
+
+    def test_saved_selection_survives_repeated_selector_restarts(self):
+        # Exercise the existing atomic preference writer and independent
+        # selector reads rather than inventing a second storage location.
+        with tempfile.TemporaryDirectory(prefix="opener-restore-") as directory:
+            setting = Path(directory) / "target-app.txt"
+            self.assertEqual(selector.saved_browser_preference(setting),
+                             "com.brave.Browser")
+            choices = (("Brave", "com.brave.Browser"),
+                       ("Chrome", "com.google.Chrome"),
+                       ("Safari", "com.apple.Safari"))
+            for saved in ("com.apple.Safari", "com.google.Chrome"):
+                picker.persist_preference(saved, setting)
+                for _ in range(2):
+                    # Each call stands in for opening a new selector process.
+                    current = selector.saved_browser_preference(setting)
+                    self.assertEqual(current, saved)
+                    screen = StringIO()
+                    self.assertIsNone(selector.choose_browser(
+                        choices, current=current, source=StringIO("q\\n"),
+                        destination=screen))
+                    self.assertIn(f"[{saved}] (current)", screen.getvalue())
+                    self.assertEqual(setting.read_text(), saved + "\\n")
+            # A custom saved choice outside the primary list is preserved
+            # even if the browser isn't in the discovered results.
+            picker.persist_preference("org.example.customBrowser", setting)
+            self.assertEqual(selector.saved_browser_preference(setting),
+                             "org.example.customBrowser")
+            screen = StringIO()
+            selector.choose_browser(choices, current=selector.saved_browser_preference(setting),
+                                    source=StringIO("q\\n"), destination=screen)
+            self.assertNotIn("(current)", screen.getvalue())
+            self.assertEqual(setting.read_text(), "org.example.customBrowser\\n")
+
+    def test_saved_preference_bad_files_fail_closed_without_overwrite(self):
+        with tempfile.TemporaryDirectory(prefix="opener-restore-") as directory:
+            setting = Path(directory) / "target-app.txt"
+            for invalid in ("", "bad-id", "org..broken", "local.studio.brave-pdf-opener",
+                            "system-default-browser", "com.apple.Safari\\ncom.google.Chrome",
+                            "x" * 260):
+                with self.subTest(invalid=invalid[:24]):
+                    setting.write_text(invalid)
+                    self.assertIsNone(selector.saved_browser_preference(setting))
+                    self.assertEqual(setting.read_text(), invalid)
+            setting.write_bytes(b"bad\\xff")
+            self.assertIsNone(selector.saved_browser_preference(setting))
+            self.assertEqual(setting.read_bytes(), b"bad\\xff")
+            setting.unlink()
+            other = Path(directory) / "unrelated.txt"
+            other.write_text("com.apple.Safari\\n")
+            setting.symlink_to(other)
+            self.assertIsNone(selector.saved_browser_preference(setting))
+            self.assertEqual(other.read_text(), "com.apple.Safari\\n")
+            setting.unlink()
+            setting.mkdir()
+            self.assertIsNone(selector.saved_browser_preference(setting))
+            setting.rmdir()
+            alias = Path(directory) / "alias"
+            alias.symlink_to(Path(directory), target_is_directory=True)
+            self.assertIsNone(selector.saved_browser_preference(alias / "target-app.txt"))
 
     def test_no_preference_file_access_or_browser_launch(self):
         choices = selector.selector_choices([{
