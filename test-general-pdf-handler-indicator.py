@@ -42,13 +42,15 @@ class GeneralPDFHandlerIndicatorTests(unittest.TestCase):
     ):
       with self.subTest(text=text):
         self.assertIn(text, GENERAL)
+    self.assertIn('Picker("Browser for scanned PDFs", selection: Binding(', GENERAL)
+    self.assertIn(".onAppear { loadBrowserSelection() }", GENERAL)
     self.assertIn("Settings {", APP)
 
   def test_lookup_never_changes_associations_or_user_settings(self):
     for forbidden in (
       "NSWorkspace", "Process(", "FileManager", "UserDefaults",
       "@AppStorage", "LSSetDefault", "setDefault", "clamscan(",
-      "target-app.txt", "Button(", "Toggle(", "Picker(", "write(to:",
+      "target-app.txt", "Button(", "Toggle(", "write(to:",
       "URLSession", "onOpenURL", "DocumentGroup",
     ):
       with self.subTest(forbidden=forbidden):

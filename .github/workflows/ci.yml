@@ -44,6 +44,8 @@ jobs:
         run: python3 test-general-settings-page.py -v
       - name: Verify default PDF handler indicator is read-only
         run: python3 test-general-pdf-handler-indicator.py -v
+      - name: Verify verified default PDF browser selector
+        run: python3 test-default-pdf-browser-selector.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: python3 test-browsers-settings-page.py -v
       - name: Verify explanatory help for technical preferences
@@ -183,13 +185,15 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors \
             PDFMagicOpenerApp/*SettingsView.swift PDFMagicOpenerApp/MainPreferencesView.swift \
+            PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
+            PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
             test-preferences-large-text.swift -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors \
-            PDFMagicOpenerApp/GeneralSettingsView.swift test-general-pdf-handler-indicator.swift \
-            -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
+            PDFMagicOpenerApp/GeneralSettingsView.swift PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
+            test-general-pdf-handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
           "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
       - name: Verify built app icon and macOS window branding
         run: |

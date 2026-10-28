@@ -18,14 +18,22 @@ The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
 The **General** sidebar entry opens a dedicated read-only settings page
 (opener-0178) describing PDF scanning and preserved application choices.
-**General PDF handler status (opener-0196):** General now displays whether
-Launch Services currently associates the **PDF** content type with the installed
-PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), a different
-application (including its bundle identifier), or an unknown/unavailable
-association. The indicator refreshes when General appears and when the app
-becomes active again. It is read-only: it never changes file associations,
-scanner behavior, or saved browser choices. The standalone Settings app has
-its own distinct bundle identifier and is not the PDF handler.
+The **Default PDF browser** selector (opener-0195) lists only registered,
+installed supported browser bundles. Choosing one explicitly calls the installed
+PDF application selection utility to verify eligibility and atomically update
+the existing `target-app.txt` preference. A rejected choice leaves the previous
+preference intact; opening General or using its other sections never changes
+the selected browser. Existing custom choices remain displayed without being
+silently replaced. Install the PDF Magic Opener scanner tools before using
+this selector.
+**General PDF handler status (opener-0196):** General separately reports
+whether Launch Services currently associates **PDF files** with the installed
+PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), another
+application (including its bundle identifier), or an unknown association.
+This is not the post-scan browser selector. It refreshes when General appears
+and when the app becomes active, without changing macOS associations or
+saved PDF browser preferences. The standalone Settings app itself is not
+the PDF handler.
 
 **Protection** (opener-0180) opens a separate informational page explaining
 local ClamAV scanning, fail-closed handling of unsafe or unverified files,
