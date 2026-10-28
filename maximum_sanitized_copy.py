@@ -14,6 +14,8 @@ import stat
 import subprocess
 import sys
 
+from maximum_active_content_removal import remove_active_pdf_functionality
+
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_PAGES = 16
@@ -145,9 +147,13 @@ def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
         if (converted.returncode != 0 or
                 type(converted.stdout) is not bytes or
                 not 0 < len(converted.stdout) <= MAX_OUTPUT_BYTES or
-                converted.stdout == source_bytes or
-                not _passive_pages(converted.stdout, count)):
+                converted.stdout == source_bytes):
             return None
-        return SanitizedCopyOffer(converted.stdout, count)
+        # Never offer raw converter output. Keep only decoded raster pixels
+        # through a second, independent fresh PDF reconstruction.
+        cleaned = remove_active_pdf_functionality(converted.stdout, count)
+        if cleaned is None or not _passive_pages(cleaned, count):
+            return None
+        return SanitizedCopyOffer(cleaned, count)
     except Exception:
         return None
