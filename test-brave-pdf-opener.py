@@ -54,9 +54,23 @@ DispatchQueue.main.async {{
         fatalError("Progress must display the original requested alias filename")
     }}
     delegate.application(app, open: [extraOne, extraTwo, extraThree])
+    guard let progress = panel as? ScanProgressPanel,
+          progress.filenameLabel.stringValue.contains("4 documents"),
+          ["selected alias.pdf", "Quarterly report – 2026.PDF"].contains(where: {{
+              progress.filenameLabel.stringValue.contains($0)
+          }}) else {{
+        fatalError("Concurrent scans must show an active filename and the document count")
+    }}
 }}
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {{
     delegate.application(app, open: [document, alias])
+    guard let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first,
+          progress.filenameLabel.stringValue.contains("4 documents"),
+          ["selected alias.pdf", "Quarterly report – 2026.PDF"].contains(where: {{
+              progress.filenameLabel.stringValue.contains($0)
+          }}) else {{
+        fatalError("Duplicate events must preserve active filename and pending count")
+    }}
 }}
 // Capture an offscreen rendering of the drawing, without reading the desktop.
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{

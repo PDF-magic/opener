@@ -179,16 +179,20 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             panel?.orderOut(nil)
             return
         }
+        // Prefer a currently scanning file; use a queued request before launch.
+        // Sorting makes the displayed filename stable when two scans run together.
+        guard let path = running.sorted().first ?? queued.first ?? pending.sorted().first else {
+            panel?.orderOut(nil)
+            return
+        }
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
         }
-        let description: String
-        if pending.count == 1, let path = pending.first {
-            description = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
-        } else {
-            description = "\(pending.count) documents"
-        }
+        let filename = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
+        let description = pending.count == 1
+            ? filename
+            : "\(filename) (\(pending.count) documents)"
         panel?.show(documentDescription: description)
     }
 
