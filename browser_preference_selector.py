@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from browser_registry import SUPPORTED_BROWSER_BUNDLE_IDS
+
 MAX_DISCOVERY_BYTES = 256 * 1024
 MAX_BROWSER_RESULTS = 2048
 OPENER_BUNDLE_ID = "local.studio.brave-pdf-opener"
@@ -24,11 +26,13 @@ BUNDLE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}\Z")
 
 
 def selector_choices(discovery_results):
-    """Return sorted (display name, bundle ID) options from installed results.
+    """Return primary-list choices from installed, explicitly supported browser IDs.
 
     Each browser record has a bundle_id, name, and boolean installed field.
     Different installations with one bundle ID are a single preference choice:
     the existing target-app.txt format addresses a bundle, not a path.
+    Unknown IDs, including preview channels and lookalikes, remain available
+    only through existing manual preferences and native PDF verification.
     """
     if isinstance(discovery_results, dict):
         discovery_results = discovery_results.get("browsers")
@@ -42,7 +46,8 @@ def selector_choices(discovery_results):
         bundle_id = entry.get("bundle_id")
         if (not isinstance(bundle_id, str) or not BUNDLE_ID.fullmatch(bundle_id)
                 or "." not in bundle_id or ".." in bundle_id
-                or bundle_id == OPENER_BUNDLE_ID):
+                or bundle_id == OPENER_BUNDLE_ID
+                or bundle_id not in SUPPORTED_BROWSER_BUNDLE_IDS):
             continue
         name = entry.get("name")
         if (not isinstance(name, str) or not 0 < len(name.strip()) <= 100

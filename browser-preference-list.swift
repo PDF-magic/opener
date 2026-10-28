@@ -18,6 +18,18 @@ struct BrowserPreferenceItem {
     let icon: NSImage?
 }
 
+private let supportedBrowserBundleIDs: Set<String> = [
+    "com.brave.Browser",
+    "com.google.Chrome",
+    "org.chromium.Chromium",
+    "com.microsoft.edgemac",
+    "com.vivaldi.Vivaldi",
+    "com.operasoftware.Opera",
+    "company.thebrowser.Browser",
+    "org.mozilla.firefox",
+    "com.apple.Safari",
+]
+
 private func safeBrowserDisplayText(_ raw: String, limit: Int) -> String? {
     let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !value.isEmpty, value.count <= limit,
@@ -46,6 +58,10 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
           record.bundleIdentifier != "local.studio.brave-pdf-opener",
               let name = safeBrowserDisplayText(record.name, limit: 128) else { return nil }
 
+        // An installed application's name or similar ID does not mean it is
+        // supported in the primary list. Manual custom targets remain separate.
+        guard supportedBrowserBundleIDs.contains(record.bundleIdentifier) else { continue }
+
         // The version is an optional detail, never a reason to invent one.
         let version = record.version.flatMap {
             safeBrowserDisplayText($0, limit: 64)
@@ -65,7 +81,6 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     return items
 }
 
-
 // Load a fresh inventory on each preferences open, not the previous window's
 // snapshot. Installed apps can appear, disappear, or change while the app runs.
 func refreshedBrowserPreferenceItems(
@@ -83,6 +98,7 @@ func refreshedBrowserPreferenceItems(
                   == url.standardizedFileURL.resolvingSymlinksInPath(),
               let name = safeBrowserDisplayText(details.name, limit: 128),
               browser.bundleIdentifier != "local.studio.brave-pdf-opener",
+              supportedBrowserBundleIDs.contains(browser.bundleIdentifier),
               browser.bundleIdentifier.count <= 255,
               browser.bundleIdentifier.range(
                   of: "^[A-Za-z0-9][A-Za-z0-9.-]{1,254}$",
@@ -184,17 +200,48 @@ final class BrowserPreferenceRow: NSStackView {
     }
 }
 
+// The discovery consumer may receive a valid empty list. Explain how to
+// recover without treating the empty result as a reason to reset preferences.
+final class BrowserPreferenceEmptyStateView: NSStackView {
+    let heading = NSTextField(labelWithString: "No browsers found")
+    let guidance = NSTextField(wrappingLabelWithString:
+        "Install a browser or check that discovery includes its installation location, then run browser discovery again.")
+    let preferenceNote = NSTextField(wrappingLabelWithString:
+        "Your existing PDF application preference has not changed.")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        orientation = .vertical
+        alignment = .leading
+        spacing = 8
+
+        heading.font = .systemFont(ofSize: 15, weight: .semibold)
+        guidance.textColor = .secondaryLabelColor
+        preferenceNote.textColor = .secondaryLabelColor
+        guidance.preferredMaxLayoutWidth = 440
+        preferenceNote.preferredMaxLayoutWidth = 440
+
+        addArrangedSubview(heading)
+        addArrangedSubview(guidance)
+        addArrangedSubview(preferenceNote)
+    }
+
+    required init?(coder: NSCoder) { return nil }
+}
+
 final class BrowserPreferenceListView: NSStackView {
     let rows: [BrowserPreferenceRow]
+    let emptyState: BrowserPreferenceEmptyStateView?
 
     init(items: [BrowserPreferenceItem]) {
         rows = items.map { BrowserPreferenceRow(item: $0) }
+        emptyState = items.isEmpty ? BrowserPreferenceEmptyStateView(frame: .zero) : nil
         super.init(frame: .zero)
         orientation = .vertical
         alignment = .leading
         spacing = 12
-        if rows.isEmpty {
-            addArrangedSubview(NSTextField(labelWithString: "No discovered browsers to display."))
+        if let emptyState = emptyState {
+            addArrangedSubview(emptyState)
         } else {
             rows.forEach { addArrangedSubview($0) }
         }

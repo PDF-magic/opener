@@ -57,8 +57,10 @@ jobs:
         run: python3 test-chromium-launch.py -v
       - name: Verify system-default-browser selection and fail-closed handoff
         run: python3 test-system-default-browser.py -v
-      - name: Verify preference selector choices and macOS default-browser indicator
+      - name: Verify selector hides unsupported browsers and marks macOS default
         run: python3 test-browser-preference-selector.py -v
+      - name: Verify explicit custom application choice and atomic persistence
+        run: python3 test-select-custom-pdf-application.py -v
       - name: Verify Brave PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: brave
@@ -121,7 +123,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Refresh installed browser discovery on each preferences open
+      - name: Refresh discovery on every native preferences open and verify empty-state guidance
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
@@ -215,6 +217,18 @@ jobs:
           if "$RUNNER_TEMP/InstalledApplications" " " >/dev/null 2>&1; then exit 1; fi
           "$RUNNER_TEMP/InstalledApplications" "__pdf_magic_uninstalled_app_0123__" > "$RUNNER_TEMP/installed-apps.json"
           python3 -c 'import json, sys; assert json.load(open(sys.argv[1], encoding="utf-8")) == []' "$RUNNER_TEMP/installed-apps.json"
+      - name: Validate manually chosen application bundles against PDF launch targets
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
+            verify-pdf-target.swift select-custom-pdf-application.swift \
+            -o "$RUNNER_TEMP/SelectCustomPDFApplication"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
+            -D CUSTOM_APP_SELECTION_TESTING verify-pdf-target.swift \
+            select-custom-pdf-application.swift test-select-custom-pdf-application.swift \
+            -o "$RUNNER_TEMP/TestSelectCustomPDFApplication"
+          "$RUNNER_TEMP/TestSelectCustomPDFApplication"
+          if "$RUNNER_TEMP/SelectCustomPDFApplication" --application relative.app; then exit 1; fi
+          if "$RUNNER_TEMP/SelectCustomPDFApplication" --application "$RUNNER_TEMP/Absent.app"; then exit 1; fi
       - name: Verify PDF handoff to an already-running browser process
         timeout-minutes: 3
         run: python3 test-browser-already-running.py -v

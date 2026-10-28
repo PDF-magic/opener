@@ -232,22 +232,22 @@ restore it later if another application takes over.
 
 ## Browser preference display (read-only)
 
-The native macOS browser-list view **refreshes installed browser discovery each time preferences opens**. On every open, it uses the existing Launch Services and filesystem discovery provider plus the installed bundle's current name, icon, and optional version. Newly installed, removed, and updated browsers appear on the next open rather than being taken from a previous snapshot.
+The native macOS browser-list view **refreshes discovery every time preferences opens**. It reads the current installed-browser inventory and the current metadata for each verified bundle, so newly installed, removed and updated browsers are reflected on the next open. The primary list still excludes unsupported browsers; an empty result shows the existing **No browsers found** recovery guidance, and the saved PDF target stays unchanged.
 
-Launch the installed window with no arguments:
+Launch the installed preferences window without arguments:
 
 ```sh
 "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
 ```
 
-For an explicitly supplied metadata snapshot, the backwards-compatible mode is `--metadata-stdin`. It takes a JSON array of records containing `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
+For callers explicitly supplying a JSON metadata snapshot, the existing behavior is available as `--metadata-stdin`. A metadata array contains `bundleIdentifier`, `name`, optional `version`, and optional `iconTIFFBase64`:
 
 ```sh
 printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","version":"1.74"}]' | \
   "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list" --metadata-stdin
 ```
 
-A version appears only behind the optional Show version disclosure; missing artwork receives a generic application icon. Reinstall to deploy the refreshed display. Discovery is read-only: it never changes `target-app.txt`, replaces user customizations, selects a destination, alters Launch Services defaults, or bypasses scanning and quarantine.
+Icons and names come from macOS; version appears only through the optional Show version disclosure. If discovery finds no supported browsers, the window provides guidance without resetting any preference. Invalid explicit JSON fails closed instead of appearing as an empty result. Reinstall to deploy this behavior. The read-only discovery path does not edit `target-app.txt`, alter system default handlers, open documents, or bypass malware scanning or quarantine.
 
 ## PDF target application
 
@@ -291,9 +291,11 @@ printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/al
 on standard input and presents a numbered selection on the controlling terminal.
 Its input is either a list of browser records or an object with a `browsers`
 list. Each record contains `bundle_id`, `name`, and `installed: true`.
-Only installed, valid, non-self-referential browser IDs are selectable;
-duplicate installations with one bundle identifier display as one choice,
-while preview channels with distinct IDs remain separate.
+Only installed, valid browsers with **exact bundle IDs** in the supported
+browser registry (`browser_registry.py`) appear in the primary list. Unknown,
+custom and unsupported preview identifiers are hidden, even when their name or
+bundle-ID prefix resembles a supported browser. Duplicate installations of a
+supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
@@ -309,12 +311,29 @@ The selector still requires an explicit user choice.
 The selector prints the explicitly chosen bundle identifier to stdout;
 Enter or `q` cancels without choosing anything. It does not update
 `target-app.txt`, substitute a default, modify macOS preferences, or launch
-any application. A caller must explicitly save the chosen bundle identifier
+any application. Existing manually configured custom targets are preserved
+when hidden from the primary list; the native PDF verification gate remains
+required. A caller must explicitly save the chosen bundle identifier
 through the existing preference workflow. The §3.1 discovery provider and
 integration into a graphical preferences screen are **separate prerequisites**;
 this selector does not claim to discover installed browsers on its own.
 The existing PDF scan, quarantine, and native application verification gates
 remain unchanged.
+
+**Manual application bundle selection (opener-0145):** After installation,
+run `python3 "$HOME/Library/Application Support/Studio/allow-and-open/select-custom-pdf-application.py"`
+to choose a macOS `.app` using the native file picker. Alternatively provide
+`--application "/Applications/Custom Browser.app"` for an explicit path (including
+applications installed on another volume). This action validates the bundle,
+executable, exact Launch Services-selected installation, and PDF capability
+**before** atomically saving its bundle identifier to the existing
+`target-app.txt` preference with private permissions. A cancelled selection,
+unsupported or unregistered app, mismatched duplicate installation, or unsafe
+preference file does not replace the existing choice. Custom bundle paths are
+not persisted because the launcher uses bundle IDs; register custom-location
+apps with macOS first so Launch Services selects the same installation. The
+normal PDF scanning, signed-browser exceptions, fallback preferences, and
+macOS default associations are not changed by this action.
 
 To follow your **macOS default web browser** automatically (instead of a fixed
 bundle identifier), opt in by writing `system-default-browser` to the same file:
