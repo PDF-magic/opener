@@ -30,6 +30,11 @@ browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
+**Advanced Scanning** (opener-0181) is a separate read-only preferences
+destination covering local ClamAV malware checks, file readiness, and
+scan results. It does not expose unimplemented scan overrides or change
+scanner policy, quarantine checks, or saved PDF application choices.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
