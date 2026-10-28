@@ -36,7 +36,7 @@ class ProtectionLevelCheckDisplayTests(unittest.TestCase):
             f"var {property_name}: [ProtectionLevelCheck] {{", 1
         )[1].split("\n  }\n", 1)[0]
         case = re.search(
-            rf"case \.{tier}:\s*return (.*?)(?=\n    case \.|\n  \}})",
+            rf"case \.{tier}:\s*return (.*?)(?=\n    case \.|\n    \}})",
             body, re.DOTALL,
         )
         self.assertIsNotNone(case, (property_name, tier))
