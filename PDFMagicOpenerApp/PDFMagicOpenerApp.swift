@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // Standalone preferences UI target. The existing AppKit/ClamAV scan gate
@@ -8,12 +9,13 @@ struct PDFMagicOpenerApp: App {
     WindowGroup("PDF Magic Opener") {
       MainPreferencesView()
     }
-
-    // The standard macOS Settings command (Command-,) is always available
-    // in this independent UI process, including while the PDF scan-gate app
-    // is scanning. Opening Settings never touches the scanner's lifetime pipe.
-    Settings {
-      MainPreferencesView()
+    .commands {
+      CommandGroup(replacing: .appTermination) {
+        Button("Quit PDF Magic Opener") {
+          NSApplication.shared.terminate(nil)
+        }
+        .keyboardShortcut("q", modifiers: [.command])
+      }
     }
   }
 }

@@ -20,23 +20,16 @@ Each section provides a read-only overview of the existing workflow; this
 foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
+Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
+standalone preferences app. This standard macOS Quit action terminates
+that application only; it does not change the chosen PDF handler, stored
+browser preferences, or scanner configuration.
+
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
 by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
-
-**Settings while scanning (opener-0172):** In the standalone SwiftUI app,
-choose **PDF Magic Opener → Settings…** or press **Command-,** to show the
-native Settings window, including while the separate PDF opener is scanning.
-The Settings scene reuses the existing read-only preferences view. It does not
-close the scan progress panel, cancel active or queued jobs, close the scan
-owner's lifetime pipe, or change security or browser preferences. Closing
-Settings likewise does not stop a scan. The standalone SwiftUI application
-must be launched independently (for example, from Xcode); the Finder PDF
-handler installed by `install-allow-and-open.sh` remains a different app.
-CI verifies the Settings scene builds and that an active scan continues
-through a concurrent independent Settings-process check.
 
 ## Art
 

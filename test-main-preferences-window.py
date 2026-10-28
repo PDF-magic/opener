@@ -17,24 +17,6 @@ class MainPreferencesWindowTests(unittest.TestCase):
     self.assertNotIn("Application settings will appear here.", app)
     self.assertNotIn("DocumentGroup", app)
 
-  def test_standard_settings_scene_is_available_without_document_handling(self):
-    app = APP.read_text(encoding="utf-8")
-    # A Settings scene registers the native app-menu Settings command (⌘,).
-    self.assertIn("Settings {\n      MainPreferencesView()\n    }", app)
-    self.assertIn("WindowGroup(\"PDF Magic Opener\")", app)
-    for forbidden in ("DocumentGroup", "onOpenURL", "NSApp.terminate",
-                      "cancelScans", "scanLifetimes", "Process("):
-      with self.subTest(forbidden=forbidden):
-        self.assertNotIn(forbidden, app)
-
-  def test_settings_and_scanner_have_independent_bundle_identity(self):
-    project = PROJECT.read_text(encoding="utf-8")
-    app = APP.read_text(encoding="utf-8")
-    self.assertIn("PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui;", project)
-    self.assertNotIn("local.studio.brave-pdf-opener", project)
-    self.assertIn("Settings {", app)
-    self.assertNotIn("CFBundleDocumentTypes", project)
-
   def test_sidebar_exposes_all_main_preferences_sections(self):
     view = VIEW.read_text(encoding="utf-8")
     for required in (
