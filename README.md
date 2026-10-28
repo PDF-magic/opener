@@ -67,6 +67,18 @@ not inspect logs, documents, or saved application choices. The existing
 **About PDF Magic Opener** menu command still displays the version and the
 bundled AGPL-3.0 license; it has not been replaced.
 
+**Larger system text (opener-0193):** The preferences sidebar accommodates
+wrapped section titles and scales its minimum width with Dynamic Type.
+The Updates version field stacks when its horizontal layout cannot fit,
+and settings details remain vertically scrollable. CI audits the use of
+semantic fonts and checks SwiftUI layouts at default and accessibility
+text sizes in a constrained macOS window. To inspect the actual system
+appearance, increase text size in macOS System Settings > Accessibility >
+Display > Text size, open Settings, and confirm all section labels,
+headings, descriptions, and the installed version remain legible without
+horizontal clipping. These automated checks do not replace a visual audit
+on every macOS display or accessibility configuration.
+
 **Keyboard navigation (opener-0189):** When the preferences window opens,
 the sidebar receives keyboard focus. Use **↑/↓** to select a page and
 **Tab/Shift-Tab** to move focus between the sidebar and page controls.
