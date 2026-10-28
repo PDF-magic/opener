@@ -14,7 +14,7 @@ struct TestSelectedProtectionProfile {
     precondition(InitialConfiguration.createIfNeeded(defaults: defaults))
     precondition(defaults.string(forKey: key) == "built-in")
     precondition(SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn)
-    precondition(ProtectionProfileIdentifier.allCasesForTest == ["built-in"])
+    precondition(ProtectionProfileIdentifier(rawValue: "unsupported") == nil)
 
     // Save and read from a newly constructed defaults object (app restart).
     defaults.set("custom-browser", forKey: "unrelatedPreference")
@@ -71,8 +71,8 @@ struct TestSelectedProtectionProfile {
     // Legacy snapshot captures explicit stored choices without writing values.
     defaults.set("built-in", forKey: key)
     let snapshot = try PDFMagicConfigurationMigration.snapshotLegacyPreferences(defaults: defaults)
-    precondition(try PDFMagicConfigurationSchema.decoded(from: snapshot)
-      .selectedProtectionProfile == .builtIn)
+    let snapshotSchema = try PDFMagicConfigurationSchema.decoded(from: snapshot)
+    precondition(snapshotSchema.selectedProtectionProfile == .builtIn)
     defaults.set("unknown-policy", forKey: key)
     do {
       _ = try PDFMagicConfigurationMigration.snapshotLegacyPreferences(defaults: defaults)
@@ -93,6 +93,3 @@ struct TestSelectedProtectionProfile {
   }
 }
 
-private extension ProtectionProfileIdentifier {
-  static var allCasesForTest: [String] { [ProtectionProfileIdentifier.builtIn.rawValue] }
-}
