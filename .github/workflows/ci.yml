@@ -42,6 +42,8 @@ jobs:
         run: python3 test-updates-settings-page.py -v
       - name: Verify dedicated General settings page
         run: python3 test-general-settings-page.py -v
+      - name: Verify Show Scan Progress option and scanner safety
+        run: python3 test-show-scan-progress.py -v
       - name: Verify verified default PDF browser selector
         run: python3 test-default-pdf-browser-selector.py -v
       - name: Verify default PDF handler indicator is read-only
@@ -223,9 +225,13 @@ jobs:
           assert "CFBundleDocumentTypes" not in info
           ABOUT_PLIST
           cmp LICENSE "$app/Contents/Resources/LICENSE"
+      - name: Verify shared scan-progress setting uses isolated user defaults
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
+          "$RUNNER_TEMP/TestShowScanProgress"
       - name: Compile native PDF opener with the shared scan progress component
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           python3 test-scan-progress-component.py -v
       - name: Verify General PDF association action with synthetic apps only
         run: |
@@ -375,6 +381,8 @@ jobs:
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: python3 test-native-cancellation.py
+      - name: Verify hidden progress does not bypass native scan dispatch
+        run: python3 test-native-hidden-scan-progress.py
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: python3 test-scan-resource-cleanup.py

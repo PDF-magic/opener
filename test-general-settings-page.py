@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the standalone, read-only General preferences page (opener-0178)."""
+"""Verify the General preferences page and unrelated scanner safety."""
 
 from pathlib import Path
 import unittest
@@ -48,11 +48,12 @@ class GeneralSettingsPageTests(unittest.TestCase):
 
   def test_general_page_cannot_mutate_preferences_or_bypass_scanning(self):
     page = GENERAL.read_text(encoding="utf-8")
+    self.assertIn('Toggle("Show Scan Progress"', page)
     for prohibited in (
         "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
         "Process(", "write(to:", "LSSetDefault", "setDefault",
         "onOpenURL", "DocumentGroup", "target-app.txt",
-        "Button(", "Toggle(",
+        "Button(",
     ):
       with self.subTest(prohibited=prohibited):
         self.assertNotIn(prohibited, page)
