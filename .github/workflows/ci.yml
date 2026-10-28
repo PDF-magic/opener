@@ -265,6 +265,8 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
           "$RUNNER_TEMP/TestShowScanProgress"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-initial-configuration.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
+          "$RUNNER_TEMP/TestInitialConfiguration"
       - name: Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
