@@ -30,12 +30,18 @@ jobs:
         run: python3 test-missing-dependency-policy.py -v
       - name: Verify structured policies for every planned protection profile
         run: python3 test-structured-protection-policy.py -v
+      - name: Inspect embedded PDF attachments under the planned Enhanced policy
+        run: |
+          python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+          python3 test-enhanced-embedded-files.py -v
       - name: Verify maximum processing time for each protection stage
         run: python3 test-protection-stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
         run: python3 test-required-optional-profile-checks.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: python3 test-reference-pdf-profiles.py -v
+      - name: Identify PDF format and declared version from file bytes
+        run: python3 test-pdf-format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: python3 test-effective-protection-policy.py -v
       - name: Verify fail-closed response to unsupported PDF features
