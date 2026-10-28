@@ -35,11 +35,23 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+**VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
+group label and each page entry announces its section name and a navigation
+hint. Labels are derived from the existing page titles and preserve native
+sidebar selection, keyboard navigation, and current-page state.
+
 The **Updates** sidebar entry (opener-0182) provides a read-only page
 showing the installed application version and explaining application
 and ClamAV definition updates. It does not check for, download, or
 install updates, claim unverified update status, or modify any scan
 protections or saved preferences.
+
+**Technical help text (opener-0194):** Inline, accessible informational notes
+clarify ClamAV malware scans, fail-closed behavior, locally available files,
+verified PDF handoff, discovered versus preferred applications, and the
+difference between app updates and malware definition updates. Help appears
+beside the relevant read-only sections; no settings are changed and the
+installed PDF scanner remains authoritative.
 
 **Extensions and Integrations** (opener-0185) has a dedicated read-only
 settings page for Finder scan actions, verified PDF handoff and

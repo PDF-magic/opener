@@ -26,6 +26,10 @@ struct UpdatesSettingsView: View {
             Text("Checking for or installing application updates is not available from this page yet.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
+            Label("The installed version comes from this app bundle. It does not tell you whether newer software exists.", systemImage: "info.circle")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(8)
@@ -33,11 +37,17 @@ struct UpdatesSettingsView: View {
         .accessibilityIdentifier("applicationUpdatesSection")
 
         GroupBox("Malware definition updates") {
-          Text("ClamAV malware definitions are maintained by the existing scanner update workflow, independently of these application preferences. This page does not check their freshness or modify them.")
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(8)
+          VStack(alignment: .leading, spacing: 10) {
+            Text("ClamAV malware definitions are maintained by the existing scanner update workflow, independently of these application preferences. This page does not check their freshness or modify them.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Label("Malware definitions describe threats recognized by the scanner. Their update schedule is separate from app updates, and this page cannot confirm when they were last refreshed.", systemImage: "info.circle")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
         }
         .accessibilityIdentifier("malwareDefinitionUpdatesSection")
 

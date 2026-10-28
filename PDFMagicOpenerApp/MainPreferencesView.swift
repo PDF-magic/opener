@@ -103,8 +103,12 @@ struct MainPreferencesView: View {
       List(MainPreferenceSection.allCases, selection: $selection) { section in
         Label(section.title, systemImage: section.symbolName)
           .tag(section)
+          // Read the page title, not the decorative SF Symbol name.
+          .accessibilityLabel("\(section.title) settings")
+          .accessibilityHint("Show the \(section.title) settings page")
       }
       .listStyle(.sidebar)
+      .accessibilityLabel("Preferences sections")
       .focused($sidebarFocused)
       .onAppear { sidebarFocused = true }
       .navigationTitle("Preferences")
