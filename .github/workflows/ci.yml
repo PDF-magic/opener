@@ -18,6 +18,10 @@ jobs:
           python-version: "3.11"
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify independent SwiftUI application target
+        run: python3 test-swiftui-app-target.py -v
+      - name: Verify SwiftUI main preferences navigation and safe window wiring
+        run: python3 test-main-preferences-window.py -v
       - name: Verify opt-in PDF default-handler action
         run: python3 test-pdf-default-user-action.py -v
       - name: Verify application naming and migration
@@ -134,6 +138,13 @@ jobs:
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
+      - name: Build SwiftUI application target without registering PDF handling
+        run: |
+          plutil -lint PDFMagicOpener.xcodeproj/project.pbxproj
+          xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Debug -destination 'generic/platform=macOS' -derivedDataPath "$RUNNER_TEMP/PDFMagicOpenerDerived" CODE_SIGNING_ALLOWED=NO build
+          app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          test -x "$app/Contents/MacOS/PDFMagicOpener"
+          python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p' "$app/Contents/Info.plist"
       - name: Compile native PDF opener
         run: xcrun swiftc brave-pdf-opener.swift -o "$RUNNER_TEMP/PDFOpener"
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
