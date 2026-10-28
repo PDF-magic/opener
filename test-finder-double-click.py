@@ -17,6 +17,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "brave-pdf-opener.swift"
+PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
 HANDLER_READER = ROOT / "identify-pdf-handler.swift"
 SCRIPT_ANCHOR = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
@@ -56,7 +57,8 @@ def main():
         # replaced with a harmless receipt writer in this temporary build.
         harness = root / "finder-opener.swift"
         harness.write_text(
-            source.replace(SCRIPT_ANCHOR, "URL(fileURLWithPath: " + json.dumps(str(gate)) + ")"),
+            source.replace(SCRIPT_ANCHOR, "URL(fileURLWithPath: " + json.dumps(str(gate)) + ")") + "\n" +
+            PROGRESS_SOURCE.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         info = {
@@ -75,7 +77,7 @@ def main():
         }
         with (app / "Contents/Info.plist").open("wb") as stream:
             plistlib.dump(info, stream)
-        run("/usr/bin/xcrun", "swiftc", str(harness), "-o", str(executable))
+        run("/usr/bin/xcrun", "swiftc", "-parse-as-library", str(harness), "-o", str(executable))
         run("/usr/bin/codesign", "--force", "--sign", "-", str(app))
 
         # Observe the PDF association without modifying it. The CI app is

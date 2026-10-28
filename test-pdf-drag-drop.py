@@ -17,6 +17,7 @@ import unicodedata
 
 ROOT = Path(__file__).resolve().parent
 APP_SOURCE = ROOT / "brave-pdf-opener.swift"
+PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
 HANDLER_SOURCE = ROOT / "identify-pdf-handler.swift"
 SCAN_GATE = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
@@ -85,7 +86,8 @@ def test_drop_handoff():
         harness = root / "drop-opener.swift"
         harness.write_text(
             source.replace(SCAN_GATE, "URL(fileURLWithPath: "
-                           + json.dumps(str(gate)) + ")"),
+                           + json.dumps(str(gate)) + ")") + "\n" +
+            PROGRESS_SOURCE.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
 
@@ -105,7 +107,7 @@ def test_drop_handoff():
         }
         with (app / "Contents/Info.plist").open("wb") as stream:
             plistlib.dump(info, stream)
-        run("/usr/bin/xcrun", "swiftc", str(harness), "-o", str(executable))
+        run("/usr/bin/xcrun", "swiftc", "-parse-as-library", str(harness), "-o", str(executable))
         run("/usr/bin/codesign", "--force", "--sign", "-", str(app))
 
         reader = root / "IdentifyPDFHandler"

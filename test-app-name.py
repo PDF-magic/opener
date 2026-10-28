@@ -45,7 +45,8 @@ class ApplicationNameTests(unittest.TestCase):
         self.assertIn('app="$HOME/Applications/$app_name.app"', INSTALLER)
         self.assertIn("local.studio.brave-pdf-opener", INSTALLER)
         self.assertIn("# PDF Magic Opener", (ROOT / "README.md").read_text())
-        self.assertIn("PDF Magic Opener — Scanning", (ROOT / "brave-pdf-opener.swift").read_text())
+        self.assertIn("PDF Magic Opener — Scanning", (ROOT / "scan-progress-view.swift").read_text())
+        self.assertIn("ScanProgressPanel(", (ROOT / "brave-pdf-opener.swift").read_text())
 
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
