@@ -709,6 +709,21 @@ new queued request. Self-transitions and skipped stages are invalid.
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 
+## Effective protection policy resolution (opener-0260)
+
+The pure `resolve_effective_policy(saved_preferences)` function in
+`effective_protection_policy.py` returns an immutable snapshot of the **currently
+installed Built-in** safety policy. The four mandatory checks (ClamAV scanning,
+signature freshness, file integrity and fail-closed handoff) remain required
+regardless of presentation preferences. An absent `selectedProtectionProfile`
+uses `built-in`; an invalid explicit value or planned `standard`, `enhanced`
+or `maximum` selection **raises** instead of silently falling back.
+
+This resolver does not read or modify user settings, activate planned checks,
+start scans, remove quarantine or authorize opening. The existing installed
+scanner remains authoritative. Only separately implemented and verified future
+work may make additional profiles active.
+
 ## Protection-stage resource budgets (section 5.1)
 
 `protection_stage_resource_budgets.py` defines validated, immutable, JSON-safe
