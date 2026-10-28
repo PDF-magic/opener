@@ -35,6 +35,12 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+The **Updates** sidebar entry (opener-0182) provides a read-only page
+showing the installed application version and explaining application
+and ClamAV definition updates. It does not check for, download, or
+install updates, claim unverified update status, or modify any scan
+protections or saved preferences.
+
 The **About and Diagnostics** page (opener-0186) is a separate read-only
 preferences destination showing the running app version, build, bundle identifier,
 macOS version, and an explanation of the separate PDF-scanning handler.
