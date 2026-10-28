@@ -22,6 +22,8 @@ jobs:
         run: python3 test-active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
         run: python3 test-protection-profiles.py -v
+      - name: Verify signature update check is within the existing 48-hour window
+        run: python3 test-signature-freshness-window.py -v
       - name: Verify scanner-failure response policy and existing fail-closed gate
         run: python3 test-scanner-failure-policy.py -v
       - name: Verify fail-closed responses for missing protection dependencies

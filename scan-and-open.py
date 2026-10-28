@@ -363,7 +363,9 @@ def check_database():
         age = time.time() - float(STAMP.read_text().strip())
     except (OSError, ValueError):
         raise RuntimeError('Malware signatures are unavailable. Run update-malware-signatures.sh.')
-    if age < 0 or age > MAX_DATABASE_AGE:
+    # Only a real timestamp in the inclusive 48-hour window is acceptable.
+    # In particular, float("nan") passes both < and > checks and must fail closed.
+    if not 0 <= age <= MAX_DATABASE_AGE:
         raise RuntimeError('Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.')
     # Filename matches alone are insufficient: empty placeholders and
     # directories masquerading as main.cvd / daily.cvd are not databases.
