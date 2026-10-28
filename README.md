@@ -38,6 +38,17 @@ browser preference tools; opening this page does not reset user choices,
 change system associations, or bypass any scan protections. Rebuild and
 run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
+**Set as Default PDF App (opener-0197):** General has a separate, explicit
+button that asks macOS to make the **installed, scanning PDF Magic Opener
+handler** the default application for .pdf files. This is different from
+the Default PDF browser selector, which chooses the viewer for a PDF *after*
+the scan. The button launches the validated installed `MakePDFMagicDefault`
+helper and checks the actual macOS association before reporting success.
+If the handler is not installed or a change cannot be verified, the page
+reports an error. Opening settings does not change the default. The
+standalone preferences app is never registered as a PDF handler, and saved
+browser choices and scanning safeguards remain unchanged.
+
 **Advanced Scanning** (opener-0181) is a separate read-only preferences
 destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
