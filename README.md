@@ -735,6 +735,31 @@ the current scanner's exit codes, quarantine handling, or opening behavior.
 every other result blocks opening and leaves quarantine in place. A cancellation,
 scan error, or partial scan must never be treated as `clean`.
 
+## Detection response contract (opener-0253)
+
+`detection_responses.py` defines immutable, path-free responses for **every**
+canonical `ScanResultStatus`. These are **declarative definitions only**:
+the installed scan gate remains authoritative, and this contract does not
+activate a different protection profile or change existing scan behavior.
+
+| Result | Response | User-facing handling |
+| --- | --- | --- |
+| `clean` | Continue to **existing file-integrity, destination, and quarantine checks**; never open from a status alone | No failure alert |
+| `malwareDetected` | Deny opening; preserve quarantine | Alert that malware was detected |
+| `suspiciousStructure` | Deny opening; preserve quarantine | Alert about suspicious/malformed structure, not confirmed malware |
+| `encrypted` | Deny opening; preserve quarantine | Alert that required inspection was blocked by encryption |
+| `incompleteScan` | Deny opening; preserve quarantine | Alert that inspection was incomplete |
+| `scanFailed` | Deny opening; preserve quarantine | Alert that the scanner or a prerequisite failed |
+| `scanTimedOut` | Deny opening; preserve quarantine | Alert that the scan exceeded its time limit |
+| `fileChanged` | Deny opening; preserve quarantine | Alert that the file changed during verification |
+| `fileTooLarge` | Deny opening; preserve quarantine | Alert that the scanning size limit was exceeded |
+| `cancelled` | Stop processing; preserve quarantine | No unexpected failure alert |
+
+Unknown or untrusted result values—including an unvalidated string
+`"clean"`—have a generic **deny opening** response. No response directly
+launches a file, removes quarantine, or modifies saved user settings.
+Existing launch-gate, scanner and cancellation code remain unchanged.
+
 ## Scan-request origins
 
 Each scan request records three origin flags (Finder, browser, or other desktop application) in a separate local `scan-request-origins.jsonl` file in the same application-support directory. Finder Quick Actions label their requests explicitly; native PDF opens use the macOS open-event sender when available. Unidentified senders leave all three flags false rather than guessing. The file contains timestamps and origin flags only—never document names, paths, contents, or scan verdicts. It is separate from the clean-verdict cache and can be deleted while the opener is not running. Existing installations must rerun the installer to add Finder attribution. Origin logging is informational and cannot change whether the scanner blocks a file.
