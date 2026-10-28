@@ -66,8 +66,10 @@ func verifyAttention(_ tries: Int = 0) {{
         precondition(panel.isVisible, "Blocked scan must stay visible after its warning")
         precondition(panel.filenameLabel.stringValue == "blocked-report.pdf")
         precondition(panel.activeScansLabel.stringValue == "Active scans: 0")
+        // The button immediately terminates NSApplication, so mark the
+        // planned acknowledgement before performing the actual Close action.
+        print("PASS: user explicitly closed the failed scan window", flush: true)
         panel.cancelButton.performClick(nil)
-        print("PASS: user explicitly closed the failed scan window")
         return
     }}
     precondition(tries < 100, "The blocked scan never entered attention state")
