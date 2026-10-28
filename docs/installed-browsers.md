@@ -70,3 +70,19 @@ is retained independently; it also checks that a nonexecutable bundle is
 excluded and no application executable is launched. The fixtures do not install
 real browsers, register apps with macOS, change saved PDF targets, or test PDF
 rendering. Scanner and quarantine behavior remain unchanged.
+
+## No third-party browsers installed (opener-0161)
+
+The macOS CI job compiles the real discovery, browser metadata, and preferences
+list components with `test-no-third-party-browsers.swift`. Isolated application
+fixtures contain a usable **Safari.app** (`com.apple.Safari`), an unrelated
+Chrome-named application, an unusable Firefox bundle, and a stale Chrome
+registration. The test confirms that only Safari is discovered and displayed,
+without inventing a third-party browser or silently selecting a replacement.
+
+If Safari becomes unusable or disappears, discovery and the native preference
+list report an empty inventory with the existing **No browsers found** guidance.
+The test also checks stable JSON output, unchanged custom target contents, and
+that application executables are never launched. This tests the no-third-party
+environment without changing real macOS installations, registrations,
+preferences, scanners, or quarantine rules; it does not test PDF rendering.
