@@ -6,6 +6,11 @@ import SwiftUI
 // background controls; the separate PDF handler remains usable when this
 // application is closed. Do not turn the app into an LSUIElement agent.
 // See docs/menu-bar-decision.md for rationale and reconsideration criteria.
+// Launch-at-login decision (opener-0199): no automatic startup is needed.
+// This windowed preferences app does not own scan requests or long-running
+// work. The installed PDF opener handles open events independently; the
+// separate malware-signature update LaunchAgent is not a preferences login
+// item. See docs/launch-at-login-decision.md.
 // Standalone preferences UI target. The existing AppKit/ClamAV scan gate
 // continues to handle PDFs; this target does not register as a PDF opener.
 @main
