@@ -56,8 +56,12 @@ DispatchQueue.main.async {{
     precondition((panel as? ScanProgressPanel)?.stageLabel.stringValue == ScanProgressStage.starting.label,
                  "Native scan must start in the pending-launch stage")
     delegate.application(app, open: [extraOne, extraTwo, extraThree])
-    guard let progress = panel as? ScanProgressPanel else {{
-        fatalError("Expected shared progress panel")
+    guard let progress = panel as? ScanProgressPanel,
+          progress.filenameLabel.stringValue.contains("4 documents"),
+          ["selected alias.pdf", "Quarterly report – 2026.PDF"].contains(where: {{
+              progress.filenameLabel.stringValue.contains($0)
+          }}) else {{
+        fatalError("Concurrent scans must show an active filename and the document count")
     }}
     precondition(progress.queuedDocumentCountLabel.stringValue == "2 documents queued",
                  "Two active scans leave exactly two queued documents")
@@ -66,8 +70,14 @@ DispatchQueue.main.async {{
 }}
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {{
     delegate.application(app, open: [document, alias])
-    let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first
-    precondition(progress?.queuedDocumentCountLabel.stringValue == "2 documents queued",
+    guard let progress = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first,
+          progress.filenameLabel.stringValue.contains("4 documents"),
+          ["selected alias.pdf", "Quarterly report – 2026.PDF"].contains(where: {{
+              progress.filenameLabel.stringValue.contains($0)
+          }}) else {{
+        fatalError("Duplicate events must preserve active filename and pending count")
+    }}
+    precondition(progress.queuedDocumentCountLabel.stringValue == "2 documents queued",
                  "Duplicate opens must not increase the queue count")
 }}
 // Assert the stage advances only when the harmless native scan child launches.
