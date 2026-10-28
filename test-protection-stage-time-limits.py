@@ -132,14 +132,18 @@ class StageLimitTests(unittest.TestCase):
                           "scan_and_open(", "os.environ", "write_text(", "def enforce", "def apply"):
             self.assertNotIn(forbidden, source)
         parsed = ast.parse(scanner)
-        constants = {
-            node.targets[0].id: ast.literal_eval(node.value)
-            for node in parsed.body
+        definition = next(
+            node.value for node in parsed.body
             if isinstance(node, ast.Assign) and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id in {"PDF_SCAN_TIMEOUT"}
-        }
-        self.assertEqual(constants["PDF_SCAN_TIMEOUT"], 1800)
+            and node.targets[0].id == "PDF_SCAN_TIMEOUT"
+        )
+        self.assertIsInstance(definition, ast.BinOp)
+        self.assertIsInstance(definition.op, ast.Mult)
+        self.assertEqual(
+            ast.literal_eval(definition.left) * ast.literal_eval(definition.right),
+            STAGE_MAXIMUM_SECONDS[PolicyControl.CLAMAV_SCAN_GATE],
+        )
         self.assertIn("timeout=PDF_SCAN_TIMEOUT if is_pdf else 180", scanner)
         self.assertIn("except subprocess.TimeoutExpired:", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
