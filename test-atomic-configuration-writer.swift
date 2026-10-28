@@ -125,11 +125,13 @@ struct AtomicConfigurationWriterTests {
     usleep(200_000)
     var childStatus: Int32 = 0
     assert(waitpid(child, &childStatus, WNOHANG) == 0)
-    assert(try Data(contentsOf: target) == second)
+    let lockedSnapshot = try Data(contentsOf: target)
+    assert(lockedSnapshot == second)
     assert(flock(heldLock, LOCK_UN) == 0)
     close(heldLock)
     assert(waitpid(child, &childStatus, 0) == child && childStatus == 0)
-    assert(try Data(contentsOf: target) == first)
+    let unlockedSnapshot = try Data(contentsOf: target)
+    assert(unlockedSnapshot == first)
 
     // Contending processes publish entire snapshots, never mixed bytes.
     let payloads = (0..<4).map { number in
