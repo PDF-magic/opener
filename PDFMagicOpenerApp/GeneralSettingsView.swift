@@ -25,7 +25,7 @@ enum GeneralPDFHandlerStatus: Equatable {
     case .isDefault:
       return "macOS routes PDFs to the installed PDF Magic Opener scanning handler."
     case .other(let identifier):
-      return "Current handler: \\(identifier). This status does not change your selected PDF application."
+      return "Current handler: \(identifier). This status does not change your selected PDF application."
     case .unknown:
       return "macOS did not provide a valid PDF association. The default is not assumed to be PDF Magic Opener."
     }
@@ -61,7 +61,7 @@ func readGeneralPDFHandlerStatus(
 // General preferences are informational until configuration workflows are
 // implemented. Never mutate the active PDF handler, saved browser, or scanner.
 struct GeneralSettingsView: View {
-  @Environment(\\.scenePhase) private var scenePhase
+  @Environment(\.scenePhase) private var scenePhase
   @State private var pdfHandlerStatus: GeneralPDFHandlerStatus = .unknown
 
   private func refreshPDFHandlerStatus() {
