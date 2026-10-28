@@ -54,8 +54,10 @@ struct BrowserPreferenceListTests {
         guard let emptyState = emptyList.emptyState else {
             fatalError("An empty list must render recovery guidance")
         }
-        precondition(emptyList.arrangedSubviews.count == 1,
-                     "The empty state replaces browser rows")
+        precondition(emptyList.arrangedSubviews.contains { $0 === emptyState },
+                     "The empty state remains present with the disclosure control")
+        precondition(emptyList.additionalSection.isHidden,
+                     "Additional applications remain hidden in the empty state")
         precondition(emptyState.heading.stringValue == "No browsers found")
         precondition(emptyState.guidance.stringValue.contains("Install a browser"),
                      "Suggest an actionable installation check")
