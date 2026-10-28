@@ -133,16 +133,22 @@ enum InitialConfiguration {
     defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
   ) -> Bool {
     guard let defaults else { return false }
+    var initializedMissingSetting = false
     if defaults.object(forKey: ScanProgressPreference.key) == nil {
       defaults.set(SupportedPreferenceDefaults.showScanProgress, forKey: ScanProgressPreference.key)
+      initializedMissingSetting = true
     }
     if defaults.object(forKey: SuccessfulScanNotificationPreference.key) == nil {
       defaults.set(SupportedPreferenceDefaults.showSuccessfulScanNotifications, forKey: SuccessfulScanNotificationPreference.key)
+      initializedMissingSetting = true
     }
     if defaults.object(forKey: BlockedFileNotificationPreference.key) == nil {
       defaults.set(false, forKey: BlockedFileNotificationPreference.key)
+      initializedMissingSetting = true
     }
-    return defaults.synchronize()
+    // A relaunch or an in-place upgrade must not re-save already persisted
+    // preferences. Only the first creation of missing keys needs a flush.
+    return !initializedMissingSetting || defaults.synchronize()
   }
 }
 
@@ -202,5 +208,74 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
 
   static func decoded(from data: Data) throws -> Self {
     return try JSONDecoder().decode(Self.self, from: data)
+  }
+}
+
+import CoreFoundation
+
+// Explicit, in-memory upgrades for legacy preference snapshots. This does not
+// read or write the live preference domain, scanner files, or chosen PDF viewer.
+enum PDFMagicConfigurationMigration {
+  enum Failure: Error {
+    case invalidRoot
+    case invalidVersion
+    case invalidLegacyValue(String)
+  }
+
+  // Version 0 is the pre-schema JSON representation of the same presentation
+  // keys; a missing version is accepted only on this explicit migration path.
+  // Current-version data is returned byte-for-byte; unknown additive keys are
+  // retained when upgrading, rather than discarding future customizations.
+  static func migrate(_ data: Data) throws -> Data {
+    let decoded = try JSONSerialization.jsonObject(with: data)
+    guard var object = decoded as? [String: Any] else { throw Failure.invalidRoot }
+
+    if let rawVersion = object["schemaVersion"] {
+      guard let number = rawVersion as? NSNumber,
+            CFGetTypeID(number) != CFBooleanGetTypeID(),
+            number.doubleValue.isFinite,
+            number.doubleValue == Double(number.intValue) else {
+        throw Failure.invalidVersion
+      }
+      if number.intValue == PDFMagicConfigurationSchema.currentVersion {
+        _ = try PDFMagicConfigurationSchema.decoded(from: data)
+        return data
+      }
+      guard number.intValue == 0 else { throw Failure.invalidVersion }
+    }
+
+    for key in ["showScanProgress", "showSuccessfulScanNotifications", "showBlockedFileNotifications"] {
+      if let value = object[key], !(value is NSNull) {
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) == CFBooleanGetTypeID() else {
+          throw Failure.invalidLegacyValue(key)
+        }
+      }
+    }
+
+    object["schemaVersion"] = PDFMagicConfigurationSchema.currentVersion
+    let upgraded = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    _ = try PDFMagicConfigurationSchema.decoded(from: upgraded)
+    return upgraded
+  }
+
+  // Capture the actual pre-schema UserDefaults settings as a v1 snapshot,
+  // preserving explicit false choices and leaving absent keys unspecified.
+  // The caller, not this migrator, is responsible for durable persistence.
+  static func snapshotLegacyPreferences(defaults: UserDefaults) throws -> Data {
+    func savedBool(_ key: String) throws -> Bool? {
+      guard let value = defaults.object(forKey: key) else { return nil }
+      guard let number = value as? NSNumber,
+            CFGetTypeID(number) == CFBooleanGetTypeID() else {
+        throw Failure.invalidLegacyValue(key)
+      }
+      return number.boolValue
+    }
+
+    return try PDFMagicConfigurationSchema(
+      showScanProgress: savedBool(ScanProgressPreference.key),
+      showSuccessfulScanNotifications: savedBool(SuccessfulScanNotificationPreference.key),
+      showBlockedFileNotifications: savedBool(BlockedFileNotificationPreference.key)
+    ).encoded()
   }
 }

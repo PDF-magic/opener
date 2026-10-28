@@ -53,6 +53,8 @@ DispatchQueue.main.async {{
             .contains(where: {{ $0.stringValue == "selected alias.pdf" }}) == true else {{
         fatalError("Progress must display the original requested alias filename")
     }}
+    precondition((panel as? ScanProgressPanel)?.stageLabel.stringValue == ScanProgressStage.starting.label,
+                 "Native scan must start in the pending-launch stage")
     delegate.application(app, open: [extraOne, extraTwo, extraThree])
     guard let progress = panel as? ScanProgressPanel,
           progress.filenameLabel.stringValue.contains("4 documents"),
@@ -71,6 +73,22 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {{
           }}) else {{
         fatalError("Duplicate events must preserve active filename and pending count")
     }}
+}}
+// Assert the stage advances only when the harmless native scan child launches.
+func verifyLaunchedStage(_ attempts: Int = 0) {{
+    guard let panel = app.windows.compactMap({{ $0 as? ScanProgressPanel }}).first else {{
+        fatalError("Expected native progress panel")
+    }}
+    if panel.stageLabel.stringValue == ScanProgressStage.scanning.label {{
+        return
+    }}
+    precondition(attempts < 30, "Native scan never reported its launched stage")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
+        verifyLaunchedStage(attempts + 1)
+    }}
+}}
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {{
+    verifyLaunchedStage()
 }}
 // Capture an offscreen rendering of the drawing, without reading the desktop.
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {{

@@ -110,6 +110,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private let maxConcurrentScans = 2
     private var queued = [String]()
     private var running = Set<String>()
+    // Main-thread-only: requests whose native scan-gate child has actually launched.
+    private var launchedScans = Set<String>()
     private let processLock = NSLock()
     private var activeProcesses = [String: Process]()
     private var cancelledRequests = Set<String>()
@@ -160,6 +162,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             }
         }
         queued.removeAll()
+        launchedScans.removeAll()
         processLock.lock()
         for path in running {
             cancelledRequests.insert(path)
@@ -179,21 +182,31 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             panel?.orderOut(nil)
             return
         }
+        if panel == nil {
+            panel = ScanProgressPanel(
+                cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
+        }
         // Prefer a currently scanning file; use a queued request before launch.
         // Sorting makes the displayed filename stable when two scans run together.
         guard let path = running.sorted().first ?? queued.first ?? pending.sorted().first else {
             panel?.orderOut(nil)
             return
         }
-        if panel == nil {
-            panel = ScanProgressPanel(
-                cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
-        }
         let filename = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
         let description = pending.count == 1
             ? filename
             : "\(filename) (\(pending.count) documents)"
-        panel?.show(documentDescription: description)
+        // A queued request is not a running scan; a scheduled worker is not
+        // a launched scanner. Never infer an internal ClamAV substage.
+        let stage: ScanProgressStage
+        if !launchedScans.isEmpty {
+            stage = .scanning
+        } else if !running.isEmpty {
+            stage = .starting
+        } else {
+            stage = .queued
+        }
+        panel?.show(documentDescription: description, stage: stage)
     }
 
     private func startQueuedScans() {
@@ -238,6 +251,17 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     try process.run()
                     self.activeProcesses[path] = process
                     self.processLock.unlock()
+                    DispatchQueue.main.async {
+                        // Cancel or completion may have already hidden the panel.
+                        self.processLock.lock()
+                        let cancelled = self.cancelledRequests.contains(path)
+                        self.processLock.unlock()
+                        guard !cancelled, !self.terminating, self.pending.contains(path) else {
+                            return
+                        }
+                        self.launchedScans.insert(path)
+                        self.showProgress()
+                    }
                 } catch {
                     self.processLock.unlock()
                     return error.localizedDescription
@@ -260,6 +284,7 @@ DispatchQueue.main.async {
                     try? pipe.fileHandleForWriting.close()
                 }
                 self.running.remove(path)
+                self.launchedScans.remove(path)
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
                 self.requestOrigins.removeValue(forKey: path)
@@ -346,6 +371,8 @@ DispatchQueue.main.async {
             showProgress()
         }
         startQueuedScans()
+        // Update the initial "queued" stage after dispatching scheduled work.
+        if !pending.isEmpty { showProgress() }
     }
 }
 
