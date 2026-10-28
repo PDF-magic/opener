@@ -54,6 +54,13 @@ introduce a second persistent Dock item. The two apps retain their distinct
 bundle identifiers and roles; these settings do not alter PDF associations,
 browser choices, scan gates, cancellation, or quarantine behavior.
 
+**Notifications settings (opener-0183):** The sidebar includes a dedicated
+**Notifications** page describing the existing in-window scan progress,
+scanner-owned document decisions, and the current absence of macOS notification
+delivery settings. The page is informational, does not request notification
+permissions, and does not change scan safety, browser preferences, or system
+settings. Notification toggles and alert delivery are separate future work.
+
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
