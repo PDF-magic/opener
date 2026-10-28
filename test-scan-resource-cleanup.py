@@ -70,7 +70,7 @@ for _ in 0..<12 {
     expectClosed(descriptors.1)
 }
 print("PASS: temporary native scan pipe handles close after errors and failed scans")
-"""
+""")
 
 with tempfile.TemporaryDirectory(prefix="opener-resource-cleanup-") as directory:
     root = Path(directory)
