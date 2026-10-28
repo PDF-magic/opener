@@ -231,6 +231,22 @@ restore it later if another application takes over.
 For a comparison of viewer capabilities, browser-specific settings, and
 launch requirements, see [Browser PDF viewer differences](docs/browser-pdf-viewers.md).
 
+To inspect the **release channel** of an installed browser (stable, beta, dev,
+nightly, canary, or other recognized preview), run the read-only metadata tool:
+
+```sh
+python3 browser_release.py "/Applications/Brave Browser.app"
+```
+
+It prints the bundle ID, browser family, exact channel, stable/preview/unknown
+classification, and reported version as JSON. It does not enumerate installed
+apps, change your target or fallback settings, open a PDF, or approve a launch.
+Unrecognized IDs remain **unknown**; Chrome builds sharing the stable bundle
+ID require Keystone channel metadata to distinguish non-side-by-side previews.
+For example, Brave Beta has `com.brave.Browser.beta`, distinct from the
+stable `com.brave.Browser`. A detected preview is **not** implicitly trusted
+as a PDF destination: existing PDF-capability and scanner checks still apply.
+
 The PDF target is a macOS application **bundle identifier**, not a shell
 command or executable path. The default is `com.brave.Browser`. After
 installing, edit
