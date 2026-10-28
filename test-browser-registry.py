@@ -44,7 +44,7 @@ class BrowserRegistryTests(unittest.TestCase):
 
     def test_browser_viewer_guide_lists_exact_registered_identifiers(self):
         guide = (ROOT / "docs/browser-pdf-viewers.md").read_text(encoding="utf-8")
-        rows = re.findall(r"^\\| (.+?) \\| `([^`]+)` \\| (.+?) \\|$",
+        rows = re.findall(r"^\| (.+?) \| `([^`]+)` \| (.+?) \|$",
                           guide, re.MULTILINE)
         self.assertEqual(len(rows), len(EXPECTED_BROWSERS))
         self.assertEqual({bundle_id for _, bundle_id, _ in rows},
