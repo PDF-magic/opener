@@ -35,6 +35,21 @@ be registered with Launch Services under its bundle identifier, satisfy the
 existing PDF verification requirements, and be selected using the existing
 `target-app.txt` preference.
 
+## Brave-only discovery regression (opener-0153)
+
+The macOS CI suite compiles `discover-installed-browsers.swift` alongside
+`test-brave-only-discovery.swift` to exercise discovery with **Brave as the only
+browser**. An isolated, disposable `Brave Browser.app` fixture uses the exact
+`com.brave.Browser` bundle identifier and an executable. The test confirms
+that the resulting inventory contains exactly that browser, remains valid JSON,
+does not launch the application, and stops reporting Brave if its executable
+becomes unusable. A separate non-browser application is ignored.
+
+This synthetic fixture is deterministic and does **not** claim a real Brave
+installation exists on the CI runner or test PDF rendering. The production
+scanner, PDF verification, Launch Services registrations and user preferences
+are not changed.
+
 ## Safari-only discovery regression (opener-0154)
 
-The macOS CI suite runs `test-safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of an unexecutable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
+The macOS CI suite runs `test-safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of a non-executable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
