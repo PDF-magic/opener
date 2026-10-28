@@ -239,6 +239,8 @@ printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","
   "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
 ```
 
+When discovery supplies an empty array (`[]`), the view shows **No browsers found** with guidance to install a browser, check custom installation locations, and run discovery again. It also confirms that the existing PDF application preference remains unchanged. Invalid discovery data still fails closed instead of appearing to be an empty result.
+
 Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
 
 ## PDF target application
