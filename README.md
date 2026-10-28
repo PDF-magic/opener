@@ -287,6 +287,21 @@ this selector does not claim to discover installed browsers on its own.
 The existing PDF scan, quarantine, and native application verification gates
 remain unchanged.
 
+**Manual application bundle selection (opener-0145):** After installation,
+run `python3 "$HOME/Library/Application Support/Studio/allow-and-open/select-custom-pdf-application.py"`
+to choose a macOS `.app` using the native file picker. Alternatively provide
+`--application "/Applications/Custom Browser.app"` for an explicit path (including
+applications installed on another volume). This action validates the bundle,
+executable, exact Launch Services-selected installation, and PDF capability
+**before** atomically saving its bundle identifier to the existing
+`target-app.txt` preference with private permissions. A cancelled selection,
+unsupported or unregistered app, mismatched duplicate installation, or unsafe
+preference file does not replace the existing choice. Custom bundle paths are
+not persisted because the launcher uses bundle IDs; register custom-location
+apps with macOS first so Launch Services selects the same installation. The
+normal PDF scanning, signed-browser exceptions, fallback preferences, and
+macOS default associations are not changed by this action.
+
 To follow your **macOS default web browser** automatically (instead of a fixed
 bundle identifier), opt in by writing `system-default-browser` to the same file:
 
