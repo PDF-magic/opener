@@ -6,20 +6,8 @@ import SwiftUI
 struct PDFMagicOpenerApp: App {
   var body: some Scene {
     WindowGroup("PDF Magic Opener") {
-      ContentView()
+      MainPreferencesView()
     }
   }
 }
 
-private struct ContentView: View {
-  var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("PDF Magic Opener")
-        .font(.title)
-      Text("Application settings will appear here.")
-        .foregroundStyle(.secondary)
-    }
-    .padding(24)
-    .frame(minWidth: 420, minHeight: 220)
-  }
-}

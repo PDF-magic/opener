@@ -14,7 +14,13 @@ Xcode, or build an unsigned development app with:
 xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Debug -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-This is an initial settings-window shell, **not** a replacement for the
+The standalone SwiftUI application now opens a **main preferences window**
+(opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
+Each section provides a read-only overview of the existing workflow; this
+foundational window does not alter configured browser choices or security
+controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+
+This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
 by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
