@@ -54,6 +54,8 @@ jobs:
         run: python3 test-persistent-installer-preferences.py -v
       - name: Verify versioned configuration contract without rewriting preferences
         run: python3 test-configuration-schema.py -v
+      - name: Verify active scan count reports launched scans only
+        run: python3 test-active-scan-count.py -v
       - name: Verify Show Scan Progress option and scanner safety
         run: python3 test-show-scan-progress.py -v
       - name: Verify Show Successful Scan Notifications option and fail-closed behavior
@@ -99,6 +101,8 @@ jobs:
         run: python3 test-cancellation.py -v
       - name: Verify detection and opening decisions are separate
         run: python3 test-detection-policy.py -v
+      - name: Verify scanner errors are not presented as malware detections
+        run: python3 test-scan-failure-presentation.py -v
       - name: Verify optional browser download identifiers
         run: python3 test-browser-download-id.py -v
       - name: Verify supported browser bundle identifier registry
@@ -267,10 +271,19 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
+      - name: Verify safe malformed configuration recovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+          "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
       - name: Test legacy configuration schema upgrades without resetting preferences
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
           "$RUNNER_TEMP/TestConfigurationMigration"
+      - name: Verify all processes refresh the same effective configuration
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
+          "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
+          python3 test-cross-process-configuration.py -v
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
@@ -281,6 +294,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
           "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+      - name: Verify editing preferences while the malware scan is running
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-preferences-during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
+          PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" python3 test-preferences-during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"

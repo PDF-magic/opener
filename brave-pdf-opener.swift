@@ -107,8 +107,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
-    // Main-thread-only completed scan-gate requests, including blocked results.
-    // This is a document count, not a byte-based scan percentage.
+    // Only completed scan-gate requests count here; failure is not approval.
     private var finishedRequests = 0
     private let maxConcurrentScans = 2
     private var queued = [String]()
@@ -189,12 +188,16 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
         }
-        let description: String
-        if pending.count == 1, let path = pending.first {
-            description = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
-        } else {
-            description = "\(pending.count) documents"
+        // Prefer a currently scanning file; use a queued request before launch.
+        // Sorting makes the displayed filename stable when two scans run together.
+        guard let path = running.sorted().first ?? queued.first ?? pending.sorted().first else {
+            panel?.orderOut(nil)
+            return
         }
+        let filename = URL(fileURLWithPath: requestedPaths[path] ?? path).lastPathComponent
+        let description = pending.count == 1
+            ? filename
+            : "\(filename) (\(pending.count) documents)"
         // A queued request is not a running scan; a scheduled worker is not
         // a launched scanner. Never infer an internal ClamAV substage.
         let stage: ScanProgressStage
@@ -205,13 +208,14 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         } else {
             stage = .queued
         }
-        // A batch has measurable per-request completion, but an individual
-        // ClamAV process reports no trustworthy percentage to this window.
+        panel?.show(documentDescription: description, stage: stage,
+                    activeScans: launchedScans.count)
+        // Actual finished document requests are countable; individual ClamAV
+        // subprocesses have no trustworthy percentage for this window.
         let totalRequests = finishedRequests + pending.count
         let batchProgress: (completed: Int, total: Int)? = totalRequests > 1
             ? (completed: finishedRequests, total: totalRequests) : nil
-        panel?.show(documentDescription: description, stage: stage,
-                    batchProgress: batchProgress)
+        panel?.updateBatchProgress(batchProgress)
     }
 
     private func startQueuedScans() {
