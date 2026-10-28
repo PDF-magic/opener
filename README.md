@@ -26,6 +26,18 @@ register PDF document types or accept document opens, and is not installed
 by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
 
+**Settings while scanning (opener-0172):** In the standalone SwiftUI app,
+choose **PDF Magic Opener → Settings…** or press **Command-,** to show the
+native Settings window, including while the separate PDF opener is scanning.
+The Settings scene reuses the existing read-only preferences view. It does not
+close the scan progress panel, cancel active or queued jobs, close the scan
+owner's lifetime pipe, or change security or browser preferences. Closing
+Settings likewise does not stop a scan. The standalone SwiftUI application
+must be launched independently (for example, from Xcode); the Finder PDF
+handler installed by `install-allow-and-open.sh` remains a different app.
+CI verifies the Settings scene builds and that an active scan continues
+through a concurrent independent Settings-process check.
+
 ## Art
 
 `twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon

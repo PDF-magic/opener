@@ -97,6 +97,35 @@ class TerminationTests(unittest.TestCase):
                 child.wait(timeout=5)
             child.stderr.close()
 
+    def test_opening_independent_settings_process_does_not_abort_active_scan(self):
+        # The SwiftUI Settings scene is a separate process, not the lifetime
+        # owner of the native PDF scanner. Verify another process can inspect
+        # the Settings entry point while the real scan-gate subprocess runs.
+        child = self.launch(sleep='1.5')
+        try:
+            self.wait_for_start(child)
+            entry = Path(__file__).with_name('PDFMagicOpenerApp') / 'PDFMagicOpenerApp.swift'
+            result = subprocess.run(
+                [sys.executable, '-c',
+                 'from pathlib import Path; import sys; '
+                 's = Path(sys.argv[1]).read_text(encoding="utf-8"); '
+                 'assert "Settings {" in s and "MainPreferencesView()" in s',
+                 str(entry)],
+                capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIsNone(child.poll(), 'Settings process must not stop the active scan')
+            self.assertEqual(child.wait(timeout=8), 0, child.stderr.read().decode())
+            self.assertTrue(self.opened.exists(), 'Uninterrupted scan must still open')
+            self.assertTrue(self.unquarantined.exists(), 'Clean scan must finish normally')
+            self.assertTrue(self.cached.exists(), 'Clean result must still be cached')
+            self.assertFalse(self.stopped.exists(), 'Settings must not terminate the scanner')
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.wait(timeout=5)
+            child.stdin.close()
+            child.stderr.close()
+
     def test_live_parent_allows_original_clean_scan_flow(self):
         child = self.launch(sleep='0.1')
         try:
