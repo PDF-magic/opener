@@ -16,7 +16,7 @@ from pypdf.generic import (
 )
 from pdf_javascript_actions import (
     MAX_SCRIPT_BYTES, MAX_JAVASCRIPT_ACTIONS, PDFJavaScriptInspection,
-    PDFJavaScriptInspectionError, inspect_pdf_javascript_actions,
+    PDFJavaScriptInspectionError, _decode_script, inspect_pdf_javascript_actions,
 )
 from reference_pdf_collection import REFERENCE_PDFS
 
@@ -137,14 +137,23 @@ class PDFJavaScriptActionTests(unittest.TestCase):
         ))
 
     def test_byte_strings_and_raw_streams_are_inspected(self):
-        for payload, expected_kind in (
-            (ByteStringObject(b"app.alert('bytes')"), "bytes"),
-            (ByteStringObject(b"\xfe\xff" + "app.alert('utf16')".encode("utf-16-be")), "bytes"),
+        # pypdf normalizes valid serialized PDF byte strings to Unicode.
+        for payload in (
+            ByteStringObject(b"app.alert('bytes')"),
+            ByteStringObject(b"\xfe\xff" + "app.alert('utf16')".encode("utf-16-be")),
         ):
-            with self.subTest(kind=expected_kind, payload=bytes(payload)[:6]):
+            with self.subTest(payload=bytes(payload)[:6]):
                 result = inspected_open_action(payload)
-                self.assertEqual(result.payload_types, (expected_kind,))
+                self.assertEqual(result.payload_types, ("text",))
                 self.assertEqual(result.action_count, 1)
+        # Raw ByteStringObject inspection is also covered, without round-trip.
+        from pypdf.generic import StreamObject
+        text, size, kind = _decode_script(
+            ByteStringObject(b"app.alert('raw')"),
+            TextStringObject, ByteStringObject, StreamObject, NameObject,
+        )
+        self.assertEqual((text, size, kind),
+                         ("app.alert('raw')", len(b"app.alert('raw')"), "bytes"))
         writer = sample_writer()
         stream = DecodedStreamObject()
         stream.set_data(b"app.alert('inert stream')")
@@ -192,13 +201,18 @@ class PDFJavaScriptActionTests(unittest.TestCase):
         cases = (
             TextStringObject(""),
             TextStringObject("A" * (MAX_SCRIPT_BYTES + 1)),
-            ByteStringObject(b"\xff\xff\xff"),
             ByteStringObject(b"console.log('x')\x00"),
         )
         for payload in cases:
             with self.subTest(kind=type(payload).__name__, size=len(payload)):
                 with self.assertRaises(PDFJavaScriptInspectionError):
                     inspected_open_action(payload)
+        # PDFDocEncoding can normalize these bytes during a PDF round-trip,
+        # so exercise strict raw-byte decoding directly.
+        from pypdf.generic import StreamObject
+        with self.assertRaises(PDFJavaScriptInspectionError):
+            _decode_script(ByteStringObject(b"\xff\xff\xff"),
+                           TextStringObject, ByteStringObject, StreamObject, NameObject)
 
     def test_script_count_limit_is_enforced_through_next_action_arrays(self):
         writer = sample_writer()
