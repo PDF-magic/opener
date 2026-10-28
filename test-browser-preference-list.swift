@@ -1,0 +1,253 @@
+import AppKit
+import Foundation
+
+@main
+struct BrowserPreferenceListTests {
+    static func main() {
+        func encode(_ records: [[String: Any]]) -> Data {
+            return try! JSONSerialization.data(withJSONObject: records)
+        }
+        let entries: [[String: Any]] = [
+            [
+                "bundleIdentifier": "com.brave.Browser",
+                "name": "Brave Browser",
+                "version": "1.74.25",
+                "iconTIFFBase64": NSNull(),
+                "bundlePath": "/Applications/Brave Browser.app",
+                "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave",
+            ],
+            [
+                "bundleIdentifier": "com.apple.Safari",
+                "name": "Safari",
+                "version": NSNull(),
+                "iconTIFFBase64": NSNull(),
+            ],
+        ]
+        let valid = browserPreferenceItems(from: encode(entries))
+        precondition(valid?.count == 2, "Show every supplied browser without changing discovery order")
+        precondition(valid?[0].name == "Brave Browser", "Show the recognizable browser name")
+        precondition(valid?[0].version == "1.74.25", "Retain optional version metadata")
+        precondition(valid?[1].version == nil, "Missing version remains absent")
+
+        let list = BrowserPreferenceListView(items: valid!)
+        precondition(list.rows.count == 2, "One visible row per discovered browser")
+        let brave = list.rows[0]
+        precondition(brave.nameField.stringValue == "Brave Browser")
+        precondition(brave.iconView.frame.width >= 0, "Each row includes an icon view")
+        precondition(brave.versionField?.isHidden == true, "Version hidden by default")
+        precondition(brave.detailsButton?.title == "Show version")
+        brave.toggleDetails(brave.detailsButton!)
+        precondition(brave.versionField?.isHidden == false, "Details reveal version")
+        precondition(brave.versionField?.stringValue == "Version 1.74.25")
+        brave.toggleDetails(brave.detailsButton!)
+        precondition(brave.versionField?.isHidden == true, "Details can be closed")
+        precondition(list.rows[1].detailsButton == nil,
+                     "Do not present a fake version or disclosure when unavailable")
+        precondition(list.rows[1].nameField.stringValue == "Safari")
+        // A valid empty discovery result gets actionable guidance, not a
+        // blank list or a synthetic browser choice.
+        precondition(list.emptyState == nil, "Nonempty results never show an empty state")
+        precondition(browserPreferenceItems(from: encode([]))?.isEmpty == true,
+                     "Valid empty discovery results remain distinct from malformed data")
+        let emptyList = BrowserPreferenceListView(items: [])
+        precondition(emptyList.rows.isEmpty, "Empty results cannot create a fake browser row")
+        guard let emptyState = emptyList.emptyState else {
+            fatalError("An empty list must render recovery guidance")
+        }
+        precondition(emptyList.arrangedSubviews.contains { $0 === emptyState },
+                     "The empty state remains present with the disclosure control")
+        precondition(emptyList.additionalSection.isHidden,
+                     "Additional applications remain hidden in the empty state")
+        precondition(emptyState.heading.stringValue == "No browsers found")
+        precondition(emptyState.guidance.stringValue.contains("Install a browser"),
+                     "Suggest an actionable installation check")
+        precondition(emptyState.guidance.stringValue.contains("discovery again"),
+                     "Explain how to retry browser discovery")
+        precondition(emptyState.preferenceNote.stringValue.contains("has not changed"),
+                     "Do not imply the saved PDF target was reset")
+
+        let unsupported = encode([
+            [
+                "bundleIdentifier": "com.example.FakeBrowser",
+                "name": "Unsupported Browser",
+            ],
+            [
+                "bundleIdentifier": "com.brave.Browser.beta",
+                "name": "Brave Beta",
+            ],
+            [
+                "bundleIdentifier": "com.google.Chrome",
+                "name": "Google Chrome",
+            ],
+            [
+                "bundleIdentifier": "com.google.Chrome.fake",
+                "name": "Google Chrome",
+            ],
+        ])
+        let primaryItems = browserPreferenceItems(from: unsupported)
+        precondition(primaryItems?.count == 1,
+                     "Hide unsupported and preview browsers from primary list")
+        precondition(primaryItems?.first?.bundleIdentifier == "com.google.Chrome")
+        precondition(browserPreferenceItems(from: encode([[
+            "bundleIdentifier": "com.example.Custom",
+            "name": "Custom Browser",
+        ]]))?.isEmpty == true,
+                     "Unsupported browser alone produces an empty primary list")
+        precondition(BrowserPreferenceListView(items: primaryItems!).rows.count == 1)
+
+        // The extra-applications control is a disclosure, not a selection or
+        // change to the user's PDF target. Legacy array input still works.
+        let legacy = browserPreferenceDisplay(from: encode(entries))
+        precondition(legacy?.browsers.count == 2 && legacy?.applications.isEmpty == true)
+        let envelope: [String: Any] = [
+            "browsers": entries,
+            "applications": [
+                ["name": "PDF Reader", "bundleIdentifier": "org.example.Reader",
+                 "path": "/Applications/PDF Reader.app"],
+                ["name": "Brave duplicate", "bundleIdentifier": "com.brave.Browser",
+                 "path": "/Applications/Brave.app"],
+                ["name": "Invalid\nApp", "bundleIdentifier": "org.example.invalid",
+                 "path": "/Applications/Invalid.app"],
+                ["name": "Unverified", "bundleIdentifier": "org.example.unverified"],
+            ],
+        ]
+        let payload = try! JSONSerialization.data(withJSONObject: envelope)
+        let display = browserPreferenceDisplay(from: payload)
+        precondition(display?.browsers.count == 2)
+        precondition(display?.applications.count == 1)
+        precondition(display?.applications.first?.name == "PDF Reader")
+        let additionalList = BrowserPreferenceListView(
+            items: display!.browsers, additionalApplications: display!.applications)
+        precondition(additionalList.additionalSection.isHidden)
+        precondition(additionalList.additionalButton.title == "Show additional installed applications")
+        additionalList.toggleAdditionalApplications(additionalList.additionalButton)
+        precondition(!additionalList.additionalSection.isHidden)
+        precondition(additionalList.additionalButton.title == "Hide additional installed applications")
+        let shown = additionalList.additionalSection.arrangedSubviews
+            .compactMap { ($0 as? NSTextField)?.stringValue }
+        precondition(shown == ["PDF Reader [org.example.Reader]"],
+                     "Only validated additional application labels should appear")
+        additionalList.toggleAdditionalApplications(additionalList.additionalButton)
+        precondition(additionalList.additionalSection.isHidden)
+        precondition(browserPreferenceDisplay(from: Data("not json".utf8)) == nil)
+
+        let blankVersion = encode([[
+            "bundleIdentifier": "com.brave.Browser",
+            "name": " Example Browser ",
+            "version": "\n",
+        ]])
+        let normalized = browserPreferenceItems(from: blankVersion)
+        precondition(normalized?.first?.name == "Example Browser")
+        precondition(normalized?.first?.version == nil, "Malformed optional version is omitted")
+
+        let invalidNames = ["", "\n", "Browser\nFake", String(repeating: "X", count: 129)]
+        for name in invalidNames {
+            precondition(browserPreferenceItems(from: encode([[
+                "bundleIdentifier": "com.brave.Browser", "name": name
+            ]])) == nil, "Reject misleading labels")
+        }
+        for identifier in ["", "bad-id", "com..broken", "local.studio.brave-pdf-opener"] {
+            precondition(browserPreferenceItems(from: encode([[
+                "bundleIdentifier": identifier, "name": "Browser"
+            ]])) == nil, "Reject invalid or self-referential IDs")
+        }
+        precondition(browserPreferenceItems(from: Data("not json".utf8)) == nil)
+        precondition(browserPreferenceItems(from: encode(Array(repeating: entries[0], count: 101))) == nil,
+                     "Bound the number of rows")
+        precondition(browserPreferenceItems(from: Data(repeating: 0, count: 4 * 1024 * 1024 + 1)) == nil,
+                     "Bound input size")
+
+        // A valid icon payload must use the actual supplied artwork, rather
+        // than substituting a static logo based on the browser's name.
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        image.lockFocus()
+        NSColor.systemBlue.setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: 16, height: 16)).fill()
+        image.unlockFocus()
+        if let imageData = image.tiffRepresentation {
+            let iconItems = browserPreferenceItems(from: encode([[
+                "bundleIdentifier": "com.brave.Browser",
+                "name": "Example Browser",
+                "iconTIFFBase64": imageData.base64EncodedString(),
+            ]]))
+            precondition(iconItems?.first?.icon != nil, "Decode recognizable app artwork")
+            precondition(BrowserPreferenceListView(items: iconItems!).rows[0].iconView.image != nil)
+        } else {
+            fatalError("Could not create test icon fixture")
+        }
+
+        // Opening preferences multiple times must query a fresh browser list
+        // and fresh metadata; never cache a prior installed-app snapshot.
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pref-refresh-" + UUID().uuidString, isDirectory: true)
+        let braveURL = root.appendingPathComponent("Brave.app", isDirectory: true)
+        let safariURL = root.appendingPathComponent("Safari.app", isDirectory: true)
+        var installed = [InstalledBrowser(bundleIdentifier: "com.brave.Browser",
+                                          path: braveURL.path)]
+        var version = "1.0"
+        var discoveryCount = 0
+        var metadataCount = 0
+        let discover: () -> [InstalledBrowser] = {
+            discoveryCount += 1
+            return installed
+        }
+        let lookup: (URL) -> BrowserApplicationMetadata? = { url in
+            metadataCount += 1
+            guard url == braveURL || url == safariURL else { return nil }
+            let id = url == braveURL ? "com.brave.Browser" : "com.apple.Safari"
+            return BrowserApplicationMetadata(
+                bundleIdentifier: id, bundleURL: url,
+                name: url == braveURL ? "Brave" : "Safari",
+                icon: nil, version: version,
+                executableURL: url.appendingPathComponent("Contents/MacOS/Browser")
+            )
+        }
+        let first = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(first.map(\.bundleIdentifier) == ["com.brave.Browser"])
+        precondition(first[0].version == "1.0")
+        installed.append(InstalledBrowser(bundleIdentifier: "com.apple.Safari",
+                                          path: safariURL.path))
+        version = "2.0"
+        let second = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(second.map(\.bundleIdentifier) ==
+                     ["com.brave.Browser", "com.apple.Safari"],
+                     "An installed browser must appear on the next preferences open")
+        precondition(second[0].version == "2.0",
+                     "Browser version changes must be reflected on reopen")
+        installed.removeFirst()
+        let third = refreshedBrowserPreferenceItems(discover: discover, metadata: lookup)
+        precondition(third.map(\.bundleIdentifier) == ["com.apple.Safari"],
+                     "Removed browsers must disappear on the next open")
+        precondition(discoveryCount == 3 && metadataCount == 4,
+                     "Discovery and metadata must run again on every open")
+        precondition(refreshedBrowserPreferenceItems(
+            discover: { [InstalledBrowser(bundleIdentifier: "com.fake.Impostor",
+                                          path: braveURL.path)] },
+            metadata: lookup).isEmpty, "Mismatched bundle identities must not be displayed")
+        precondition(refreshedBrowserPreferenceItems(
+            discover: { [InstalledBrowser(bundleIdentifier: "com.brave.Browser",
+                                          path: braveURL.path)] },
+            metadata: { _ in nil }).isEmpty,
+            "An application that vanished after discovery must not be displayed")
+
+        // The explicit Refresh Browsers control must invoke discovery on
+        // every click, including when a previous scan found no differences.
+        var manualScans = 0
+        var inventoryChanged = false
+        let refreshAction = BrowserPreferenceRefreshAction(refresh: {
+            manualScans += 1
+            return inventoryChanged
+        })
+        precondition(refreshAction.button.title == "Refresh Browsers")
+        precondition(manualScans == 0, "Never scan before the user clicks")
+        refreshAction.refreshBrowsers(refreshAction.button)
+        precondition(manualScans == 1)
+        precondition(refreshAction.status.stringValue == "Browser list is up to date.")
+        inventoryChanged = true
+        refreshAction.refreshBrowsers(refreshAction.button)
+        precondition(manualScans == 2, "Refresh must not reuse a cached result")
+        precondition(refreshAction.status.stringValue == "Browser list refreshed.")
+
+        print("PASS: refreshed browser discovery, empty-state guidance and safe preferences.")
+    }
+}
