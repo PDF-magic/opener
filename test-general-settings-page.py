@@ -53,7 +53,6 @@ class GeneralSettingsPageTests(unittest.TestCase):
         "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
         "Process(", "write(to:", "LSSetDefault", "setDefault",
         "onOpenURL", "DocumentGroup", "target-app.txt",
-        "Button(",
     ):
       with self.subTest(prohibited=prohibited):
         self.assertNotIn(prohibited, page)

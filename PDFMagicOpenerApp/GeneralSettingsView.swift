@@ -70,6 +70,8 @@ struct GeneralSettingsView: View {
   @State private var successfulScanNotificationMessage: String?
   @State private var showBlockedFileNotifications = false
   @State private var blockedFileNotificationMessage: String?
+  @State private var showResetConfirmation = false
+  @State private var resetGeneralMessage: String?
   @State private var browserOptions: [PDFBrowserOption] = []
   @State private var selectedBrowserID = ""
   @State private var browserMessage = ""
@@ -115,6 +117,24 @@ struct GeneralSettingsView: View {
     } else {
       showBlockedFileNotifications = BlockedFileNotificationPreference.isEnabled()
       blockedFileNotificationMessage = "Could not save the notification preference. Your previous choice is unchanged."
+    }
+  }
+
+  private func resetGeneralPreferences() {
+    if GeneralPreferencesReset.reset() {
+      loadScanProgressPreference()
+      loadSuccessfulScanNotificationPreference()
+      loadBlockedFileNotificationPreference()
+      scanProgressMessage = nil
+      successfulScanNotificationMessage = nil
+      blockedFileNotificationMessage = nil
+      resetGeneralMessage = "General preferences restored to defaults."
+    } else {
+      // Never present a reset as successful if persistence failed.
+      loadScanProgressPreference()
+      loadSuccessfulScanNotificationPreference()
+      loadBlockedFileNotificationPreference()
+      resetGeneralMessage = "Could not reset General preferences. Check your saved settings."
     }
   }
 
@@ -327,6 +347,41 @@ struct GeneralSettingsView: View {
         }
         .accessibilityIdentifier("showBlockedFileNotificationsSection")
         .onAppear(perform: loadBlockedFileNotificationPreference)
+
+        GroupBox("Reset General Preferences") {
+          VStack(alignment: .leading, spacing: 12) {
+            Text("Restore Show Scan Progress to on and both successful-scan and blocked-file notifications to off. Your PDF browser selection, default PDF handler, scanner protections, and other preferences will not be changed.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Button("Reset General Preferences") {
+              showResetConfirmation = true
+            }
+            .accessibilityIdentifier("resetGeneralPreferencesButton")
+            .confirmationDialog(
+              "Reset General preferences?",
+              isPresented: $showResetConfirmation,
+              titleVisibility: .visible
+            ) {
+              Button("Reset General Preferences", role: .destructive) {
+                resetGeneralPreferences()
+              }
+              Button("Cancel", role: .cancel) {}
+            } message: {
+              Text("Only the three General scan display and notification preferences will be restored to defaults. Other settings remain unchanged.")
+            }
+
+            if let resetGeneralMessage {
+              Text(resetGeneralMessage)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("resetGeneralPreferencesStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("resetGeneralPreferencesSection")
 
         PDFDefaultApplicationSettingsView()
 
