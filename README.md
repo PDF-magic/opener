@@ -249,6 +249,8 @@ printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","
 
 Icons and names come from macOS; version appears only through the optional Show version disclosure. If discovery finds no supported browsers, the window provides guidance without resetting any preference. Invalid explicit JSON fails closed instead of appearing as an empty result. Reinstall to deploy this behavior. The read-only discovery path does not edit `target-app.txt`, alter system default handlers, open documents, or bypass malware scanning or quarantine.
 
+**Refresh Browsers (opener-0149):** The native preferences window provides a **Refresh Browsers** button above the scrollable browser list. Clicking it reruns the same read-only installed-browser discovery used by the window's live refresh and immediately updates visible rows when the installed inventory changes. The button works even when no changes were found by the previous scan, leaves the current PDF application selection and other preferences untouched, and does not open a PDF or bypass any scanning protections. It is separate from the automatic polling while the window is open.
+
 ## PDF target application
 
 For a comparison of viewer capabilities, browser-specific settings, and

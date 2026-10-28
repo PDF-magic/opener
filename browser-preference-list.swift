@@ -252,6 +252,32 @@ final class BrowserPreferenceListView: NSStackView {
     required init?(coder: NSCoder) { return nil }
 }
 
+
+ // A manual refresh uses the same read-only discovery as live polling. The
+ // control itself neither chooses a PDF target nor touches user preferences.
+final class BrowserPreferenceRefreshAction: NSObject {
+    let button = NSButton(title: "Refresh Browsers", target: nil, action: nil)
+    let status = NSTextField(labelWithString: "")
+    private let refresh: () -> Bool
+
+    init(refresh: @escaping () -> Bool) {
+        self.refresh = refresh
+        super.init()
+        button.target = self
+        button.action = #selector(refreshBrowsers(_:))
+        button.setAccessibilityLabel("Refresh Browsers")
+        status.textColor = .secondaryLabelColor
+        status.setAccessibilityLabel("Browser refresh status")
+    }
+
+    @objc func refreshBrowsers(_ sender: NSButton) {
+        status.stringValue = refresh()
+            ? "Browser list refreshed."
+            : "Browser list is up to date."
+    }
+}
+
+
 #if !BROWSER_PREFERENCE_TESTING
 private final class BrowserPreferenceWindowDelegate: NSObject, NSWindowDelegate {
     var onClose: (() -> Void)?
@@ -317,6 +343,8 @@ struct ShowBrowserPreferences {
         scrolling.autoresizingMask = [.width, .height]
         scrolling.hasVerticalScroller = true
         scrolling.documentView = initialDocument
+        // The scroll view remains the document container even when an explicit
+        // refresh control is added above it.
         window.contentView = scrolling
 
         // Explicit --metadata-stdin snapshots remain static by design.
@@ -341,6 +369,30 @@ struct ShowBrowserPreferences {
                 }
               ) : nil
 
+        // Keep Refresh Browsers outside the periodically rebuilt document so
+        // the control remains accessible after installs/removals and scrolling.
+        let manualAction = refresher.map { current in
+            BrowserPreferenceRefreshAction(refresh: {
+                current.refreshIfChanged()
+            })
+        }
+        if let action = manualAction {
+            let container = NSView(frame: window.contentView?.bounds ?? .zero)
+            let header = NSStackView(views: [action.button, action.status])
+            header.orientation = .horizontal
+            header.alignment = .centerY
+            header.spacing = 12
+            header.frame = NSRect(x: 16, y: container.bounds.height - 44,
+                                  width: max(0, container.bounds.width - 32), height: 32)
+            header.autoresizingMask = [.width, .minYMargin]
+            scrolling.frame = NSRect(x: 0, y: 0, width: container.bounds.width,
+                                     height: max(0, container.bounds.height - 56))
+            scrolling.autoresizingMask = [.width, .height]
+            container.addSubview(scrolling)
+            container.addSubview(header)
+            window.contentView = container
+        }
+
         let closeHandler = BrowserPreferenceWindowDelegate()
         closeHandler.onClose = { refresher?.stop() }
         window.delegate = closeHandler
@@ -351,7 +403,9 @@ struct ShowBrowserPreferences {
         app.run()
         refresher?.stop()
         withExtendedLifetime(closeHandler) {
-            withExtendedLifetime(refresher) {}
+            withExtendedLifetime(refresher) {
+                withExtendedLifetime(manualAction) {}
+            }
         }
     }
 }
