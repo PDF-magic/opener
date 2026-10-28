@@ -1,42 +1,40 @@
 # Maximum worker memory limits (opener-0309)
 
-This task enforces memory limits **inside the separate Maximum PDF analysis
+This task imposes memory limits **inside the separate Maximum PDF analysis
 worker** introduced in [PR #203](https://github.com/PDF-magic/opener/pull/203).
-It does not activate the planned Maximum tier or modify the deployed ClamAV
-scanner, quarantine, cache, file integrity, browsing or user preferences.
+It does not activate Maximum, modify the Built-in ClamAV scanner, or change
+quarantine, file integrity, cache, browser, or user preferences.
 
-`maximum_memory_limits.impose_maximum_worker_memory_limit()` runs before
-loading any PDF parsing module. Its immutable **1 GiB resident-memory target**
-comes from the planned isolated-behavior stage's trusted resource policy, not
-from untrusted PDF content or saved settings.
+The worker calls `maximum_memory_limits.impose_maximum_worker_memory_limit()`
+before any PDF parser is imported. The immutable **1 GiB target** comes from
+the planned isolated-behavior resource policy; it cannot be changed by a PDF
+or saved settings.
 
-- **Linux:** the OS enforces a hard, non-increasing 1 GiB `RLIMIT_AS`
-  (address-space) ceiling in the worker. Memory allocations that exceed it
-  fail inside the worker and yield no permission to open.
-- **macOS:** because dyld and Python reserve more virtual memory than their
-  resident working sets, a 1 GiB `RLIMIT_AS` cannot be used safely. The
-  worker instead applies an OS hard **8 GiB data-segment safety ceiling** and
-  checks peak resident memory with a 50 ms real-time signal timer. Resident
-  usage greater than 1 GiB raises a memory-limit failure and causes the child
-  to stop without a report or clean verdict. The timer is a best-effort
-  watchdog, not an atomic kernel RSS reservation; rapid mmap allocations
-  may briefly exceed the target before a signal is delivered. Future native
-  Maximum worker integration should consider stronger platform entitlements.
-- **Any other OS, missing limit capability or failed setup:** refuse to
-  inspect; no unconstrained fallback.
+- **Linux:** a hard, non-increasing **1 GiB `RLIMIT_AS`** address-space
+  ceiling enforced by the operating system. Allocations beyond the ceiling
+  fail in the worker and cannot authorize a PDF to open.
+- **macOS:** the current supported interpreter rejects hard memory ceilings
+  through `RLIMIT_AS`, `RLIMIT_DATA` and `RLIMIT_RSS`. Instead, the
+  child must install a 50 ms signal timer to check its **peak resident memory**
+  against 1 GiB. Exceeding the target or being unable to install the timer
+  aborts inspection, without an opening verdict. This is a **best-effort
+  watchdog, not an atomic OS-enforced memory cap**. A large native allocation
+  could temporarily exceed the target before Python services the signal.
+  A native OS-sanctioned memory boundary would be necessary before claiming
+  strict macOS kernel enforcement of a one-GiB RSS ceiling.
+- **Other platforms or missing limit support:** refuse to run without a
+  memory guard; there is no unlimited fallback.
 
-Existing tighter inherited limits are preserved. PDF bytes continue through
-the isolated worker's in-memory stdin and numeric evidence-only response.
-Existing CPU, wall-time, no-core-dump and no-output-file limits remain
-separate and unchanged. Failure propagates through the parent worker's fixed,
-path-free failure result. It cannot authorize a PDF to open.
+Existing, stricter limits are not relaxed. CPU, wall-time, no-core-dump and
+no-output-file limits remain unchanged. PDF bytes continue over worker stdin
+and only sanitized numeric evidence is returned. All worker setup and
+inspection failures produce the pre-existing fixed fail-closed report.
 
-The new macOS/Linux GitHub Actions workflow validates the OS limits, a
-real rejected oversized allocation on Linux, simulated resident overage,
-invalid/unavailable limits, and the actual isolated analysis integration on
-both platforms. The full repository CI jobs remain unchanged.
+A dedicated GitHub Actions workflow validates the limits on Linux and macOS,
+including a real rejected oversized Linux allocation, macOS watchdog overage
+simulation, unsupported-platform failure, child bootstrap with the actual
+pinned PDF parser, and the real isolated-analysis test suite.
 
-This PR is intentionally stacked on the upstream process-isolation work in
-[PR #203](https://github.com/PDF-magic/opener/pull/203) and does not copy
-its PDF parsing/worker implementation or duplicate filesystem confinement
-in [PR #204](https://github.com/PDF-magic/opener/pull/204).
+This is deliberately stacked on [PR #203](https://github.com/PDF-magic/opener/pull/203);
+the filesystem-confinement PR [#204](https://github.com/PDF-magic/opener/pull/204)
+and network-blocking work remain outside this task.

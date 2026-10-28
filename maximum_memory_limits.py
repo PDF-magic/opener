@@ -18,11 +18,8 @@ MiB = 1024 * 1024
 _POLICY_BUDGET = resource_budget_for_stage(PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS)
 WORKER_MEMORY_BYTES = _POLICY_BUDGET.memory_mib.maximum * MiB
 
-# macOS may reserve several GiB of virtual address space for dyld and Python
-# memory arenas. RLIMIT_DATA at the 1-GiB resident target can prevent even
-# trusted parser imports; use a separate hard heap bound plus frequent RSS
-# high-water checks in the *child*. The upper bound is not the RSS target.
-MACOS_DATA_CEILING_BYTES = 8 * 1024 * MiB
+# macOS Python/dyld reject hard rlimits on supported runner images. Retain
+# a mandatory periodic resident high-water guard in the trusted child.
 MACOS_MONITOR_SECONDS = 0.05
 
 
@@ -68,9 +65,10 @@ def impose_maximum_worker_memory_limit() -> None:
     """Set OS ceilings before untrusted PDF inspection; fail closed on errors.
 
     Linux: hard RLIMIT_AS at the configured worker budget.
-    macOS: hard RLIMIT_DATA safety cap plus periodic 1-GiB resident-memory
-    high-water guard, since RLIMIT_AS at that value blocks macOS dyld imports.
-    Monitoring is a best-effort RSS backstop, not a hard atomic RSS rlimit.
+    macOS: mandatory 1-GiB resident-memory high-water guard. Supported
+    interpreter builds reject hard RLIMIT_AS/RLIMIT_DATA/RLIMIT_RSS settings,
+    so monitoring is not an atomic OS-enforced memory ceiling. Any inability
+    to register/check the guard fails closed.
     Unsupported platforms fail closed. No unsandboxed/unlimited fallback.
     """
     if (type(WORKER_MEMORY_BYTES) is not int or
@@ -80,7 +78,9 @@ def impose_maximum_worker_memory_limit() -> None:
         if sys.platform == "linux":
             _tighten_limit(resource.RLIMIT_AS, WORKER_MEMORY_BYTES)
         elif sys.platform == "darwin":
-            _tighten_limit(resource.RLIMIT_DATA, MACOS_DATA_CEILING_BYTES)
+            # macOS rejects hard memory rlimits on supported interpreter
+            # builds. Refuse to claim they protect RSS; use a mandatory
+            # periodic child high-water guard instead.
             if (not hasattr(signal, "SIGALRM") or
                     not hasattr(signal, "ITIMER_REAL") or
                     not hasattr(signal, "setitimer")):
