@@ -73,9 +73,60 @@ class CleanScanResult:
     scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
     detection_names: tuple[str, ...] = ()
-    # The same installed policy applies on fresh scans, cache hits and launch errors.
-    # Caller-provided ScanRequest.protection_level never selects scanner controls.
+    # The installed Built-in gate remains effective for every completed scan,
+    # independent of caller-supplied protection_level request metadata.
     effective_policy_id: str = field(default=EFFECTIVE_POLICY_ID, init=False)
+
+
+
+@dataclass(frozen=True)
+class ScanSecurityPolicySnapshot:
+    """Request-scoped Built-in limits, not a selectable protection profile.
+
+    Mandatory ClamAV flags, integrity checks, freshness, fail-closed verdicts
+    and verified handoff remain unconditional. Only tighter timeouts are valid.
+    """
+    pdf_timeout_seconds: int = PDF_SCAN_TIMEOUT
+    other_timeout_seconds: int = 180
+
+    def __post_init__(self):
+        for value, maximum in ((self.pdf_timeout_seconds, PDF_SCAN_TIMEOUT),
+                               (self.other_timeout_seconds, 180)):
+            if type(value) is not int or not 1 <= value <= maximum:
+                raise ValueError('Scan limits must be positive integers within Built-in bounds.')
+
+
+class ActiveScanPolicy:
+    """Atomically publish immutable Built-in limits for subsequent requests."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._current = ScanSecurityPolicySnapshot()
+
+    def snapshot(self):
+        with self._lock:
+            return self._current
+
+    def activate(self, policy):
+        if type(policy) is not ScanSecurityPolicySnapshot:
+            raise TypeError('Only validated Built-in policy snapshots can be activated.')
+        with self._lock:
+            self._current = policy
+
+
+ACTIVE_SCAN_POLICY = ActiveScanPolicy()
+DEFAULT_SCAN_POLICY = ScanSecurityPolicySnapshot()
+
+
+def policy_cache_key(digest, is_pdf, policy):
+    """Prevent reuse of a clean verdict under different effective limits."""
+    if type(policy) is not ScanSecurityPolicySnapshot:
+        raise TypeError('A validated scan security policy is required.')
+    legacy = cache_key(digest, is_pdf)
+    if policy == DEFAULT_SCAN_POLICY:
+        return legacy  # Preserve existing cache behavior for unchanged Built-in.
+    identity = (f'{policy.pdf_timeout_seconds}:{policy.other_timeout_seconds}').encode('ascii')
+    return hashlib.sha256(b'bounded-scan-policy-v1\\0' + identity + b'\\0' + legacy).digest()
 
 
 class LaunchFailedError(RuntimeError):
@@ -612,7 +663,13 @@ def supported_request_path(item):
     return path
 
 
-def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
+def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
+                   browser_download_identifier=None, policy_snapshot=None):
+    # The admission-time snapshot persists across queue waits and handoff.
+    if policy_snapshot is None:
+        policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
+    if type(policy_snapshot) is not ScanSecurityPolicySnapshot:
+        raise TypeError('Invalid scan security policy snapshot.')
     path = validate_scan_request(item)
     request_kwargs = {'source_url': source_url}
     if protection_level is not None:
@@ -633,7 +690,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
     before = fingerprint(path)
     if file_identity(path) != identity:
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
-    cache_id = cache_key(before, is_pdf)
+    cache_id = policy_cache_key(before, is_pdf, policy_snapshot)
     performed_scan = False
     scanner_version = None
     signature_version = None
@@ -658,7 +715,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
                         '--alert-exceeds-max=yes', '--alert-encrypted=yes',
                         *size_options,
                         '--max-scantime=0', '--no-summary', '--', str(path)
-                    ], timeout=PDF_SCAN_TIMEOUT if is_pdf else 180)
+                    ], timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf
+                                else policy_snapshot.other_timeout_seconds))
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 detection = capture_detection(scan)
@@ -733,13 +791,17 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None, bro
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
     # Reject unsupported requests before allocating shared scanner queue slots.
     path = supported_request_path(item)
+    # Freeze policy before waiting for a slot, not after starting the scanner.
+    # Changes are visible to new requests only.
+    policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
         if source_url is None and protection_level is None and browser_download_identifier is None:
-            return _scan_and_open(path, scanner)
+            return _scan_and_open(path, scanner, policy_snapshot=policy_snapshot)
         return _scan_and_open(path, scanner, source_url=source_url,
                               protection_level=protection_level,
-                              browser_download_identifier=browser_download_identifier)
+                              browser_download_identifier=browser_download_identifier,
+                              policy_snapshot=policy_snapshot)
 
 
 def safe_scan_failure(error):

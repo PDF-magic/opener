@@ -22,6 +22,8 @@ jobs:
         run: python3 test-active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
         run: python3 test-protection-profiles.py -v
+      - name: Verify scanner-failure response policy and existing fail-closed gate
+        run: python3 test-scanner-failure-policy.py -v
       - name: Verify fail-closed responses for missing protection dependencies
         run: python3 test-missing-dependency-policy.py -v
       - name: Verify structured policies for every planned protection profile
@@ -34,6 +36,8 @@ jobs:
         run: python3 test-effective-protection-policy.py -v
       - name: Verify fail-closed response to unsupported PDF features
         run: python3 test-unsupported-pdf-features.py -v
+      - name: Verify resource budgets for every protection policy stage
+        run: python3 test-protection-stage-resource-budgets.py -v
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
@@ -110,6 +114,8 @@ jobs:
         run: python3 test-offer-restore-pdf-handler.py -v
       - name: Verify macOS PDF default-handler status reporting
         run: python3 test-pdf-handler-status.py -v
+      - name: Verify active scan policy cannot change during execution
+        run: python3 test-scan-policy-snapshot.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
       - name: Verify cancellation and scanner process-group cleanup
@@ -303,6 +309,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
           "$RUNNER_TEMP/TestConfigurationMigration"
+      - name: Verify additive policy settings upgrade preserves saved preferences
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-policy-settings-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
+          "$RUNNER_TEMP/TestPolicySettingsUpgrade"
       - name: Verify all processes refresh the same effective configuration
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
