@@ -20,6 +20,13 @@ register PDF document types or accept document opens, and is not installed
 by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
 
+The SwiftUI application includes an **About PDF Magic Opener** command in its
+application menu. About displays the app's version from its bundled metadata,
+identifies the GNU Affero General Public License v3, explains the absence of
+warranty, and provides an offline viewer for the full bundled `LICENSE` text.
+The standalone SwiftUI target currently uses version `0.1.0` (build `1`).
+These changes do not affect the installed AppKit PDF handler or scanner.
+
 ## Art
 
 `twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon

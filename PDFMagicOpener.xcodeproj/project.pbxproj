@@ -14,6 +14,26 @@
       path = PDFMagicOpenerApp.swift;
       sourceTree = "<group>";
     };
+    A10000000000000000000012 = {
+      isa = PBXBuildFile;
+      fileRef = A10000000000000000000013;
+    };
+    A10000000000000000000014 = {
+      isa = PBXBuildFile;
+      fileRef = A10000000000000000000015;
+    };
+    A10000000000000000000013 = {
+      isa = PBXFileReference;
+      lastKnownFileType = sourcecode.swift;
+      path = AboutView.swift;
+      sourceTree = "<group>";
+    };
+    A10000000000000000000015 = {
+      isa = PBXFileReference;
+      lastKnownFileType = text;
+      path = LICENSE;
+      sourceTree = "<group>";
+    };
     A10000000000000000000003 = {
       isa = PBXFileReference;
       explicitFileType = wrapper.application;
@@ -29,12 +49,12 @@
     };
     A10000000000000000000005 = {
       isa = PBXGroup;
-      children = (A10000000000000000000006, A10000000000000000000007,);
+      children = (A10000000000000000000006, A10000000000000000000007, A10000000000000000000015,);
       sourceTree = "<group>";
     };
     A10000000000000000000006 = {
       isa = PBXGroup;
-      children = (A10000000000000000000002,);
+      children = (A10000000000000000000002, A10000000000000000000013,);
       path = PDFMagicOpenerApp;
       sourceTree = "<group>";
     };
@@ -58,13 +78,13 @@
     A10000000000000000000009 = {
       isa = PBXSourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = (A10000000000000000000001,);
+      files = (A10000000000000000000001, A10000000000000000000012,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     A1000000000000000000000A = {
       isa = PBXResourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = ();
+      files = (A10000000000000000000014,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     A1000000000000000000000B = {
@@ -108,6 +128,8 @@
         COPY_PHASE_STRIP = NO;
         DEBUG_INFORMATION_FORMAT = dwarf;
         GENERATE_INFOPLIST_FILE = YES;
+        MARKETING_VERSION = 0.1.0;
+        CURRENT_PROJECT_VERSION = 1;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
         INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
         MACOSX_DEPLOYMENT_TARGET = 13.0;
@@ -128,6 +150,8 @@
         COPY_PHASE_STRIP = YES;
         DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
         GENERATE_INFOPLIST_FILE = YES;
+        MARKETING_VERSION = 0.1.0;
+        CURRENT_PROJECT_VERSION = 1;
         INFOPLIST_KEY_CFBundleDisplayName = "PDF Magic Opener";
         INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
         MACOSX_DEPLOYMENT_TARGET = 13.0;

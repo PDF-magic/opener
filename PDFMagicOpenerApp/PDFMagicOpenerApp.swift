@@ -8,6 +8,14 @@ struct PDFMagicOpenerApp: App {
     WindowGroup("PDF Magic Opener") {
       ContentView()
     }
+    .commands {
+      AboutMenuCommands()
+    }
+
+    Window("About PDF Magic Opener", id: "about") {
+      AboutView()
+    }
+    .windowResizability(.contentSize)
   }
 }
 
@@ -21,5 +29,17 @@ private struct ContentView: View {
     }
     .padding(24)
     .frame(minWidth: 420, minHeight: 220)
+  }
+}
+
+private struct AboutMenuCommands: Commands {
+  @Environment(\.openWindow) private var openWindow
+
+  var body: some Commands {
+    CommandGroup(replacing: .appInfo) {
+      Button("About PDF Magic Opener") {
+        openWindow(id: "about")
+      }
+    }
   }
 }
