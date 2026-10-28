@@ -101,58 +101,59 @@ def _resolve_default_browser():
     return selected
 
 
-def pdf_target_application():
-    """Read an explicit target or resolve the opt-in default browser once."""
+def _read_validated_application_setting(path, *, optional=False, allow_system_default=False):
+    """Validate existing on-disk application settings without changing them.
+
+    Reject symlinks, directories, non-ASCII input, oversized values and
+    unexpected whitespace. Never silently replace a corrupt user choice.
+    """
     try:
-        descriptor = os.open(TARGET_APP_CONFIG, os.O_RDONLY | os.O_NOFOLLOW)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except FileNotFoundError:
-        return PDF_DEFAULT_BUNDLE_ID
+        return None
     except OSError as error:
-        raise RuntimeError("Cannot read the PDF target application setting; opening was stopped.") from error
+        raise RuntimeError("Cannot read the PDF application configuration; opening was stopped.") from error
     try:
         with os.fdopen(descriptor, "rb") as stream:
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-                raise RuntimeError("The PDF target application setting must be a regular file.")
-            value = stream.read(257)
+                raise RuntimeError("The PDF application configuration must be a regular file; opening was stopped.")
+            raw = stream.read(257)
     except OSError as error:
-        raise RuntimeError("Cannot read the PDF target application setting; opening was stopped.") from error
+        raise RuntimeError("Cannot read the PDF application configuration; opening was stopped.") from error
+    if not raw or len(raw) > 256:
+        raise RuntimeError("Invalid PDF application configuration length; opening was stopped.")
     try:
-        selected = value.decode("ascii").strip()
-    except UnicodeDecodeError:
-        selected = ""
-    if selected == PDF_SYSTEM_DEFAULT_BROWSER and len(value) <= 256:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError as error:
+        raise RuntimeError("Invalid PDF application configuration encoding; opening was stopped.") from error
+    # Permit the installer/chooser's single trailing newline, not arbitrary
+    # whitespace or extra lines that could mask invalid configuration.
+    selected = text[:-1] if text.endswith("\n") else text
+    if selected != selected.strip() or "\n" in selected or "\r" in selected or "\x00" in selected:
+        raise RuntimeError("Invalid PDF application configuration whitespace; opening was stopped.")
+    if allow_system_default and selected == PDF_SYSTEM_DEFAULT_BROWSER:
+        return selected
+    if not _valid_bundle_identifier(selected):
+        raise RuntimeError("Invalid PDF application bundle identifier; opening was stopped.")
+    return selected
+
+
+def pdf_target_application():
+    """Read the validated target or resolve the opt-in default browser once."""
+    selected = _read_validated_application_setting(
+        TARGET_APP_CONFIG, allow_system_default=True
+    )
+    if selected is None:
+        return PDF_DEFAULT_BUNDLE_ID
+    if selected == PDF_SYSTEM_DEFAULT_BROWSER:
         return _resolve_default_browser()
-    if len(value) > 256 or not _valid_bundle_identifier(selected):
-        raise RuntimeError("Invalid PDF target application bundle identifier; opening was stopped.")
     return selected
 
 
 def pdf_fallback_application(primary=None):
-    """Read an optional, explicit fallback PDF bundle ID without following symlinks.
-
-    A missing setting means no fallback; an invalid existing setting blocks
-    opening instead of silently changing the user's application policy.
-    """
-    try:
-        descriptor = os.open(FALLBACK_APP_CONFIG, os.O_RDONLY | os.O_NOFOLLOW)
-    except FileNotFoundError:
-        return None
-    except OSError as error:
-        raise RuntimeError("Cannot read the PDF fallback setting; opening was stopped.") from error
-    try:
-        with os.fdopen(descriptor, "rb") as stream:
-            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-                raise RuntimeError("The PDF fallback setting must be a regular file.")
-            value = stream.read(257)
-    except OSError as error:
-        raise RuntimeError("Cannot read the PDF fallback setting; opening was stopped.") from error
-    try:
-        selected = value.decode("ascii").strip()
-    except UnicodeDecodeError:
-        selected = ""
-    if len(value) > 256 or not _valid_bundle_identifier(selected):
-        raise RuntimeError("Invalid PDF fallback application bundle identifier; opening was stopped.")
-    return None if selected == primary else selected
+    """Read an optional validated fallback without changing user settings."""
+    selected = _read_validated_application_setting(FALLBACK_APP_CONFIG, optional=True)
+    return None if selected is None or selected == primary else selected
 
 
 def intended_destination(path):
