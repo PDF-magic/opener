@@ -37,6 +37,41 @@ panel.show(documentDescription: "folder/Unicode – report.pdf")
 precondition(panel.filenameLabel.stringValue == "folder/Unicode – report.pdf")
 panel.show(documentDescription: "3 documents")
 precondition(panel.filenameLabel.stringValue == "3 documents")
+precondition(panel.destinationBrowserLabel.stringValue == "Destination browser: Unavailable")
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.destinationBrowserLabel }) == true)
+precondition(panel.destinationBrowserLabel.frame.minY > panel.progressIndicator.frame.maxY)
+precondition(panel.filenameLabel.frame.minY > panel.destinationBrowserLabel.frame.maxY)
+
+let fixture = FileManager.default.temporaryDirectory
+    .appendingPathComponent("selected-browser-\(UUID().uuidString)", isDirectory: true)
+try FileManager.default.createDirectory(at: fixture, withIntermediateDirectories: true)
+defer { try? FileManager.default.removeItem(at: fixture) }
+let preference = fixture.appendingPathComponent("target-app.txt")
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Brave",
+             "missing preferences must use the established Brave default")
+try "com.google.Chrome\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Google Chrome")
+panel.updateDestinationBrowser(SelectedDestinationBrowser.displayName(in: fixture))
+precondition(panel.destinationBrowserLabel.stringValue == "Destination browser: Google Chrome")
+precondition(panel.destinationBrowserLabel.accessibilityLabel() == "Destination browser: Google Chrome")
+try "system-default-browser\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "System default browser")
+try "org.mozilla.firefox\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Firefox")
+try "com.example.viewer\n".write(to: preference, atomically: true, encoding: .ascii)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) ==
+             "Custom application (com.example.viewer)", "custom selection must not be overwritten")
+for invalid in ["local.studio.brave-pdf-opener", "bad..identifier", "invalid path", ""] {
+    try invalid.write(to: preference, atomically: true, encoding: .ascii)
+    precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Unavailable",
+                 "invalid identifiers must never appear as selected browsers")
+}
+try FileManager.default.removeItem(at: preference)
+let elsewhere = fixture.appendingPathComponent("elsewhere")
+try "com.apple.Safari\n".write(to: elsewhere, atomically: true, encoding: .ascii)
+try FileManager.default.createSymbolicLink(at: preference, withDestinationURL: elsewhere)
+precondition(SelectedDestinationBrowser.displayName(in: fixture) == "Unavailable",
+             "never follow a symlinked preference file")
 precondition(panel.contentView?.subviews.contains(where: { $0 === panel.cancelButton }) == true)
 panel.cancelButton.performClick(nil)
 precondition(owner.pressed, "The caller owns cancellation")
