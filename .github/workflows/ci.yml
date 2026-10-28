@@ -415,7 +415,5 @@ jobs:
 
       - name: Verify supported setting defaults and existing user overrides
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors \\
-            PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift \\
-            -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
           "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
