@@ -105,6 +105,47 @@ enum BlockedFileNotificationPreference {
   }
 }
 
+// The installed scanner currently has only one mandatory policy. Persist its
+// identifier separately from scanner controls; unsupported future identifiers
+// remain intact and are not silently treated as the Built-in selection.
+enum ProtectionProfileIdentifier: String, Codable {
+  case builtIn = "built-in"
+}
+
+enum SelectedProtectionProfilePreference {
+  static let key = "selectedProtectionProfile"
+  static let suiteName = ScanProgressPreference.suiteName
+  static let initialProfile: ProtectionProfileIdentifier = .builtIn
+
+  static func selected(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> ProtectionProfileIdentifier? {
+    guard let defaults else { return nil }
+    _ = defaults.synchronize()
+    guard let value = defaults.object(forKey: key) else { return initialProfile }
+    guard let raw = value as? String else { return nil }
+    return ProtectionProfileIdentifier(rawValue: raw)
+  }
+
+  @discardableResult
+  static func save(
+    _ profile: ProtectionProfileIdentifier,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    let original = defaults.object(forKey: key)
+    defaults.set(profile.rawValue, forKey: key)
+    if defaults.synchronize() && selected(defaults: defaults) == profile {
+      return true
+    }
+    // Do not discard a pre-existing preference if persistence fails.
+    if let original { defaults.set(original, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
 // A read-only effective view shared by the preferences app and native PDF
 // opener. Each setting uses the same per-user domain, defaults and validation.
 // It cannot modify a scanner verdict or any persisted configuration.
@@ -172,6 +213,11 @@ enum InitialConfiguration {
       defaults.set(false, forKey: BlockedFileNotificationPreference.key)
       initializedMissingSetting = true
     }
+    if defaults.object(forKey: SelectedProtectionProfilePreference.key) == nil {
+      defaults.set(SelectedProtectionProfilePreference.initialProfile.rawValue,
+                   forKey: SelectedProtectionProfilePreference.key)
+      initializedMissingSetting = true
+    }
     // A relaunch or an in-place upgrade must not re-save already persisted
     // preferences. Only the first creation of missing keys needs a flush.
     return !initializedMissingSetting || defaults.synchronize()
@@ -220,16 +266,19 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
   var showScanProgress: Bool?
   var showSuccessfulScanNotifications: Bool?
   var showBlockedFileNotifications: Bool?
+  var selectedProtectionProfile: ProtectionProfileIdentifier?
 
   init(
     showScanProgress: Bool? = nil,
     showSuccessfulScanNotifications: Bool? = nil,
-    showBlockedFileNotifications: Bool? = nil
+    showBlockedFileNotifications: Bool? = nil,
+    selectedProtectionProfile: ProtectionProfileIdentifier? = nil
   ) {
     schemaVersion = Self.currentVersion
     self.showScanProgress = showScanProgress
     self.showSuccessfulScanNotifications = showSuccessfulScanNotifications
     self.showBlockedFileNotifications = showBlockedFileNotifications
+    self.selectedProtectionProfile = selectedProtectionProfile
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -237,6 +286,7 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
     case showScanProgress
     case showSuccessfulScanNotifications
     case showBlockedFileNotifications
+    case selectedProtectionProfile
   }
 
   init(from decoder: Decoder) throws {
@@ -255,6 +305,9 @@ struct PDFMagicConfigurationSchema: Codable, Equatable {
       Bool.self, forKey: .showSuccessfulScanNotifications
     )
     showBlockedFileNotifications = try values.decodeIfPresent(Bool.self, forKey: .showBlockedFileNotifications)
+    selectedProtectionProfile = try values.decodeIfPresent(
+      ProtectionProfileIdentifier.self, forKey: .selectedProtectionProfile
+    )
   }
 
   func encoded() throws -> Data {
@@ -327,10 +380,22 @@ enum PDFMagicConfigurationMigration {
       return number.boolValue
     }
 
+    // Only snapshot explicit profile selections: absence stays absent in a
+    // legacy snapshot, and an unsupported value cannot be overwritten.
+    let profileKey = SelectedProtectionProfilePreference.key
+    var selectedProfile: ProtectionProfileIdentifier?
+    if let raw = defaults.object(forKey: profileKey) {
+      guard let name = raw as? String,
+            let profile = ProtectionProfileIdentifier(rawValue: name) else {
+        throw Failure.invalidLegacyValue(profileKey)
+      }
+      selectedProfile = profile
+    }
     return try PDFMagicConfigurationSchema(
       showScanProgress: savedBool(ScanProgressPreference.key),
       showSuccessfulScanNotifications: savedBool(SuccessfulScanNotificationPreference.key),
-      showBlockedFileNotifications: savedBool(BlockedFileNotificationPreference.key)
+      showBlockedFileNotifications: savedBool(BlockedFileNotificationPreference.key),
+      selectedProtectionProfile: selectedProfile
     ).encoded()
   }
 }
@@ -364,7 +429,9 @@ enum MalformedConfigurationRecovery {
     return .recovered(PDFMagicConfigurationSchema(
       showScanProgress: boolean(fields?["showScanProgress"]),
       showSuccessfulScanNotifications: boolean(fields?["showSuccessfulScanNotifications"]),
-      showBlockedFileNotifications: boolean(fields?["showBlockedFileNotifications"])
+      showBlockedFileNotifications: boolean(fields?["showBlockedFileNotifications"]),
+      selectedProtectionProfile: (fields?["selectedProtectionProfile"] as? String)
+        .flatMap(ProtectionProfileIdentifier.init(rawValue:))
     ))
   }
   private static func boolean(_ value: Any?) -> Bool? {

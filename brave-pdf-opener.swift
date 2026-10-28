@@ -124,6 +124,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
     private var received = Set<String>()
+    // A finished request is not necessarily a safe or approved document.
+    private var finishedRequests = 0
     private let maxConcurrentScans = 2
     private var queued = [String]()
     private var running = Set<String>()
@@ -226,6 +228,12 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         panel?.show(documentDescription: description, stage: stage,
                     queuedDocumentCount: queued.count,
                     activeScans: launchedScans.count)
+        // The scan gate provides no per-file percentage; only requests
+        // actually finished within a multi-document batch are measurable.
+        let totalRequests = finishedRequests + pending.count
+        let batchProgress: (completed: Int, total: Int)? = totalRequests > 1
+            ? (completed: finishedRequests, total: totalRequests) : nil
+        panel?.updateBatchProgress(batchProgress)
     }
 
     private func startQueuedScans() {
@@ -306,6 +314,10 @@ DispatchQueue.main.async {
                 let requestedPath = self.requestedPaths[path] ?? path
                 self.running.remove(path)
                 self.launchedScans.remove(path)
+                self.processLock.lock()
+                let wasCancelled = self.cancelledRequests.contains(path)
+                self.processLock.unlock()
+                if !wasCancelled { self.finishedRequests += 1 }
                 self.pending.remove(path)
                 self.requestedPaths.removeValue(forKey: path)
                 self.requestOrigins.removeValue(forKey: path)
