@@ -186,7 +186,6 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors \
             PDFMagicOpenerApp/*SettingsView.swift PDFMagicOpenerApp/MainPreferencesView.swift \
             PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
-            PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
             test-preferences-large-text.swift -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
