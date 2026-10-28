@@ -29,6 +29,13 @@ struct PDFMagicOpenerApp: App {
       AboutView()
     }
     .windowResizability(.contentSize)
+
+    // Use SwiftUI's managed Settings window, with the standard
+    // Command-comma shortcut and the existing main preferences content.
+    Settings {
+      MainPreferencesView()
+    }
+    .keyboardShortcut(",", modifiers: .command)
   }
 }
 

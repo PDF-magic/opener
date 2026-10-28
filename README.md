@@ -18,9 +18,14 @@ The standalone SwiftUI application now opens a **main preferences window**
 (opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
 The **General** sidebar entry now opens a dedicated read-only settings page
 (opener-0178), describing PDF scanning and preserved application choices.
-Browsers and Security retain their existing overview panes. The General page
-does not change configured browser choices, default PDF associations, or
-security controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+Browsers and Security retain their existing overview panes. General does not
+change configured browser choices, PDF associations, or security controls.
+Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+
+Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
+to open the native macOS Settings window. This standard system command shows
+the existing preferences view without changing browser choices, running a
+scan, or modifying saved configuration.
 
 **Menu-bar decision (opener-0176):** No persistent menu-bar status item is
 enabled or required. The standalone application only presents preferences;
