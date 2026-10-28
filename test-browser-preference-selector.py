@@ -204,6 +204,27 @@ class BrowserSelectorTests(unittest.TestCase):
             self.assertNotIn("(current)", screen.getvalue())
             self.assertEqual(setting.read_text(), "org.example.customBrowser\n")
 
+    def test_selector_automatically_restores_current_or_honors_explicit_override(self):
+        class Input:
+            def __init__(self, payload):
+                self.buffer = __import__("io").BytesIO(payload)
+
+        payload = b'{"browsers":[{"bundle_id":"com.apple.Safari","name":"Safari","installed":true}]}'
+        for args, expected, should_load in (
+            ([], "com.apple.Safari", True),
+            (["--current", "com.brave.Browser"], "com.brave.Browser", False),
+        ):
+            with self.subTest(args=args), \
+                    patch.object(selector.sys, "stdin", Input(payload)), \
+                    patch("builtins.open", return_value=StringIO("q\n")), \
+                    patch.object(selector, "saved_browser_preference",
+                                 return_value="com.apple.Safari") as load, \
+                    patch.object(selector, "system_default_browser", return_value=None), \
+                    patch.object(selector, "choose_browser", return_value=None) as show:
+                self.assertEqual(selector.main(args), 1)
+                self.assertEqual(show.call_args.kwargs["current"], expected)
+                self.assertEqual(load.call_count, 1 if should_load else 0)
+
     def test_saved_preference_bad_files_fail_closed_without_overwrite(self):
         with tempfile.TemporaryDirectory(prefix="opener-restore-") as directory:
             setting = Path(directory) / "target-app.txt"
