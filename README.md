@@ -20,6 +20,11 @@ Each section provides a read-only overview of the existing workflow; this
 foundational window does not alter configured browser choices or security
 controls. Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
 
+Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
+to open the native macOS Settings window. This standard system command shows
+the existing preferences view without changing browser choices, running a
+scan, or modifying saved configuration.
+
 **Menu-bar decision (opener-0176):** No persistent menu-bar status item is
 enabled or required. The standalone application only presents preferences;
 the installed PDF-scanning handler operates independently. This avoids a
