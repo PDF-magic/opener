@@ -290,6 +290,14 @@ while preview channels with distinct IDs remain separate.
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
 `python3 browser_preference_selector.py --current com.brave.Browser < discovered-browsers.json`.
+The selector labels the current macOS **default web browser** with
+`(system default)` using the installed read-only `resolve-default-browser`
+helper, independently of the saved `(current)` preference. If both are the
+same browser, both labels appear. If macOS cannot resolve its default or that
+browser is not among the discovered installed choices, no system-default label
+appears. The helper does not query PDF associations or modify browser defaults.
+The selector still requires an explicit user choice.
+
 The selector prints the explicitly chosen bundle identifier to stdout;
 Enter or `q` cancels without choosing anything. It does not update
 `target-app.txt`, substitute a default, modify macOS preferences, or launch
