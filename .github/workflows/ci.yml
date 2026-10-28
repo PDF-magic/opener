@@ -207,6 +207,10 @@ jobs:
           "$RUNNER_TEMP/DiscoverInstalledBrowsers" | python3 -c 'import json, sys; assert isinstance(json.load(sys.stdin), list)'
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --application relative.app; then exit 1; fi
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --search-directory; then exit 1; fi
+      - name: Test browser discovery with Brave only
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
+          "$RUNNER_TEMP/TestBraveOnlyDiscovery"
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
