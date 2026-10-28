@@ -36,6 +36,8 @@ jobs:
           python3 test-enhanced-embedded-files.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
+      - name: Distinguish dangerous PDF behavior from legitimate features
+        run: python3 test-pdf-behavior-classification.py -v
       - name: Verify maximum processing time for each protection stage
         run: python3 test-protection-stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
