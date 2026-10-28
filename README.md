@@ -49,6 +49,17 @@ reports an error. Opening settings does not change the default. The
 standalone preferences app is never registered as a PDF handler, and saved
 browser choices and scanning safeguards remain unchanged.
 
+**Restore Previous Default (opener-0198):** General also offers an explicit
+Restore Previous Default action with a confirmation prompt. It calls the
+installed `pdf-handler-history restore` utility, which will restore only the
+recorded, valid, installed PDF app while PDF Magic Opener is still the
+current PDF handler. If the previous association was not safely recorded,
+its app is missing, or the default has changed independently, restoration
+fails without silently selecting another application. This may remove the
+PDF Magic Opener scan gate from the macOS default association, so the
+confirmation explains the effect. The selected post-scan browser and
+malware scanner configuration are not changed.
+
 **General PDF handler status (opener-0196):** General separately reports
 whether Launch Services currently associates **PDF files** with the installed
 PDF Magic Opener scanning helper (`local.studio.brave-pdf-opener`), another
@@ -118,6 +129,14 @@ Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
 scan, or modifying saved configuration.
+
+**Launch at Login (opener-0199):** No option is necessary for the current
+windowed preferences app. The separately installed PDF handler opens on
+document requests even when Settings is closed, and the existing scheduled
+malware-signature updater is independent of Settings. Do not register the
+preferences UI as a login item or launch it in the background. See the
+[Launch at Login decision](docs/launch-at-login-decision.md) and its CI check
+for the rationale and conditions that would warrant reconsideration.
 
 **Menu-bar decision (opener-0176):** No persistent menu-bar status item is
 enabled or required. The standalone application only presents preferences;
