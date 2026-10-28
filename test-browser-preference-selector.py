@@ -189,10 +189,10 @@ class BrowserSelectorTests(unittest.TestCase):
                     self.assertEqual(current, saved)
                     screen = StringIO()
                     self.assertIsNone(selector.choose_browser(
-                        choices, current=current, source=StringIO("q\\n"),
+                        choices, current=current, source=StringIO("q\n"),
                         destination=screen))
                     self.assertIn(f"[{saved}] (current)", screen.getvalue())
-                    self.assertEqual(setting.read_text(), saved + "\\n")
+                    self.assertEqual(setting.read_text(), saved + "\n")
             # A custom saved choice outside the primary list is preserved
             # even if the browser isn't in the discovered results.
             picker.persist_preference("org.example.customBrowser", setting)
@@ -200,29 +200,29 @@ class BrowserSelectorTests(unittest.TestCase):
                              "org.example.customBrowser")
             screen = StringIO()
             selector.choose_browser(choices, current=selector.saved_browser_preference(setting),
-                                    source=StringIO("q\\n"), destination=screen)
+                                    source=StringIO("q\n"), destination=screen)
             self.assertNotIn("(current)", screen.getvalue())
-            self.assertEqual(setting.read_text(), "org.example.customBrowser\\n")
+            self.assertEqual(setting.read_text(), "org.example.customBrowser\n")
 
     def test_saved_preference_bad_files_fail_closed_without_overwrite(self):
         with tempfile.TemporaryDirectory(prefix="opener-restore-") as directory:
             setting = Path(directory) / "target-app.txt"
             for invalid in ("", "bad-id", "org..broken", "local.studio.brave-pdf-opener",
-                            "system-default-browser", "com.apple.Safari\\ncom.google.Chrome",
+                            "system-default-browser", "com.apple.Safari\ncom.google.Chrome",
                             "x" * 260):
                 with self.subTest(invalid=invalid[:24]):
                     setting.write_text(invalid)
                     self.assertIsNone(selector.saved_browser_preference(setting))
                     self.assertEqual(setting.read_text(), invalid)
-            setting.write_bytes(b"bad\\xff")
+            setting.write_bytes(b"bad\xff")
             self.assertIsNone(selector.saved_browser_preference(setting))
-            self.assertEqual(setting.read_bytes(), b"bad\\xff")
+            self.assertEqual(setting.read_bytes(), b"bad\xff")
             setting.unlink()
             other = Path(directory) / "unrelated.txt"
-            other.write_text("com.apple.Safari\\n")
+            other.write_text("com.apple.Safari\n")
             setting.symlink_to(other)
             self.assertIsNone(selector.saved_browser_preference(setting))
-            self.assertEqual(other.read_text(), "com.apple.Safari\\n")
+            self.assertEqual(other.read_text(), "com.apple.Safari\n")
             setting.unlink()
             setting.mkdir()
             self.assertIsNone(selector.saved_browser_preference(setting))
