@@ -214,6 +214,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
           "$RUNNER_TEMP/TestBraveOnlyDiscovery"
+      - name: Verify Safari-only installed browser discovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
+          "$RUNNER_TEMP/TestSafariOnlyDiscovery"
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
