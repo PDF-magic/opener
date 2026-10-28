@@ -591,6 +591,50 @@ def record_scan_request(application):
         connection.close()
 
 
+
+def record_opened_document_origin(document_origin):
+    """Best-effort, path-free audit of the document that actually opened.
+
+    The trusted scanner entry point determines "original" versus
+    "generated-copy"; a protection label, filename or PDF cannot supply it.
+    This is an observation recorded only *after* successful launch, not an
+    opening permission or a change to the malware gate. Audit failures never
+    make an already-opened document appear to have failed its clean scan.
+    """
+    if document_origin not in ("original", "generated-copy"):
+        return False
+    try:
+        SCAN_REQUEST_DB.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if SCAN_REQUEST_DB.parent.is_symlink():
+            return False
+        flags = (os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW |
+                 getattr(os, "O_CLOEXEC", 0))
+        descriptor = os.open(SCAN_REQUEST_DB, flags, 0o600)
+        try:
+            details = os.fstat(descriptor)
+            if (not stat.S_ISREG(details.st_mode) or
+                    details.st_uid != os.getuid() or
+                    details.st_nlink != 1 or details.st_mode & 0o077):
+                return False
+        finally:
+            os.close(descriptor)
+        with sqlite3.connect(str(SCAN_REQUEST_DB), timeout=5) as connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS opened_document_origins ("
+                "id INTEGER PRIMARY KEY, opened_at REAL NOT NULL, "
+                "document_origin TEXT NOT NULL "
+                "CHECK (document_origin IN ('original', 'generated-copy')))"
+            )
+            connection.execute(
+                "INSERT INTO opened_document_origins (opened_at, document_origin) "
+                "VALUES (?, ?)",
+                (time.time(), document_origin),
+            )
+        return True
+    except (OSError, sqlite3.Error, ValueError):
+        return False
+
+
 def remove_quarantine(path):
     """Legacy post-scan hook: retain, never strip, macOS quarantine metadata.
 
@@ -817,6 +861,13 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
             launch_clean_file(path, target_app=verified_fallback)
         except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
             raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
+    # Capture what actually opened, never merely what was requested or scanned.
+    # A generated-copy origin is established solely by the validated, forced
+    # re-scan entry point, not by user-controlled path or protection metadata.
+    record_opened_document_origin(
+        'generated-copy' if force_rescan and expected_fingerprint is not None
+        else 'original'
+    )
     return scan_result
 
 
