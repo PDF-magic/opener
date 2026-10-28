@@ -190,14 +190,32 @@ func trustedFirefoxPDFTarget(
     return verifySignature(application)
 }
 
+// Resolve the same ranked, verified installation as the native file launcher.
+// Do not accept a different copy simply because it advertises PDF support.
+func resolveVerifiedPDFApplication(
+    bundleIdentifier: String,
+    lookupAll: (String) -> [URL] = {
+        NSWorkspace.shared.urlsForApplications(withBundleIdentifier: $0)
+    }
+) -> URL? {
+    guard !bundleIdentifier.isEmpty,
+          bundleIdentifier != "local.studio.brave-pdf-opener" else { return nil }
+    let candidates = lookupAll(bundleIdentifier)
+    // Launch Services ranks all registered copies by suitability. Skip stale
+    // registrations, mismatched IDs, and nonexecutable bundles while retaining
+    // that order; never substitute another browser or the PDF scan gate.
+    for candidate in candidates {
+        guard let target = verifiedDiscoveredApplication(
+            at: candidate, expectedBundleIdentifier: bundleIdentifier
+        ) else { continue }
+        return target
+    }
+    return nil
+}
+
 func applicationSupportsPDF(bundleIdentifier: String) -> Bool {
     let workspace = NSWorkspace.shared
-    // A Launch Services result is only a candidate, never proof of a live app.
-    // This also catches an application replaced by another bundle at its path.
-    guard let found = workspace.urlForApplication(withBundleIdentifier: bundleIdentifier),
-          let application = verifiedDiscoveredApplication(
-              at: found, expectedBundleIdentifier: bundleIdentifier
-          ) else { return false }
+    let application = resolveVerifiedPDFApplication(bundleIdentifier: bundleIdentifier)
     return targetSupportsPDF(
         application: application,
         registeredPDFHandlers: usableDiscoveredApplications(

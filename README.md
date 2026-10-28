@@ -56,7 +56,7 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 Each accepted scan attempt also records the **requesting scan-gate application** (PDF Magic Opener or the Allow and Open Finder Quick Action) and timestamp in a separate `scan_request_applications` table of the private `scan-requests.sqlite3` database. Direct calls to `scan-and-open.py` default to **Command Line**; integrations can set `PDF_MAGIC_REQUESTING_APPLICATION`. This identifies the scan entry point, **not** the external app that originally opened a document through macOS Launch Services. Requester records contain no document paths, types, or contents. Logging failures stop the requested opening. Delete the request database while the opener is stopped to clear both requester and destination history.
 
-**Bundle-ID verification:** Applications discovered through macOS Launch Services are checked for an existing, readable `.app` directory with a readable `Info.plist`, a valid bundle identifier, and a regular executable file that macOS can execute. Stale registrations, broken bundles, inaccessible applications, and mismatched target identities are excluded before PDF capability is considered. Working symlinks to installed apps and user-selected custom locations remain supported. The native launch helper also rechecks the selected target after scanning; failed checks stop opening without silently changing the user's application choice or falling back to another app.
+**Bundle-ID verification and duplicate installations:** If macOS registers several copies of a browser under the same bundle identifier, PDF Magic Opener examines them in Launch Services' preferred order and uses the first existing, executable app with the exact requested identifier. Stale registrations, missing executables, and mismatched identities are skipped, not treated as other browser choices. The PDF-capability preflight and the native launcher apply the same selection rule; if the chosen copy is not PDF-capable, opening stops rather than switching to an alternate copy or default PDF handler. Changing `target-app.txt` is not required, and existing choices remain intact. Reinstall to deploy the native helpers. Launch Services discovery also excludes paths that cannot be read as app bundles: each discovered application must have a readable regular `Info.plist` and a regular executable file with execute permission. Broken or dangling app links and inaccessible installations are omitted; working links to custom installations remain usable. The final native handoff independently rechecks the selected bundle.
 
 **External-drive PDFs:** Finder and native open events accept ordinary mounted-volume file URLs (including names containing spaces or Unicode), then resolve them to local paths and apply the same ClamAV, integrity, quarantine, and configured PDF-target checks as internal files. When macOS grants a security-scoped file URL, the opener retains that access throughout queued and running scans and releases it on completion, cancellation, or termination. A disconnected or unreadable drive blocks opening rather than falling back to an unscanned copy. No external drive is copied to the internal disk by the opener.
 
@@ -230,6 +230,22 @@ restore it later if another application takes over.
 
 For a comparison of viewer capabilities, browser-specific settings, and
 launch requirements, see [Browser PDF viewer differences](docs/browser-pdf-viewers.md).
+
+To inspect the **release channel** of an installed browser (stable, beta, dev,
+nightly, canary, or other recognized preview), run the read-only metadata tool:
+
+```sh
+python3 browser_release.py "/Applications/Brave Browser.app"
+```
+
+It prints the bundle ID, browser family, exact channel, stable/preview/unknown
+classification, and reported version as JSON. It does not enumerate installed
+apps, change your target or fallback settings, open a PDF, or approve a launch.
+Unrecognized IDs remain **unknown**; Chrome builds sharing the stable bundle
+ID require Keystone channel metadata to distinguish non-side-by-side previews.
+For example, Brave Beta has `com.brave.Browser.beta`, distinct from the
+stable `com.brave.Browser`. A detected preview is **not** implicitly trusted
+as a PDF destination: existing PDF-capability and scanner checks still apply.
 
 The PDF target is a macOS application **bundle identifier**, not a shell
 command or executable path. The default is `com.brave.Browser`. After

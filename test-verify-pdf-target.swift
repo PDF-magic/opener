@@ -253,6 +253,27 @@ struct PDFTargetVerificationTests {
             let impostor = try makeVivaldiFixture("Impostor", identifier: "com.example.fake")
             let incomplete = try makeVivaldiFixture(
                 "Incomplete", identifier: "com.vivaldi.Vivaldi", executable: false)
+            let duplicate = try makeVivaldiFixture(
+                "SecondVivaldi", identifier: "com.vivaldi.Vivaldi")
+            // Verification and launching must both respect the first usable
+            // registered installation, even when an earlier entry is stale.
+            let stale = vivaldiRoot.appendingPathComponent("Uninstalled.app")
+            let choice = resolveVerifiedPDFApplication(
+                bundleIdentifier: "com.vivaldi.Vivaldi",
+                lookupAll: { _ in [stale, incomplete, impostor, vivaldi, duplicate] })
+            precondition(choice == vivaldi, "Choose the first verified installed copy")
+            let changedOrder = resolveVerifiedPDFApplication(
+                bundleIdentifier: "com.vivaldi.Vivaldi",
+                lookupAll: { _ in [duplicate, vivaldi] })
+            precondition(changedOrder == duplicate, "Respect Launch Services preference")
+            precondition(resolveVerifiedPDFApplication(
+                bundleIdentifier: "com.vivaldi.Vivaldi",
+                lookupAll: { _ in [incomplete, impostor, stale] }) == nil,
+                "Never fall back to a different app or an unusable installation")
+            precondition(resolveVerifiedPDFApplication(
+                bundleIdentifier: "local.studio.brave-pdf-opener",
+                lookupAll: { _ in [vivaldi] }) == nil,
+                "The scan gate cannot become a PDF destination")
             precondition(verifiedVivaldiPDFViewer(
                 bundleIdentifier: "com.vivaldi.Vivaldi", application: vivaldi),
                 "Installed Vivaldi with its own bundle identity must be supported")
