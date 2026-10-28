@@ -16,7 +16,7 @@ The parent accepts immutable bytes up to **16 MiB**; invalid input fails
 before worker launch. The child is created with Python `-I -B`, a fixed
 minimal environment, no shell, no inherited extra file descriptors, a new
 process session and a fixed working directory. Before loading any PDF parser
-it applies POSIX ceilings of **25 CPU seconds**, **1 GiB address space on Linux or data segment on macOS**,
+it applies POSIX ceilings of **25 CPU seconds**, **1 GiB virtual memory on Linux**,
 zero core dumps and zero output-file size; the parent enforces a
 **30-second wall-clock timeout**. The worker needs no PDF filesystem path,
 does not save a PDF, and returns only fixed numeric fields plus its PID.
@@ -25,8 +25,12 @@ unavailable resources, timeouts and malformed/oversized responses all produce
 the same fixed path-free block error. The parent rejects duplicate JSON keys,
 extra keys, nonintegers and any child claim that opening is permitted.
 
-macOS data-segment limits may not constrain every mmap allocation; the child
-also inherits the strict per-inspector byte, object, and decoding budgets.
+On macOS, the supported interpreter rejects all tested OS memory ceilings
+(`RLIMIT_AS`, `RLIMIT_DATA`, `RLIMIT_RSS`). The worker therefore does **not**
+claim a hard memory limit on macOS. It still has a distinct process boundary,
+CPU and wall limits, restricted I/O, and strict per-inspector byte, object and
+decoding budgets. An additional macOS memory sandbox remains a prerequisite
+before enabling Maximum protection.
 This implements **process and resource isolation**, *not* a full OS sandbox.
 It does not provide a claim that the child has no network access, nor does it
 replace future OS-specific sandboxing or a complete Maximum analysis engine.
