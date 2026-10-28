@@ -47,6 +47,11 @@ DispatchQueue.main.async {{
               text.split(whereSeparator: {{ $0.isNewline }}).count == 2 else {{
             fatalError("Two active scans must start before cancellation")
         }}
+        guard let progress = panel as? ScanProgressPanel,
+              progress.activeScansLabel.stringValue == "Active scans: 2",
+              progress.activeScansLabel.accessibilityLabel() == "Active scans: 2" else {{
+            fatalError("Only two launched scans, not the queued third document, should count as active")
+        }}
         cancel.performClick(nil)
     }}
 }}

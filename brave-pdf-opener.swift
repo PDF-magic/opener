@@ -69,7 +69,6 @@ func withScanErrorPipe<Result>(_ operation: (Pipe) throws -> Result) rethrows ->
     return try operation(errors)
 }
 
-
 // Initialization diagnostics are selected from known, path-free scanner messages.
 // Do not present arbitrary process errors as verified initialization diagnoses.
 enum ScannerInitializationError {
@@ -139,6 +138,28 @@ func currentRequestSource() -> String {
         }
     }
     return "unknown"
+}
+
+// Present the requested filename, not the canonical scan target or a generic
+// progress count. Failure alerts remain visible even if progress is disabled.
+func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
+    let filename = URL(fileURLWithPath: requestedPath).lastPathComponent
+    let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
+    let explanation = reason.isEmpty
+        ? "The scan or file handoff returned no additional error details."
+        : String(reason.prefix(1600))
+    let alert = NSAlert()
+    alert.alertStyle = .critical
+    alert.messageText = "PDF could not be opened"
+    alert.informativeText = "File: \(filename)\n\nThe safety scan or destination handoff failed. "
+        + "PDF Magic Opener did not open this file.\n\nDetails: \(explanation)"
+    if let initialization = ScannerInitializationError.displayedMessage(for: reason) {
+        alert.messageText = "Scanner initialization failed"
+        alert.informativeText = "File: \(filename)\n\nThe scanner could not initialize. "
+            + "PDF Magic Opener did not open this file.\n\nDetails: \(initialization)"
+    }
+    alert.addButton(withTitle: "OK")
+    return alert
 }
 
 final class PDFOpener: NSObject, NSApplicationDelegate {
@@ -244,7 +265,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         } else {
             stage = .queued
         }
-        panel?.show(documentDescription: description, stage: stage)
+        panel?.show(documentDescription: description, stage: stage,
+                    queuedDocumentCount: queued.count,
+                    activeScans: launchedScans.count)
     }
 
     private func startQueuedScans() {
@@ -327,6 +350,8 @@ DispatchQueue.main.async {
                 if let pipe = self.scanLifetimes.removeValue(forKey: path) {
                     try? pipe.fileHandleForWriting.close()
                 }
+                // Capture the user's original filename before per-request cleanup.
+                let requestedPath = self.requestedPaths[path] ?? path
                 self.running.remove(path)
                 self.launchedScans.remove(path)
                 self.pending.remove(path)
@@ -344,7 +369,8 @@ DispatchQueue.main.async {
                 else { self.panel?.orderOut(nil) }
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
-                    let alert = scanFailureAlert(for: failure)
+                    let alert = makeScanFailureAlert(
+                        requestedPath: requestedPath, details: failure)
                     alert.runModal()
                 }
                 // A nil error may also indicate cancellation. Only a zero

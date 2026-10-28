@@ -54,7 +54,8 @@ SAFE_SCAN_FAILURES = frozenset((
     'Only regular files and application bundles can be scanned.',
     'Select a file or application, rather than a folder.',
     'The malware scan timed out; opening was stopped.',
-    'Malware or an unscannable item was detected; opening was stopped.',
+    'Malware was detected; opening was stopped.',
+    'The scanner flagged a suspicious or unscannable item; opening was stopped.',
     'The malware scan could not finish; opening was stopped.',
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
@@ -560,10 +561,18 @@ def decide_opening(detection):
     The file must still pass an independent before/after content check before
     quarantine is removed or an application can be launched.
     """
-    if detection.exit_code == 1:
-        return OpeningDecision(
-            False, 'Malware or an unscannable item was detected; opening was stopped.',
-            detection_names=detection.detection_names)
+    # Exit code 1 may also describe heuristic/unscannable items. Never
+    # present scanner errors, incomplete results, or heuristics as malware.
+    # Retain the exact fail-closed opening decision for all nonzero codes.
+    if detection.exit_code == 1 and not detection.stderr.strip():
+        if any(not name.startswith('Heuristics.') for name in detection.detection_names):
+            return OpeningDecision(
+                False, 'Malware was detected; opening was stopped.',
+                detection_names=detection.detection_names)
+        if detection.detection_names:
+            return OpeningDecision(
+                False, 'The scanner flagged a suspicious or unscannable item; opening was stopped.',
+                detection_names=detection.detection_names)
     if detection.exit_code != 0:
         return OpeningDecision(
             False, 'The malware scan could not finish; opening was stopped.',

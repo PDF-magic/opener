@@ -17,7 +17,7 @@ class ScannerInitializationErrorTests(unittest.TestCase):
         source = OPENER.read_text(encoding="utf-8")
         self.assertIn("return ScannerInitializationError.missingHelper", source)
         self.assertIn("return ScannerInitializationError.launchFailed", source)
-        self.assertIn("let alert = scanFailureAlert(for: failure)", source)
+        self.assertIn("let alert = makeScanFailureAlert(", source)
         self.assertIn("alert.runModal()", source)
         self.assertIn("if process.terminationStatus != 0 {", source)
         self.assertIn("if cancelled { return nil }", source)
@@ -50,21 +50,22 @@ let startupMessages = [
     "The malware signature database is incomplete. Run update-malware-signatures.sh."
 ]
 for detail in startupMessages {
-    let warning = scanFailureAlert(for: detail + "\n")
-    precondition(warning.alertStyle == .warning)
+    let warning = makeScanFailureAlert(requestedPath: "test.pdf", details: detail + "\n")
+    precondition(warning.alertStyle == .critical)
     precondition(warning.messageText == "Scanner initialization failed")
     precondition(warning.informativeText.contains(detail))
-    precondition(warning.informativeText.contains("The document was not opened."))
+    precondition(warning.informativeText.contains("PDF Magic Opener did not open this file."))
+    precondition(warning.informativeText.contains("File: test.pdf"))
     precondition(warning.buttons.first?.title == "OK")
 }
-let normal = scanFailureAlert(for: "Malware or an unscannable item was detected; opening was stopped.")
-precondition(normal.messageText == "Opening stopped", "Other blocked verdicts retain their warning")
+let normal = makeScanFailureAlert(requestedPath: "test.pdf", details: "Malware or an unscannable item was detected; opening was stopped.")
+precondition(normal.messageText == "PDF could not be opened", "Other blocked verdicts retain their warning")
 precondition(normal.informativeText.contains("Malware or an unscannable item"))
-let injected = scanFailureAlert(for: startupMessages[2] + "\n/private/secret.pdf")
-precondition(injected.messageText == "Opening stopped",
+let injected = makeScanFailureAlert(requestedPath: "test.pdf", details: startupMessages[2] + "\n/private/secret.pdf")
+precondition(injected.messageText == "PDF could not be opened",
              "Unknown stderr must not masquerade as a known initialization failure")
-let cancelled = scanFailureAlert(for: "The scan was cancelled; opening was stopped.")
-precondition(cancelled.messageText == "Opening stopped",
+let cancelled = makeScanFailureAlert(requestedPath: "test.pdf", details: "The scan was cancelled; opening was stopped.")
+precondition(cancelled.messageText == "PDF could not be opened",
              "Cancellation is not a scanner initialization error")
 print("PASS: known scanner initialization failures get actionable native warnings")
 """,
