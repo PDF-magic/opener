@@ -143,7 +143,7 @@ def inspect_pdf_automatic_actions(contents: bytes) -> PDFAutomaticActionInspecti
                     dereference(script), (TextStringObject, StreamObject)
                 ):
                     raise PDFAutomaticActionError(_ERROR)
-                # Do not call get_data() on streams or convert script to text.
+                # Never decode streams or convert document scripts to text.
             next_action = entry.get("/Next")
             if next_action is not None:
                 next_action = dereference(next_action)
