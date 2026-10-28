@@ -277,6 +277,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
+      - name: Verify active configuration schema version is persisted safely
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-active-schema-version.swift -o "$RUNNER_TEMP/TestActiveSchemaVersion"
+          "$RUNNER_TEMP/TestActiveSchemaVersion"
       - name: Verify safe malformed configuration recovery
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
@@ -457,6 +461,9 @@ jobs:
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
         run: python3 test-brave-pdf-opener.py
+      - name: Verify scan failures identify the PDF and show useful details
+        timeout-minutes: 2
+        run: python3 test-native-scan-failure.py
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: python3 test-native-cancellation.py
