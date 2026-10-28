@@ -172,8 +172,15 @@ class MaximumRendererTests(unittest.TestCase):
             renderer.render_isolated_pdf_page(self.pdf, 0)
 
     def test_rejects_forged_protocol_and_oversized_output(self):
-        original = renderer.render_isolated_pdf_page(self.pdf, 0)
-        png = original.png_bytes
+        # This protocol test needs a valid PNG fixture, not another worker
+        # launch; real child rasterization is verified in dedicated tests.
+        document = pymupdf.open(stream=self.pdf, filetype="pdf")
+        try:
+            png = document[0].get_pixmap(
+                colorspace=pymupdf.csRGB, alpha=False, annots=False,
+            ).tobytes("png")
+        finally:
+            document.close()
         valid = frame(png)
         broken = (
             b"", b"notpng", valid + b"tampered", valid[:-1],
