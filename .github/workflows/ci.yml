@@ -20,6 +20,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify built-in active protection profile label and unchanged scanner gates
         run: python3 test-active-protection-profile.py -v
+      - name: Verify planned protection profile catalog and existing fail-closed policy
+        run: python3 test-protection-profiles.py -v
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
