@@ -18,6 +18,8 @@ jobs:
           python-version: "3.11"
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify built-in active protection profile label and unchanged scanner gates
+        run: python3 test-active-protection-profile.py -v
       - name: Verify General reset confirmation and scanner isolation
         run: python3 test-reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
@@ -200,7 +202,7 @@ jobs:
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
-      - name: Verify atomic configuration persistence and failure safety
+      - name: Verify atomic and cross-process configuration persistence and failure safety
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift test-atomic-configuration-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
           "$RUNNER_TEMP/TestAtomicConfigurationWriter"

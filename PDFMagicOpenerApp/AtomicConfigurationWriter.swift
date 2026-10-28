@@ -9,6 +9,7 @@ enum AtomicConfigurationWriter {
     case invalidName
     case unsafeDirectory
     case unsafeDestination
+    case unsafeLock
     case io(Int32)
   }
 
@@ -22,6 +23,38 @@ enum AtomicConfigurationWriter {
     let parent = open(directory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
     guard parent >= 0 else { throw SaveError.unsafeDirectory }
     defer { close(parent) }
+
+    // A persistent, per-destination advisory lock serializes independent
+    // processes through validation, staging, rename and directory sync.
+    // Never unlink this file: deleting it could split writers across inodes.
+    let lockName = ".\(name).lock"
+    let lockFD = openat(parent, lockName, O_RDWR | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0o600)
+    guard lockFD >= 0 else { throw SaveError.unsafeLock }
+    defer { close(lockFD) }
+
+    var lockInfo = stat()
+    guard fstat(lockFD, &lockInfo) == 0,
+          (lockInfo.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+          lockInfo.st_nlink == 1,
+          lockInfo.st_uid == geteuid() else {
+      throw SaveError.unsafeLock
+    }
+    // Protect a preexisting lock file too, without following hard links.
+    guard fchmod(lockFD, mode_t(0o600)) == 0 else { throw SaveError.io(errno) }
+    while flock(lockFD, LOCK_EX) != 0 {
+      if errno == EINTR { continue }
+      throw SaveError.io(errno)
+    }
+    defer { _ = flock(lockFD, LOCK_UN) }
+
+    // A replaced/unlinked lock inode cannot safely coordinate new writers.
+    var currentLock = stat()
+    guard fstatat(parent, lockName, &currentLock, AT_SYMLINK_NOFOLLOW) == 0,
+          (currentLock.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+          currentLock.st_dev == lockInfo.st_dev,
+          currentLock.st_ino == lockInfo.st_ino else {
+      throw SaveError.unsafeLock
+    }
 
     var current = stat()
     if fstatat(parent, name, &current, AT_SYMLINK_NOFOLLOW) == 0 {
