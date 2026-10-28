@@ -16,6 +16,7 @@ import subprocess
 import sys
 
 from maximum_active_content_removal import remove_active_pdf_functionality
+from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
@@ -321,6 +322,10 @@ def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
                 not 0 < len(cleaned) <= MAX_OUTPUT_BYTES or
                 cleaned == source_bytes or
                 not _passive_pages(cleaned, count)):
+            return _blocked(SanitizationBlockReason.outputUnverified)
+        # Preserve opener-0319's independent post-rebuild structure gate.
+        structure = verify_sanitized_pdf_structure(cleaned, count)
+        if structure.page_count != count:
             return _blocked(SanitizationBlockReason.outputUnverified)
         return SanitizationDecision(SanitizedCopyOffer(cleaned, count), None)
     except Exception:

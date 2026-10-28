@@ -237,7 +237,9 @@ class UnsupportedSanitizationTests(unittest.TestCase):
                           return_value=subprocess.CompletedProcess([], 0, converted)), \
              patch.object(sanitizer, "remove_active_pdf_functionality",
                           return_value=cleaned), \
-             patch.object(sanitizer, "_passive_pages", return_value=True):
+             patch.object(sanitizer, "_passive_pages", return_value=True), \
+             patch.object(sanitizer, "verify_sanitized_pdf_structure",
+                          return_value=__import__("maximum_sanitized_structure").SanitizedPDFStructure(1, 5)):
             decision = sanitizer.assess_sanitized_pdf_copy(original)
         self.assertEqual(decision.action, "offerForSeparateScan")
         self.assertIsNone(decision.blocked_reason)
