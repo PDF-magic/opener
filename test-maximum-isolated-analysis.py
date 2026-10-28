@@ -44,26 +44,21 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
 
     def test_input_is_raw_bytes_not_path_and_worker_is_isolated_python(self):
         document = sample_pdf()
-        real_run = subprocess.run
+        real_run = isolated.run_limited_worker
         captured = []
-        def invoke(command, **kwargs):
-            captured.append((tuple(command), kwargs.copy()))
-            return real_run(command, **kwargs)
-        with patch.object(isolated.subprocess, "run", side_effect=invoke):
+        def invoke(command, contents, **kwargs):
+            captured.append((command, contents, kwargs.copy()))
+            return real_run(command, contents, **kwargs)
+        with patch.object(isolated, "run_limited_worker", side_effect=invoke):
             isolated.run_isolated_pdf_analysis(document, "malformedStructures")
-        cmd, opts = captured[0]
+        cmd, data, opts = captured[0]
+        self.assertIs(data, document)
         self.assertEqual(cmd[0], sys.executable)
         self.assertEqual(cmd[1:3], ("-I", "-B"))
         self.assertEqual(cmd[-1], "malformedStructures")
         self.assertTrue(cmd[-2].endswith("maximum_isolated_worker.py"))
-        self.assertIs(opts["input"], document)
-        self.assertIs(opts["stderr"], subprocess.DEVNULL)
-        self.assertFalse(opts["check"])
-        self.assertTrue(opts["start_new_session"])
-        self.assertTrue(opts["close_fds"])
-        self.assertEqual(opts["cwd"], "/")
-        self.assertEqual(opts["timeout"], isolated.WORKER_WALL_TIMEOUT_SECONDS)
-        self.assertEqual(set(opts["env"]),
+        self.assertEqual(opts["timeout_seconds"], isolated.WORKER_WALL_TIMEOUT_SECONDS)
+        self.assertEqual(set(opts["environment"]),
                          {"PATH", "HOME", "LANG", "PYTHONDONTWRITEBYTECODE",
                           "PYTHONNOUSERSITE"})
 
@@ -76,7 +71,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                 self.assertNotIn("Private", str(err.exception))
 
     def test_invalid_or_oversized_input_rejected_without_starting_child(self):
-        with patch.object(isolated.subprocess, "run") as invoke:
+        with patch.object(isolated, "run_limited_worker") as invoke:
             for payload, stage in (
                 (b"", "structureAmbiguity"), ("not bytes", "structureAmbiguity"),
                 (bytearray(sample_pdf()), "structureAmbiguity"),
@@ -96,12 +91,12 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                       RuntimeError("private diagnostics"))
         for failure in exceptions:
             with self.subTest(error=type(failure)), patch.object(
-                isolated.subprocess, "run", side_effect=failure
+                isolated, "run_limited_worker", side_effect=failure
             ), self.assertRaises(isolated.IsolatedPDFAnalysisError) as caught:
                 isolated.run_isolated_pdf_analysis(sample_pdf(), "malformedStructures")
             self.assertEqual(str(caught.exception), isolated.BLOCK_MESSAGE)
-        with patch.object(isolated.subprocess, "run",
-                          return_value=subprocess.CompletedProcess([], 137, b"")):
+        with patch.object(isolated, "run_limited_worker",
+                          side_effect=RuntimeError("worker exited 137")):
             with self.assertRaises(isolated.IsolatedPDFAnalysisError):
                 isolated.run_isolated_pdf_analysis(sample_pdf(), "malformedStructures")
 
@@ -126,8 +121,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
         ]
         for stdout in samples:
             with self.subTest(stdout=stdout[:30]), patch.object(
-                isolated.subprocess, "run",
-                return_value=subprocess.CompletedProcess([], 0, stdout),
+                isolated, "run_limited_worker", return_value=stdout,
             ), self.assertRaises(isolated.IsolatedPDFAnalysisError) as caught:
                 isolated.run_isolated_pdf_analysis(sample_pdf(), "malformedStructures")
             self.assertEqual(str(caught.exception), isolated.BLOCK_MESSAGE)
