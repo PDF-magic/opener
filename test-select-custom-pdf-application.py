@@ -37,7 +37,7 @@ class CustomPDFSelectionTests(unittest.TestCase):
         return invoke
 
     def test_explicit_bundle_is_verified_twice_and_saved_atomically(self):
-        with patch.object(app.subprocess, "run", self.subprocess_result()) as run:
+        with patch.object(app.subprocess, "run", side_effect=self.subprocess_result()) as run:
             selected = app.choose_and_save("/Volumes/Browser Apps/My Browser.app",
                                            self.setting)
         self.assertEqual(selected, "org.example.customBrowser")
@@ -51,7 +51,7 @@ class CustomPDFSelectionTests(unittest.TestCase):
         ])
 
     def test_interactive_picker_without_path_still_verifies(self):
-        with patch.object(app.subprocess, "run", self.subprocess_result()) as run:
+        with patch.object(app.subprocess, "run", side_effect=self.subprocess_result()) as run:
             self.assertEqual(app.choose_and_save(destination=self.setting),
                              "org.example.customBrowser")
         self.assertEqual(run.call_args_list[0].args[0], [str(app.NATIVE_PICKER)])
