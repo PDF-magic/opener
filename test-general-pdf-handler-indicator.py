@@ -50,11 +50,16 @@ class GeneralPDFHandlerIndicatorTests(unittest.TestCase):
     for forbidden in (
       "NSWorkspace", "Process(", "FileManager", "UserDefaults",
       "@AppStorage", "LSSetDefault", "setDefault", "clamscan(",
-      "target-app.txt", "Button(", "Toggle(", "write(to:",
+      "target-app.txt", "Button(", "write(to:",
       "URLSession", "onOpenURL", "DocumentGroup",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, GENERAL)
+
+    self.assertEqual(GENERAL.count('Toggle("Show Scan Progress"'), 1)
+    status = GENERAL.split('Label("Default PDF handler", systemImage:', 1)[1].split(
+      '.accessibilityIdentifier("defaultPDFHandlerSection")', 1)[0]
+    self.assertNotIn("Toggle(", status)
 
   def test_macos_ci_runs_real_swift_status_unit_tests(self):
     self.assertIn("test-general-pdf-handler-indicator.py -v", CI)

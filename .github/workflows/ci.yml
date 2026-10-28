@@ -190,6 +190,7 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors \
             PDFMagicOpenerApp/*SettingsView.swift PDFMagicOpenerApp/MainPreferencesView.swift \
             PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
+            PDFMagicOpenerApp/ScanProgressPreference.swift \
             test-preferences-large-text.swift -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
@@ -197,6 +198,7 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors \
             PDFMagicOpenerApp/GeneralSettingsView.swift PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
             PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift \
+            PDFMagicOpenerApp/ScanProgressPreference.swift \
             test-general-pdf-handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
           "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
       - name: Verify built app icon and macOS window branding
