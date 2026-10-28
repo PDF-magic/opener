@@ -69,7 +69,27 @@ enum SuccessfulScanNotificationPreference {
   }
 }
 
+// Optional blocked-open alert delivery; scanner verdicts and warnings never depend on it.
+enum BlockedFileNotificationPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "showBlockedFileNotifications"
 
+  static func isEnabled(defaults: UserDefaults? = UserDefaults(suiteName: suiteName)) -> Bool {
+    guard let defaults, let setting = defaults.object(forKey: key) as? Bool else { return false }
+    return setting
+  }
+
+  @discardableResult
+  static func save(_ enabled: Bool, defaults: UserDefaults? = UserDefaults(suiteName: suiteName)) -> Bool {
+    guard let defaults else { return false }
+    defaults.set(enabled, forKey: key)
+    return defaults.synchronize() && isEnabled(defaults: defaults) == enabled
+  }
+
+  static func shouldNotify(failure: String?, cancelled: Bool, enabled: Bool = isEnabled()) -> Bool {
+    return enabled && failure != nil && !cancelled
+  }
+}
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.
