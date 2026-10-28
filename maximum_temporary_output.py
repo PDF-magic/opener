@@ -31,6 +31,12 @@ def _identity(info):
     return (info.st_dev, info.st_ino, info.st_uid)
 
 
+def _file_identity(info):
+    # Inodes can be immediately recycled after unlink; do not mistake a
+    # newly created file for the original owned output on rapid replacement.
+    return (*_identity(info), info.st_ctime_ns, info.st_size)
+
+
 def _is_private_directory(info):
     return stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o700
 
@@ -77,7 +83,7 @@ class MaximumTemporaryOutput:
                         raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
                     item = os.stat(_FILE_NAME, dir_fd=directory_fd,
                                    follow_symlinks=False)
-                    if (_identity(item) != file_identity or
+                    if (_file_identity(item) != file_identity or
                             not _is_private_file(item)):
                         raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
                     os.unlink(_FILE_NAME, dir_fd=directory_fd)
@@ -139,6 +145,7 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
                     after.st_size != len(contents) or
                     not _is_private_file(after)):
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+            created_identity = _file_identity(after)
         lease = MaximumTemporaryOutput(file_path)
         with _LOCK:
             _LEASES[lease] = (directory, created_identity, _identity(directory_info))
@@ -154,7 +161,7 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
                     if file_path is not None and created_identity is not None:
                         try:
                             actual = os.stat(file_path, follow_symlinks=False)
-                            if (_identity(actual) == created_identity and
+                            if (_file_identity(actual) == created_identity and
                                     _is_private_file(actual)):
                                 os.unlink(file_path)
                         except OSError:
