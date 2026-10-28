@@ -92,20 +92,6 @@ enum ScannerInitializationError {
     }
 }
 
-func scanFailureAlert(for failure: String) -> NSAlert {
-    let alert = NSAlert()
-    alert.alertStyle = .warning
-    if let initializationMessage = ScannerInitializationError.displayedMessage(for: failure) {
-        alert.messageText = "Scanner initialization failed"
-        alert.informativeText = initializationMessage + "\nThe document was not opened."
-    } else {
-        alert.messageText = "Opening stopped"
-        alert.informativeText = failure
-    }
-    alert.addButton(withTitle: "OK")
-    return alert
-}
-
 // Preserve the sending application reported by macOS, never infer a source
 // from the frontmost window or the file extension.
 func requestSource(forBundleIdentifier identifier: String?) -> String {
