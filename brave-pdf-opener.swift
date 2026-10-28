@@ -125,6 +125,9 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     // Session-only metadata keyed by canonical path; duplicate events keep the first time.
     private(set) var scanRequests = [String: ScanRequest]()
     private var panel: ScanProgressPanel?
+    // Presentation-only acknowledgement; scan-gate decisions remain unchanged.
+    private var attentionRequired = false
+    private var attentionDocumentName = ""
     // Hold the native scan-gate stdin writer open while its owner is alive.
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
@@ -150,6 +153,13 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     @objc private func cancelScans(_ sender: NSButton) {
+        // The finished blocked scan stays visible until the user clicks Close.
+        if pending.isEmpty && attentionRequired {
+            attentionRequired = false
+            panel?.orderOut(nil)
+            if pendingSuccessNotifications == 0 { NSApp.terminate(nil) }
+            return
+        }
         // Never start queued documents after cancellation, even when an
         // already-running scan releases capacity.
         for path in queued {
@@ -284,6 +294,13 @@ DispatchQueue.main.async {
                 if let pipe = self.scanLifetimes.removeValue(forKey: path) {
                     try? pipe.fileHandleForWriting.close()
                 }
+                // Capture the original file name before request metadata cleanup.
+                if failure != nil, self.panel != nil, ScanProgressPreference.isEnabled() {
+                    self.attentionRequired = true
+                    self.attentionDocumentName = URL(
+                        fileURLWithPath: self.requestedPaths[path] ?? path
+                    ).lastPathComponent
+                }
                 self.running.remove(path)
                 self.launchedScans.remove(path)
                 self.pending.remove(path)
@@ -297,8 +314,16 @@ DispatchQueue.main.async {
                 self.processLock.lock()
                 let hasUncancelled = self.pending.contains { !self.cancelledRequests.contains($0) }
                 self.processLock.unlock()
-                if hasUncancelled { self.showProgress() }
-                else { self.panel?.orderOut(nil) }
+                if hasUncancelled {
+                    self.showProgress()
+                } else if self.attentionRequired && ScanProgressPreference.isEnabled() {
+                    self.panel?.showAttentionRequired(documentDescription: self.attentionDocumentName)
+                } else {
+                    // Honor hidden-progress preferences; the warning dialog
+                    // remains visible even when the progress panel is hidden.
+                    self.attentionRequired = false
+                    self.panel?.orderOut(nil)
+                }
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
                     let alert = NSAlert()
@@ -322,7 +347,7 @@ DispatchQueue.main.async {
                         DispatchQueue.main.async {
                             guard let self else { return }
                             self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
                                 NSApp.terminate(nil)
                             }
                         }
@@ -336,13 +361,13 @@ DispatchQueue.main.async {
                         DispatchQueue.main.async {
                             guard let self else { return }
                             self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
                                 NSApp.terminate(nil)
                             }
                         }
                     }
                 }
-                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 {
+                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
                     NSApp.terminate(nil)
                 }
             }

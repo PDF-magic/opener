@@ -136,9 +136,21 @@ final class ScanProgressPanel: NSPanel {
         center()
     }
 
+    // A blocked document requires explicit Close after all scans complete.
+    // Changing the button title does not alter cancellation or scan decisions.
+    func showAttentionRequired(documentDescription: String) {
+        filenameLabel.stringValue = documentDescription
+        stageLabel.stringValue = "Attention required — opening stopped"
+        activeScansLabel.stringValue = "Active scans: 0"
+        activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)
+        cancelButton.title = "Close"
+        orderFrontRegardless()
+    }
+
     // Set only display state. Callers own the scan lifecycle and Cancel action.
     func show(documentDescription: String, stage: ScanProgressStage = .queued,
               activeScans: Int = 0) {
+        cancelButton.title = "Cancel"
         filenameLabel.stringValue = documentDescription
         stageLabel.stringValue = stage.label
         // Count only processes confirmed launched by the native owner, never
