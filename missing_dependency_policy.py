@@ -83,7 +83,11 @@ class MissingDependencyResponse:
             raise TypeError("A validated protection control is required.")
         expected = (_GENERIC_RESPONSE_SPEC if self.control is None else
                     _RESPONSE_SPECS[self.control])
-        if (self.scan_status, self.user_message) != expected:
+        # ScanResultStatus subclasses str; equality alone would accept a raw
+        # "scanFailed" string as though it were a validated canonical outcome.
+        if (self.scan_status is not expected[0] or
+                type(self.user_message) is not str or
+                self.user_message != expected[1]):
             raise ValueError("Missing dependencies need their fixed non-clean outcome.")
         if (self.disposition is not MissingDependencyDisposition.DENY or
                 self.show_failure_alert is not True or
