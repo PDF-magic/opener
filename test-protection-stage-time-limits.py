@@ -144,12 +144,13 @@ class StageLimitTests(unittest.TestCase):
             ast.literal_eval(definition.left) * ast.literal_eval(definition.right),
             STAGE_MAXIMUM_SECONDS[PolicyControl.CLAMAV_SCAN_GATE],
         )
-        # The scanner now pins its Built-in limits in an immutable per-request
-        # snapshot (opener-0262), rather than repeating the old ternary here.
+        # The installed gate now freezes verified Built-in limits on admission.
+        # Keep the 30-minute default bound but honor tightened snapshots.
         self.assertIn("pdf_timeout_seconds: int = PDF_SCAN_TIMEOUT", scanner)
         self.assertIn("other_timeout_seconds: int = 180", scanner)
+        self.assertIn("policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()", scanner)
         self.assertIn("timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf", scanner)
-        self.assertIn("else policy_snapshot.other_timeout_seconds))", scanner)
+        self.assertIn("else policy_snapshot.other_timeout_seconds)", scanner)
         self.assertIn("except subprocess.TimeoutExpired:", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
 
