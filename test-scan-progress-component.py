@@ -32,6 +32,8 @@ precondition(panel.title == "PDF Magic Opener — Scanning")
 precondition(!panel.hidesOnDeactivate && panel.level == .floating)
 precondition(panel.progressIndicator.isIndeterminate)
 precondition(panel.cancelButton.title == "Cancel")
+precondition(panel.stageLabel.stringValue == ScanProgressStage.queued.label)
+precondition(panel.stageLabel.accessibilityLabel() == "Current scanning stage")
 panel.show(documentDescription: "one.pdf", stage: .scanning,
            batchProgress: (completed: 0, total: 1))
 precondition(panel.progressIndicator.isIndeterminate,
@@ -62,8 +64,6 @@ precondition(panel.contentView?.subviews.contains(where: { $0 === panel.protecti
 precondition(panel.contentView?.subviews.contains(where: { $0 === panel.protectionProfileDetailsLabel }) == true)
 precondition(panel.protectionProfileLabel.frame.minY > panel.progressIndicator.frame.maxY)
 precondition(panel.filenameLabel.frame.minY > panel.protectionProfileLabel.frame.maxY)
-precondition(panel.stageLabel.stringValue == ScanProgressStage.queued.label)
-precondition(panel.stageLabel.accessibilityLabel() == "Current scanning stage")
 precondition(panel.contentView?.subviews.contains(where: { $0 is TwilightReadingView }) == true)
 panel.show(documentDescription: "folder/Unicode – report.pdf", stage: .starting)
 precondition(panel.filenameLabel.stringValue == "folder/Unicode – report.pdf")
