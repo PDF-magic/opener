@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
-from scan_results import ScanResult
+from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from functools import wraps
-from dataclasses import dataclass
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import fcntl
 import hashlib
 from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
@@ -74,6 +73,9 @@ class CleanScanResult:
     scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
     detection_names: tuple[str, ...] = ()
+    # The installed Built-in gate remains effective for every completed scan,
+    # independent of caller-supplied protection_level request metadata.
+    effective_policy_id: str = field(default=EFFECTIVE_POLICY_ID, init=False)
 
 
 
@@ -363,7 +365,9 @@ def check_database():
         age = time.time() - float(STAMP.read_text().strip())
     except (OSError, ValueError):
         raise RuntimeError('Malware signatures are unavailable. Run update-malware-signatures.sh.')
-    if age < 0 or age > MAX_DATABASE_AGE:
+    # Only a real timestamp in the inclusive 48-hour window is acceptable.
+    # In particular, float("nan") passes both < and > checks and must fail closed.
+    if not 0 <= age <= MAX_DATABASE_AGE:
         raise RuntimeError('Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.')
     # Filename matches alone are insufficient: empty placeholders and
     # directories masquerading as main.cvd / daily.cvd are not databases.
