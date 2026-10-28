@@ -52,9 +52,13 @@ class NativeWindowBrandingTests(unittest.TestCase):
   def test_icon_is_in_the_built_app_resources(self):
     project = PROJECT.read_text(encoding="utf-8")
     for name in ("lastKnownFileType = image.icns;", "path = PDFMagicOpenerIcon.icns;",
-                 "fileRef = A1000000000000000000001D;",
-                 "files = (A10000000000000000000018, A1000000000000000000001C,);"):
+                 "fileRef = A1000000000000000000001D;"):
       self.assertIn(name, project)
+    # Other independently bundled resources may now share the build phase.
+    resources = project.split("isa = PBXResourcesBuildPhase;", 1)[1].split(
+        "runOnlyForDeploymentPostprocessing", 1)[0]
+    self.assertIn("A10000000000000000000018,", resources)
+    self.assertIn("A1000000000000000000001C,", resources)
 
   def test_icns_contains_all_seven_valid_png_sizes(self):
     data = ICON.read_bytes()
