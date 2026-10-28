@@ -12,6 +12,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
   case aboutAndDiagnostics
   case extensionsAndIntegrations
   case notifications
+  case privacyAndLogs
 
   var id: Self { self }
 
@@ -25,6 +26,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .aboutAndDiagnostics: return "About and Diagnostics"
     case .extensionsAndIntegrations: return "Extensions and Integrations"
     case .notifications: return "Notifications"
+    case .privacyAndLogs: return "Privacy and Logs"
     }
   }
 
@@ -38,6 +40,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .aboutAndDiagnostics: return "info.circle"
     case .extensionsAndIntegrations: return "puzzlepiece.extension"
     case .notifications: return "bell.badge"
+    case .privacyAndLogs: return "hand.raised"
     }
   }
 }
@@ -212,6 +215,8 @@ struct MainPreferencesView: View {
       ExtensionsAndIntegrationsSettingsView()
     case .notifications:
       NotificationsSettingsView()
+    case .privacyAndLogs:
+      PrivacyAndLogsSettingsView()
     }
   }
 }

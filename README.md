@@ -125,6 +125,13 @@ and **⌘]** opens the next section. Previous/Next controls disable at the
 first and last section rather than wrapping. The shortcuts only change
 the visible page; they never change saved preferences or scanning policy.
 
+**Privacy and Logs** (opener-0184) is a separate, read-only sidebar page
+describing local document processing, diagnostic-log visibility, and current
+limitations on privacy and log controls. It does not display, collect,
+export, erase, or change log records, and does not claim a particular log
+retention duration. The installed scanner and operating system retain their
+existing behavior. No document or scanner preferences are modified.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
