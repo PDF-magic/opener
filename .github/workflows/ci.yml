@@ -200,7 +200,7 @@ jobs:
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
-      - name: Verify atomic configuration persistence and failure safety
+      - name: Verify atomic and cross-process configuration persistence and failure safety
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift test-atomic-configuration-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
           "$RUNNER_TEMP/TestAtomicConfigurationWriter"
