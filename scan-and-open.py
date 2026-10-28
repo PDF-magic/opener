@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Scan selected local files before changing quarantine or launching an app."""
+"""Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
-from scan_results import ScanResult
+from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from functools import wraps
-from dataclasses import dataclass
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import fcntl
 import hashlib
 from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
@@ -74,6 +73,9 @@ class CleanScanResult:
     scanner_version: Optional[str] = None
     signature_database_version: Optional[str] = None
     detection_names: tuple[str, ...] = ()
+    # The installed Built-in gate remains effective for every completed scan,
+    # independent of caller-supplied protection_level request metadata.
+    effective_policy_id: str = field(default=EFFECTIVE_POLICY_ID, init=False)
 
 
 
@@ -590,12 +592,13 @@ def record_scan_request(application):
 
 
 def remove_quarantine(path):
-    if path.is_dir():
-        subprocess.run(['/usr/bin/xattr', '-dr', 'com.apple.quarantine', str(path)], check=True)
-    else:
-        attributes = subprocess.run(['/usr/bin/xattr', str(path)], check=True, capture_output=True, text=True)
-        if 'com.apple.quarantine' in attributes.stdout.splitlines():
-            subprocess.run(['/usr/bin/xattr', '-d', 'com.apple.quarantine', str(path)], check=True)
+    """Legacy post-scan hook: retain, never strip, macOS quarantine metadata.
+
+    Keep the existing call site and integration hook for compatibility.
+    A clean malware verdict does not cancel macOS Gatekeeper or other
+    operating-system protections. This hook deliberately makes no changes.
+    """
+    return None
 
 
 @dataclass(frozen=True)
@@ -627,7 +630,7 @@ def decide_opening(detection):
 
     A positive decision means only that the result passed the ClamAV gate.
     The file must still pass an independent before/after content check before
-    quarantine is removed or an application can be launched.
+    quarantine metadata is retained and an application can be launched.
     """
     # Exit code 1 may also describe heuristic/unscannable items. Never
     # present scanner errors, incomplete results, or heuristics as malware.
@@ -697,7 +700,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         verify_local_file_available(path)
     destination = intended_destination(path)
     # The optional fallback is an explicit PDF-only preference. Validate it
-    # before any scan or quarantine mutation, and never derive it from the
+    # before scanning or handoff, and never derive it from the
     # default PDF handler (which may recursively invoke this opener).
     fallback = pdf_fallback_application(primary=destination) if is_pdf else None
     record_scan_destination(destination)
@@ -758,7 +761,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     # Cache hits are not proof the file remains downloaded locally.
     if is_pdf:
         verify_local_file_available(path)
-    # Verify a destination before releasing quarantine, including a fallback.
+    # Verify a destination before opening; keep OS quarantine in place.
     # Fallback never overrides a failed scan, missing local bytes or a changed file.
     verified_fallback = None
     try:
@@ -780,9 +783,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                 pass
             else:
                 verified_fallback = fallback
+    # Stable legacy hook: leave com.apple.quarantine and Gatekeeper protections intact.
     remove_quarantine(path)
-    # Quarantine removal changes ctime, but source bytes and identities must remain intact.
-    verify_file_integrity(path, before, identity, allow_ctime_change=True)
+    # Quarantine is no longer stripped; reject unexpected metadata/ctime changes.
+    verify_file_integrity(path, before, identity)
     if is_pdf:
         verify_local_file_available(path)
     # The scan engine does not select an application or browser.
@@ -792,7 +796,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         if verified_fallback is None:
             raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
         # Recheck the unchanged, locally available PDF before another launch.
-        verify_file_integrity(path, before, identity, allow_ctime_change=True)
+        verify_file_integrity(path, before, identity)
         verify_local_file_available(path)
         record_scan_destination(verified_fallback)
         try:
