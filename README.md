@@ -15,16 +15,20 @@ xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configurati
 ```
 
 The standalone SwiftUI application now opens a **main preferences window**
-(opener-0165) with a sidebar for **General**, **Browsers**, and **Security**.
-The **General** sidebar entry now opens a dedicated read-only settings page
-(opener-0178), describing PDF scanning and preserved application choices.
-The **Browsers** sidebar entry opens a dedicated read-only settings page
-(opener-0179) for installed browser discovery, the preferred PDF destination,
-and additional custom applications. Actual discovery and selection continue
-through the installed browser preference tools; this view does not reset saved
-settings or change PDF associations. Security retains its overview pane.
-General and Browsers preserve existing scanner and user customizations.
-Rebuild and run the `PDFMagicOpener` Xcode scheme to see it.
+(opener-0165) with a sidebar for **General**, **Browsers**, and **Protection**.
+The **General** sidebar entry opens a dedicated read-only settings page
+(opener-0178) describing PDF scanning and preserved application choices.
+**Protection** (opener-0180) opens a separate informational page explaining
+local ClamAV scanning, fail-closed handling of unsafe or unverified files,
+and verified PDF application handoff. The installed PDF opener still owns all
+scanner and quarantine safeguards; viewing Protection cannot change them
+or modify saved application preferences. The **Browsers** sidebar entry
+now opens a dedicated read-only settings page (opener-0179), with sections
+for installed browser discovery, the preferred PDF destination, and custom
+applications. Actual discovery and selection remain with the installed
+browser preference tools; opening this page does not reset user choices,
+change system associations, or bypass any scan protections. Rebuild and
+run the `PDFMagicOpener` Xcode scheme to see the navigation.
 
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
@@ -42,6 +46,17 @@ Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
 standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored
 browser preferences, or scanner configuration.
+
+**Dock behavior (opener-0174):** The standalone SwiftUI preferences app is a
+regular macOS application **with a Dock icon** when launched, so users can
+return to its window and standard application menu. Both Debug and Release
+builds explicitly set `LSUIElement = NO`. The separately installed AppKit
+PDF scan helper intentionally remains an **accessory without a Dock icon**:
+its bundle still sets `LSUIElement = YES` and its process uses
+`NSApplication.ActivationPolicy.accessory`. Opening a PDF therefore does not
+introduce a second persistent Dock item. The two apps retain their distinct
+bundle identifiers and roles; these settings do not alter PDF associations,
+browser choices, scan gates, cancellation, or quarantine behavior.
 
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not

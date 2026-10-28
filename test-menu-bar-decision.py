@@ -19,8 +19,11 @@ class MenuBarDecisionTests(unittest.TestCase):
         with self.subTest(path=source_file.name, forbidden=forbidden):
           self.assertNotIn(forbidden, source)
     project = PROJECT.read_text(encoding="utf-8")
-    self.assertNotIn("LSUIElement", project)
-    self.assertNotIn("UIElement", project)
+    # A visible Dock app may explicitly set LSUIElement = NO. Reject only
+    # accessory/background policies; neither creates a menu-bar status item.
+    self.assertNotIn("INFOPLIST_KEY_LSUIElement = YES;", project)
+    self.assertNotIn("INFOPLIST_KEY_LSBackgroundOnly = YES;", project)
+    self.assertEqual(project.count("INFOPLIST_KEY_LSUIElement = NO;"), 2)
 
   def test_normal_preferences_and_quit_remain_available(self):
     app = APP.read_text(encoding="utf-8")
