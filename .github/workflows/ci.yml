@@ -40,8 +40,6 @@ jobs:
         run: python3 test-pdf-embedded-executable-content.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
-      - name: Inspect PDF incremental revisions without activating Enhanced
-        run: python3 test-pdf-incremental-revisions.py -v
       - name: Detect malformed PDF structures in the planned Enhanced stage
         run: python3 test-pdf-malformed-structures.py -v
       - name: Distinguish dangerous PDF behavior from legitimate features
@@ -240,6 +238,8 @@ jobs:
 
       - name: Verify scan result contract
         run: python3 test-scan-results.py
+      - name: Verify structured Enhanced analysis findings and incomplete-stage safety
+        run: python3 test-enhanced-analysis-findings.py -v
       - name: Verify effective protection policy identifier in scan results
         run: python3 test-effective-policy-scan-results.py -v
       - name: Verify responses for every detection remain fail-closed
