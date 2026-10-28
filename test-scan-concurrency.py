@@ -32,7 +32,8 @@ class ScanConcurrencyTests(unittest.TestCase):
         peak = 0
         seen = []
 
-        def fake_scan(item, _scanner):
+        def fake_scan(item, _scanner, *, policy_snapshot):
+            self.assertIsInstance(policy_snapshot, opener.ScanSecurityPolicySnapshot)
             nonlocal active, peak
             with mutex:
                 active += 1
