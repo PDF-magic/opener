@@ -24,7 +24,9 @@ disabled.
 
 The worker reuses the trusted Maximum isolated-analysis
 `_apply_limits()` entry point **before importing PyMuPDF**. That applies
-the existing CPU, memory, no-core and no-output-file limits. Parent-side
+the existing CPU, memory, no-core and no-output-file limits. The macOS resident-memory watchdog stays armed during the complete render
+and is explicitly disarmed before interpreter shutdown, avoiding a late
+`SIGALRM` after valid PNG delivery. Parent-side
 process isolation also uses Python `-I -B`, no shell, a minimal environment,
 closed inherited file descriptors, a new process session, 30-second
 deadline, private stdin and discarded stderr. This separate process

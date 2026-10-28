@@ -244,6 +244,16 @@ class MaximumRendererTests(unittest.TestCase):
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
 
+    @unittest.skipUnless(sys.platform == "darwin", "Late SIGALRM is macOS-only")
+    def test_worker_alarm_is_disarmed_before_process_shutdown(self):
+        # Regression: the worker used to emit a complete PNG and then die
+        # from SIGALRM during Python interpreter teardown.
+        for i in range(16):
+            with self.subTest(attempt=i):
+                page = renderer.render_isolated_pdf_page(self.pdf, 0)
+                self.assertEqual(page.page_index, 0)
+                self.assertTrue(page.png_bytes.startswith(renderer.PNG_SIGNATURE))
+
     def test_ci_renders_real_pdf_on_linux_and_macos(self):
         ci = (ROOT / ".github/workflows/maximum-isolated-renderer.yml").read_text()
         self.assertIn("ubuntu-latest", ci)

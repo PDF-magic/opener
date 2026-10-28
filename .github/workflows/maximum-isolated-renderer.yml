@@ -22,37 +22,5 @@ jobs:
           python-version: "3.11"
       - name: Install pinned PDF raster renderer
         run: python3 -m pip install --disable-pip-version-check 'pymupdf==1.26.7'
-      - name: Diagnose synthetic renderer child exits on macOS
-        if: runner.os == 'macOS'
-        run: |
-          python3 - <<'PY'
-          import os, subprocess, sys
-          from pathlib import Path
-          import pymupdf
-          from maximum_isolated_renderer import _decode_response
-          d = pymupdf.open()
-          p = d.new_page(width=200, height=150)
-          p.draw_rect(pymupdf.Rect(15, 15, 95, 95), fill=(1, 0, 0))
-          body = d.tobytes(garbage=3, deflate=True)
-          d.close()
-          worker = Path("maximum_render_worker.py").resolve()
-          for i in range(8):
-              run = subprocess.run([sys.executable, "-I", "-B", str(worker), "0"],
-                  input=body, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                  cwd="/", timeout=15, close_fds=True, start_new_session=True,
-                  env={"PATH":"/usr/bin:/bin","HOME":"/nonexistent","LANG":"C",
-                       "PYTHONDONTWRITEBYTECODE":"1","PYTHONNOUSERSITE":"1",
-                       "OPENER_TEST_RENDER_DIAGNOSTICS":"1"})
-              result = "invalid"
-              if run.returncode == 0:
-                  try:
-                      _decode_response(run.stdout, 0)
-                      result = "valid"
-                  except Exception as exc:
-                      result = type(exc).__name__
-              print("attempt", i, "exit", run.returncode,
-                    "length", len(run.stdout), "validation", result,
-                    "workerFailureType", run.stderr.decode("ascii", errors="replace").strip()[:80])
-          PY
       - name: Verify real isolated page rasterization and fail-closed limits
         run: python3 test-maximum-isolated-renderer.py -v

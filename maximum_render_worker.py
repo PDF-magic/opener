@@ -88,10 +88,18 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         code = main()
-    except BaseException as error:
-        # GitHub CI synthetic fixture diagnostics are explicitly opt-in;
-        # production launcher never forwards this environment variable.
-        if os.environ.get("OPENER_TEST_RENDER_DIAGNOSTICS") == "1":
-            sys.stderr.write(type(error).__name__ + "\n")
+    except BaseException:
+        # No PDF-controlled diagnostics or partial raster output on failure.
         code = 2
+    finally:
+        # The macOS memory watchdog must remain active for all parsing and
+        # rasterization, but must be disarmed before interpreter teardown.
+        # Otherwise a late SIGALRM may terminate a worker *after* it has
+        # emitted a valid PNG, creating nondeterministic false failures.
+        if sys.platform == "darwin":
+            try:
+                import signal
+                signal.setitimer(signal.ITIMER_REAL, 0)
+            except BaseException:
+                code = 2
     raise SystemExit(code)
