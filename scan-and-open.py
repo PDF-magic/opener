@@ -844,25 +844,18 @@ def scan_and_open_generated_copy(item, offer):
     conversion result, and reuse the complete existing signature freshness,
     ClamAV, file-integrity, destination, quarantine and launch gates.
     """
-    # Defer the optional PDF parser import: normal Built-in scanning does not
-    # require pypdf and cannot acquire a new dependency through this path.
-    from maximum_sanitized_copy import (
-        SanitizedCopyOffer, _passive_pages, MAX_OUTPUT_BYTES,
-    )
-
-    if (type(offer) is not SanitizedCopyOffer or
-            offer.permits_open is not False or
-            offer.needs_separate_scan is not True or
-            offer.rasterized is not True or
-            not 0 < len(offer.pdf_bytes) <= MAX_OUTPUT_BYTES or
-            not _passive_pages(offer.pdf_bytes, offer.page_count)):
+    # Optional Maximum dependencies are imported only after a generated
+    # copy is explicitly requested, never on ordinary Built-in scans.
+    from maximum_generated_rescan import verified_generated_pdf_bytes
+    generated_bytes = verified_generated_pdf_bytes(offer)
+    if generated_bytes is None:
         raise RuntimeError('The sanitized PDF copy could not be verified; opening was stopped.')
 
     # The output path is supplied by the saving UI, not the untrusted PDF.
     path = supported_request_path(item)
     if path.suffix.lower() != '.pdf' or not path.is_file():
         raise RuntimeError('A saved PDF is required for re-scanning; opening was stopped.')
-    expected = _fingerprint_generated_pdf_bytes(offer.pdf_bytes)
+    expected = _fingerprint_generated_pdf_bytes(generated_bytes)
 
     # The existing normal scanner may trust a content-addressed cache. A
     # generated output must be freshly scanned regardless of earlier scans,

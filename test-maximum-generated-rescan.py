@@ -190,7 +190,8 @@ class GeneratedPDFRescanTests(unittest.TestCase):
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
-        self.assertIn("if force_rescan or not cached_clean(cache_id)", scanner)
+        self.assertIn("if requires_scan():", scanner)
+        self.assertIn("if not cached_clean(cache_id):", scanner)
         with patch.object(opener, "run_scan_command", return_value=self.clean()), \
                 patch.object(opener, "launch_clean_file") as opened:
             self.assertEqual(
