@@ -54,6 +54,14 @@ not inspect logs, documents, or saved application choices. The existing
 **About PDF Magic Opener** menu command still displays the version and the
 bundled AGPL-3.0 license; it has not been replaced.
 
+**Keyboard navigation (opener-0189):** When the preferences window opens,
+the sidebar receives keyboard focus. Use **↑/↓** to select a page and
+**Tab/Shift-Tab** to move focus between the sidebar and page controls.
+From anywhere in the window, **⌘[** opens the previous preferences section
+and **⌘]** opens the next section. Previous/Next controls disable at the
+first and last section rather than wrapping. The shortcuts only change
+the visible page; they never change saved preferences or scanning policy.
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a
@@ -70,6 +78,13 @@ Use **PDF Magic Opener → Quit PDF Magic Opener** (⌘Q) to exit the
 standalone preferences app. This standard macOS Quit action terminates
 that application only; it does not change the chosen PDF handler, stored
 browser preferences, or scanner configuration.
+
+**Window branding (opener-0166):** The standalone preferences window is titled
+**PDF Magic Opener**, matching the app display name and its application menu.
+Both Debug and Release builds bundle a dedicated multiresolution macOS
+`PDFMagicOpenerIcon.icns` (document, verification checkmark, and sparkle).
+The icon appears in Finder, the Dock, and the macOS application switcher;
+the separate PDF scan helper, browser preferences, and ClamAV gate are unchanged.
 
 **Dock behavior (opener-0174):** The standalone SwiftUI preferences app is a
 regular macOS application **with a Dock icon** when launched, so users can

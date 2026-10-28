@@ -79,6 +79,21 @@ private struct PreferenceOverviewPane: View {
 
 struct MainPreferencesView: View {
   @State private var selection: MainPreferenceSection? = .general
+  @FocusState private var sidebarFocused: Bool
+
+  private var selectedIndex: Int {
+    MainPreferenceSection.allCases.firstIndex(of: selection ?? .general) ?? 0
+  }
+
+  // Keyboard shortcuts change only the in-memory page selection. Respect
+  // the bounds, including newly added preferences destinations.
+  private func moveSelection(by offset: Int) {
+    let sections = MainPreferenceSection.allCases
+    let nextIndex = selectedIndex + offset
+    guard sections.indices.contains(nextIndex) else { return }
+    selection = sections[nextIndex]
+    sidebarFocused = true
+  }
 
   var body: some View {
     NavigationSplitView {
@@ -91,6 +106,8 @@ struct MainPreferencesView: View {
       }
       .listStyle(.sidebar)
       .accessibilityLabel("Preferences sections")
+      .focused($sidebarFocused)
+      .onAppear { sidebarFocused = true }
       .navigationTitle("Preferences")
       .frame(minWidth: 170)
       .accessibilityIdentifier("mainPreferencesSidebar")
@@ -99,6 +116,27 @@ struct MainPreferencesView: View {
         .accessibilityIdentifier("mainPreferencesDetails")
     }
     .frame(minWidth: 680, minHeight: 420)
+    .toolbar {
+      ToolbarItemGroup {
+        Button {
+          moveSelection(by: -1)
+        } label: {
+          Label("Previous Section", systemImage: "chevron.up")
+        }
+        .keyboardShortcut("[", modifiers: .command)
+        .disabled(selectedIndex == 0)
+        .help("Previous preferences section (Command-[)")
+
+        Button {
+          moveSelection(by: 1)
+        } label: {
+          Label("Next Section", systemImage: "chevron.down")
+        }
+        .keyboardShortcut("]", modifiers: .command)
+        .disabled(selectedIndex == MainPreferenceSection.allCases.count - 1)
+        .help("Next preferences section (Command-])")
+      }
+    }
   }
 
   @ViewBuilder
