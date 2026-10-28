@@ -126,3 +126,79 @@ app.run()
         time.sleep(0.05)
     assert ended.exists(), 'The scan child did not receive EOF when the app terminated'
     print('PASS: app termination closes the scan lifetime pipe.')
+
+
+    # opener-0172: open the separate SwiftUI Settings application while the
+    # native PDF-owner process has a scan in progress. The settings executable
+    # is built earlier in the macOS CI job and does not own the scan lifetime.
+    import os
+    settings_binary = Path(os.environ.get("RUNNER_TEMP", "/nonexistent")) / (
+        "PDFMagicOpenerDerived/Build/Products/Debug/"
+        "PDFMagicOpener.app/Contents/MacOS/PDFMagicOpener"
+    )
+    if os.environ.get("CI"):
+        assert settings_binary.is_file(), "Standalone Settings build is missing"
+    if settings_binary.is_file():
+        scan_started = root / "settings-scan-started"
+        scan_finished = root / "settings-scan-finished"
+        gate.write_text(
+            "#!/bin/bash\n"
+            f"printf started > \"{scan_started}\"\n"
+            "sleep 3\n"
+            f"printf finished > \"{scan_finished}\"\n"
+        )
+        live_harness = classes + f'''
+let app = NSApplication.shared
+let delegate = PDFOpener()
+app.delegate = delegate
+app.setActivationPolicy(.accessory)
+DispatchQueue.main.async {{
+    delegate.application(app, open: [URL(fileURLWithPath: "{document}")])
+}}
+app.run()
+'''
+        swift.write_text(live_harness)
+        subprocess.run(
+            ["/usr/bin/xcrun", "swiftc", str(swift), "-o", str(binary)], check=True
+        )
+        scan_owner = subprocess.Popen(
+            [str(binary)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        settings_owner = None
+        try:
+            deadline = time.monotonic() + 8
+            while (not scan_started.exists() and scan_owner.poll() is None
+                   and time.monotonic() < deadline):
+                time.sleep(0.05)
+            assert scan_started.exists(), "Native scanner did not start"
+            # Do not invoke a Settings action on the scan owner. The separate
+            # SwiftUI app can open its preferences without closing the
+            # scanner's lifetime pipe or cancelling the pending request.
+            settings_owner = subprocess.Popen(
+                [str(settings_binary)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            time.sleep(0.3)
+            assert settings_owner.poll() is None, "Settings application exited"
+            assert scan_owner.poll() is None, "Opening Settings stopped the scan"
+            assert scan_owner.wait(timeout=15) == 0, "Native scan owner failed"
+            assert scan_finished.exists(), "Scan was interrupted by Settings"
+            assert settings_owner.poll() is None, (
+                "Settings must remain usable after a scan finishes"
+            )
+            print("PASS: Settings opens while scanning and does not interrupt it.")
+        finally:
+            if scan_owner.poll() is None:
+                scan_owner.terminate()
+                try:
+                    scan_owner.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    scan_owner.kill()
+                    scan_owner.wait(timeout=5)
+            if settings_owner is not None and settings_owner.poll() is None:
+                settings_owner.terminate()
+                try:
+                    settings_owner.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    settings_owner.kill()
+                    settings_owner.wait(timeout=5)
