@@ -119,6 +119,12 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     }
 
     private func showProgress() {
+        // Presentation only: hidden progress must not skip or cancel scans.
+        // Each request still enters the unchanged queue and scanner gate.
+        guard ScanProgressPreference.isEnabled() else {
+            panel?.orderOut(nil)
+            return
+        }
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))

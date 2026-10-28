@@ -11,6 +11,7 @@ assert "let failure = withScanErrorPipe" in source, "Native scans must use clean
 
 swift = ("import Darwin\n" + source.split(marker)[0] + "\n"
          + Path(__file__).with_name("scan-progress-view.swift").read_text()
+         + "\n" + (Path(__file__).parent / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text().replace("import Foundation\n", "")
          + """
 enum SimulatedFailure: Error {
     case launch

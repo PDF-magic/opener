@@ -64,11 +64,27 @@ func readGeneralPDFHandlerStatus(
 // and the PDF default action targets the separate installed scan handler.
 struct GeneralSettingsView: View {
   @State private var pdfHandlerStatus: GeneralPDFHandlerStatus = .unknown
+  @State private var showScanProgress = true
+  @State private var scanProgressMessage: String?
   @State private var browserOptions: [PDFBrowserOption] = []
   @State private var selectedBrowserID = ""
   @State private var browserMessage = ""
   @State private var savingBrowser = false
   @State private var loaded = false
+
+  private func loadScanProgressPreference() {
+    showScanProgress = ScanProgressPreference.isEnabled()
+  }
+
+  private func updateScanProgressPreference(_ enabled: Bool) {
+    if ScanProgressPreference.save(enabled) {
+      showScanProgress = enabled
+      scanProgressMessage = "Scan progress preference saved."
+    } else {
+      scanProgressMessage = "Could not save scan progress preference. The previous setting is unchanged."
+      showScanProgress = ScanProgressPreference.isEnabled()
+    }
+  }
 
   private func refreshPDFHandlerStatus() {
     pdfHandlerStatus = readGeneralPDFHandlerStatus()
@@ -203,6 +219,32 @@ struct GeneralSettingsView: View {
         } label: {
           Label("Current configuration", systemImage: "gearshape")
         }
+
+        GroupBox("Scan progress") {
+          VStack(alignment: .leading, spacing: 12) {
+            Toggle("Show Scan Progress", isOn: Binding(
+              get: { showScanProgress },
+              set: { updateScanProgressPreference($0) }
+            ))
+            .accessibilityIdentifier("showScanProgressToggle")
+
+            Text("Show the animated scan window and Cancel button while a PDF is checked. Turning this off hides only that window, including its Cancel button; malware scanning, quarantine protection, and failure warnings remain active.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let scanProgressMessage {
+              Text(scanProgressMessage)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("showScanProgressStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("showScanProgressSection")
+        .onAppear(perform: loadScanProgressPreference)
 
         PDFDefaultApplicationSettingsView()
 
