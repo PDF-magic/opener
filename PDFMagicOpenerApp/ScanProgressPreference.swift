@@ -68,3 +68,21 @@ enum SuccessfulScanNotificationPreference {
     return enabled && failure == nil && !cancelled
   }
 }
+
+// Create persisted presentation preferences on first launch without overwriting
+// user choices. The installed scanner continues to own its separate settings.
+enum InitialConfiguration {
+  @discardableResult
+  static func createIfNeeded(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    if defaults.object(forKey: ScanProgressPreference.key) == nil {
+      defaults.set(true, forKey: ScanProgressPreference.key)
+    }
+    if defaults.object(forKey: SuccessfulScanNotificationPreference.key) == nil {
+      defaults.set(false, forKey: SuccessfulScanNotificationPreference.key)
+    }
+    return defaults.synchronize()
+  }
+}

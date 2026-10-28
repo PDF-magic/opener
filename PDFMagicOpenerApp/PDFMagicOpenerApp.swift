@@ -15,6 +15,11 @@ import SwiftUI
 // continues to handle PDFs; this target does not register as a PDF opener.
 @main
 struct PDFMagicOpenerApp: App {
+  init() {
+    // Materialize defaults before either preferences window is shown.
+    InitialConfiguration.createIfNeeded()
+  }
+
   var body: some Scene {
     WindowGroup("PDF Magic Opener") {
       MainPreferencesView()
