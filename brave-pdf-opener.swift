@@ -103,6 +103,23 @@ func currentRequestSource() -> String {
     return "unknown"
 }
 
+// Present the requested filename, not the canonical scan target or a generic
+// progress count. Failure alerts remain visible even if progress is disabled.
+func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
+    let filename = URL(fileURLWithPath: requestedPath).lastPathComponent
+    let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
+    let explanation = reason.isEmpty
+        ? "The scan or file handoff returned no additional error details."
+        : String(reason.prefix(1600))
+    let alert = NSAlert()
+    alert.alertStyle = .critical
+    alert.messageText = "PDF could not be opened"
+    alert.informativeText = "File: \(filename)\n\nThe safety scan or destination handoff failed. "
+        + "PDF Magic Opener did not open this file.\n\nDetails: \(explanation)"
+    alert.addButton(withTitle: "OK")
+    return alert
+}
+
 final class PDFOpener: NSObject, NSApplicationDelegate {
     private var pending = Set<String>()
     // Retain completed requests until exit, including events queued during a scan.
@@ -283,6 +300,8 @@ DispatchQueue.main.async {
                 if let pipe = self.scanLifetimes.removeValue(forKey: path) {
                     try? pipe.fileHandleForWriting.close()
                 }
+                // Capture the user's original filename before per-request cleanup.
+                let requestedPath = self.requestedPaths[path] ?? path
                 self.running.remove(path)
                 self.launchedScans.remove(path)
                 self.pending.remove(path)
@@ -300,11 +319,8 @@ DispatchQueue.main.async {
                 else { self.panel?.orderOut(nil) }
                 if let failure = failure {
                     NSApp.activate(ignoringOtherApps: true)
-                    let alert = NSAlert()
-                    alert.alertStyle = .warning
-                    alert.messageText = "Opening stopped"
-                    alert.informativeText = failure
-                    alert.addButton(withTitle: "OK")
+                    let alert = makeScanFailureAlert(
+                        requestedPath: requestedPath, details: failure)
                     alert.runModal()
                 }
                 // A nil error may also indicate cancellation. Only a zero
