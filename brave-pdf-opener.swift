@@ -207,7 +207,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             stage = .queued
         }
         panel?.show(documentDescription: description, stage: stage,
-                    queuedDocumentCount: queued.count)
+                    queuedDocumentCount: queued.count,
+                    activeScans: launchedScans.count)
     }
 
     private func startQueuedScans() {
