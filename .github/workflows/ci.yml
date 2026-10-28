@@ -121,10 +121,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Render browser preference names, icons and optional versions
+      - name: Render and refresh browser preferences safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors browser-preference-list.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING browser-app-metadata.swift browser-preference-list.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-app-metadata.swift browser-preference-list.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
           "$RUNNER_TEMP/TestBrowserPreferenceList"
           if "$RUNNER_TEMP/BrowserPreferenceList" </dev/null; then exit 1; fi
       - name: Compile native PDF opener

@@ -239,7 +239,7 @@ printf '%s\n' '[{"bundleIdentifier":"com.brave.Browser","name":"Brave Browser","
   "$HOME/Library/Application Support/Studio/allow-and-open/browser-preference-list"
 ```
 
-Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The list does **not** discover applications itself, choose a PDF target, write `target-app.txt`, or alter Launch Services defaults. Browser discovery (opener-0124), metadata extraction (opener-0129), and selector integration (opener-0137) are distinct prerequisites for an automatically populated preference picker.
+Reinstall to deploy this optional display command. A supplied icon is decoded as the native application image; missing/unusable artwork receives a generic application icon, never a fabricated browser logo. A missing or invalid version is omitted. The initial list uses only caller-provided metadata. The **Refresh Browsers** button explicitly reruns the installed, read-only `discover-installed-browsers` helper, revalidates discovered bundle identities and executables, and replaces displayed rows with fresh names, icons, and versions. A failed refresh retains the existing list and shows an error; a successful empty inventory is displayed as empty. Refresh never chooses a PDF target, edits `target-app.txt`, launches a browser, or changes Launch Services defaults. This action works after reinstalling the updated helper and does not modify scanner protections or the current saved preference.
 
 ## PDF target application
 

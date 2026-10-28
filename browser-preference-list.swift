@@ -65,15 +65,100 @@ func browserPreferenceItems(from data: Data) -> [BrowserPreferenceItem]? {
     return items
 }
 
+
+private struct BrowserDiscoveryLocation: Decodable {
+    let bundleIdentifier: String
+    let path: String
+}
+
+// Convert a fresh, bounded inventory into the same read-only list items.
+// Recheck each executable and bundle identity; discovery output alone never
+// gives an application permission to open a scanned PDF.
+func refreshedBrowserPreferenceItems(
+    from data: Data,
+    metadataLookup: (URL) -> BrowserApplicationMetadata? = {
+        browserApplicationMetadata(at: $0)
+    }
+) -> [BrowserPreferenceItem]? {
+    guard data.count <= 256 * 1024,
+          let found = try? JSONDecoder().decode([BrowserDiscoveryLocation].self, from: data),
+          found.count <= 2048 else { return nil }
+
+    var identifiers = Set<String>()
+    var items = [BrowserPreferenceItem]()
+    for location in found {
+        guard location.path.hasPrefix("/"),
+              location.path.utf8.count <= 4096,
+              !location.path.unicodeScalars.contains(where: {
+                  CharacterSet.controlCharacters.contains($0)
+              }),
+              location.bundleIdentifier != "local.studio.brave-pdf-opener",
+              let metadata = metadataLookup(URL(fileURLWithPath: location.path)),
+              metadata.bundleIdentifier == location.bundleIdentifier,
+              !identifiers.contains(metadata.bundleIdentifier),
+              let name = safeBrowserDisplayText(metadata.name, limit: 128) else { continue }
+
+        identifiers.insert(metadata.bundleIdentifier)
+        items.append(BrowserPreferenceItem(
+            bundleIdentifier: metadata.bundleIdentifier,
+            name: name,
+            version: metadata.version.flatMap { safeBrowserDisplayText($0, limit: 64) },
+            icon: metadata.icon
+        ))
+        // Match the existing preference-view limit instead of rendering a
+        // surprise unbounded list when a discovery provider malfunctions.
+        guard items.count <= 100 else { return nil }
+    }
+    return items
+}
+
+// Rerun the installed discovery helper only after an explicit Refresh action.
+// No selection, preference file, PDF association, or scan state is touched.
+func rediscoverBrowserPreferenceItems(
+    executable: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/Studio/allow-and-open/discover-installed-browsers")
+) -> [BrowserPreferenceItem]? {
+    guard executable.isFileURL,
+          FileManager.default.isExecutableFile(atPath: executable.path) else { return nil }
+    let process = Process()
+    process.executableURL = executable
+    process.standardError = FileHandle.nullDevice
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    do {
+        try process.run()
+    } catch {
+        return nil
+    }
+    // Drain before waiting: a large inventory could otherwise block the
+    // discovery process on a full stdout pipe.
+    var data = Data()
+    let limit = 256 * 1024
+    while data.count <= limit {
+        let chunk = pipe.fileHandleForReading.readData(
+            ofLength: min(65536, limit + 1 - data.count))
+        if chunk.isEmpty { break }
+        data.append(chunk)
+    }
+    if data.count > limit && process.isRunning {
+        process.terminate()
+    }
+    process.waitUntilExit()
+    guard data.count <= limit, process.terminationStatus == 0 else { return nil }
+    return refreshedBrowserPreferenceItems(from: data)
+}
+
 // The browser's actual macOS icon and human-readable name are always in the
 // main row. Version appears only when the user requests optional details.
 final class BrowserPreferenceRow: NSStackView {
+    let bundleIdentifier: String
     let nameField: NSTextField
     let iconView: NSImageView
     let versionField: NSTextField?
     let detailsButton: NSButton?
 
     init(item: BrowserPreferenceItem) {
+        bundleIdentifier = item.bundleIdentifier
         nameField = NSTextField(labelWithString: item.name)
         iconView = NSImageView()
         if let version = item.version {
@@ -138,22 +223,93 @@ final class BrowserPreferenceRow: NSStackView {
 }
 
 final class BrowserPreferenceListView: NSStackView {
-    let rows: [BrowserPreferenceRow]
+    private(set) var rows = [BrowserPreferenceRow]()
+    let refreshButton: NSButton?
+    let refreshStatus: NSTextField?
+    var onItemsChanged: ((Int) -> Void)?
+    private let refreshProvider: ((@escaping ([BrowserPreferenceItem]?) -> Void) -> Void)?
+    private var emptyLabel: NSTextField?
 
-    init(items: [BrowserPreferenceItem]) {
-        rows = items.map { BrowserPreferenceRow(item: $0) }
+    init(
+        items: [BrowserPreferenceItem],
+        refreshProvider: ((@escaping ([BrowserPreferenceItem]?) -> Void) -> Void)? = nil
+    ) {
+        self.refreshProvider = refreshProvider
+        if refreshProvider != nil {
+            refreshButton = NSButton(title: "Refresh Browsers", target: nil, action: nil)
+            refreshStatus = NSTextField(labelWithString: "")
+        } else {
+            refreshButton = nil
+            refreshStatus = nil
+        }
         super.init(frame: .zero)
         orientation = .vertical
         alignment = .leading
         spacing = 12
-        if rows.isEmpty {
-            addArrangedSubview(NSTextField(labelWithString: "No discovered browsers to display."))
-        } else {
-            rows.forEach { addArrangedSubview($0) }
+
+        if let button = refreshButton {
+            button.target = self
+            button.action = #selector(refreshBrowsers(_:))
+            button.setAccessibilityLabel("Refresh Browsers")
+            addArrangedSubview(button)
         }
+        if let status = refreshStatus {
+            status.textColor = .secondaryLabelColor
+            status.setAccessibilityLabel("Browser refresh status")
+            addArrangedSubview(status)
+        }
+        replaceItems(items)
     }
 
     required init?(coder: NSCoder) { return nil }
+
+    private func replaceItems(_ items: [BrowserPreferenceItem]) {
+        // Preserve the user's open version details for surviving browsers.
+        let expanded = Set(rows.filter { $0.versionField?.isHidden == false }
+            .map { $0.bundleIdentifier })
+        for row in rows {
+            removeArrangedSubview(row)
+            row.removeFromSuperview()
+        }
+        if let emptyLabel = emptyLabel {
+            removeArrangedSubview(emptyLabel)
+            emptyLabel.removeFromSuperview()
+            self.emptyLabel = nil
+        }
+        rows = items.map { BrowserPreferenceRow(item: $0) }
+        if rows.isEmpty {
+            let label = NSTextField(labelWithString: "No discovered browsers to display.")
+            emptyLabel = label
+            addArrangedSubview(label)
+        } else {
+            for row in rows {
+                if expanded.contains(row.bundleIdentifier), let button = row.detailsButton {
+                    row.toggleDetails(button)
+                }
+                addArrangedSubview(row)
+            }
+        }
+        onItemsChanged?(rows.count)
+    }
+
+    @objc func refreshBrowsers(_ sender: NSButton) {
+        guard let provider = refreshProvider, sender.isEnabled else { return }
+        sender.isEnabled = false
+        refreshStatus?.stringValue = "Refreshing browsers…"
+        provider { [weak self] updated in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let updated = updated {
+                    self.replaceItems(updated)
+                    self.refreshStatus?.stringValue = "Browser list refreshed."
+                } else {
+                    // Failed/invalid discovery is not an empty inventory.
+                    self.refreshStatus?.stringValue = "Refresh failed. Existing list kept."
+                }
+                self.refreshButton?.isEnabled = true
+            }
+        }
+    }
 }
 
 #if !BROWSER_PREFERENCE_TESTING
@@ -184,11 +340,22 @@ struct ShowBrowserPreferences {
         window.title = "Installed browser preferences"
         window.minSize = NSSize(width: 420, height: 220)
 
-        let list = BrowserPreferenceListView(items: items)
-        let contentHeight = max(120, CGFloat(max(items.count, 1)) * 84 + 32)
+        let list = BrowserPreferenceListView(items: items, refreshProvider: { completion in
+            DispatchQueue.global(qos: .userInitiated).async {
+                completion(rediscoverBrowserPreferenceItems())
+            }
+        })
+        let contentHeight = max(120, CGFloat(max(items.count, 1)) * 84 + 100)
         let document = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: contentHeight))
         list.frame = NSRect(x: 16, y: 16, width: 488, height: contentHeight - 32)
         document.addSubview(list)
+        list.onItemsChanged = { [weak document, weak list] count in
+            let height = max(120, CGFloat(max(count, 1)) * 84 + 100)
+            document?.setFrameSize(NSSize(width: 520, height: height))
+            if let list = list {
+                list.frame = NSRect(x: 16, y: 16, width: 488, height: height - 32)
+            }
+        }
 
         let scrolling = NSScrollView(frame: window.contentView?.bounds ?? .zero)
         scrolling.autoresizingMask = [.width, .height]

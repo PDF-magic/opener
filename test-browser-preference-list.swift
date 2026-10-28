@@ -91,6 +91,100 @@ struct BrowserPreferenceListTests {
             fatalError("Could not create test icon fixture")
         }
 
+        // The refresh button invokes the provider on demand, updates rows,
+        // preserves expanded details, and never treats a provider failure as
+        // successful discovery of an empty list.
+        var pendingRefresh: (([BrowserPreferenceItem]?) -> Void)?
+        var refreshCalls = 0
+        let refreshing = BrowserPreferenceListView(items: valid!) { completion in
+            refreshCalls += 1
+            pendingRefresh = completion
+        }
+        precondition(refreshing.refreshButton?.title == "Refresh Browsers")
+        precondition(refreshCalls == 0, "Discovery must not run until requested")
+        let refreshButton = refreshing.refreshButton!
+        refreshing.rows[0].toggleDetails(refreshing.rows[0].detailsButton!)
+        refreshing.refreshBrowsers(refreshButton)
+        precondition(refreshCalls == 1 && !refreshButton.isEnabled)
+        refreshing.refreshBrowsers(refreshButton)
+        precondition(refreshCalls == 1, "Do not start concurrent refreshes")
+        pendingRefresh?([valid![0]])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        precondition(refreshButton.isEnabled && refreshing.rows.count == 1)
+        precondition(refreshing.rows[0].versionField?.isHidden == false,
+                     "Keep existing version disclosure open after refresh")
+        precondition(refreshing.refreshStatus?.stringValue == "Browser list refreshed.")
+
+        refreshing.refreshBrowsers(refreshButton)
+        pendingRefresh?(nil)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        precondition(refreshing.rows.count == 1, "Failed discovery must retain rows")
+        precondition(refreshing.refreshStatus?.stringValue.contains("Existing list kept") == true)
+
+        refreshing.refreshBrowsers(refreshButton)
+        pendingRefresh?([])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        precondition(refreshing.rows.isEmpty, "A valid empty inventory may clear rows")
+        precondition(refreshButton.isEnabled)
+        precondition(BrowserPreferenceListView(items: valid!).refreshButton == nil,
+                     "Existing callers without a refresh provider remain unchanged")
+
+        // Build an isolated fake .app and an explicit discovery helper to
+        // exercise the real refresh pipeline without querying installed user
+        // browsers, changing settings, or launching a browser.
+        let manager = FileManager.default
+        let root = manager.temporaryDirectory.appendingPathComponent(
+            "opener-refresh-test-" + UUID().uuidString)
+        try! manager.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? manager.removeItem(at: root) }
+        let app = root.appendingPathComponent("Refresh Browser.app")
+        let macos = app.appendingPathComponent("Contents/MacOS")
+        try! manager.createDirectory(at: macos, withIntermediateDirectories: true)
+        let info: [String: String] = [
+            "CFBundleIdentifier": "com.example.RefreshBrowser",
+            "CFBundleExecutable": "Browser",
+            "CFBundleDisplayName": "Refreshed Browser",
+            "CFBundleShortVersionString": "2.1",
+            "CFBundlePackageType": "APPL",
+        ]
+        let plist = try! PropertyListSerialization.data(
+            fromPropertyList: info, format: .xml, options: 0)
+        try! plist.write(to: app.appendingPathComponent("Contents/Info.plist"))
+        let browserExecutable = macos.appendingPathComponent("Browser")
+        try! "#!/bin/sh\nexit 0\n".write(
+            to: browserExecutable, atomically: true, encoding: .utf8)
+        try! manager.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: browserExecutable.path)
+        let discoveredData = encode([[
+            "bundleIdentifier": "com.example.RefreshBrowser",
+            "path": app.path,
+        ]])
+        let decoded = refreshedBrowserPreferenceItems(from: discoveredData)
+        precondition(decoded?.count == 1 && decoded?.first?.name == "Refreshed Browser")
+        precondition(decoded?.first?.version == "2.1")
+        precondition(refreshedBrowserPreferenceItems(from: encode([[
+            "bundleIdentifier": "com.example.Impostor",
+            "path": app.path,
+        ]]))?.isEmpty == true, "Mismatched bundle identities never become rows")
+        precondition(refreshedBrowserPreferenceItems(from: Data("bad".utf8)) == nil)
+        precondition(refreshedBrowserPreferenceItems(
+            from: Data(repeating: 0, count: 256 * 1024 + 1)) == nil)
+
+        let inventory = root.appendingPathComponent("inventory.json")
+        try! discoveredData.write(to: inventory)
+        let helper = root.appendingPathComponent("discover-browser-fixture.sh")
+        try! ("#!/bin/sh\n/bin/cat \"" + inventory.path + "\"\n").write(
+            to: helper, atomically: true, encoding: .utf8)
+        try! manager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: helper.path)
+        precondition(rediscoverBrowserPreferenceItems(executable: helper)?.first?.name
+                     == "Refreshed Browser", "Refresh executes read-only discovery again")
+        try! "#!/bin/sh\nexit 3\n".write(
+            to: helper, atomically: true, encoding: .utf8)
+        precondition(rediscoverBrowserPreferenceItems(executable: helper) == nil,
+                     "A failed discovery process leaves previous rows untouched")
+        precondition(rediscoverBrowserPreferenceItems(
+            executable: root.appendingPathComponent("missing-helper")) == nil)
+
         print("PASS: browser icons, names and optional version disclosure; no selection side effects.")
     }
 }
