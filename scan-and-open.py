@@ -682,7 +682,8 @@ def supported_request_path(item):
 
 
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
-                   browser_download_identifier=None, policy_snapshot=None):
+                   browser_download_identifier=None, policy_snapshot=None,
+                   force_rescan=False, expected_fingerprint=None):
     # The admission-time snapshot persists across queue waits and handoff.
     if policy_snapshot is None:
         policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
@@ -706,20 +707,31 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     record_scan_destination(destination)
     identity = file_identity(path)
     before = fingerprint(path)
+    if expected_fingerprint is not None and before != expected_fingerprint:
+        raise RuntimeError(GENERATED_OUTPUT_CHANGED_MESSAGE)
     if file_identity(path) != identity:
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     cache_id = policy_cache_key(before, is_pdf, policy_snapshot)
     performed_scan = False
     scanner_version = None
     signature_version = None
+    # Preserve the ordinary scanner's cache-miss check; generated copies must
+    # run a fresh scan even if another request cached their identical content.
+    def requires_scan():
+        if force_rescan:
+            return True
+        if not cached_clean(cache_id):
+            return True
+        return False
+
     # Do not serialize an already cached clean hit. For a miss, a cross-process
     # lock prevents another identical-content request from racing its scan.
-    if not cached_clean(cache_id):
+    if requires_scan():
         with active_scan_lock(cache_id):
             # Recheck after waiting: the selected file may have changed.
             verify_file_integrity(path, before, identity)
             # Only a completed clean result under this exact policy is reusable.
-            if not cached_clean(cache_id):
+            if requires_scan():
                 signature_version_before = read_signature_database_version()
                 if is_pdf:
                     # The engine still alerts on its internal file-size limit (~2 GB).
@@ -751,6 +763,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                 scanner_version = scan_engine_version(scanner)
                 remember_clean(cache_id, scanner_version, signature_version)
     verify_file_integrity(path, before, identity)
+    if force_rescan and not performed_scan:
+        raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.')
     # Preserve the completed scan outcome before attempting to launch the file.
     scan_result = (CleanScanResult(status='clean', from_cache=False,
                                    scanner_version=scanner_version,
@@ -804,6 +818,56 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
             raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
     return scan_result
+
+
+GENERATED_OUTPUT_CHANGED_MESSAGE = (
+    'The generated PDF differs from the sanitized copy; opening was stopped.'
+)
+
+def _fingerprint_generated_pdf_bytes(contents):
+    """Reproduce the existing single-file fingerprint without trusting a path."""
+    if type(contents) is not bytes or not contents:
+        raise ValueError('Generated PDF contents must be immutable nonempty bytes.')
+    digest = hashlib.sha256()
+    digest.update(b'file-v1\0')
+    digest.update(b'bytes\0' + str(len(contents)).encode('ascii') + b'\0')
+    digest.update(contents)
+    return digest.digest()
+
+
+@cancellable_scan
+def scan_and_open_generated_copy(item, offer):
+    """Re-scan a user-saved sanitized copy before any existing PDF handoff.
+
+    This optional Maximum-only entrypoint never uses a cached clean result.
+    Validate the offer again, bind the exact saved PDF bytes to its original
+    conversion result, and reuse the complete existing signature freshness,
+    ClamAV, file-integrity, destination, quarantine and launch gates.
+    """
+    # Optional Maximum dependencies are imported only after a generated
+    # copy is explicitly requested, never on ordinary Built-in scans.
+    from maximum_generated_rescan import verified_generated_pdf_bytes
+    generated_bytes = verified_generated_pdf_bytes(offer)
+    if generated_bytes is None:
+        raise RuntimeError('The sanitized PDF copy could not be verified; opening was stopped.')
+
+    # The output path is supplied by the saving UI, not the untrusted PDF.
+    path = supported_request_path(item)
+    if path.suffix.lower() != '.pdf' or not path.is_file():
+        raise RuntimeError('A saved PDF is required for re-scanning; opening was stopped.')
+    expected = _fingerprint_generated_pdf_bytes(generated_bytes)
+
+    # The existing normal scanner may trust a content-addressed cache. A
+    # generated output must be freshly scanned regardless of earlier scans,
+    # including those of an identical file or of its original source.
+    scanner = scanner_path()
+    policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
+    with scan_slot():
+        check_database()
+        return _scan_and_open(
+            path, scanner, policy_snapshot=policy_snapshot,
+            force_rescan=True, expected_fingerprint=expected,
+        )
 
 
 @cancellable_scan

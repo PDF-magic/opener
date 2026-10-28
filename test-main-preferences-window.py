@@ -28,6 +28,9 @@ class MainPreferencesWindowTests(unittest.TestCase):
         'BrowsersSettingsView()',
         'case .security: return "Protection"',
         'ProtectionSettingsView()',
+        'case privacyAndLogs',
+        'case .privacyAndLogs: return "Privacy and Logs"',
+        'PrivacyAndLogsSettingsView()',
         'accessibilityIdentifier("mainPreferencesSidebar")',
     ):
       with self.subTest(required=required):
@@ -72,6 +75,52 @@ class MainPreferencesWindowTests(unittest.TestCase):
     sources = project.split("isa = PBXSourcesBuildPhase;", 1)[1].split(
         "runOnlyForDeploymentPostprocessing", 1)[0]
     self.assertIn("A10000000000000000000022,", sources)
+
+  def test_privacy_and_logs_navigation_is_a_separate_sidebar_page(self):
+    nav = VIEW.read_text(encoding="utf-8")
+    self.assertIn("case privacyAndLogs", nav)
+    self.assertIn('case .privacyAndLogs: return "Privacy and Logs"', nav)
+    self.assertIn('case .privacyAndLogs: return "hand.raised"', nav)
+    self.assertIn("case .privacyAndLogs:\\n      PrivacyAndLogsSettingsView()".replace("\\n", "\n"), nav)
+    self.assertIn('accessibilityIdentifier("mainPreferencesSidebar")', nav)
+    for existing in ("case .general:", "case .browsers:", "case .security:"):
+      self.assertIn(existing, nav)
+
+  def test_privacy_and_logs_page_explains_capabilities_without_false_status(self):
+    page = (ROOT / "PDFMagicOpenerApp" / "PrivacyAndLogsSettingsView.swift").read_text(
+        encoding="utf-8")
+    for required in (
+        "struct PrivacyAndLogsSettingsView: View",
+        'Text("Privacy and Logs")',
+        'GroupBox("Local document processing")',
+        'GroupBox("Logs and diagnostics")',
+        'GroupBox("Privacy and log controls")',
+        'accessibilityIdentifier("privacyAndLogsSettingsPage")',
+        'accessibilityIdentifier("localProcessingSection")',
+        'accessibilityIdentifier("diagnosticLogsSection")',
+        'accessibilityIdentifier("privacyControlsSection")',
+        "does not read, display, export, or clear log files",
+        "No retention duration or logging status is asserted",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, page)
+    for forbidden in (
+        "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
+        "Process(", "FileHandle(", "URLSession", "URLRequest",
+        "write(to:", "removeItem(", "setDefault", "LSSetDefault",
+        "onOpenURL", "DocumentGroup", "target-app.txt",
+        "Button(", "Toggle(", "Picker(", "Slider(", "onAppear",
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, page)
+
+  def test_privacy_and_logs_page_is_compiled_into_native_app(self):
+    project = PROJECT.read_text(encoding="utf-8")
+    self.assertEqual(project.count("path = PrivacyAndLogsSettingsView.swift;"), 1)
+    self.assertIn("fileRef = B18400000000000000000002;", project)
+    sources = project.split("isa = PBXSourcesBuildPhase;", 1)[1].split(
+        "runOnlyForDeploymentPostprocessing", 1)[0]
+    self.assertIn("B18400000000000000000001,", sources)
 
   def test_window_is_non_mutating_and_in_xcode_target(self):
     view = VIEW.read_text(encoding="utf-8")

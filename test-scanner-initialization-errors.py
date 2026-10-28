@@ -24,7 +24,11 @@ class ScannerInitializationErrorTests(unittest.TestCase):
         self.assertIn("process.executableURL = URL(fileURLWithPath: \"/bin/bash\")", source)
         self.assertIn("self.activeProcesses[path] = process", source)
         self.assertIn("self.startQueuedScans()", source)
-        self.assertIn("self.panel?.orderOut(nil)", source)
+        # Progress dismissal is now handled by the presentation-only helper;
+        # scanner initialization failures retain the existing visible alert.
+        self.assertIn("panel?.orderOut(nil)", source)
+        self.assertIn("self.updateProgressAfterCompletion(hasUncancelled:", source)
+        self.assertIn("panel?.showAttentionRequired(documentDescription:", source)
 
     def test_native_alert_classifies_only_known_initialization_failures(self):
         source = OPENER.read_text(encoding="utf-8").split(
