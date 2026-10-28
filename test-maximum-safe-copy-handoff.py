@@ -29,7 +29,8 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.source = Path(self.temporary.name) / "source.pdf"
-        self.source.write_bytes(pdf())
+        self.original = pdf()
+        self.source.write_bytes(self.original)
 
     def _offer(self):
         # The trusted converter is independently covered by opener-0313/0315.
@@ -55,7 +56,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
             self.assertEqual(path.name, "safe-copy.pdf")
             self.assertEqual(stat_mode(path), 0o600)
             self.assertEqual(stat_mode(path.parent), 0o700)
-            self.assertEqual(self.source.read_bytes(), pdf())
+            self.assertEqual(self.source.read_bytes(), self.original)
             return SimpleNamespace(status="clean", effective_policy_id=EFFECTIVE_POLICY_ID)
         handoff = self._open(scan)
         self.addCleanup(route._discard_private_copy, handoff.copy_path)
