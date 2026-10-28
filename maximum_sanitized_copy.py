@@ -16,6 +16,7 @@ import subprocess
 import sys
 
 from maximum_active_content_removal import remove_active_pdf_functionality
+from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
@@ -261,6 +262,10 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
         # decoded raster pixels through a new PDF construction.
         cleaned = remove_active_pdf_functionality(converted.stdout, count)
         if cleaned is None or not _passive_pages(cleaned, count):
+            return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+        # Preserve opener-0319's independent verification of final output.
+        structure = verify_sanitized_pdf_structure(cleaned, count)
+        if structure.page_count != count:
             return _failed(SanitizerFailureKind.INVALID_OUTPUT)
         return SanitizerAttempt(SanitizedCopyOffer(cleaned, count), None)
     except Exception:

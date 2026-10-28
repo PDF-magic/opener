@@ -107,7 +107,9 @@ class SanitizerReportingTests(unittest.TestCase):
                 patch.object(copies.subprocess, "run",
                              return_value=subprocess.CompletedProcess([], 0, converted)), \
                 patch.object(copies, "remove_active_pdf_functionality", return_value=final), \
-                patch.object(copies, "_passive_pages", return_value=True):
+                patch.object(copies, "_passive_pages", return_value=True), \
+                patch.object(copies, "verify_sanitized_pdf_structure") as verify:
+            verify.return_value.page_count = 1
             result = copies.attempt_sanitized_pdf_copy(data)
             offer = copies.offer_sanitized_pdf_copy(data)
         self.assertIsNone(result.failure)
