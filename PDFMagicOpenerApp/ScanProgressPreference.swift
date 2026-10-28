@@ -2,6 +2,15 @@ import Foundation
 
 // A cosmetic setting shared by the standalone preferences UI and the
 // separately installed PDF scan handler. It does not change scan policy.
+// Defaults for every currently configurable preference. No registration or
+// persistence is performed here: absent keys use these values, while existing
+// user overrides remain authoritative. Scanner safety controls are not settings.
+enum SupportedPreferenceDefaults {
+  static let showScanProgress = true
+  static let showSuccessfulScanNotifications = false
+  static let pdfBrowserBundleIdentifier = "com.brave.Browser"
+}
+
 enum ScanProgressPreference {
   static let suiteName = "local.studio.pdf-magic-opener"
   static let key = "showScanProgress"
@@ -13,7 +22,7 @@ enum ScanProgressPreference {
   ) -> Bool {
     guard let defaults,
           let setting = defaults.object(forKey: key) as? Bool else {
-      return true
+      return SupportedPreferenceDefaults.showScanProgress
     }
     return setting
   }
@@ -42,7 +51,7 @@ enum SuccessfulScanNotificationPreference {
   ) -> Bool {
     guard let defaults,
           let setting = defaults.object(forKey: key) as? Bool else {
-      return false
+      return SupportedPreferenceDefaults.showSuccessfulScanNotifications
     }
     return setting
   }
