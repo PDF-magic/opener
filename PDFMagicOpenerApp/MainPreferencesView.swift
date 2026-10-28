@@ -82,6 +82,9 @@ private struct PreferenceOverviewPane: View {
 
 struct MainPreferencesView: View {
   @State private var selection: MainPreferenceSection? = .general
+  // Follow macOS text-size accessibility preferences instead of assuming
+  // the sidebar always fits a fixed 170-point column.
+  @ScaledMetric(relativeTo: .body) private var sidebarMinimumWidth: CGFloat = 230
   @FocusState private var sidebarFocused: Bool
 
   private var selectedIndex: Int {
@@ -102,13 +105,15 @@ struct MainPreferencesView: View {
     NavigationSplitView {
       List(MainPreferenceSection.allCases, selection: $selection) { section in
         Label(section.title, systemImage: section.symbolName)
+          .lineLimit(nil)
+          .fixedSize(horizontal: false, vertical: true)
           .tag(section)
       }
       .listStyle(.sidebar)
       .focused($sidebarFocused)
       .onAppear { sidebarFocused = true }
       .navigationTitle("Preferences")
-      .frame(minWidth: 170)
+      .frame(minWidth: sidebarMinimumWidth)
       .accessibilityIdentifier("mainPreferencesSidebar")
     } detail: {
       currentPane
