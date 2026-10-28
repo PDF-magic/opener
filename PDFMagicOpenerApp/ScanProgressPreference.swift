@@ -253,6 +253,53 @@ enum ActiveConfigurationSchemaVersion {
   }
 }
 
+// Additive upgrade for policy settings introduced after legacy presentation
+// configuration. No schema-version bump is necessary: the only supported
+// identifier is the existing Built-in scan policy, and older readers ignore
+// this optional field. This path never activates a planned protection tier.
+enum PDFMagicPolicySettingsUpgrade {
+  enum Failure: Error {
+    case invalidPolicyValue
+  }
+
+  // Upgrade v0, unversioned or current v1 JSON snapshots without discarding
+  // unrelated or future keys. Only an ABSENT field is supplied a safe value;
+  // explicit malformed/unsupported selections must not be silently repaired.
+  static func upgradeDocument(_ data: Data) throws -> Data {
+    let normalized = try PDFMagicConfigurationMigration.migrate(data)
+    guard var object = try JSONSerialization.jsonObject(with: normalized) as? [String: Any]
+    else { throw PDFMagicConfigurationMigration.Failure.invalidRoot }
+    let key = SelectedProtectionProfilePreference.key
+    if let saved = object[key] {
+      guard let raw = saved as? String,
+            ProtectionProfileIdentifier(rawValue: raw) != nil else {
+        throw Failure.invalidPolicyValue
+      }
+      // Preserve current payload bytes, including custom layout and unknowns.
+      return normalized
+    }
+    object[key] = SelectedProtectionProfilePreference.initialProfile.rawValue
+    let upgraded = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    _ = try PDFMagicConfigurationSchema.decoded(from: upgraded)
+    return upgraded
+  }
+
+  // Use the same additive policy-upgrade rule on actual legacy UserDefaults.
+  // InitialConfiguration owns the final persistence/synchronize operation.
+  // Future or malformed schema markers cannot trigger any mutation.
+  @discardableResult
+  static func seedMissingStoredPolicy(defaults: UserDefaults) -> Bool {
+    guard ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
+            PDFMagicConfigurationSchema.currentVersion,
+          defaults.object(forKey: SelectedProtectionProfilePreference.key) == nil else {
+      return false
+    }
+    defaults.set(SelectedProtectionProfilePreference.initialProfile.rawValue,
+                 forKey: SelectedProtectionProfilePreference.key)
+    return true
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.
@@ -395,53 +442,6 @@ enum PDFMagicConfigurationMigration {
       showBlockedFileNotifications: savedBool(BlockedFileNotificationPreference.key),
       selectedProtectionProfile: selectedProfile
     ).encoded()
-  }
-}
-
-// Additive upgrade for policy settings introduced after legacy presentation
-// configuration. No schema-version bump is necessary: the only supported
-// identifier is the existing Built-in scan policy, and older readers ignore
-// this optional field. This path never activates a planned protection tier.
-enum PDFMagicPolicySettingsUpgrade {
-  enum Failure: Error {
-    case invalidPolicyValue
-  }
-
-  // Upgrade v0, unversioned or current v1 JSON snapshots without discarding
-  // unrelated or future keys. Only an ABSENT field is supplied a safe value;
-  // explicit malformed/unsupported selections must not be silently repaired.
-  static func upgradeDocument(_ data: Data) throws -> Data {
-    let normalized = try PDFMagicConfigurationMigration.migrate(data)
-    guard var object = try JSONSerialization.jsonObject(with: normalized) as? [String: Any]
-    else { throw PDFMagicConfigurationMigration.Failure.invalidRoot }
-    let key = SelectedProtectionProfilePreference.key
-    if let saved = object[key] {
-      guard let raw = saved as? String,
-            ProtectionProfileIdentifier(rawValue: raw) != nil else {
-        throw Failure.invalidPolicyValue
-      }
-      // Preserve current payload bytes, including custom layout and unknowns.
-      return normalized
-    }
-    object[key] = SelectedProtectionProfilePreference.initialProfile.rawValue
-    let upgraded = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
-    _ = try PDFMagicConfigurationSchema.decoded(from: upgraded)
-    return upgraded
-  }
-
-  // Use the same additive policy-upgrade rule on actual legacy UserDefaults.
-  // InitialConfiguration owns the final persistence/synchronize operation.
-  // Future or malformed schema markers cannot trigger any mutation.
-  @discardableResult
-  static func seedMissingStoredPolicy(defaults: UserDefaults) -> Bool {
-    guard ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
-            PDFMagicConfigurationSchema.currentVersion,
-          defaults.object(forKey: SelectedProtectionProfilePreference.key) == nil else {
-      return false
-    }
-    defaults.set(SelectedProtectionProfilePreference.initialProfile.rawValue,
-                 forKey: SelectedProtectionProfilePreference.key)
-    return true
   }
 }
 
