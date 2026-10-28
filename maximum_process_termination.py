@@ -98,7 +98,10 @@ def run_limited_worker(
                     raise MaximumProcessTerminationError(BLOCK_MESSAGE)
                 for key, _ in events.select(timeout=min(remaining, 0.5)):
                     if key.fileobj is process.stdout:
-                        chunk = os.read(process.stdout.fileno(), MAX_OUTPUT_BYTES + 1)
+                        # Only consume one byte beyond remaining cumulative
+                        # capacity: earlier chunks already occupy the budget.
+                        remaining_capacity = MAX_OUTPUT_BYTES - len(output)
+                        chunk = os.read(process.stdout.fileno(), remaining_capacity + 1)
                         if not chunk:
                             events.unregister(process.stdout)
                             process.stdout.close()

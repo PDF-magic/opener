@@ -16,6 +16,12 @@ only fixed path-free errors, never the PDF contents or child diagnostics.
 
 Unlike an unbounded `subprocess.run(..., stdout=PIPE)`, the supervisor
 reads stdout in fixed chunks and refuses excess data **before** buffering it.
+The companion **opener-0311 output-size hardening** additionally constrains
+each nonblocking read to the *remaining* room within the cumulative 4,096-byte
+budget plus one detection byte. A 4,096-byte response is accepted, the very
+next byte fails closed, and multiple smaller writes cannot evade the ceiling.
+Linux and macOS tests explicitly verify those exact boundaries.
+
 Stdin writes are nonblocking and share the same deadline, preventing a hung
 parser from indefinitely blocking the parent on a full pipe. All operations
 use Python's isolated interpreter, closed extra file descriptors, no shell

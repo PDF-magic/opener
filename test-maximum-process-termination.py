@@ -98,6 +98,31 @@ class MaximumProcessTerminationTests(unittest.TestCase):
                     "sys.stdout.flush(); time.sleep(20)")
         self.assertTrue(killed)
 
+    def test_exact_cumulative_output_limit_and_first_excess_byte(self):
+        # A fully complete boundary-size response is allowed; no temporary
+        # parent read may exceed the remaining budget plus one byte.
+        payload = run_script(
+            "import sys;sys.stdin.buffer.read();sys.stdout.write('Q'*4096)"
+        )
+        self.assertEqual(payload, b"Q" * guard.MAX_OUTPUT_BYTES)
+        with self.assertRaises(guard.MaximumProcessTerminationError) as error:
+            run_script(
+                "import sys;sys.stdin.buffer.read();sys.stdout.write('Q'*4097)"
+            )
+        self.assertEqual(str(error.exception), guard.BLOCK_MESSAGE)
+
+    def test_output_limit_is_cumulative_across_separate_writes(self):
+        accepted = run_script(
+            "import os,time;os.read(0,4);os.write(1,b'A'*3072);"
+            "time.sleep(0.02);os.write(1,b'B'*1024)"
+        )
+        self.assertEqual(accepted, b"A"*3072 + b"B"*1024)
+        with self.assertRaises(guard.MaximumProcessTerminationError):
+            run_script(
+                "import os,time;os.read(0,4);os.write(1,b'A'*3072);"
+                "time.sleep(0.02);os.write(1,b'B'*1025)"
+            )
+
     def test_abnormal_exit_is_blocked_and_worker_group_cleaned(self):
         with self.assertRaises(guard.MaximumProcessTerminationError):
             run_script("import sys; sys.exit(7)")
