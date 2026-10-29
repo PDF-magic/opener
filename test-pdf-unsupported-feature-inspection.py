@@ -9,12 +9,12 @@ from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import (
-    DecodedStreamObject, DictionaryObject, NameObject, NumberObject, StreamObject,
+    ArrayObject, DecodedStreamObject, DictionaryObject, NameObject, NumberObject,
     TextStringObject,
 )
 
 from pdf_unsupported_feature_inspection import (
-    MAX_GRAPH_NODES, PDFUnsupportedFeatureInspectionError,
+    PDFUnsupportedFeatureInspectionError,
     PDFUnsupportedFeatureReport, UnsupportedPDFFeature,
     inspect_pdf_unsupported_features,
 )
@@ -75,7 +75,7 @@ def feature_writer():
     root[NameObject("/Perms")] = DictionaryObject({
         NameObject("/DocMDP"): DictionaryObject({
             NameObject("/Type"): NameObject("/Sig"),
-            NameObject("/ByteRange"): [NumberObject(0), NumberObject(1)],
+            NameObject("/ByteRange"): ArrayObject([NumberObject(0), NumberObject(1)]),
             NameObject("/Contents"): TextStringObject("PRIVATE signature bytes"),
         }),
     })
@@ -92,7 +92,7 @@ def feature_writer():
         NameObject("/Type"): NameObject("/3D"),
     }))
     page = writer.pages[0]
-    page[NameObject("/Annots")] = []
+    page[NameObject("/Annots")] = ArrayObject()
     stream = DecodedStreamObject()
     stream.set_data(b"PRIVATE page content")
     stream[NameObject("/Filter")] = NameObject("/LZWDecode")
@@ -220,7 +220,6 @@ class UnsupportedPDFFeatureInspectionTests(unittest.TestCase):
         for forbidden in ("get_data(", "decrypt(", "subprocess.", "launch_clean_file(",
                           "remove_quarantine(", "write_text(", "os.environ"):
             self.assertNotIn(forbidden, source)
-        self.assertNotIn("MAX_GRAPH_NODES =", source) if False else None
 
 
 if __name__ == "__main__":

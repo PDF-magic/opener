@@ -78,10 +78,10 @@ class PDFUnsupportedFeatureReport:
     def __post_init__(self):
         if (
             type(self.feature_codes) is not tuple
+            or any(type(item) is not UnsupportedPDFFeature for item in self.feature_codes)
             or self.feature_codes != tuple(sorted(
                 set(self.feature_codes), key=lambda item: item.value
             ))
-            or any(type(item) is not UnsupportedPDFFeature for item in self.feature_codes)
             or type(self.inspected_object_count) is not int
             or not 0 <= self.inspected_object_count <= MAX_INDEXED_OBJECTS
             or type(self.inspection_complete) is not bool
