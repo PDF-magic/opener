@@ -47,6 +47,11 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, script)
         self.script = self.root / "update.sh"
+        # Synthetic update tests bypass only the separately tested ClamAV
+        # stage-load probe in their disposable updater copy.
+        first = script.index("# BEGIN staged database verification (opener-0386)")
+        last = script.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
+        script = script[:first] + script[last:]
         self.script.write_text(script.replace(CANDIDATES, str(self.fake)))
         (self.signatures / "main.cvd").write_bytes(b"usable main database\n")
         (self.signatures / "daily.cld").write_bytes(b"usable daily database\n")
