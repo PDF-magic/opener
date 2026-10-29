@@ -55,7 +55,7 @@ class ClamAVVersionSupportTests(unittest.TestCase):
         cases = (subprocess.TimeoutExpired([SCANNER, "--version"], 5),
                  FileNotFoundError("private executable path"),
                  subprocess.CalledProcessError(1, [SCANNER, "--version"]),
-                 UnicodeDecodeError("utf-8", b"\\xff", 0, 1, "invalid start byte"),
+                 UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
                  "not ClamAV; /private/secret", "ClamAV 1.5", "")
         for response in cases:
             with self.subTest(response=repr(response)):
