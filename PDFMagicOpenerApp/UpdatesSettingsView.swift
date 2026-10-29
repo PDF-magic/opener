@@ -80,7 +80,7 @@ struct UpdatesSettingsView: View {
             Text("ClamAV definitions are maintained by the existing scanner update workflow independently of these preferences. These timestamps do not verify signature freshness or database health.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
-            Label("An attempted update is not proof of success. The installed scanner still checks signature freshness and database validity before scanning; viewing this page never starts an update.", systemImage: "info.circle")
+            Label("Malware definitions describe threats recognized by the scanner. Their update schedule is separate from app updates. An attempted update is not proof of success. The installed scanner still checks signature freshness and database validity before scanning; viewing this page never starts an update.", systemImage: "info.circle")
               .font(.footnote)
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
