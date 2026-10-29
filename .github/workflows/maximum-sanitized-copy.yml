@@ -29,6 +29,8 @@ jobs:
         run: python3 test-maximum-text-readability.py -v
       - name: Verify image-detail metrics and embedded-picture fixtures
         run: python3 test-maximum-image-readability.py -v
+      - name: Verify multi-column fixture geometry and layout metrics
+        run: python3 test-maximum-multi-column-fidelity.py -v
       - name: Reject unsupported sanitization and unsafe fallback on Linux
         run: python3 test-maximum-sanitization-blocking.py -v
 
@@ -54,5 +56,7 @@ jobs:
         run: python3 test-maximum-text-readability.py -v
       - name: Verify pictures stay visually readable after actual conversion
         run: python3 test-maximum-image-readability.py -v
+      - name: Verify actual two- and three-column PDF conversion fidelity
+        run: python3 test-maximum-multi-column-fidelity.py -v
       - name: Reject unsupported sanitization and unsafe fallback on macOS
         run: python3 test-maximum-sanitization-blocking.py -v
