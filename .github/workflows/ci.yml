@@ -481,6 +481,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
           "$RUNNER_TEMP/TestResetGeneralPreferences"
+      - name: Verify Restore Recommended Limits preserves scanner safety and customizations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-recommended-scanner-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
+          "$RUNNER_TEMP/TestRecommendedScannerLimits"
       - name: Test versioned configuration serialization and compatibility
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"

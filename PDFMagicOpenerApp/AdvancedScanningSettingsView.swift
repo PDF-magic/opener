@@ -1,9 +1,12 @@
 import SwiftUI
 
-// Advanced Scanning is a dedicated, read-only preferences destination.
-// The installed ClamAV scan gate is authoritative; displaying this view
-// never changes scanner configuration or the user's PDF application choice.
+// Advanced Scanning is informational except for the explicitly confirmed
+// optional-limit override reset. Installed scan gates remain authoritative;
+// this page cannot change their fixed safety limits or the PDF application.
 struct AdvancedScanningSettingsView: View {
+  @State private var showRestoreRecommendedLimitsConfirmation = false
+  @State private var recommendedLimitsStatus: String?
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -96,6 +99,35 @@ struct AdvancedScanningSettingsView: View {
         }
         .accessibilityIdentifier("advancedScanningResourceWarning")
 
+        GroupBox("Recommended scanner limits") {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("The installed scanner currently enforces fixed safety limits. There is no editable scanner-limit control in this version.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("Restore Recommended Limits clears only a recognized saved optional concurrency override, if one exists. It does not change the active two-scan limit, file-size checks, your PDF application, or unrelated preferences.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Button("Restore Recommended Limits") {
+              showRestoreRecommendedLimitsConfirmation = true
+            }
+            .accessibilityIdentifier("restoreRecommendedLimitsButton")
+            .accessibilityHint("Confirm before clearing a saved optional scanner concurrency override.")
+
+            if let recommendedLimitsStatus {
+              Text(recommendedLimitsStatus)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("restoreRecommendedLimitsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("recommendedScannerLimitsSection")
+
         Text("Advanced scanning controls are not configurable in this version. Scanner parameters are not user-editable: fixed ClamAV options protect the scan gate. Existing scanner protections and your saved choices remain unchanged.")
           .font(.footnote)
           .foregroundStyle(.secondary)
@@ -105,6 +137,28 @@ struct AdvancedScanningSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("advancedScanningSettingsPage")
+    .confirmationDialog(
+      "Restore Recommended Limits?",
+      isPresented: $showRestoreRecommendedLimitsConfirmation
+    ) {
+      Button("Restore Recommended Limits", role: .destructive) {
+        restoreRecommendedLimits()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Only the recognized optional concurrency override will be cleared, if present. Installed scanner safety limits and all other saved preferences remain unchanged.")
+    }
+  }
+
+  private func restoreRecommendedLimits() {
+    switch RecommendedScannerLimitsReset.restore() {
+    case .restored:
+      recommendedLimitsStatus = "Optional concurrency override cleared. Installed scanner limits remain unchanged."
+    case .alreadyRecommended:
+      recommendedLimitsStatus = "Recommended limits already apply. No saved scanner override was changed."
+    case .unavailable:
+      recommendedLimitsStatus = "Could not restore the optional scanner limit. Existing settings were preserved."
+    }
   }
 
   private func scanningDetail(_ title: String, _ detail: String, helpText: String) -> some View {

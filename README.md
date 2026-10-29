@@ -259,7 +259,9 @@ controls may interrupt a scan without approving any document.
 
 **Scanner parameter editability (opener-0397):** ClamAV command-line parameters
 are **not user-editable**. The fixed, validated scan gate remains authoritative;
-Advanced Scanning is informational. Supported saved preferences, including
+Advanced Scanning has no scanner-parameter editor; its confirmed Restore
+Recommended Limits action can only clear a recognized optional metadata
+override, not change the installed scan gate. Supported saved preferences, including
 the selected PDF viewer, are unaffected. See the
 [scanner parameter decision](docs/scanner-parameters-decision.md).
 
