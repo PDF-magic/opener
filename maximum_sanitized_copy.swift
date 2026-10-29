@@ -53,12 +53,16 @@ private func convert(_ data: Data) -> Data? {
             return nil
         }
         usedPixels += width * height
-        guard let bitmap = CGContext(
-            data: nil, width: width, height: height,
-            bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-        ) else {
+        // Normalize supported source color spaces to a stable, device-independent
+        // sRGB destination before flattening. The copy preserves visual color,
+        // not source color dictionaries or embedded profile metadata.
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let bitmap = CGContext(
+                data: nil, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+              ) else {
             output.closePDF()
             return nil
         }

@@ -10,7 +10,8 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import NameObject, NumberObject
+from pypdf.generic import DecodedStreamObject, NameObject, NumberObject
+from PIL import Image
 import maximum_sanitized_copy as copies
 
 
@@ -23,6 +24,26 @@ def sample_pdf(*, with_actions=False):
     stream = BytesIO()
     writer.write(stream)
     return stream.getvalue()
+
+
+def color_space_pdf():
+    """Create vector content in RGB, grayscale and CMYK source color spaces."""
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=100, height=100)
+    content = DecodedStreamObject()
+    content.set_data(
+        b"q\n"
+        b"1 0 0 rg 0 0 20 100 re f\n"
+        b"0 1 0 rg 20 0 20 100 re f\n"
+        b"0 0 1 rg 40 0 20 100 re f\n"
+        b"0.5 g 60 0 20 100 re f\n"
+        b"1 0 0 0 k 80 0 20 100 re f\n"
+        b"Q\n"
+    )
+    page[NameObject("/Contents")] = writer._add_object(content)
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
 
 
 class SanitizedCopyOfferContractTests(unittest.TestCase):
@@ -144,6 +165,43 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == "darwin", "Real CoreGraphics conversion requires macOS")
 class NativeRasterizationTests(unittest.TestCase):
+    def test_supported_rgb_gray_and_cmyk_colors_survive_sanitization(self):
+        offer = copies.offer_sanitized_pdf_copy(color_space_pdf())
+        self.assertIsNotNone(offer)
+        self.assertFalse(offer.permits_open)
+        self.assertTrue(offer.needs_separate_scan)
+
+        output = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
+        self.assertEqual(len(output.pages), 1)
+        images = list(output.pages[0].images)
+        self.assertEqual(len(images), 1)
+        with Image.open(BytesIO(images[0].data)) as decoded:
+            pixels = decoded.convert("RGB")
+            self.assertEqual(pixels.size, (200, 200))
+            samples = [
+                pixels.getpixel((20, 100)),
+                pixels.getpixel((60, 100)),
+                pixels.getpixel((100, 100)),
+                pixels.getpixel((140, 100)),
+                pixels.getpixel((180, 100)),
+            ]
+
+        red, green, blue, gray, cyan = samples
+        self.assertGreater(red[0], 220)
+        self.assertLess(red[1], 40)
+        self.assertLess(red[2], 40)
+        self.assertLess(green[0], 40)
+        self.assertGreater(green[1], 220)
+        self.assertLess(green[2], 40)
+        self.assertLess(blue[0], 40)
+        self.assertLess(blue[1], 40)
+        self.assertGreater(blue[2], 220)
+        self.assertLess(max(gray) - min(gray), 12)
+        self.assertTrue(all(100 <= channel <= 155 for channel in gray))
+        self.assertLess(cyan[0], 50)
+        self.assertGreater(cyan[1], 190)
+        self.assertGreater(cyan[2], 190)
+
     def test_source_javascript_and_attachment_not_copied_to_raster_pdf(self):
         source = sample_pdf(with_actions=True)
         offer = copies.offer_sanitized_pdf_copy(source)
