@@ -73,6 +73,10 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
 
+    self.assertIn('Button("Restore Recommended Limits")', source)
+    self.assertIn("showRestoreRecommendedLimitsConfirmation = true", source)
+    self.assertIn('Button("Cancel", role: .cancel)', source)
+
   def test_both_ci_jobs_verify_the_defaults_summary(self):
     source = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     command = "python3 test-scanner-defaults-summary.py -v"
