@@ -51,6 +51,8 @@ class FindingExplanationsTests(unittest.TestCase):
              FindingNextAction.requestReviewBeforeOpening),
             (FindingSeverity.critical, FindingResult.blocking,
              FindingNextAction.stopOpening),
+            (FindingSeverity.blocking, FindingResult.blocking,
+             FindingNextAction.stopOpening),
         )
         for severity, outcome, action in variants:
             with self.subTest(severity=severity):
