@@ -171,8 +171,9 @@ class FindingExplanationsTests(unittest.TestCase):
         # The native panel displays uncertainty and rejects unknown assessment values.
         native = (Path(__file__).with_name("scan-progress-view.swift")
                   .read_text(encoding="utf-8"))
-        self.assertIn('result["malwareAssessment"] as? String ?? "notConfirmed"', native)
-        self.assertIn('guard malwareAssessment == "notConfirmed" else', native)
+        self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
+        self.assertIn('guard let value = rawAssessment as? String, value == "notConfirmed" else', native)
+        self.assertIn('malwareAssessment = "notConfirmed"', native)
         self.assertIn('— \\(resultLabel) · Malware not confirmed', native)
 
     def test_scanner_and_profile_remain_untouched(self):
