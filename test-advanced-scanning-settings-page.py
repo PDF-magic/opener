@@ -39,7 +39,7 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
         self.assertIn(required, page)
 
     for forbidden in (
-        "Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage", "UserDefaults",
+        "Toggle(", "Picker(", "Slider(", "@AppStorage", "UserDefaults",
         "FileHandle(", "Process(", "NSWorkspace", "createFile(", "write(to:",
         "clamscan(", "setDefault", "LSSetDefault", "target-app.txt",
     ):
@@ -82,6 +82,42 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
     )
     self.assertIn("python3 test-advanced-scanning-settings-page.py -v", ci)
     self.assertIn("macos-build:", ci)
+
+  def test_restore_recommended_limits_is_confirmed_scoped_and_accessible(self):
+    page = PAGE.read_text(encoding="utf-8")
+    shared = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text(
+        encoding="utf-8"
+    )
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    self.assertEqual(page.count('Button("Restore Recommended Limits"'), 2)
+    for required in (
+        'accessibilityIdentifier("restoreRecommendedLimitsButton")',
+        'accessibilityIdentifier("restoreRecommendedLimitsStatus")',
+        'accessibilityIdentifier("recommendedScannerLimitsSection")',
+        'isPresented: $showRestoreRecommendedLimitsConfirmation',
+        'Button("Cancel", role: .cancel)',
+        'RecommendedScannerLimitsReset.restore()',
+        'case .restored:',
+        'case .alreadyRecommended:',
+        'case .unavailable:',
+        "fixed safety limits",
+        "no editable scanner-limit control",
+        "all other saved preferences remain unchanged",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, page)
+    self.assertIn('static let concurrencyOverrideKey = "maxConcurrentScans"', shared)
+    self.assertLess(shared.index("enum RecommendedScannerLimitsReset {"),
+                    shared.index("struct PDFMagicConfigurationSchema:"))
+    self.assertIn('defaults.removeObject(forKey: concurrencyOverrideKey)', shared)
+    self.assertIn('defaults.set(previous, forKey: concurrencyOverrideKey)', shared)
+    for forbidden in ("removePersistentDomain", "setPersistentDomain", "clamscan",
+                      "target-app.txt", "LSSetDefault", "Process("):
+      self.assertNotIn(forbidden, shared.split("enum RecommendedScannerLimitsReset {", 1)[1])
+    self.assertIn("test-recommended-scanner-limits.swift", ci)
+    self.assertIn("test-advanced-scanning-settings-page.py -v", ci)
 
   def test_page_is_part_of_built_swiftui_app_target(self):
     project = PROJECT.read_text(encoding="utf-8")

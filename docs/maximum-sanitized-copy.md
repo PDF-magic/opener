@@ -13,18 +13,24 @@ The actual conversion runs in a separately compiled native
 `maximum-sanitized-copy` executable built from `maximum_sanitized_copy.swift`,
 using Apple's CoreGraphics PDF renderer. It reads bytes on stdin and
 generates a PDF from only new raster images, not the source catalog,
-actions, annotations, scripts, embedded files, metadata, forms or links.
-Conversion is bounded to 16 MiB input, 16 pages, a 2048-pixel longest page
-side, 24 million total pixels, 32 MiB output, 45 elapsed seconds, and a fixed
-1 GiB process-group memory budget. Linux imposes a non-increasing hard
-`RLIMIT_AS` ceiling on each converter process before `exec` and monitors the
-aggregate process-group RSS. macOS polls aggregate process-group RSS every
-50 ms and kills the group if it exceeds the same ceiling. The macOS watchdog
-is fail-closed but not an atomic kernel-enforced cap, so a native allocation
-can briefly exceed the target before the next poll. Missing or unreadable
-memory measurements also stop conversion. Password-protected PDFs and
-rotated/cropped/out-of-range pages are unsupported rather than automatically
-simplified.
+actions, annotations, scripts, embedded files, arbitrary metadata, forms or
+links. Only source page order, media-box dimensions and validated right-angle
+rotation are retained.
+Conversion is bounded to 16 MiB input, 16 pages, 2048-pixel longest
+page side, 24 million total pixels, 32 MiB output, and 45 elapsed
+seconds. Password-protected PDFs, cropped pages, and out-of-range dimensions remain
+unsupported. Pages are emitted in source order with their media-box dimensions
+and validated right-angle rotation (0, 90, 180, or 270 degrees) preserved.
+The sanitizer also enforces a fixed 1 GiB process-group memory budget.
+Linux applies a non-increasing hard `RLIMIT_AS` cap before converter `exec`
+and monitors aggregate process-group RSS. On macOS, a watchdog checks the
+process group's RSS every 50 ms and terminates it when the budget is exceeded.
+The macOS watchdog is fail-closed but not an atomic kernel-enforced limit;
+a native allocation can briefly exceed the target before its next poll.
+Missing or unreadable memory measurements also stop conversion.
+
+The rebuilt PDF is checked against the source page geometry before it can be
+offered, so a missing, reordered, resized, or wrongly rotated page fails closed.
 
 An offer is **not** a claim that the source or output is malware-free.
 Rasterization loses searchable/selectable text, links, forms and other
@@ -44,9 +50,10 @@ converter into a reviewed, OS-confined analysis pipeline before exposing
 the action. In particular, these subprocess protections are not yet a
 complete filesystem/network sandbox for an untrusted PDF renderer.
 
-The dedicated CI suite validates fail-closed offer conditions and
-privacy on Linux. On macOS it compiles the native helper and converts
-real generated PDFs, checking that JavaScript and embedded attachments
-from the original do not enter the rasterized copy. The active scanner,
+The dedicated CI suite validates fail-closed offer conditions, geometry
+ordering, dimensions, right-angle rotations, and privacy on Linux. On macOS it
+compiles the native helper and converts real generated PDFs, checking that
+page order, media dimensions, rotation, JavaScript, and embedded attachments
+are handled correctly. The active scanner,
 signature updater, cached scan decisions, quarantine and user settings
 are unchanged.

@@ -22,11 +22,31 @@ jobs:
         run: python3 test-maximum-sanitizer-time-limits.py -v
       - name: Verify sanitizer memory ceiling and fail-closed behavior
         run: python3 test-maximum-sanitizer-memory-limits.py -v
-      - name: Verify supported-only copy offers and fail-closed scanner isolation
+      - name: Verify page geometry, supported-only copy offers and scanner isolation
         run: |
           python3 test-maximum-active-content-removal.py -v
           python3 test-maximum-sanitized-copy.py -v
           python3 test-maximum-sanitizer-reporting.py -v
+      - name: Verify text-readability metrics and source PDF fixtures
+        run: python3 test-maximum-text-readability.py -v
+      - name: Verify image-detail metrics and embedded-picture fixtures
+        run: python3 test-maximum-image-readability.py -v
+      - name: Verify multi-column fixture geometry and layout metrics
+        run: python3 test-maximum-multi-column-fidelity.py -v
+      - name: Check rotated-page fixtures and orientation negative controls
+        run: python3 test-maximum-rotated-pages.py -v
+      - name: Verify scanned-document fixtures and degradation metrics
+        run: python3 test-maximum-scanned-documents.py -v
+      - name: Verify vector graphics fixture and shape metrics
+        run: python3 test-maximum-vector-graphics.py -v
+      - name: Verify transparency fixtures and alpha-compositing metrics
+        run: python3 test-maximum-transparency.py -v
+      - name: Validate annotation fixtures and negative fidelity controls
+        run: python3 test-maximum-annotations.py -v
+      - name: Validate real interactive form fixtures and visual negative controls
+        run: python3 test-maximum-interactive-forms.py -v
+      - name: Verify password-protected documents never produce conversion offers
+        run: python3 test-maximum-password-protected.py -v
       - name: Reject unsupported sanitization and unsafe fallback on Linux
         run: python3 test-maximum-sanitization-blocking.py -v
 
@@ -45,10 +65,30 @@ jobs:
         run: python3 test-maximum-sanitizer-time-limits.py -v
       - name: Verify sanitizer memory ceiling and fail-closed behavior
         run: python3 test-maximum-sanitizer-memory-limits.py -v
-      - name: Verify real visual-only conversion and discarded PDF actions
+      - name: Verify real conversion preserves page order, dimensions, rotation and discards PDF actions
         run: |
           python3 test-maximum-active-content-removal.py -v
           python3 test-maximum-sanitized-copy.py -v
           python3 test-maximum-sanitizer-reporting.py -v
+      - name: Verify actual converted PDF text remains visually legible
+        run: python3 test-maximum-text-readability.py -v
+      - name: Verify pictures stay visually readable after actual conversion
+        run: python3 test-maximum-image-readability.py -v
+      - name: Verify actual two- and three-column PDF conversion fidelity
+        run: python3 test-maximum-multi-column-fidelity.py -v
+      - name: Verify real rotated-page visual fidelity after conversion
+        run: python3 test-maximum-rotated-pages.py -v
+      - name: Verify actual scanned pages remain legible after conversion
+        run: python3 test-maximum-scanned-documents.py -v
+      - name: Verify actual vector graphics fidelity after CoreGraphics conversion
+        run: python3 test-maximum-vector-graphics.py -v
+      - name: Verify actual transparency and blend fidelity after conversion
+        run: python3 test-maximum-transparency.py -v
+      - name: Verify actual annotated PDF visual fidelity and removal
+        run: python3 test-maximum-annotations.py -v
+      - name: Verify actual interactive AcroForm raster fidelity and removal
+        run: python3 test-maximum-interactive-forms.py -v
+      - name: Verify protected PDF behavior with the real CoreGraphics worker
+        run: python3 test-maximum-password-protected.py -v
       - name: Reject unsupported sanitization and unsafe fallback on macOS
         run: python3 test-maximum-sanitization-blocking.py -v

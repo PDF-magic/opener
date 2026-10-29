@@ -10,6 +10,8 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import DecodedStreamObject, NameObject, NumberObject
+from PIL import Image
 import maximum_sanitized_copy as copies
 
 
@@ -22,6 +24,26 @@ def sample_pdf(*, with_actions=False):
     stream = BytesIO()
     writer.write(stream)
     return stream.getvalue()
+
+
+def color_space_pdf():
+    """Create vector content in RGB, grayscale and CMYK source color spaces."""
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=100, height=100)
+    content = DecodedStreamObject()
+    content.set_data(
+        b"q\n"
+        b"1 0 0 rg 0 0 20 100 re f\n"
+        b"0 1 0 rg 20 0 20 100 re f\n"
+        b"0 0 1 rg 40 0 20 100 re f\n"
+        b"0.5 g 60 0 20 100 re f\n"
+        b"1 0 0 0 k 80 0 20 100 re f\n"
+        b"Q\n"
+    )
+    page[NameObject("/Contents")] = writer._add_object(content)
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
 
 
 class SanitizedCopyOfferContractTests(unittest.TestCase):
@@ -52,6 +74,19 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
             self.assertIsNone(copies.offer_sanitized_pdf_copy(stream.getvalue()))
             self.assertIsNone(copies.offer_sanitized_pdf_copy(b"%PDF-1.7\nbroken"))
             invoked.assert_not_called()
+
+    def test_non_right_angle_rotation_fails_before_converter(self):
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=180, height=250)
+        page[NameObject("/Rotate")] = NumberObject(45)
+        stream = BytesIO()
+        writer.write(stream)
+        with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
+                patch.object(copies, "run_limited_converter") as invoked:
+            attempt = copies.attempt_sanitized_pdf_copy(stream.getvalue())
+        self.assertIsNone(attempt.offer)
+        self.assertEqual(attempt.failure.kind, copies.SanitizerFailureKind.UNSUPPORTED_INPUT)
+        invoked.assert_not_called()
 
     def test_only_verified_completed_conversion_is_offered(self):
         original = sample_pdf()
@@ -130,6 +165,45 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == "darwin", "Real CoreGraphics conversion requires macOS")
 class NativeRasterizationTests(unittest.TestCase):
+    def test_supported_rgb_gray_and_cmyk_colors_survive_sanitization(self):
+        offer = copies.offer_sanitized_pdf_copy(color_space_pdf())
+        self.assertIsNotNone(offer)
+        self.assertFalse(offer.permits_open)
+        self.assertTrue(offer.needs_separate_scan)
+
+        output = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
+        self.assertEqual(len(output.pages), 1)
+        images = list(output.pages[0].images)
+        self.assertEqual(len(images), 1)
+        with Image.open(BytesIO(images[0].data)) as decoded:
+            pixels = decoded.convert("RGB")
+            self.assertEqual(pixels.size, (200, 200))
+            samples = [
+                pixels.getpixel((20, 100)),
+                pixels.getpixel((60, 100)),
+                pixels.getpixel((100, 100)),
+                pixels.getpixel((140, 100)),
+                pixels.getpixel((180, 100)),
+            ]
+
+        red, green, blue, gray, cyan = samples
+        self.assertGreater(red[0], 220)
+        self.assertLess(red[1], 40)
+        self.assertLess(red[2], 40)
+        self.assertLess(green[0], 40)
+        self.assertGreater(green[1], 220)
+        self.assertLess(green[2], 40)
+        self.assertLess(blue[0], 40)
+        self.assertLess(blue[1], 40)
+        self.assertGreater(blue[2], 220)
+        self.assertLess(max(gray) - min(gray), 12)
+        self.assertTrue(all(100 <= channel <= 155 for channel in gray))
+        self.assertLess(cyan[0], 50)
+        # Core Graphics color-manages DeviceCMYK into sRGB; the exact
+        # channel values depend on its system CMYK profile.
+        self.assertGreater(cyan[1] - cyan[0], 100)
+        self.assertGreater(cyan[2] - cyan[0], 100)
+
     def test_source_javascript_and_attachment_not_copied_to_raster_pdf(self):
         source = sample_pdf(with_actions=True)
         offer = copies.offer_sanitized_pdf_copy(source)
@@ -149,16 +223,40 @@ class NativeRasterizationTests(unittest.TestCase):
         self.assertFalse(offer.permits_open)
         self.assertTrue(offer.needs_separate_scan)
 
-    def test_real_two_page_conversion_preserves_page_count(self):
+    def test_real_conversion_preserves_page_order_dimensions_and_rotation(self):
+        expected = (
+            (180, 240, 0),
+            (200, 260, 90),
+            (220, 280, 180),
+            (240, 300, 270),
+        )
         writer = PdfWriter()
-        writer.add_blank_page(width=180, height=240)
-        writer.add_blank_page(width=200, height=280)
+        for width, height, rotation in expected:
+            page = writer.add_blank_page(width=width, height=height)
+            if rotation:
+                page.rotate(rotation)
         stream = BytesIO()
         writer.write(stream)
+
+        source = PdfReader(BytesIO(stream.getvalue()), strict=True)
+        source_geometry = [
+            (float(page.mediabox.width), float(page.mediabox.height),
+             int(page.get_inherited("/Rotate") or 0) % 360)
+            for page in source.pages
+        ]
+        self.assertEqual(source_geometry, [tuple(item) for item in expected])
+
         offer = copies.offer_sanitized_pdf_copy(stream.getvalue())
         self.assertIsNotNone(offer)
-        self.assertEqual(offer.page_count, 2)
-        self.assertTrue(copies._passive_pages(offer.pdf_bytes, 2))
+        self.assertEqual(offer.page_count, len(expected))
+        self.assertTrue(copies._passive_pages(offer.pdf_bytes, len(expected), tuple(source_geometry)))
+        output = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
+        actual_geometry = [
+            (float(page.mediabox.width), float(page.mediabox.height),
+             int(page.get_inherited("/Rotate") or 0) % 360)
+            for page in output.pages
+        ]
+        self.assertEqual(actual_geometry, source_geometry)
 
 
     def test_maximum_page_rendering_resolution_is_capped_per_page(self):
