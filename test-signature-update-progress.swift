@@ -41,7 +41,7 @@ struct SignatureUpdateProgressTests {
     try live.write(to: outside, atomically: true, encoding: .ascii)
     try FileManager.default.createSymbolicLink(at: marker, withDestinationURL: outside)
     precondition(SignatureUpdateProgress.read(from: root, now: now) == nil)
-    let originalOutside = try String(contentsOf: outside)
+    let originalOutside = try String(contentsOf: outside, encoding: .ascii)
     precondition(originalOutside == live)
     try FileManager.default.removeItem(at: marker)
     try FileManager.default.createDirectory(at: marker, withIntermediateDirectories: false)
