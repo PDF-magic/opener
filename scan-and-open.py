@@ -543,7 +543,7 @@ def scan_engine_version(scanner):
     try:
         output = subprocess.check_output(
             [scanner, '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     match = re.match(
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
