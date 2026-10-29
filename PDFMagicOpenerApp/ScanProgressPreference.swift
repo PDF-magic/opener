@@ -158,6 +158,9 @@ enum PreferredProtectionLevel: String {
 
 enum PlannedProtectionLevelPreference {
   static let key = "preferredProtectionLevel"
+  // Distinguish a fresh installation from an older one across later launches.
+  // This value is not a selectable protection tier or active scanner policy.
+  static let newInstallationMarker = "unassigned"
   static let suiteName = ScanProgressPreference.suiteName
 
   static func selected(
@@ -183,19 +186,23 @@ enum PlannedProtectionLevelPreference {
     return legacyKeys.contains { defaults.object(forKey: $0) != nil }
   }
 
-  // Add only a missing preference for an existing installation on a valid
-  // current schema and the supported Built-in effective policy. Never reset
-  // an explicitly stored planned, future or malformed value.
+  // Existing installations keep Standard, while a new installation receives
+  // a neutral marker that prevents false legacy detection after app restart.
+  // Both cases require a valid schema and Built-in effective scanner policy.
+  // Never reset an explicit user selection or malformed/future value.
   @discardableResult
-  static func preserveExistingStandard(
+  static func initializeForInstallation(
     defaults: UserDefaults, existingBeforeInitialization: Bool
   ) -> Bool {
-    guard existingBeforeInitialization,
-          ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
+    guard ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
             PDFMagicConfigurationSchema.currentVersion,
           SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn,
           defaults.object(forKey: key) == nil else { return false }
-    defaults.set(PreferredProtectionLevel.standard.rawValue, forKey: key)
+    // A fresh install needs a durable neutral marker; otherwise a second
+    // launch would misidentify its newly written baseline keys as legacy.
+    defaults.set(existingBeforeInitialization
+      ? PreferredProtectionLevel.standard.rawValue : newInstallationMarker,
+      forKey: key)
     return true
   }
 
@@ -295,7 +302,7 @@ enum InitialConfiguration {
     if PDFMagicPolicySettingsUpgrade.seedMissingStoredPolicy(defaults: defaults) {
       initializedMissingSetting = true
     }
-    if PlannedProtectionLevelPreference.preserveExistingStandard(
+    if PlannedProtectionLevelPreference.initializeForInstallation(
       defaults: defaults, existingBeforeInitialization: existingBeforeInitialization
     ) {
       initializedMissingSetting = true
