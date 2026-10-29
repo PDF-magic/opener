@@ -56,7 +56,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
             path = Path(path)
             requests.append((path, offer.pdf_bytes, path.read_bytes()))
             self.assertNotEqual(path.resolve(), self.source.resolve())
-            self.assertEqual(path.name, "safe-copy.pdf")
+            self.assertRegex(path.name, r"^safe-copy-[0-9a-f]{32}\.pdf$")
             self.assertEqual(stat_mode(path), 0o600)
             self.assertEqual(stat_mode(path.parent), 0o700)
             self.assertEqual(self.source.read_bytes(), self.original)
@@ -71,6 +71,19 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         self.assertFalse(handoff.original_opened)
         with self.assertRaises(FrozenInstanceError):
             handoff.original_opened = True
+
+    def test_independent_handoffs_use_unpredictable_file_names(self):
+        handoffs = [self._open() for _ in range(8)]
+        for handoff in handoffs:
+            self.addCleanup(route._discard_private_copy, handoff.copy_path)
+        self.assertEqual(len({handoff.copy_path.name for handoff in handoffs}), 8)
+        request = route.begin_source_scan_request(self.source)
+        with patch.object(route.secrets, "token_hex",
+                          return_value="b" * 32) as random_token:
+            handoff = self._open(source_request=request)
+        self.addCleanup(route._discard_private_copy, handoff.copy_path)
+        random_token.assert_called_once_with(16)
+        self.assertEqual(handoff.copy_path.name, "safe-copy-" + "b" * 32 + ".pdf")
 
     def test_required_mode_is_explicit_no_implicit_source_fallback(self):
         for value in (None, False, True, "required", "maximum"):

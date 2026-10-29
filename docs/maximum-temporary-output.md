@@ -8,7 +8,9 @@ and abandoned staging must not leave accessible partial PDFs indefinitely.
 
 `maximum_temporary_output.stage_maximum_temporary_pdf(generated_bytes)`
 creates one fresh private directory (`0700`) and an exclusive,
-non-symlinked `safe-copy.pdf` (`0600`). It accepts only bounded
+non-symlinked `safe-copy-<128-bit random hex>.pdf` (`0600`). The basename
+is generated independently from 16 cryptographically secure random bytes
+for each staging operation, not from a document name or predictable counter. It accepts only bounded
 immutable PDF bytes and never derives any path from the PDF, its filename,
 metadata, selected browser, or caller-provided directory. It returns an
 `MaximumTemporaryOutput` ownership lease with `path` and `release()`.
@@ -23,7 +25,7 @@ handoff in a context that exits before the viewer reads the file.
 Before deleting, `release()` verifies that the exact privately created
 directory still exists, remains owned and `0700`, and has its original
 device and inode. It opens the directory with `O_DIRECTORY|O_NOFOLLOW`
-and deletes only the fixed filename after verifying its original inode,
+and deletes only the lease-recorded random filename after verifying its original inode,
 owner, regular-file status and `0600` permissions. It removes the
 directory only if empty: **no recursive deletion, wildcard, broad temp
 directory sweep, arbitrary path input, or symlink-following cleanup**.
