@@ -6,7 +6,8 @@ from unittest.mock import patch
 import unittest
 
 from maximum_sanitized_copy import (
-    GENERATED_CONTENT_ORIGIN, OFFER_EXPLANATION, OFFER_LABEL, SanitizedCopyOffer,
+    CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN, OFFER_EXPLANATION,
+    OFFER_LABEL, SanitizedCopyOffer,
 )
 from maximum_safe_copy_handoff import MaximumSafeCopyHandoff
 from maximum_generated_rescan import verified_generated_pdf_bytes
@@ -22,8 +23,10 @@ class GeneratedCopyOriginTests(unittest.TestCase):
             "isUntouchedOriginal": False,
             "label": OFFER_LABEL,
             "explanation": OFFER_EXPLANATION,
+            "conversionWarning": CONVERSION_CHANGE_WARNING,
             "requiresFreshScan": True,
             "authorizesOpen": False,
+            "ocrRestored": False,
         })
         self.assertFalse(offer.permits_open)
         self.assertTrue(offer.needs_separate_scan)
@@ -65,6 +68,7 @@ class GeneratedCopyOriginTests(unittest.TestCase):
             "contentOrigin": "generatedContent",
             "isUntouchedOriginal": False,
             "label": OFFER_LABEL,
+            "conversionWarning": CONVERSION_CHANGE_WARNING,
             "freshlyScanned": True,
             "originalOpened": False,
         })

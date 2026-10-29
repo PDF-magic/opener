@@ -118,7 +118,8 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                 patch.object(opener, "record_scan_request") as record, \
                 redirect_stderr(io.StringIO()):
             self.assertEqual(opener.main([str(self.pdf)]), 0)
-        database.assert_called_once_with()
+        self.assertEqual(database.call_count, 2,
+                         "Batch admission and per-item dispatch each require a signature gate")
         record.assert_called_once_with("Command Line")
         scan.assert_called_once_with(str(self.pdf), SCANNER)
 
