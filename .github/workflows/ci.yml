@@ -88,6 +88,8 @@ jobs:
         run: python3 test-main-preferences-window.py -v
       - name: Verify three accessible protection preview cards never change active scan policy
         run: python3 test-protection-settings-cards.py -v
+      - name: Verify unavailable mandatory engines block effective profile selection
+        run: python3 test-unavailable-protection-dependencies.py -v
       - name: Verify Reset Protection Settings is confirmed and scoped to preview metadata
         run: python3 test-reset-protection-settings.py -v
       - name: Verify selected protection previews are saved without scanner activation
