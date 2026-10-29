@@ -98,7 +98,7 @@ raise SystemExit(3)
         )
         try:
             deadline = time.monotonic() + 3
-            status = None
+            exited = False
             while not exited and time.monotonic() < deadline:
                 exited = sanitizer._process_has_exited_without_reaping(process)
                 if not exited:
