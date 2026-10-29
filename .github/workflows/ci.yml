@@ -26,12 +26,18 @@ jobs:
         run: python3 test-pdf-embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
         run: python3 test-pdf-structure-parser.py -v
+      - name: Enforce the total PDF object budget before graph traversal
+        run: python3 test-pdf-object-limit.py -v
+      - name: Reject PDFs exceeding bounded decoded-stream data
+        run: python3 test-pdf-decompressed-size.py -v
       - name: Reject excessive PDF recursion depth and cyclic page trees
         run: python3 test-pdf-recursion-depth.py -v
       - name: Enforce hard wall-clock timeout on optional PDF structure analysis
         run: python3 test-timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
         run: python3 test-pdf-cross-reference-parsing.py -v
+      - name: Verify encrypted and password-protected PDFs remain blocked by policy
+        run: python3 test-pdf-encryption-policy.py -v
       - name: Reject malformed direct and indirect PDF stream lengths
         run: python3 test-pdf-stream-lengths.py -v
       - name: Verify bounded structured PDF parser output contract
@@ -258,6 +264,8 @@ jobs:
         run: python3 test-clamav-version-support.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
+      - name: Reject unreadable scan files before scanning or cached opening
+        run: python3 test-unreadable-scan-input.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: python3 test-installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents

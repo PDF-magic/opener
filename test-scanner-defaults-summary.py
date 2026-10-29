@@ -55,18 +55,27 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     source = PAGE.read_text(encoding="utf-8")
     self.assertIn("does not change scanner behavior or reset saved choices", source)
     self.assertIn("Advanced scanner parameters are not editable here.", source)
-    # The defaults summary is informational. A separately confirmed
-    # "Restore Recommended Limits" action elsewhere on this page is valid.
-    start = source.index("        // Reference values from the mandatory Built-in scan gate")
-    end = source.index('accessibilityIdentifier("advancedScanningDefaultsSection")')
-    defaults_section = source[start:end]
+    # The read-only defaults panel cannot offer editing controls. Other
+    # advanced-settings sections may contain separately confirmed actions
+    # such as Restore Recommended Limits; they are not scanner-default edits.
+    defaults_panel = source[
+      source.index("GroupBox {"):
+      source.index('accessibilityIdentifier("advancedScanningDefaultsSection")')
+    ]
+    for forbidden in ("Toggle(", "Button(", "Picker(", "Slider("):
+      with self.subTest(defaults_control=forbidden):
+        self.assertNotIn(forbidden, defaults_panel)
     for forbidden in (
-        "Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage",
-        "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
-        "write(to:", "createFile(", "clamscan(", "target-app.txt",
+        "@AppStorage", "UserDefaults", "Process(", "FileHandle(",
+        "NSWorkspace", "write(to:", "createFile(", "clamscan(",
+        "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
-        self.assertNotIn(forbidden, defaults_section)
+        self.assertNotIn(forbidden, source)
+
+    self.assertIn('Button("Restore Recommended Limits")', source)
+    self.assertIn("showRestoreRecommendedLimitsConfirmation = true", source)
+    self.assertIn('Button("Cancel", role: .cancel)', source)
 
   def test_both_ci_jobs_verify_the_defaults_summary(self):
     source = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")

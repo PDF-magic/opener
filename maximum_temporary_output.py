@@ -9,6 +9,7 @@ untrusted PDF property is accepted (opener-0325).
 from dataclasses import dataclass
 from weakref import WeakKeyDictionary, WeakSet
 import os
+import secrets
 from pathlib import Path
 import stat
 import tempfile
@@ -17,7 +18,8 @@ import threading
 MAX_TEMP_PDF_BYTES = 32 * 1024 * 1024
 BLOCK_MESSAGE = "Maximum temporary PDF cleanup failed safely; output was not released."
 _DIR_PREFIX = "pdf-magic-safe-copy-"
-_FILE_NAME = "safe-copy.pdf"
+_FILE_PREFIX = "safe-copy-"
+_FILE_SUFFIX = ".pdf"
 _LEASES = WeakKeyDictionary()
 _RELEASED = WeakSet()
 _LOCK = threading.RLock()
@@ -57,17 +59,13 @@ class MaximumTemporaryOutput:
             return self not in _LEASES
 
     def verify(self) -> None:
-        """Require the exact owned 0700 directory and 0600 regular PDF.
-
-        This must run before and after handing the pathname to the scanner.
-        The scanner still performs its own exact-byte and identity checks.
-        """
+        """Verify the exact owned directory and generated PDF before and after scanning."""
         with _LOCK:
             recorded = _LEASES.get(self)
             if recorded is None:
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-            directory, file_identity, directory_identity = recorded
-            if self.path != directory / _FILE_NAME:
+            directory, file_identity, directory_identity, file_name = recorded
+            if self.path != directory / file_name:
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
             try:
                 disk_directory = os.stat(directory, follow_symlinks=False)
@@ -79,7 +77,7 @@ class MaximumTemporaryOutput:
                 directory_fd = os.open(directory, flags)
                 try:
                     opened_directory = os.fstat(directory_fd)
-                    item = os.stat(_FILE_NAME, dir_fd=directory_fd,
+                    item = os.stat(file_name, dir_fd=directory_fd,
                                    follow_symlinks=False)
                     if (_identity(opened_directory) != directory_identity or
                             not _is_private_directory(opened_directory) or
@@ -101,8 +99,8 @@ class MaximumTemporaryOutput:
                 if self in _RELEASED:
                     return
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-            directory, file_identity, directory_identity = recorded
-            if self.path != directory / _FILE_NAME:
+            directory, file_identity, directory_identity, file_name = recorded
+            if self.path != directory / file_name:
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
             try:
                 # Check the directory *before* opening and use a descriptor to
@@ -117,12 +115,12 @@ class MaximumTemporaryOutput:
                 try:
                     if _identity(os.fstat(directory_fd)) != directory_identity:
                         raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-                    item = os.stat(_FILE_NAME, dir_fd=directory_fd,
+                    item = os.stat(file_name, dir_fd=directory_fd,
                                    follow_symlinks=False)
                     if (_file_identity(item) != file_identity or
                             not _is_private_file(item)):
                         raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-                    os.unlink(_FILE_NAME, dir_fd=directory_fd)
+                    os.unlink(file_name, dir_fd=directory_fd)
                     # Never recursively clear unknown contents. A foreign
                     # entry makes rmdir fail instead of being deleted.
                     os.rmdir(directory)
@@ -163,7 +161,8 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
                 not _is_private_directory(directory_info) or
                 directory_info.st_uid != os.geteuid()):
             raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-        file_path = directory / _FILE_NAME
+        file_name = f"{_FILE_PREFIX}{secrets.token_hex(16)}{_FILE_SUFFIX}"
+        file_path = directory / file_name
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
         flags |= getattr(os, "O_CLOEXEC", 0)
         descriptor = os.open(file_path, flags, 0o600)
@@ -184,7 +183,7 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
             created_identity = _file_identity(after)
         lease = MaximumTemporaryOutput(file_path)
         with _LOCK:
-            _LEASES[lease] = (directory, created_identity, _identity(directory_info))
+            _LEASES[lease] = (directory, created_identity, _identity(directory_info), file_name)
         return lease
     except Exception:
         if directory is not None:

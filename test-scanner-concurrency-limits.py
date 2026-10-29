@@ -80,15 +80,13 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
         self.assertIn("validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)", gate)
         self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", gate)
         self.assertIn("private let maxConcurrentScans = 2", native)
-        # The separate, confirmed Restore Recommended Limits action may
-        # *remove* a legacy override; it must not add an editable scan limit.
-        ordinary_prefs, reset_section = prefs.split(
-            "enum RecommendedScannerLimitsReset", 1)
-        self.assertNotIn("maxConcurrentScans", ordinary_prefs)
-        self.assertIn('static let concurrencyOverrideKey = "maxConcurrentScans"',
-                      reset_section)
-        self.assertIn("defaults.removeObject(forKey: concurrencyOverrideKey)",
-                      reset_section)
+        # The opt-in reset can remove an inactive override; only the
+        # installed scanner owns its enforced two-slot policy.
+        self.assertIn('static let concurrencyOverrideKey = "maxConcurrentScans"', prefs)
+        self.assertIn("defaults.removeObject(forKey: concurrencyOverrideKey)", prefs)
+        self.assertNotIn(
+            "maxConcurrentScans", prefs.split("enum RecommendedScannerLimitsReset", 1)[0]
+        )
         self.assertNotIn("maxConcurrentScans", validator)
         self.assertNotIn("scanner_concurrency_validation", validator)
         self.assertNotIn("scanner_concurrency_validation", native)
