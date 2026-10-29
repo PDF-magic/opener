@@ -34,7 +34,10 @@ class UpdatesSettingsPageTests(unittest.TestCase):
         'GroupBox("Malware definition updates")',
         'object(forInfoDictionaryKey: "CFBundleShortVersionString")',
         'LabeledContent("Installed version", value: applicationVersion)',
-        "not available from this page yet",
+        'Button("Check for Updates Now")',
+        'Button("Update Signatures Now")',
+        'accessibilityIdentifier("checkForUpdatesNowButton")',
+        'accessibilityIdentifier("updateSignaturesNowButton")',
         "existing scanner update workflow",
         'accessibilityIdentifier("updatesSettingsPage")',
         'accessibilityIdentifier("applicationUpdatesSection")',
@@ -57,14 +60,36 @@ class UpdatesSettingsPageTests(unittest.TestCase):
   def test_updates_page_does_not_install_or_mutate(self):
     source = UPDATES.read_text(encoding="utf-8")
     for forbidden in (
-        "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
-        "Process(", "URLSession", "URLRequest", "downloadTask",
+        "@AppStorage", "UserDefaults", "NSWorkspace",
+        "downloadTask",
         "write(to:", "LSSetDefault", "setDefault", "onOpenURL",
-        "DocumentGroup", "target-app.txt", "Button(", "Toggle(",
-        "Picker(", "Task {", "onAppear", "onChange",
+        "DocumentGroup", "target-app.txt", "Toggle(",
+        "Picker(", "onAppear", "onChange",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
+
+
+  def test_manual_actions_are_explicit_and_do_not_change_scanner_gate(self):
+    view = UPDATES.read_text(encoding="utf-8")
+    for expected in (
+        "ManualUpdateActions.checkSignatureUpdates()",
+        "ManualUpdateActions.updateSignatures()",
+        '"current.cvd.clamav.net"',
+        'process.executableURL = URL(fileURLWithPath: "/bin/bash")',
+        'update-malware-signatures.sh',
+        "lstat(script.path, &metadata)",
+        "process.waitUntilExit()",
+        "process.terminationStatus == 0",
+        "Signature update failed.",
+        "Newer ClamAV signatures are advertised.",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, view)
+    self.assertNotIn("shell -c", view)
+    self.assertNotIn("chmod", view)
+    self.assertNotIn("ProcessInfo.processInfo.environment", view)
+    self.assertNotIn("target-app.txt", view)
 
 
 if __name__ == "__main__":

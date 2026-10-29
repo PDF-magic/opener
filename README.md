@@ -861,3 +861,5 @@ For compatibility with existing installations, runtime scripts and signatures re
 ## License
 
 Licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+**Manual signature-update controls (opener-0381):** The Updates preferences pane includes **Check for Updates Now** for a user-initiated, read-only comparison of the ClamAV-published DNS TXT main/daily signature revisions against bounded local database headers. Missing DNS information or unreadable local metadata reports that the comparison is unavailable, never that the signatures are current. **Update Signatures Now** explicitly runs the already installed FreshClam updater using its existing configuration and timestamp records; it does not change the four-hour schedule or saved preferences. Both controls act only after a click, display a result, and never authorize document opening, override scan failures, remove quarantine, or disable the existing 48-hour database freshness gate.
