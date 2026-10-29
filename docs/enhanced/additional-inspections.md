@@ -2,8 +2,8 @@
 
 `enhanced_additional_inspections.plan_additional_inspections(report)` produces
 a passive, immutable follow-up plan for the **validated structured findings**
-from [opener-0297](structured-enhanced-findings.md) and the explainable
-results from [opener-0299](enhanced-finding-explanations.md). It does not run
+from [opener-0297](../structured-enhanced-findings.md) and the explainable
+results from [opener-0299](finding-explanations.md). It does not run
 the checks or change existing results, execute PDF content or permit opening.
 
 Every finding retains its origin stage, diagnostic code, severity and bounded

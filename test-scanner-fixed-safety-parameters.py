@@ -121,7 +121,7 @@ class ScannerFixedSafetyParameterTests(unittest.TestCase):
             )
 
     def test_fixed_inventory_matches_enforcement_and_ci(self):
-        document = (ROOT / "docs/scanner-safety-fixed-parameters.md").read_text()
+        document = (ROOT / "docs/scanner/safety-fixed-parameters.md").read_text()
         validator = (ROOT / "scanner_argument_validation.py").read_text()
         scanner = (ROOT / "scan-and-open.py").read_text()
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()

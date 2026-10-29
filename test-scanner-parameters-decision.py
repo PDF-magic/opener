@@ -99,7 +99,7 @@ class ScannerParameterDecisionTests(unittest.TestCase):
             "When to reconsider",
         ):
             self.assertIn(term, doc)
-        self.assertIn("docs/scanner-parameters-decision.md", readme)
+        self.assertIn("docs/scanner/parameters-decision.md", readme)
         self.assertIn("python3 test-scanner-parameters-decision.py -v", ci)
         self.assertIn("python3 test-scanner-arguments.py -v", ci)
 

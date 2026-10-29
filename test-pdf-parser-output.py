@@ -84,7 +84,7 @@ class PDFParserOutputTests(unittest.TestCase):
         source = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        docs = (ROOT / "docs/pdf-structure-parser.md").read_text(encoding="utf-8")
+        docs = (ROOT / "docs/pdf/structure-parser.md").read_text(encoding="utf-8")
         self.assertIn("python3 test-pdf-parser-output.py -v", ci)
         self.assertIn("schemaVersion", docs)
         self.assertIn("authorizesOpen", docs)
