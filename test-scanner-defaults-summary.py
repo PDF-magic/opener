@@ -56,12 +56,17 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     self.assertIn("does not change scanner behavior or reset saved choices", source)
     self.assertIn("Advanced scanner parameters are not editable here.", source)
     for forbidden in (
-        "Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage",
+        "Toggle(", "Picker(", "Slider(", "@AppStorage",
         "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
         "write(to:", "createFile(", "clamscan(", "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
+    # The only buttons allowed on this page are the opt-in, confirmed
+    # Restore Recommended Limits action and its cancellation control.
+    self.assertEqual(source.count("Button("), 3)
+    self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
+    self.assertIn('Button("Cancel", role: .cancel)', source)
 
   def test_both_ci_jobs_verify_the_defaults_summary(self):
     source = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
