@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import socket
 import struct
+import stat
 import subprocess
 import sys
 import tempfile
@@ -473,7 +474,35 @@ class MaximumRendererTests(unittest.TestCase):
             )
             for path in support_files
         })
-        self.assertTrue(all(checks.values()), checks)
+        def details(path):
+            try:
+                info = os.stat(path, follow_symlinks=False)
+                return {
+                    "canonical": os.path.realpath(path) == path,
+                    "mode": oct(info.st_mode),
+                    "uid": info.st_uid,
+                    "euid": os.geteuid(),
+                    "regular": stat.S_ISREG(info.st_mode),
+                    "directory": stat.S_ISDIR(info.st_mode),
+                    "executable": os.access(path, os.X_OK),
+                    "group_or_world_writable": bool(info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)),
+                }
+            except OSError as exc:
+                return {"error": type(exc).__name__}
+        details_by_path = {
+            "sandbox executable": details(renderer.SANDBOX_EXEC),
+            "python executable": details(python),
+            "worker": details(str(worker.resolve(strict=True))),
+            "source root": details(str(source_root)),
+            "python prefix": details(prefix),
+            "base prefix": details(base_prefix),
+            **{path.name: details(str(path.resolve(strict=True))) for path in support_files},
+        }
+        self.assertTrue(
+            all(checks.values()),
+            {"failed": [name for name, valid in checks.items() if not valid],
+             "details": details_by_path},
+        )
         context = renderer._renderer_sandbox_context(worker)
         self.assertEqual(context["worker"], str(worker.resolve(strict=True)))
 
