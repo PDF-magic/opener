@@ -4,10 +4,14 @@ Future Maximum-only handoff primitive (opener-0320), never selected by the
 installed Built-in handler. The source is converted, but never a launch target.
 An absent/invalid copy, scan failure or launch failure cannot fall back to it.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import hashlib
+import hmac
 from enum import Enum
 import importlib.util
 import os
+import secrets
+from weakref import WeakKeyDictionary
 from pathlib import Path
 import stat
 import sys
@@ -29,6 +33,21 @@ class MaximumSafeCopyError(RuntimeError):
     """A fixed error without document paths, filenames or PDF contents."""
 
 
+@dataclass(frozen=True, eq=False)
+class SourceScanRequest:
+    """Opaque correlation handle for one trusted source scan request.
+
+    A handle records provenance only. It is not a scanner verdict or
+    authorization to open a PDF, and it never contains a source filename.
+    """
+
+    request_id: str
+
+
+_SOURCE_SCAN_REQUESTS = WeakKeyDictionary()
+_SOURCE_SCAN_LOCK = threading.RLock()
+
+
 class MaximumCopyDisposition(Enum):
     """Trusted future Maximum policy intent; not a user profile preference."""
 
@@ -44,6 +63,7 @@ class MaximumSafeCopyHandoff:
     original_opened: bool = False
     content_origin: str = GENERATED_CONTENT_ORIGIN
     display_label: str = OFFER_LABEL
+    source_scan_request_id: str | None = field(default=None, repr=False)
 
     def to_public_metadata(self):
         """Display a generated-copy label without exposing its private path."""
@@ -61,7 +81,12 @@ class MaximumSafeCopyHandoff:
                 self.scanned is not True or self.original_opened is not False or
                 type(self.content_origin) is not str or
                 self.content_origin != GENERATED_CONTENT_ORIGIN or
-                self.display_label != OFFER_LABEL):
+                self.display_label != OFFER_LABEL or
+                (self.source_scan_request_id is not None and
+                 (type(self.source_scan_request_id) is not str or
+                  len(self.source_scan_request_id) != 32 or
+                  any(character not in '0123456789abcdef'
+                      for character in self.source_scan_request_id)))):
             raise ValueError("Only a separate scanned copy can be a Maximum handoff")
 
 
@@ -96,6 +121,33 @@ def _read_source(path):
         return contents, _source_identity(before)
     except (OSError, ValueError):
         raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
+
+
+def begin_source_scan_request(source_path) -> SourceScanRequest:
+    """Bind an opaque request ID to a read-only source snapshot.
+
+    The future Maximum coordinator must still complete all mandatory source
+    scans independently. This request context must not be treated as a clean
+    verdict, and no source filename is retained in the public handoff.
+    """
+    source, identity = _read_source(source_path)
+    request = SourceScanRequest(secrets.token_hex(16))
+    with _SOURCE_SCAN_LOCK:
+        _SOURCE_SCAN_REQUESTS[request] = (
+            Path(source_path), identity, hashlib.sha256(source).digest()
+        )
+    return request
+
+
+def _matches_source_request(request, source_path, source, identity):
+    if type(request) is not SourceScanRequest:
+        return False
+    with _SOURCE_SCAN_LOCK:
+        binding = _SOURCE_SCAN_REQUESTS.get(request)
+    return (binding is not None and
+            binding[0] == Path(source_path) and
+            binding[1] == identity and
+            hmac.compare_digest(binding[2], hashlib.sha256(source).digest()))
 
 
 def _source_unchanged(path, identity):
@@ -176,7 +228,7 @@ def _scan_staged_copy(path, offer):
     return module.scan_and_open_generated_copy(str(path), offer)
 
 
-def open_required_maximum_safe_copy(source_path, *, disposition):
+def open_required_maximum_safe_copy(source_path, *, disposition, source_request=None):
     """Open only a newly reconstructed copy after its own mandatory scan.
 
     The future Maximum policy coordinator must first finish the source's
@@ -185,12 +237,16 @@ def open_required_maximum_safe_copy(source_path, *, disposition):
     activate an unavailable profile or infer policy from request metadata.
     Neither scan failure nor converter failure can open the original file.
     """
-    if disposition is not MaximumCopyDisposition.REQUIRED:
+    if (disposition is not MaximumCopyDisposition.REQUIRED or
+            type(source_request) is not SourceScanRequest):
         raise MaximumSafeCopyError(BLOCK_MESSAGE)
     path = None
     success = False
     try:
         source, source_identity = _read_source(source_path)
+        if not _matches_source_request(source_request, source_path,
+                                       source, source_identity):
+            raise MaximumSafeCopyError(BLOCK_MESSAGE)
         offer = offer_sanitized_pdf_copy(source)
         if (type(offer) is not SanitizedCopyOffer or
                 offer.permits_open is not False or
@@ -214,7 +270,9 @@ def open_required_maximum_safe_copy(source_path, *, disposition):
         success = True
         # Leave only the copy available to the launched viewer. The parent
         # private temp directory is eligible for normal OS temp cleanup.
-        return MaximumSafeCopyHandoff(path)
+        return MaximumSafeCopyHandoff(
+            path, source_scan_request_id=source_request.request_id
+        )
     except Exception:
         raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
     finally:
