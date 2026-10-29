@@ -13,6 +13,8 @@ import struct
 import subprocess
 import sys
 
+from maximum_network_isolation import RENDERER_SANDBOX_PROFILE, SANDBOX_EXEC
+
 MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
 MAX_REQUEST_PAGES = 4
@@ -25,8 +27,7 @@ MAGIC = b"MAXPNG01"
 _HEADER = struct.Struct(">8sII")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
-SANDBOX_EXEC = "/usr/bin/sandbox-exec"
-RENDERER_SANDBOX_PROFILE = """(version 1)
+RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
 (allow process-exec (literal (param "PYTHON")))
 (allow sysctl-read)
@@ -47,14 +48,13 @@ RENDERER_SANDBOX_PROFILE = """(version 1)
     (subpath "/Library/Frameworks")
     (literal "/dev/null")
     (literal "/dev/urandom"))
+(deny network*)
+(deny process-fork)
 """
-MAX_RENDER_ARGUMENTS = 8
-MAX_RENDER_ARGUMENT_LENGTH = 4096
 
 
 class MaximumPDFRenderError(RuntimeError):
     """Fixed, path-free render failure, never a positive scan verdict."""
-
 
 
 def _trusted_regular_file(path: str, *, executable: bool = False) -> bool:
@@ -120,47 +120,6 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         "python_prefix": prefix,
         "python_base_prefix": base_prefix,
     }
-
-
-def _run_confined_worker(
-    worker_path: Path, arguments: tuple[str, ...], input_bytes: bytes,
-) -> subprocess.CompletedProcess:
-    """Run one trusted renderer helper with macOS filesystem confinement."""
-    if (type(arguments) is not tuple or
-            not 1 <= len(arguments) <= MAX_RENDER_ARGUMENTS or
-            any(type(arg) is not str or not arg or "\x00" in arg or
-                len(arg) > MAX_RENDER_ARGUMENT_LENGTH for arg in arguments) or
-            type(input_bytes) is not bytes or
-            not 0 < len(input_bytes) <= MAX_PDF_BYTES):
-        raise MaximumPDFRenderError(BLOCK_MESSAGE)
-
-    context = _renderer_sandbox_context(worker_path)
-    command = [SANDBOX_EXEC, "-p", RENDERER_SANDBOX_PROFILE]
-    for name, key in (
-        ("PYTHON", "python"),
-        ("WORKER", "worker"),
-        ("WORKER_DIR", "worker_dir"),
-        ("PYTHON_PREFIX", "python_prefix"),
-        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
-    ):
-        command.extend(("-D", name + "=" + context[key]))
-    command.extend((context["python"], "-I", "-B", context["worker"], *arguments))
-    try:
-        return subprocess.run(
-            command, input=input_bytes,
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            timeout=WORKER_WALL_SECONDS, check=False, close_fds=True,
-            start_new_session=True, cwd="/",
-            env={
-                "PATH": "/usr/bin:/bin",
-                "HOME": "/var/empty",
-                "LANG": "C",
-                "PYTHONDONTWRITEBYTECODE": "1",
-                "PYTHONNOUSERSITE": "1",
-            },
-        )
-    except (OSError, subprocess.SubprocessError):
-        raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
 
 
 @dataclass(frozen=True)
@@ -244,6 +203,22 @@ def _decode_response(stdout: bytes, expected_index: int) -> RenderedPDFPage:
     )
 
 
+def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
+    """Build a deny-by-default macOS command; never launch without filesystem confinement."""
+    context = _renderer_sandbox_context(worker)
+    command = [SANDBOX_EXEC, "-p", RENDERER_FILESYSTEM_PROFILE]
+    for name, key in (
+        ("PYTHON", "python"),
+        ("WORKER", "worker"),
+        ("WORKER_DIR", "worker_dir"),
+        ("PYTHON_PREFIX", "python_prefix"),
+        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
+    ):
+        command.extend(("-D", name + "=" + context[key]))
+    command.extend((context["python"], "-I", "-B", context["worker"], str(page_index)))
+    return tuple(command)
+
+
 def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPage:
     """Render one requested page inside an isolated limited Python worker.
 
@@ -260,7 +235,23 @@ def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPa
 
     worker = Path(__file__).resolve().with_name("maximum_render_worker.py")
     try:
-        complete = _run_confined_worker(worker, (str(page_index),), pdf_bytes)
+        command = _renderer_command(worker, page_index)
+        complete = subprocess.run(
+            command, input=pdf_bytes,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=WORKER_WALL_SECONDS, check=False, close_fds=True,
+            start_new_session=True, cwd="/",
+            env={
+                "PATH": "/usr/bin:/bin",
+                "HOME": "/nonexistent",
+                "LANG": "C",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONNOUSERSITE": "1",
+                "PDF_MAGIC_RENDER_NETWORK_SANDBOX": (
+                    "seatbelt-v1" if sys.platform == "darwin" else "seccomp-v1"
+                ),
+            },
+        )
         if complete.returncode != 0:
             raise MaximumPDFRenderError(BLOCK_MESSAGE)
         return _decode_response(complete.stdout, page_index)
