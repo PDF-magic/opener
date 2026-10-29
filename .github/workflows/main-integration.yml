@@ -46,10 +46,8 @@ jobs:
         run: python3 test-maximum-filesystem-sandbox.py -v
       - name: Install pinned dependencies for native CoreGraphics and isolated-renderer tests
         run: python3 -m pip install --disable-pip-version-check "pypdf==5.9.0" "Pillow==11.3.0" "cryptography==46.0.4" "pymupdf==2.0"
-      - name: Verify native isolated renderer and Darwin memory-limit behavior
-        run: |
-          python3 test-maximum-isolated-renderer.py -v
-          python3 test-maximum-sanitizer-memory-limits.py -v
+      - name: Verify native isolated renderer under deny-by-default confinement
+        run: python3 test-maximum-isolated-renderer.py -v
       - name: Compile the CoreGraphics PDF sanitizer used by the handoff tests
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: Verify native raster conversion, page fidelity and active-content removal

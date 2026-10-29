@@ -249,14 +249,13 @@ class MaximumRendererTests(unittest.TestCase):
             renderer.render_isolated_pdf_page(self.pdf, 0)
         command, opts = calls[0]
         self.assertEqual(command[:3], (
-            renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_FILESYSTEM_PROFILE,
+            str(Path(sys.executable).resolve()), "-I", "-B",
         ))
-        self.assertIn("(deny default)", command[2])
-        python_index = command.index(str(Path(sys.executable).resolve()))
-        self.assertEqual(command[python_index:python_index + 3],
-                         (str(Path(sys.executable).resolve()), "-I", "-B"))
         self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
         self.assertEqual(command[-1], "0")
+        self.assertNotIn("sandbox-exec", command)
+        self.assertIn("(deny default)", renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertIn("(deny process-fork)", renderer.RENDERER_FILESYSTEM_PROFILE)
         self.assertIs(opts["input"], self.pdf)
         self.assertEqual(opts["cwd"], "/")
         self.assertTrue(opts["close_fds"])

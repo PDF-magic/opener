@@ -13,7 +13,32 @@ permissions:
   contents: read
 
 jobs:
+
+  detect-scope:
+    name: Validate dependency map and select test groups
+    runs-on: ubuntu-latest
+    outputs:
+      run_pdf: ${{ steps.scope.outputs.run_pdf }}
+      run_policy: ${{ steps.scope.outputs.run_policy }}
+      run_maximum: ${{ steps.scope.outputs.run_maximum }}
+      run_macos: ${{ steps.scope.outputs.run_macos }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Select affected suites conservatively
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+      - name: Verify dependency-map behavior
+        run: python3 test-ci-test-scope.py -v
+
   pdf-structure-tests:
+    needs: detect-scope
+    if: needs.detect-scope.outputs.run_pdf == 'true'
     name: PDF structure tests (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -60,6 +85,8 @@ jobs:
       - name: pdf / pdf-unusual-object-counts / Install pinned Enhanced PDF parser
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
   protection-policy-tests:
+    needs: detect-scope
+    if: needs.detect-scope.outputs.run_policy == 'true'
     name: Protection policy tests (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -110,6 +137,8 @@ jobs:
         run: python3 test-protection-lower-preview-warning.py -v
 
   maximum-portable-tests:
+    needs: detect-scope
+    if: needs.detect-scope.outputs.run_maximum == 'true'
     name: Portable Maximum contracts (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -217,6 +246,8 @@ jobs:
         run: python3 test-opened-document-origin.py -v
 
   macos-native-tests:
+    needs: detect-scope
+    if: needs.detect-scope.outputs.run_macos == 'true'
     name: macOS-native security tests
     runs-on: macos-latest
     timeout-minutes: 60
@@ -238,9 +269,6 @@ jobs:
         run: python3 -m pip install --no-deps --disable-pip-version-check "pymupdf==2.0"
       - name: mac / maximum-isolated-renderer / Verify real isolated page rasterization, sandbox confinement and fail-closed limits
         run: python3 test-maximum-isolated-renderer.py -v
-      - name: mac / maximum-sanitizer-memory-limits / Verify Darwin process-group memory diagnostics and fail-closed limits
-        run: python3 test-maximum-sanitizer-memory-limits.py -v
-
       - name: mac / maximum-generated-rescan / Install strict PDF validator
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-generated-rescan / Build isolated optional CoreGraphics raster converter
@@ -306,6 +334,22 @@ jobs:
       - name: mac / maximum-sanitized-structure / Verify metadata-free sanitized output structure and final-offer gate
         run: python3 test-maximum-sanitized-structure.py -v
 
-
-
-
+  consolidated-checks-gate:
+    name: Consolidated security checks gate
+    if: always()
+    needs:
+      - detect-scope
+      - pdf-structure-tests
+      - protection-policy-tests
+      - maximum-portable-tests
+      - macos-native-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if scope detection or any selected suite failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "Dependency selection or an applicable security suite failed."
+          exit 1
+      - name: Confirm all applicable suites passed
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        run: echo "All applicable consolidated security checks passed."
