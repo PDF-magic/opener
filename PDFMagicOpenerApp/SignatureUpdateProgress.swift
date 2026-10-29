@@ -39,7 +39,7 @@ struct SignatureUpdateProgress {
       return Glibc.read(descriptor, buffer.baseAddress, buffer.count)
       #endif
     }
-    guard count == metadata.st_size,
+    guard Int64(count) == metadata.st_size,
           let raw = String(bytes: bytes.prefix(Int(count)), encoding: .ascii),
           let match = raw.range(of: #"^[0-9]{1,12} [1-9][0-9]{0,9}\n?$"#,
                                 options: .regularExpression),

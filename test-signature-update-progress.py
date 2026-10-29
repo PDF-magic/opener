@@ -111,6 +111,26 @@ class SignatureUpdateProgressTests(unittest.TestCase):
         self.assertFalse((self.signatures / "last-successful-update").exists())
         self.assertTrue((self.signatures / "last-attempted-update").exists())
 
+    def test_updates_page_and_native_reader_are_read_only(self):
+        view = (ROOT / "PDFMagicOpenerApp/UpdatesSettingsView.swift").read_text()
+        reader = (ROOT / "PDFMagicOpenerApp/SignatureUpdateProgress.swift").read_text()
+        project = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text()
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("SignatureUpdateProgress.readInstalled(now: timeline.date)", view)
+        self.assertIn("TimelineView(.periodic(from: .now, by: 2))", view)
+        self.assertIn('accessibilityIdentifier("signatureUpdateProgress")', view)
+        self.assertIn("ProgressView()", view)
+        self.assertNotIn("ProgressView(value:", view)
+        for required in ("O_NOFOLLOW", "O_NONBLOCK", "fstat(", "S_IFREG",
+                         "kill(pid, 0)", "metadata.st_size <= 48"):
+            self.assertIn(required, reader)
+        for forbidden in ("URLSession", "Process(", "UserDefaults",
+                          "write(to:", "removeItem(", "downloadTask"):
+            self.assertNotIn(forbidden, reader)
+        self.assertEqual(project.count("path = SignatureUpdateProgress.swift;"), 1)
+        self.assertIn("test-signature-update-progress.swift", ci)
+        self.assertIn("python3 test-signature-update-progress.py -v", ci)
+
     def test_active_marker_is_only_display_metadata(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn('progress_record="$(/bin/date +%s) $$"', script)

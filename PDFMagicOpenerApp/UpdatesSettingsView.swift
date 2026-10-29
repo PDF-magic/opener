@@ -49,6 +49,33 @@ struct UpdatesSettingsView: View {
 
         GroupBox("Malware definition updates") {
           VStack(alignment: .leading, spacing: 10) {
+            // A live indeterminate indicator, never a guessed percentage:
+            // FreshClam does not expose trustworthy per-file progress here.
+            TimelineView(.periodic(from: .now, by: 2)) { timeline in
+              if let active = SignatureUpdateProgress.readInstalled(now: timeline.date) {
+                HStack(alignment: .center, spacing: 12) {
+                  ProgressView()
+                    .progressViewStyle(.circular)
+                    .accessibilityHidden(true)
+                  VStack(alignment: .leading, spacing: 4) {
+                    Text("Signature update in progress")
+                      .font(.headline)
+                    Text("Checking and downloading ClamAV definitions…")
+                      .foregroundStyle(.secondary)
+                    Text("Started at \\(active.startedAt.formatted(date: .abbreviated, time: .standard))")
+                      .font(.footnote)
+                      .foregroundStyle(.secondary)
+                  }
+                  .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("signatureUpdateProgress")
+              } else {
+                Text("No active signature update detected.")
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("signatureUpdateIdle")
+              }
+            }
             Text("ClamAV malware definitions are maintained by the existing scanner update workflow, independently of these application preferences. This page does not check their freshness or modify them.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
