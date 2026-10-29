@@ -255,6 +255,8 @@ jobs:
         run: python3 test-download-availability.py -v
       - name: Inspect PDF annotations without evaluating their contents
         run: python3 test-pdf-annotations.py -v
+      - name: Detect PDF rich-media content without media execution
+        run: python3 test-pdf-rich-media.py -v
       - name: Verify locally accessible iCloud Drive PDFs
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
