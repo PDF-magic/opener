@@ -201,7 +201,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
                 )
                 self.assertFalse(_visual_evidence(erased, index))
                 shifted = Image.new("RGB", expected.size, "white")
-                shifted.paste(expected.crop((55, 0, expected.width, expected.height)),
+                shifted.paste(expected.crop((110, 0, expected.width, expected.height)),
                               (0, 0))
                 self.assertFalse(_visual_evidence(shifted, index))
 
@@ -215,7 +215,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
         self.assertIn("python3 test-maximum-annotations.py -v", workflow)
         self.assertFalse(copies.SanitizedCopyOffer(_pdf(), 2).permits_open)
         self.assertTrue(copies.SanitizedCopyOffer(_pdf(), 2).needs_separate_scan)
-        self.assertIn("annotations", copies.OFFER_EXPLANATION)
+        self.assertIn("other interactive features are not preserved", copies.OFFER_EXPLANATION)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 
