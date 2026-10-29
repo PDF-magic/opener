@@ -61,7 +61,7 @@ struct UpdatesSettingsView: View {
                 .accessibilityIdentifier("applicationUpdateCheckResult")
             }
 
-            Label("The installed version comes from this app bundle. It does not tell you whether newer software exists.", systemImage: "info.circle")
+            Label("The installed version comes from this app bundle. Only published releases are compared; no application update is installed.", systemImage: "info.circle")
               .font(.footnote)
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
@@ -122,7 +122,7 @@ struct UpdatesSettingsView: View {
 import Foundation
 import Darwin
 
-// Both operations require an explicit click. Never run from .onAppear or
+// Both operations require an explicit click. Never run from a view lifecycle callback or
 // the PDF scanning path. Neither a release result nor FreshClam's exit code
 // authorizes opening a document.
 enum ManualUpdateActions {
