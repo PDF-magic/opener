@@ -9,6 +9,13 @@ COMPONENT = Path(__file__).with_name("scan-progress-view.swift")
 
 
 class ScanProgressComponentTests(unittest.TestCase):
+    def test_malware_assessment_is_validated_and_used_in_the_display_label(self):
+        source = COMPONENT.read_text()
+        self.assertIn('private static let malwareAssessments = [', source)
+        self.assertIn('let malwareAssessmentLabel: String', source)
+        self.assertIn('· \\(malwareAssessmentLabel)', source)
+        self.assertNotIn('· Malware not confirmed")', source)
+
     def test_existing_native_progress_panel_can_be_used_without_pdf_opener(self):
         source = COMPONENT.read_text()
         self.assertIn("final class ScanProgressPanel: NSPanel", source)
@@ -149,6 +156,7 @@ let findingReport: [String: Any] = [
                         "outcome": "reviewRequired",
                         "nextAction": "requestReviewBeforeOpening",
                         "explanation": "https://sensitive.invalid/never-display",
+                        "malwareAssessment": "notConfirmed",
                     ],
                 ],
                 [
@@ -197,6 +205,24 @@ panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: ba
 precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
 precondition(panel.enhancedFindingsTextView.string.contains("could not be verified"))
 precondition(!panel.enhancedFindingsTextView.string.contains("SECRET"))
+let invalidAssessmentReport: [String: Any] = [
+    "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": true,
+    "stageResults": [[
+        "stage": "embeddedUrls", "outcome": "completed",
+        "findings": [[
+            "code": "suspiciousUrl", "severity": "suspicious",
+            "result": [
+                "outcome": "reviewRequired",
+                "nextAction": "requestReviewBeforeOpening",
+                "explanation": "Fixed explanation only",
+                "malwareAssessment": "confirmed",
+            ],
+        ]],
+    ]],
+]
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: invalidAssessmentReport))
+precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+precondition(!panel.enhancedFindingsTextView.string.contains("confirmed"))
 panel.updateEnhancedFindings(from: Data(repeating: 65, count: 256 * 1024 + 1))
 precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
 let emptyReport: [String: Any] = [
