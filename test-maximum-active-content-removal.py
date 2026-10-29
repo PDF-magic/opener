@@ -7,7 +7,10 @@ import zlib
 
 from PIL import Image
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import ArrayObject, DictionaryObject, NameObject, NumberObject, StreamObject, TextStringObject
+from pypdf.generic import (
+    ArrayObject, ByteStringObject, DictionaryObject, NameObject, NumberObject,
+    StreamObject, TextStringObject,
+)
 
 import maximum_active_content_removal as removal
 
@@ -21,7 +24,8 @@ def executable_payload():
     return bytes(header) + b"PRIVATE-EXECUTABLE-PAYLOAD"
 
 
-def image_pdf(*, pages=1, actions=False, form_actions=False, extra_image=False, size=(24, 30)):
+def image_pdf(*, pages=1, actions=False, form_actions=False, extra_image=False,
+              size=(24, 30), metadata=False):
     writer = PdfWriter()
     for number in range(pages):
         page = writer.add_blank_page(width=72 + number, height=90 + number)
@@ -99,6 +103,28 @@ def image_pdf(*, pages=1, actions=False, form_actions=False, extra_image=False, 
         writer.add_js("app.alert('EVIL-NOT-TO-COPY')")
         writer.add_attachment("private-sensitive.txt", b"SENSITIVE-PAYLOAD-NEVER-COPY")
         writer.add_attachment("dropper.exe", executable_payload())
+    if metadata:
+        writer.add_metadata({
+            "/Title": "PRIVATE-INFO-TITLE",
+            "/Author": "PRIVATE-INFO-AUTHOR",
+            "/Subject": "PRIVATE-INFO-SUBJECT",
+            "/Keywords": "PRIVATE-INFO-KEYWORDS",
+            "/Creator": "PRIVATE-INFO-CREATOR",
+            "/Producer": "PRIVATE-INFO-PRODUCER",
+            "/CreationDate": "D:20261029080000Z",
+            "/ModDate": "D:20261029090000Z",
+        })
+        xmp = StreamObject()
+        xmp._data = b'<?xpacket begin=""?><x:xmpmeta>PRIVATE-XMP-TITLE</x:xmpmeta><?xpacket end="w"?>'
+        xmp.update({
+            NameObject("/Type"): NameObject("/Metadata"),
+            NameObject("/Subtype"): NameObject("/XML"),
+        })
+        writer._root_object[NameObject("/Metadata")] = writer._add_object(xmp)
+        writer._ID = ArrayObject([
+            ByteStringObject(b"PRIVATE-DOCUMENT-ID"),
+            ByteStringObject(b"PRIVATE-DOCUMENT-ID"),
+        ])
     stream = BytesIO()
     writer.write(stream)
     return stream.getvalue()
@@ -126,6 +152,31 @@ class ActiveRemovalTests(unittest.TestCase):
         self.assertNotIn(b"SENSITIVE-PAYLOAD-NEVER-COPY", result)
         pixel = Image.open(BytesIO(output.pages[0].images[0].data)).convert("RGB")
         self.assertEqual(pixel.getpixel((0, 0)), (12, 140, 235))
+
+    def test_document_info_xmp_and_file_identifier_metadata_are_not_retained(self):
+        original = image_pdf(metadata=True)
+        source = PdfReader(BytesIO(original), strict=True)
+        self.assertEqual(source.metadata.title, "PRIVATE-INFO-TITLE")
+        self.assertEqual(source.metadata.author, "PRIVATE-INFO-AUTHOR")
+        self.assertIn("/Metadata", source.trailer["/Root"])
+        self.assertIn("/ID", source.trailer)
+        self.assertIn(b"PRIVATE-XMP-TITLE", original)
+
+        result = removal.remove_active_pdf_functionality(original, 1)
+        self.assertIsInstance(result, bytes)
+        output = PdfReader(BytesIO(result), strict=True)
+        self.assertNotIn("/Info", output.trailer)
+        self.assertNotIn("/ID", output.trailer)
+        self.assertIsNone(output.metadata)
+        self.assertNotIn("/Metadata", output.trailer["/Root"])
+        self.assertNotIn("/Metadata", output.pages[0])
+        for marker in (
+            b"PRIVATE-INFO-TITLE", b"PRIVATE-INFO-AUTHOR",
+            b"PRIVATE-INFO-SUBJECT", b"PRIVATE-INFO-KEYWORDS",
+            b"PRIVATE-INFO-CREATOR", b"PRIVATE-INFO-PRODUCER",
+            b"PRIVATE-XMP-TITLE", b"PRIVATE-DOCUMENT-ID", b"/Producer",
+        ):
+            self.assertNotIn(marker, result)
 
     def test_interactive_form_actions_and_targets_are_stripped(self):
         original = image_pdf(form_actions=True)

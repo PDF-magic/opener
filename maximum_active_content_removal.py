@@ -57,6 +57,9 @@ def remove_active_pdf_functionality(
         if reader.is_encrypted or len(reader.pages) != expected_pages:
             return None
         writer = PdfWriter()
+        # A fresh visual-only copy has no need for source or producer metadata.
+        writer._info = None
+        writer._ID = None
         total_pixels = 0
         for index, source in enumerate(reader.pages):
             width = float(source.mediabox.width)
