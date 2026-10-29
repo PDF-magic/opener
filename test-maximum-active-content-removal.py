@@ -12,6 +12,15 @@ from pypdf.generic import DictionaryObject, NameObject, NumberObject, StreamObje
 import maximum_active_content_removal as removal
 
 
+def executable_payload():
+    """PE-like attachment payload that must not survive visual-only rebuilding."""
+    header = bytearray(128)
+    header[:2] = b"MZ"
+    header[60:64] = (64).to_bytes(4, "little")
+    header[64:68] = b"PE" + bytes(2)
+    return bytes(header) + b"PRIVATE-EXECUTABLE-PAYLOAD"
+
+
 def image_pdf(*, pages=1, actions=False, extra_image=False, size=(24, 30)):
     writer = PdfWriter()
     for number in range(pages):
@@ -50,6 +59,7 @@ def image_pdf(*, pages=1, actions=False, extra_image=False, size=(24, 30)):
     if actions:
         writer.add_js("app.alert('EVIL-NOT-TO-COPY')")
         writer.add_attachment("private-sensitive.txt", b"SENSITIVE-PAYLOAD-NEVER-COPY")
+        writer.add_attachment("dropper.exe", executable_payload())
     stream = BytesIO()
     writer.write(stream)
     return stream.getvalue()
@@ -77,6 +87,31 @@ class ActiveRemovalTests(unittest.TestCase):
         self.assertNotIn(b"SENSITIVE-PAYLOAD-NEVER-COPY", result)
         pixel = Image.open(BytesIO(output.pages[0].images[0].data)).convert("RGB")
         self.assertEqual(pixel.getpixel((0, 0)), (12, 140, 235))
+
+    def test_embedded_executables_and_other_files_are_stripped(self):
+        original = image_pdf(actions=True)
+        source = PdfReader(BytesIO(original), strict=True)
+        names = source.trailer["/Root"]["/Names"]["/EmbeddedFiles"]["/Names"]
+        attachments = {}
+        for index in range(0, len(names), 2):
+            spec = names[index + 1].get_object()
+            attachments[str(names[index])] = spec["/EF"]["/F"].get_object().get_data()
+        self.assertIn("dropper.exe", attachments)
+        self.assertIn(b"PRIVATE-EXECUTABLE-PAYLOAD", attachments["dropper.exe"])
+        self.assertIn(b"SENSITIVE-PAYLOAD-NEVER-COPY", attachments["private-sensitive.txt"])
+
+        result = removal.remove_active_pdf_functionality(original, 1)
+        self.assertIsInstance(result, bytes)
+        self.assertNotIn(b"PRIVATE-EXECUTABLE-PAYLOAD", result)
+        self.assertNotIn(b"SENSITIVE-PAYLOAD-NEVER-COPY", result)
+        self.assertNotIn(b"/EmbeddedFiles", result)
+        self.assertNotIn(b"/EmbeddedFile", result)
+        self.assertNotIn(b"/EF", result)
+        output = PdfReader(BytesIO(result), strict=True)
+        self.assertEqual(set(output.trailer["/Root"]), {"/Type", "/Pages"})
+        self.assertEqual(set(output.pages[0]), {
+            "/Type", "/Parent", "/Resources", "/MediaBox", "/Contents",
+        })
 
     def test_preserves_page_count_dimensions_and_distinct_pixels(self):
         result = removal.remove_active_pdf_functionality(
