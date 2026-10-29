@@ -98,6 +98,18 @@ struct UpdatesSettingsView: View {
                   .accessibilityIdentifier("signatureUpdateIdle")
               }
             }
+            // Re-read the installed record each minute: automatic FreshClam
+            // runs can succeed while this preferences pane stays open.
+            TimelineView(.periodic(from: .now, by: 60)) { timeline in
+              if let warning = SignatureUpdateStatus.readInstalled(now: timeline.date)
+                .freshnessWarning(now: timeline.date) {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                  .font(.callout.weight(.semibold))
+                  .foregroundStyle(.orange)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .accessibilityIdentifier("signatureFreshnessWarning")
+              }
+            }
             Text(signatureStatus.message)
               .font(.headline)
               .fixedSize(horizontal: false, vertical: true)

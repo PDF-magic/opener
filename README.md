@@ -89,6 +89,8 @@ a newer attempt without a newer success is not presented as a confirmed
 successful update. Times are displayed in the user's local time zone.
 This is historical status only: it cannot prove signatures are fresh or
 complete and does not replace the installed 48-hour scanner freshness gate.
+
+**Stale-signature warning (opener-0392):** Preferences → Updates shows an explicit warning when the recorded last successful signature check is **older than 48 hours**, using the same inclusive boundary as the scan gate. A missing, malformed, future, or unreadable successful-update timestamp instead produces a separate **freshness cannot be verified** warning, never a claim that definitions are current. The warning re-evaluates the installed timestamp about once per minute while the pane remains open, including when the automatic update agent runs. No background update is triggered by viewing the warning; signature database validity, malware scanning, quarantine, and the scanner's fail-closed 48-hour freshness policy remain authoritative.
 Opening Settings does not run updates, modify saved preferences or change
 scanner protections.
 
