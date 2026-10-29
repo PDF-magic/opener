@@ -140,9 +140,15 @@ class ActiveRemovalTests(unittest.TestCase):
         additional = widget["/AA"].get_object()
         self.assertEqual(str(additional["/U"].get_object()["/S"]), "/ResetForm")
         self.assertEqual(str(additional["/D"].get_object()["/S"]), "/ImportData")
-        self.assertIn(b"PRIVATE-FORM-FIELD", original)
-        self.assertIn(b"private-form.fdf", original)
-        self.assertIn(b"private.invalid/submit", original)
+        self.assertEqual(str(widget["/T"]), "PRIVATE-FORM-FIELD")
+        self.assertEqual(
+            str(widget["/A"].get_object()["/F"]),
+            "https://private.invalid/submit",
+        )
+        self.assertEqual(
+            str(additional["/D"].get_object()["/F"]),
+            "private-form.fdf",
+        )
 
         result = removal.remove_active_pdf_functionality(original, 1)
         self.assertIsInstance(result, bytes)
