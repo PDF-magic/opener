@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
+from scanner_concurrency_validation import validate_scanner_concurrency_limit
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from scanner_argument_validation import (
     InvalidScannerArguments, validate_scanner_arguments,
@@ -155,6 +156,7 @@ def scan_slot():
     Advisory locks are held on open file descriptors, so an interrupted process
     automatically releases its slot. No file names, paths, or scan results are logged.
     """
+    validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)
     slot_dir = CACHE_DB.parent / 'scan-slots'
     slot_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     if (slot_dir.is_symlink() or not slot_dir.is_dir()

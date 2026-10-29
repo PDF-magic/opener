@@ -1,85 +1,94 @@
 #!/usr/bin/env python3
-"""Validate future optional scan concurrency without relaxing the installed two-slot gate."""
+"""Validate internal scan concurrency without introducing user-editable parameters."""
+import importlib.util
 from pathlib import Path
+import sys
+import tempfile
+import threading
 import unittest
+from unittest.mock import patch
 
-from configuration_validation import (
-  MAX_PERMITTED_CONCURRENT_SCANS,
-  SCANNER_CONCURRENCY_KEY,
-  UnsupportedSettingValue,
-  validate_configuration,
-  validate_scanner_concurrency_limit,
+from scanner_concurrency_validation import (
+    MAX_PERMITTED_CONCURRENT_SCANS,
+    validate_scanner_concurrency_limit,
 )
 
 ROOT = Path(__file__).resolve().parent
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+opener = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(opener)
 
 
 class ScannerConcurrencyLimitTests(unittest.TestCase):
-  def test_permitted_limits_are_exact_integers(self):
-    self.assertEqual(MAX_PERMITTED_CONCURRENT_SCANS, 2)
-    for count in (1, 2):
-      with self.subTest(count=count):
-        self.assertEqual(validate_scanner_concurrency_limit(count), count)
+    def test_permitted_internal_limits_are_exact_integers(self):
+        self.assertEqual(MAX_PERMITTED_CONCURRENT_SCANS, 2)
+        for count in (1, 2):
+            with self.subTest(count=count):
+                self.assertEqual(validate_scanner_concurrency_limit(count), count)
 
-  def test_rejects_out_of_range_noninteger_and_boolean_values(self):
-    invalid = (0, -1, -100, 3, 4, 1000000, True, False, 1.0, 2.0,
-               1.5, float("nan"), float("inf"), None, "1", "2", " 2",
-               "", [], {}, (2,), b"2")
-    for value in invalid:
-      with self.subTest(value=repr(value)):
-        with self.assertRaises(UnsupportedSettingValue):
-          validate_scanner_concurrency_limit(value)
+    def test_invalid_limits_fail_closed_without_coercion(self):
+        invalid = (0, -1, -100, 3, 4, 1000000, True, False, 1.0, 2.0,
+                   1.5, float("nan"), float("inf"), None, "1", "2", " 2",
+                   "", [], {}, (2,), b"2")
+        for value in invalid:
+            with self.subTest(value=repr(value)):
+                with self.assertRaisesRegex(ValueError, "Unsupported scanner concurrency limit"):
+                    validate_scanner_concurrency_limit(value)
 
-  def test_explicit_optional_setting_is_checked_before_preservation(self):
-    defaults = {"version": 1, "showScanProgress": True}
-    for count in (1, 2):
-      saved = {SCANNER_CONCURRENCY_KEY: count, "future": {"custom": True}}
-      with self.subTest(count=count):
-        result = validate_configuration(saved, defaults=defaults)
-        self.assertEqual(result[SCANNER_CONCURRENCY_KEY], count)
-        self.assertEqual(result["future"], {"custom": True})
-        self.assertEqual(saved[SCANNER_CONCURRENCY_KEY], count)
-    for value in (0, 3, True, 2.0, "2", None):
-      with self.subTest(value=repr(value)):
-        with self.assertRaises(UnsupportedSettingValue):
-          validate_configuration({SCANNER_CONCURRENCY_KEY: value}, defaults=defaults)
+    def test_unsafe_gate_values_are_rejected_before_any_slot_files_are_created(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "cache.sqlite3"
+            with patch.object(opener, "CACHE_DB", cache):
+                for invalid in (0, -1, 3, True, False, 2.0, "2", None):
+                    with self.subTest(value=repr(invalid)):
+                        with patch.object(opener, "MAX_CONCURRENT_SCANS", invalid):
+                            with self.assertRaisesRegex(ValueError, "Unsupported scanner concurrency limit"):
+                                with opener.scan_slot():
+                                    self.fail("Invalid concurrency reached the scanner queue")
+                            self.assertFalse((Path(directory) / "scan-slots").exists())
 
-  def test_invalid_declared_defaults_and_saved_overrides_fail_closed(self):
-    for bad_default in (0, 3, False, "2", 2.0):
-      with self.subTest(default=repr(bad_default)):
-        with self.assertRaises(UnsupportedSettingValue):
-          validate_configuration({}, defaults={SCANNER_CONCURRENCY_KEY: bad_default})
-    defaults = {"version": 1, SCANNER_CONCURRENCY_KEY: 2}
-    self.assertEqual(validate_configuration({}, defaults=defaults), defaults)
-    self.assertEqual(
-      validate_configuration({SCANNER_CONCURRENCY_KEY: 1}, defaults=defaults)
-      [SCANNER_CONCURRENCY_KEY], 1)
-    for invalid in (0, 3, True, 1.5, "1"):
-      with self.subTest(override=repr(invalid)):
-        with self.assertRaises(UnsupportedSettingValue):
-          validate_configuration({SCANNER_CONCURRENCY_KEY: invalid}, defaults=defaults)
+    def test_lower_internal_limit_honors_one_slot_without_changing_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "cache.sqlite3"
+            started = threading.Event()
+            acquired = threading.Event()
 
-  def test_does_not_modify_other_settings_or_live_scan_enforcement(self):
-    defaults = {"version": 1, "showScanProgress": True}
-    saved = {"showScanProgress": False, "future": {"custom": [1, 2]}}
-    result = validate_configuration(saved, defaults=defaults)
-    self.assertFalse(result["showScanProgress"])
-    self.assertEqual(result["future"], {"custom": [1, 2]})
-    result["future"]["custom"].append(3)
-    self.assertEqual(saved["future"], {"custom": [1, 2]})
-    self.assertEqual(defaults, {"version": 1, "showScanProgress": True})
-    scan = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-    native = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
-    self.assertIn("MAX_CONCURRENT_SCANS = 2", scan)
-    self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", scan)
-    self.assertIn("private let maxConcurrentScans = 2", native)
-    self.assertNotIn("configuration_validation", scan)
-    self.assertNotIn("SCANNER_CONCURRENCY_KEY", native)
+            def waiter():
+                started.set()
+                with opener.scan_slot():
+                    acquired.set()
 
-  def test_ci_runs_the_validator_regression(self):
-    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    self.assertIn("python3 test-scanner-concurrency-limits.py -v", ci)
+            with patch.object(opener, "CACHE_DB", cache):
+                with patch.object(opener, "MAX_CONCURRENT_SCANS", 1):
+                    with opener.scan_slot():
+                        thread = threading.Thread(target=waiter, daemon=True)
+                        thread.start()
+                        self.assertTrue(started.wait(2))
+                        self.assertFalse(acquired.wait(0.15), "One-slot limit was bypassed")
+                    self.assertTrue(acquired.wait(2), "Waiting scan did not resume")
+                    thread.join(timeout=2)
+                    self.assertFalse(thread.is_alive())
+            self.assertEqual(opener.MAX_CONCURRENT_SCANS, 2)
+
+    def test_no_user_editable_setting_or_existing_two_slot_policy_change(self):
+        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        native = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+        prefs = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(encoding="utf-8")
+        validator = (ROOT / "configuration_validation.py").read_text(encoding="utf-8")
+        self.assertIn("MAX_CONCURRENT_SCANS = 2", gate)
+        self.assertIn("validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)", gate)
+        self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", gate)
+        self.assertIn("private let maxConcurrentScans = 2", native)
+        self.assertNotIn("maxConcurrentScans", prefs)
+        self.assertNotIn("maxConcurrentScans", validator)
+        self.assertNotIn("scanner_concurrency_validation", validator)
+        self.assertNotIn("scanner_concurrency_validation", native)
+
+    def test_ci_runs_the_regression(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("python3 test-scanner-concurrency-limits.py -v", ci)
 
 
 if __name__ == "__main__":
-  unittest.main()
+    unittest.main()
