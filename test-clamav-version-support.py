@@ -55,6 +55,7 @@ class ClamAVVersionSupportTests(unittest.TestCase):
         cases = (subprocess.TimeoutExpired([SCANNER, "--version"], 5),
                  FileNotFoundError("private executable path"),
                  subprocess.CalledProcessError(1, [SCANNER, "--version"]),
+                 UnicodeDecodeError("utf-8", b"\\xff", 0, 1, "invalid start byte"),
                  "not ClamAV; /private/secret", "ClamAV 1.5", "")
         for response in cases:
             with self.subTest(response=repr(response)):
@@ -101,9 +102,11 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                 patch.object(opener, "watch_parent_lifetime"), \
                 patch.object(opener, "check_database") as database, \
                 patch.object(opener, "scan_and_open") as scan, \
+                patch.object(opener, "record_scan_request") as record, \
                 redirect_stderr(io.StringIO()):
             self.assertEqual(opener.main([str(self.pdf)]), 0)
         database.assert_called_once_with()
+        record.assert_called_once_with("Command Line")
         scan.assert_called_once_with(str(self.pdf), SCANNER)
 
 
