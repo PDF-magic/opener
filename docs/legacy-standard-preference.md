@@ -1,0 +1,13 @@
+# Preserve Standard for existing installations (opener-0334)
+
+The deployed PDF opener still enforces **Built-in ClamAV**, not one of the three proposed tier policies. The named **Standard**, **Enhanced** and **Maximum** cards are currently non-activating previews. This task preserves **Standard as the planned-level preference for an existing installation**, independently of the already saved \`selectedProtectionProfile = "built-in"\` security setting.
+
+On initialization, the app inspects the existing, recognized preference keys **before** creating missing defaults. If an existing installation has a valid current configuration schema and the supported Built-in effective policy, and no planned-level preference is saved, it saves \`preferredProtectionLevel = "standard"\`. Pre-schema installations with prior scan or notification settings count as existing. The existing user-selected browser, stored toggles, profile, and unrelated keys are never reset.
+
+A **new installation** instead receives \`preferredProtectionLevel = "unassigned"\`, which is not a selectable level or active scanner policy. This neutral marker is persisted so a second launch does not misclassify the newly created standard Built-in keys as a prior installation. It leaves any potential new-install recommendation to its independently reviewed evidence requirements (opener-0333).
+
+An explicit \`preferredProtectionLevel\` of \`standard\`, \`enhanced\`, or \`maximum\` is never overwritten by initialization. A dedicated \`saveExplicitChoice\` metadata-only method can preserve a future user selection without touching \`selectedProtectionProfile\` or enabling any tier. Unsupported or malformed stored values are preserved in place and reported as unrecognized rather than silently changed to Standard. Incompatible configuration schema versions are not migrated automatically.
+
+The existing \`selectedProtectionProfile\` key remains \`built-in\` and the installed ClamAV scan gate, fail-closed handoff, quarantine, caching and user PDF viewer selection are unchanged. Neither the new key nor its enum is read by the scanner. This is a **migration safeguard**, not activation of Standard or a change to which level is recommended for new users.
+
+\`test-legacy-standard-preference.swift\` uses isolated \`UserDefaults\` suites to verify fresh installs across subsequent launches, recognized existing installs, the pre-schema case, customizations, explicit user changes, unknown future choices, incompatible policy/schema values, general reset, and the mandatory Built-in security profile. The existing macOS CI compiles and runs the test with the production preference implementation. No real user preference domain is accessed.
