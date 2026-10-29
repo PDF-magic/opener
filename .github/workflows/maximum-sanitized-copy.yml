@@ -41,6 +41,8 @@ jobs:
         run: python3 test-maximum-transparency.py -v
       - name: Validate annotation fixtures and negative fidelity controls
         run: python3 test-maximum-annotations.py -v
+      - name: Validate real interactive form fixtures and visual negative controls
+        run: python3 test-maximum-interactive-forms.py -v
       - name: Verify password-protected documents never produce conversion offers
         run: python3 test-maximum-password-protected.py -v
       - name: Reject unsupported sanitization and unsafe fallback on Linux
@@ -80,6 +82,8 @@ jobs:
         run: python3 test-maximum-transparency.py -v
       - name: Verify actual annotated PDF visual fidelity and removal
         run: python3 test-maximum-annotations.py -v
+      - name: Verify actual interactive AcroForm raster fidelity and removal
+        run: python3 test-maximum-interactive-forms.py -v
       - name: Verify protected PDF behavior with the real CoreGraphics worker
         run: python3 test-maximum-password-protected.py -v
       - name: Reject unsupported sanitization and unsafe fallback on macOS
