@@ -66,8 +66,16 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # Protection's buttons select in-memory comparison previews only.
         if filename == "ProtectionSettingsView.swift" and term.startswith("Button"):
           continue
+        # Updates now has two explicit, user-initiated actions; keep all
+        # scanner bypass and settings mutation prohibitions intact.
+        if filename == "UpdatesSettingsView.swift" and term in ("Button(", "Process(", "URLSession"):
+          continue
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
+      if filename == "UpdatesSettingsView.swift":
+        self.assertIn('Button("Check for Updates Now")', source)
+        self.assertIn('Button("Update Signatures Now")', source)
+        self.assertIn("lstat(script.path, &metadata)", source)
       if filename == "ProtectionSettingsView.swift":
         self.assertIn("selectedPreview = tier", source)
         self.assertNotIn("SelectedProtectionProfilePreference.save", source)
