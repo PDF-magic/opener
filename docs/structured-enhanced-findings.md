@@ -13,6 +13,13 @@ PDF object/page numbers, not document-controlled text, URLs, file paths,
 attachment names, raw bytes, or exception messages. Data records are immutable;
 `to_dict()` creates a separate JSON-serializable object in expected-stage order.
 
+`FindingSeverity` includes `informational`, `reviewRequired`, `suspicious`,
+and `critical`. The explicit `reviewRequired` severity records that human
+review is mandatory even when the evidence is not separately classified as
+suspicious. Both `reviewRequired` and `suspicious` require review before an
+opening decision; `critical` blocks. The code-specific blocking policy can
+require blocking regardless of severity.
+
 Example for a **future** inspection producer:
 
 ```python
@@ -39,7 +46,7 @@ assert payload["authorizesOpen"] is False
 ```
 
 `requiresBlock` is a conservative **analysis signal** for any unfinished
-expected stage or suspicious/critical finding. When every *reported* stage
+expected stage or review-required/suspicious/critical finding. When every *reported* stage
 completes with no blocking findings, this signal may be false, but it is **not**
 a clean verdict and never authorizes opening. The caller's trusted requirements
 must include all applicable inspection stages; remaining baseline checks and the

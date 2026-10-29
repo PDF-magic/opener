@@ -11,8 +11,8 @@ severity and optional bounded object/page location, and receives a nested
 - `nextAction`: fixed safe handling guidance, never execution of PDF content
 
 Normal informational observations are recorded but are not a clean verdict.
-Suspicious observations require review before any opening decision. Critical
-observations block; resource-limit and inspection-failure findings **always**
+Review-required and suspicious observations both require human review before any
+opening decision. Critical observations block; resource-limit and inspection-failure findings **always**
 report `inspectionIncomplete` and require blocking, even if a producer marks
 their severity informational. The explanation never claims that JavaScript
 executed, a URL was contacted, or an embedded binary ran.
