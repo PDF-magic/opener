@@ -50,12 +50,16 @@ jobs:
         run: python3 test-incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
         run: python3 test-signature-network-interruptions.py -v
+      - name: Recover the signature update agent after a simulated system restart
+        run: python3 test-signature-agent-restart.py -v
       - name: Verify live signature-update progress and cleanup
         run: python3 test-signature-update-progress.py -v
       - name: Verify scanner-failure response policy and existing fail-closed gate
         run: python3 test-scanner-failure-policy.py -v
       - name: Reject unapproved ClamAV arguments before scanner invocation
         run: python3 test-scanner-arguments.py -v
+      - name: Verify fixed, non-editable ClamAV parameters
+        run: python3 test-scanner-parameters-decision.py -v
       - name: Keep scanner failures distinct from rejected feature exceptions
         run: python3 test-protection-failure-exception-boundary.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
@@ -144,6 +148,8 @@ jobs:
         run: python3 test-manual-update-actions.py -v
       - name: Verify signature update status is read-only and labeled in Updates
         run: python3 test-signature-update-status-display.py -v
+      - name: Verify stale-signature warning and fail-closed age boundary
+        run: python3 test-stale-signature-warning.py -v
       - name: Verify Notifications settings navigation and safe informational page
         run: python3 test-notifications-settings-page.py -v
       - name: Verify dedicated General settings page
@@ -339,6 +345,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
           "$RUNNER_TEMP/TestSignatureUpdateStatus"
+      - name: Verify native stale-signature warning at the scanner age boundary
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
+          "$RUNNER_TEMP/TestStaleSignatureWarning"
       - name: Verify native signature-update failure metadata safely
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-failures.swift -o "$RUNNER_TEMP/TestSignatureUpdateFailures"

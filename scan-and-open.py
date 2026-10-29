@@ -430,14 +430,29 @@ def fingerprint(path):
     is_bundle = path.is_dir()
     digest.update(b'bundle-v1\0' if is_bundle else b'file-v1\0')
     paths = sorted(path.rglob('*')) if is_bundle else [path]
+    if is_bundle:
+        # ClamAV follows both file and directory links. Check the *entire*
+        # bundle before reading any content or reusing a cached clean verdict.
+        # Nonexistent and cyclic targets are not proven to be inside the bundle.
+        root = path.resolve(strict=True)
+        for entry in paths:
+            if entry.is_symlink():
+                try:
+                    target = entry.resolve(strict=True)
+                except (OSError, RuntimeError) as error:
+                    raise RuntimeError(
+                        'Application bundle contains a link outside the bundle; opening was stopped.'
+                    ) from error
+                if not target.is_relative_to(root):
+                    raise RuntimeError(
+                        'Application bundle contains a link outside the bundle; opening was stopped.'
+                    )
     for entry in paths:
         # Include relative bundle paths, but let renamed identical files share a cache entry.
         if is_bundle:
             digest.update(os.fsencode(str(entry.relative_to(path))) + b'\0')
         if entry.is_symlink():
             digest.update(b'link\0' + os.fsencode(os.readlink(entry)) + b'\0')
-            if is_bundle and not entry.resolve().is_relative_to(path):
-                raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
             size = entry.stat().st_size
             # ClamAV may skip empty files; never cache or open an unscanned input.
