@@ -15,6 +15,32 @@ struct AdvancedScanningSettingsView: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
 
+        // Reference values from the mandatory Built-in scan gate, not controls.
+        // Present them before any advanced explanations or future controls.
+        GroupBox {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("These are the Built-in scanner defaults for reference. Viewing them does not change scanner behavior or reset saved choices.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            LabeledContent("Scanner", value: "ClamAV checks files locally before opening")
+            LabeledContent("PDF scan timeout", value: "30 minutes")
+            LabeledContent("Other-file scan timeout", value: "3 minutes")
+            LabeledContent("Non-PDF file limit", value: "512 MB per file")
+            LabeledContent("Required signatures", value: "main and daily; checked within 48 hours")
+
+            Text("Only verified clean results can be opened. PDF scans also obey ClamAV engine limits. Advanced scanner parameters are not editable here.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        } label: {
+          Label("Built-in scanner defaults", systemImage: "list.bullet.rectangle")
+        }
+        .accessibilityIdentifier("advancedScanningDefaultsSection")
+
         GroupBox {
           scanningDetail(
             "Local malware checks",
