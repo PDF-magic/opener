@@ -1,8 +1,8 @@
 import SwiftUI
 
 // The installed ClamAV gate owns the effective protection policy. These
-// planned tier cards can be selected for comparison only; they deliberately
-// never persist a selection or imply an unavailable tier is enforcing scans.
+// planned tier cards can be selected for comparison only; their persistent
+// preview preference never claims an unavailable tier is enforcing scans.
 // These display-only check IDs mirror protection_policy_definitions.py.
 // The native view intentionally does not alter scanner policy or preferences.
 private struct ProtectionLevelCheck: Identifiable {
@@ -187,6 +187,7 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
 
 struct ProtectionSettingsView: View {
   @State private var selectedPreview: PlannedProtectionTier?
+  @State private var previewSaveStatus: String?
 
   var body: some View {
     ScrollView {
@@ -223,14 +224,20 @@ struct ProtectionSettingsView: View {
 
         GroupBox("Planned protection levels") {
           VStack(alignment: .leading, spacing: 12) {
-            Text("Choose a card to preview its protections. All three are planned; choosing a card does not enable it, save a preference or change the scanner.")
+            Text("Choose a card to preview its protections. All three are planned; choosing a card does not enable it, but immediately saves your preview choice without changing the scanner.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
 
             ForEach(PlannedProtectionTier.allCases) { tier in
               Button {
-                // This is a UI-only preview; scanner policy is unchanged.
+                // Persist only the planned preview, never the active scanner policy.
+                guard let level = PreferredProtectionLevel(rawValue: tier.rawValue),
+                      PlannedProtectionLevelPreference.saveExplicitChoice(level) else {
+                  previewSaveStatus = "Could not save the preview choice. The previously saved level is unchanged."
+                  return
+                }
                 selectedPreview = tier
+                previewSaveStatus = "\(tier.title) preview saved. Active protection remains Built-in."
               } label: {
                 HStack(alignment: .top, spacing: 12) {
                   Image(systemName: selectedPreview == tier
@@ -285,6 +292,14 @@ struct ProtectionSettingsView: View {
                                   ? "Selected for preview, not active"
                                   : "Not selected, not active")
               .accessibilityHint("Show \(tier.title) details. This does not change scanning.")
+            }
+
+            if let previewSaveStatus {
+              Text(previewSaveStatus)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("protectionPreviewSaveStatus")
             }
 
             if let selectedPreview {
@@ -351,7 +366,7 @@ struct ProtectionSettingsView: View {
         }
         .accessibilityIdentifier("verifiedHandoffSection")
 
-        Text("These protections are managed by the installed PDF opener. This page is informational and does not change scan settings.")
+        Text("This page is informational and does not change scan settings. Saved preview choices are restored after restarting Settings, while Built-in ClamAV remains active.")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -360,6 +375,12 @@ struct ProtectionSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("protectionSettingsPage")
+    .onAppear {
+      if let stored = PlannedProtectionLevelPreference.selected(),
+         let tier = PlannedProtectionTier(rawValue: stored.rawValue) {
+        selectedPreview = tier
+      }
+    }
   }
 
   private func includedCheckDetail(_ check: ProtectionLevelCheck) -> some View {
