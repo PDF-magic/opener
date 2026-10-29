@@ -48,9 +48,9 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assertIn(CANDIDATES, script)
         # These metadata tests use a fake updater; validation is covered
         # independently by test-validate-signature-database.py.
-        first = original.index("# BEGIN staged database verification (opener-0386)")
-        last = original.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
-        original = original[:first] + original[last:]
+        first = script.index("# BEGIN staged database verification (opener-0386)")
+        last = script.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
+        script = script[:first] + script[last:]
         self.script = self.root / "update.sh"
         self.script.write_text(script.replace(CANDIDATES, str(self.fake)))
         (self.signatures / "main.cvd").write_bytes(b"usable main database\n")
