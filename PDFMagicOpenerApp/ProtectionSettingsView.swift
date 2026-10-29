@@ -1,8 +1,8 @@
 import SwiftUI
 
 // The installed ClamAV gate owns the effective protection policy. These
-// planned tier cards can be selected for comparison only; they deliberately
-// never persist a selection or imply an unavailable tier is enforcing scans.
+// planned tier cards can be selected for comparison only; their persistent
+// preview preference never claims an unavailable tier is enforcing scans.
 // These display-only check IDs mirror protection_policy_definitions.py.
 // The native view intentionally does not alter scanner policy or preferences.
 private struct ProtectionLevelCheck: Identifiable {
@@ -366,7 +366,7 @@ struct ProtectionSettingsView: View {
         }
         .accessibilityIdentifier("verifiedHandoffSection")
 
-        Text("These protections are managed by the installed PDF opener. Saved preview choices are restored after restarting Settings, but do not change active scan settings.")
+        Text("This page is informational and does not change scan settings. Saved preview choices are restored after restarting Settings, while Built-in ClamAV remains active.")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
