@@ -152,7 +152,11 @@ class RotatedPageFidelityTests(unittest.TestCase):
                 self.assertTrue(_matches_expected(
                     _reference(index), index, NORMALIZED[index]
                 ))
-        self.assertNotIn("/Rotate", source.pages[-1])
+        self.assertEqual(
+            int(source.pages[-1]["/Parent"].get_object()["/Rotate"]), 90
+        )
+        # pypdf may flatten inheritable /Rotate onto parsed leaf pages; the
+        # effective orientation is the meaningful fidelity contract.
         self.assertEqual(int(source.pages[-1].get_inherited("/Rotate")), 90)
 
     def test_metric_rejects_wrong_rotation_mirrors_clipping_and_swapped_pages(self):
