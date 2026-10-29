@@ -214,5 +214,6 @@ def inspect_pdf_revision_active_content(contents: bytes) -> PDFHistoricalActiveC
         )
     except PDFHistoricalActiveContentError:
         raise
-    except Exception:
-        raise PDFHistoricalActiveContentError(BLOCK_MESSAGE) from None
+    except Exception as exc:
+        # Temporary synthetic-fixture CI diagnostic; remove before merge.
+        raise PDFHistoricalActiveContentError(BLOCK_MESSAGE) from exc
