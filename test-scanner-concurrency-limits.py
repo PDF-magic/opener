@@ -83,6 +83,7 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
         # The opt-in reset can remove an inactive override; only the
         # installed scanner owns its enforced two-slot policy.
         self.assertIn('static let concurrencyOverrideKey = "maxConcurrentScans"', prefs)
+        self.assertIn("defaults.removeObject(forKey: concurrencyOverrideKey)", prefs)
         self.assertNotIn(
             "maxConcurrentScans", prefs.split("enum RecommendedScannerLimitsReset", 1)[0]
         )
