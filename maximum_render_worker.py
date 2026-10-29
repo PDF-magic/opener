@@ -30,6 +30,9 @@ def main() -> int:
         )
         apply_linux_network_denial()
         apply_linux_child_process_denial()
+        # Linux currently lacks the parent-enforced renderer filesystem
+        # allowlist. Never read untrusted bytes or import MuPDF without it.
+        return 2
     elif (sys.platform != "darwin" or
           os.environ.get("PDF_MAGIC_RENDER_NETWORK_SANDBOX") != "seatbelt-v1"):
         # macOS must be launched through the parent's sandbox-exec wrapper.

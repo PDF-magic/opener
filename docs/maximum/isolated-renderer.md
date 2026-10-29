@@ -24,20 +24,32 @@ disabled.
 
 The worker reuses the trusted Maximum isolated-analysis
 `_apply_limits()` entry point **before importing PyMuPDF**. That applies
-the existing CPU, memory, no-core and no-output-file limits. The macOS resident-memory watchdog stays armed during the complete render
-and is explicitly disarmed before interpreter shutdown, avoiding a late
-`SIGALRM` after valid PNG delivery. Parent-side
-process isolation also uses Python `-I -B`, no shell, a minimal environment,
-closed inherited file descriptors, a new process session, 30-second
-deadline, private stdin and discarded stderr. Network isolation is enforced
-before the renderer processes PDF bytes: macOS launches the child under the
-fixed `/usr/bin/sandbox-exec` Seatbelt profile `(deny network*)`; Linux
-installs a libseccomp filter before reading the PDF or importing PyMuPDF.
-That filter denies socket creation and socket operations including connect,
-bind and listen, as well as available io_uring entry points. If the required
-mechanism cannot be applied, rendering fails closed without an unsandboxed
-retry. A dedicated filesystem sandbox remains a separate prerequisite before
-enabling the Maximum tier in production.
+the existing CPU, memory, no-core and no-output-file limits. The macOS
+resident-memory watchdog stays armed during the complete render and is
+explicitly disarmed before interpreter shutdown, avoiding a late
+`SIGALRM` after valid PNG delivery. Parent-side process isolation uses
+Python `-I -B`, no shell, a minimal environment, closed inherited file
+descriptors, a new process session, a 30-second deadline, private stdin and
+discarded stderr.
+
+On macOS, the parent launches the worker through
+`/usr/bin/sandbox-exec` with a deny-by-default Seatbelt profile. The
+profile permits file contents only from the renderer worker, three exact
+trusted support modules, validated Python runtime prefixes and required
+operating-system runtime locations. It grants no filesystem writes and does
+not permit reading arbitrary repository files, user documents, home
+directories or temporary files. It also denies
+network access and child-process creation. File metadata checks are permitted
+for path resolution but do not grant broad file-content access. The
+interpreter, sandbox executable, worker and runtime roots are validated
+before launch; an unsafe path or unavailable sandbox fails closed.
+
+Linux retains its network and child-process seccomp checks, but the renderer
+does not yet have an equivalent parent-enforced filesystem allowlist there.
+The parent therefore refuses to launch a renderer on Linux, and direct Linux
+worker invocation exits before reading PDF bytes or importing PyMuPDF. There
+is no unsandboxed fallback. This deliberately keeps optional rendering
+unavailable on Linux until filesystem confinement is supported there too.
 
 Documents with more than 512 pages, password-protected PDFs, invalid
 pages or malformed data fail closed. The renderer rejects absurd page
@@ -51,9 +63,10 @@ single fixed, path-free exception and cannot expose PDF-controlled
 filenames, extracted text, raw renderer diagnostics or an opening verdict.
 
 `test-maximum-isolated-renderer.py` renders synthetic two-page PDFs in
-real isolated workers on **Linux and macOS**, tests per-page image
-differences, scaling, bounded batches, encrypted/invalid inputs,
-worker failures, protocol tampering, immutability and noninterference
-with the deployed scanner. The dedicated
+real confined workers on **macOS**, exercises kernel-enforced private-file
+read/write denial, checks the deny-by-default allowlist and validates
+fail-closed behavior on Linux. It also tests scaling, bounded batches,
+encrypted/invalid inputs, worker failures, protocol tampering, immutability
+and noninterference with the deployed scanner. The dedicated
 `.github/workflows/maximum-isolated-renderer.yml` workflow installs
-`pymupdf==2.0` with `--no-deps` and runs the regression suite in both operating systems. The worker uses only the native rendering API; the extra layout/LLM packages in the distribution's dependency set are unused and can consume the bounded worker's memory budget. The engine selection, security history, and licensing constraints are recorded in [the renderer selection review](renderer-selection.md). Existing CI workflows and user preferences are preserved.
+`pymupdf==2.0` with `--no-deps` and runs the regression suite on Linux and macOS. The worker uses only the native rendering API; the extra layout/LLM packages in the distribution's dependency set are unused and can consume the bounded worker's memory budget. The engine selection, security history, and licensing constraints are recorded in [the renderer selection review](renderer-selection.md). Existing CI workflows and user preferences are preserved.

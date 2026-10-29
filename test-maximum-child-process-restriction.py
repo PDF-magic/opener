@@ -124,19 +124,30 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertNotIn("allow process-fork", profile)
 
     def test_macos_renderer_command_uses_combined_restriction_profile(self):
+        context = {
+            "python": str(Path(sys.executable).resolve()),
+            "worker": str((ROOT / "maximum_render_worker.py").resolve()),
+            "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
+            "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
+            "renderer_support": str((ROOT / "maximum_isolated_renderer.py").resolve()),
+            "python_prefix": str(Path(sys.prefix).resolve()),
+            "python_base_prefix": str(Path(sys.base_prefix).resolve()),
+        }
         with (
             patch.object(renderer.sys, "platform", "darwin"),
-            patch.object(renderer.os.path, "isfile", return_value=True),
-            patch.object(renderer.os, "access", return_value=True),
+            patch.object(renderer, "_renderer_sandbox_context", return_value=context),
         ):
             command = renderer._renderer_command(
                 ROOT / "maximum_render_worker.py", 0,
             )
         self.assertEqual(command[:3], (
-            isolation.SANDBOX_EXEC, "-p", isolation.RENDERER_SANDBOX_PROFILE,
+            isolation.SANDBOX_EXEC, "-p", renderer.RENDERER_FILESYSTEM_PROFILE,
         ))
+        self.assertIn("(deny default)", command[2])
         self.assertIn("(deny network*)", command[2])
         self.assertIn("(deny process-fork)", command[2])
+        self.assertNotIn("(allow default)", command[2])
+        self.assertNotIn("(allow file-write", command[2])
 
     @unittest.skipUnless(sys.platform == "linux", "Linux seccomp enforcement test")
     def test_linux_kernel_denies_fork_and_process_spawning_but_allows_threads(self):

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+import stat
 import struct
 import subprocess
 import sys
@@ -26,10 +27,118 @@ MAGIC = b"MAXPNG01"
 _HEADER = struct.Struct(">8sII")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
+RENDERER_FILESYSTEM_PROFILE = """(version 1)
+(deny default)
+(allow process-exec (literal (param "PYTHON")))
+(allow file-map-executable
+    (literal (param "PYTHON"))
+    (subpath (param "PYTHON_PREFIX"))
+    (subpath (param "PYTHON_BASE_PREFIX"))
+    (subpath "/System")
+    (subpath "/usr/lib")
+    (subpath "/Library/Frameworks"))
+(allow sysctl-read)
+(allow file-read-metadata (subpath "/"))
+(allow file-read*
+    (literal (param "PYTHON"))
+    (literal (param "WORKER"))
+    (literal (param "WORKER_SUPPORT"))
+    (literal (param "NETWORK_SUPPORT"))
+    (literal (param "RENDERER_SUPPORT"))
+    (subpath (param "PYTHON_PREFIX"))
+    (subpath (param "PYTHON_BASE_PREFIX"))
+    (subpath "/System")
+    (subpath "/usr/bin")
+    (subpath "/usr/lib")
+    (subpath "/usr/share")
+    (subpath "/bin")
+    (subpath "/sbin")
+    (subpath "/Library/Developer/CommandLineTools")
+    (subpath "/Library/Frameworks")
+    (literal "/dev/null")
+    (literal "/dev/urandom"))
+(deny network*)
+(deny process-fork)
+"""
 
 
 class MaximumPDFRenderError(RuntimeError):
     """Fixed, path-free render failure, never a positive scan verdict."""
+
+
+def _trusted_regular_file(path: str, *, executable: bool = False) -> bool:
+    """Accept only a canonical, non-writable trusted file for the child."""
+    if (type(path) is not str or not path.startswith("/") or "\x00" in path or
+            os.path.normpath(path) != path or os.path.realpath(path) != path):
+        return False
+    try:
+        info = os.stat(path, follow_symlinks=False)
+        return (
+            stat.S_ISREG(info.st_mode) and
+            not info.st_mode & stat.S_IWOTH and
+            (not info.st_mode & stat.S_IWGRP or info.st_uid == 0) and
+            info.st_uid in (0, os.geteuid()) and
+            (not executable or os.access(path, os.X_OK))
+        )
+    except OSError:
+        return False
+
+
+def _trusted_directory(path: str, *, runtime: bool = False) -> bool:
+    """Reject symlinks, writable paths and overly broad runtime roots."""
+    minimum_components = 4 if runtime else 3
+    if (type(path) is not str or not path.startswith("/") or "\x00" in path or
+            os.path.normpath(path) != path or os.path.realpath(path) != path or
+            len(Path(path).parts) < minimum_components):
+        return False
+    try:
+        info = os.stat(path, follow_symlinks=False)
+        return (
+            stat.S_ISDIR(info.st_mode) and
+            not info.st_mode & stat.S_IWOTH and
+            (not info.st_mode & stat.S_IWGRP or info.st_uid == 0) and
+            info.st_uid in (0, os.geteuid())
+        )
+    except OSError:
+        return False
+
+
+def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
+    """Resolve and validate the only paths the renderer process may read."""
+    if sys.platform != "darwin":
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    try:
+        python = str(Path(sys.executable).resolve(strict=True))
+        worker = str(Path(worker_path).resolve(strict=True))
+        source_root = Path(__file__).resolve(strict=True).parent
+        worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
+        network_support = (source_root / "maximum_network_isolation.py").resolve(strict=True)
+        renderer_support = Path(__file__).resolve(strict=True)
+        prefix = str(Path(sys.prefix).resolve(strict=True))
+        base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
+    except (OSError, RuntimeError, TypeError):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
+
+    support_files = (worker_support, network_support, renderer_support)
+    if (Path(worker).parent != source_root or
+            any(path.parent != source_root for path in support_files) or
+            not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
+            not _trusted_regular_file(python, executable=True) or
+            not _trusted_regular_file(worker) or
+            not all(_trusted_regular_file(str(path)) for path in support_files) or
+            not _trusted_directory(str(source_root)) or
+            not _trusted_directory(prefix, runtime=True) or
+            not _trusted_directory(base_prefix, runtime=True)):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    return {
+        "python": python,
+        "worker": worker,
+        "worker_support": str(worker_support),
+        "network_support": str(network_support),
+        "renderer_support": str(renderer_support),
+        "python_prefix": prefix,
+        "python_base_prefix": base_prefix,
+    }
 
 
 @dataclass(frozen=True)
@@ -114,16 +223,21 @@ def _decode_response(stdout: bytes, expected_index: int) -> RenderedPDFPage:
 
 
 def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
-    """Construct a renderer command with OS-enforced network isolation."""
-    python_command = (sys.executable, "-I", "-B", str(worker), str(page_index))
-    if sys.platform == "darwin":
-        if not os.path.isfile(SANDBOX_EXEC) or not os.access(SANDBOX_EXEC, os.X_OK):
-            raise MaximumPDFRenderError(BLOCK_MESSAGE)
-        return (SANDBOX_EXEC, "-p", RENDERER_SANDBOX_PROFILE, *python_command)
-    if sys.platform == "linux":
-        # The child installs seccomp before reading input or importing MuPDF.
-        return python_command
-    raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    """Build a deny-by-default macOS command; never launch without filesystem confinement."""
+    context = _renderer_sandbox_context(worker)
+    command = [SANDBOX_EXEC, "-p", RENDERER_FILESYSTEM_PROFILE]
+    for name, key in (
+        ("PYTHON", "python"),
+        ("WORKER", "worker"),
+        ("WORKER_SUPPORT", "worker_support"),
+        ("NETWORK_SUPPORT", "network_support"),
+        ("RENDERER_SUPPORT", "renderer_support"),
+        ("PYTHON_PREFIX", "python_prefix"),
+        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
+    ):
+        command.extend(("-D", name + "=" + context[key]))
+    command.extend((context["python"], "-I", "-B", context["worker"], str(page_index)))
+    return tuple(command)
 
 
 def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPage:
