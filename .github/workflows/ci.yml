@@ -88,6 +88,8 @@ jobs:
         run: python3 test-main-preferences-window.py -v
       - name: Verify three accessible protection preview cards never change active scan policy
         run: python3 test-protection-settings-cards.py -v
+      - name: Verify only measured protection timings appear in performance descriptions
+        run: python3 test-protection-performance-implications.py -v
       - name: Verify displayed checks for each protection level match the policy schema
         run: python3 test-protection-settings-checks.py -v
       - name: Audit increased system text size layout
