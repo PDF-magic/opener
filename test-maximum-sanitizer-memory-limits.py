@@ -218,7 +218,7 @@ raise SystemExit(3)
 
     def test_ci_runs_memory_checks_on_linux_and_macos(self):
         from pathlib import Path
-        workflow = (Path(__file__).parent / ".github/workflows/maximum-sanitized-copy.yml").read_text()
+        workflow = (Path(__file__).parent / ".github/workflows/ci.yml").read_text()
         self.assertIn("ubuntu-latest", workflow)
         self.assertIn("macos-latest", workflow)
         self.assertGreaterEqual(workflow.count("test-maximum-sanitizer-memory-limits.py -v"), 2)

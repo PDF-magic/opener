@@ -144,12 +144,13 @@ except BaseException as error:
         self.assertIn(b"parser-ready", completed.stdout)
 
     def test_ci_runs_real_child_checks_on_linux_and_macos(self):
-        ci = (ROOT / ".github/workflows/maximum-memory-limits.yml").read_text()
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("ubuntu-latest", ci)
         self.assertIn("macos-latest", ci)
         self.assertIn("test-maximum-memory-limits.py -v", ci)
         self.assertIn("test-maximum-isolated-analysis.py -v", ci)
-        self.assertIn("pypdf==5.9.0", ci)
+        self.assertIn("requirements-enhanced-pdf.txt", ci)
+        self.assertIn("macos-maximum-isolation:", ci)
 
 
 if __name__ == "__main__":
