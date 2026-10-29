@@ -71,6 +71,33 @@ struct UpdatesSettingsView: View {
 
         GroupBox("Malware definition updates") {
           VStack(alignment: .leading, spacing: 10) {
+            // The installed FreshClam agent may update signatures even when
+            // no manual action is active. Show only observed, live progress.
+            TimelineView(.periodic(from: .now, by: 2)) { timeline in
+              if let active = SignatureUpdateProgress.readInstalled(now: timeline.date) {
+                HStack(alignment: .center, spacing: 12) {
+                  ProgressView()
+                    .progressViewStyle(.circular)
+                    .accessibilityHidden(true)
+                  VStack(alignment: .leading, spacing: 4) {
+                    Text("Signature update in progress")
+                      .font(.headline)
+                    Text("Checking and downloading ClamAV definitions…")
+                      .foregroundStyle(.secondary)
+                    Text("Started at " + active.startedAt.formatted(date: .abbreviated, time: .standard))
+                      .font(.footnote)
+                      .foregroundStyle(.secondary)
+                  }
+                  .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("signatureUpdateProgress")
+              } else if !updatingSignatures {
+                Text("No active signature update detected.")
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("signatureUpdateIdle")
+              }
+            }
             Text(signatureStatus.message)
               .font(.headline)
               .fixedSize(horizontal: false, vertical: true)

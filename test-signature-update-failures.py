@@ -70,7 +70,8 @@ class UpdateFailureTests(unittest.TestCase):
 
   def test_failure_is_never_raw_stderr_or_user_content(self):
     original = (ROOT / "update-malware-signatures.sh").read_text()
-    self.assertIn('trap \'record_failure\' EXIT', original)
+    self.assertIn('trap cleanup_progress EXIT', original)
+    self.assertIn('local updater_status=$?', original)
     self.assertIn('printf \'%s %s\\n\'', original)
     self.assertNotIn("last-failed-update.new", original)
     self.assertIn('failure_reason="freshclam-error"', original)

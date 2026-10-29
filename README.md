@@ -308,6 +308,8 @@ The updater records each attempted run in `signatures/last-attempted-update` **b
 
 **Signature-update failures (opener-0384):** The existing automatic or manual updater records an additional, atomic `signatures/last-failed-update` marker only when its run exits unsuccessfully. The marker contains the failure time and one fixed, path-free category (`freshclam-error` or `updater-unavailable`); it never exposes FreshClam stderr, document contents or installed paths. Preferences → Updates shows the last recorded failure and its sanitized explanation, distinguishes an unresolved failure from a subsequent recorded success, and treats missing or corrupt markers as unknown. The last-successful marker still advances only after FreshClam succeeds, and the 48-hour scan gate remains authoritative; a failure warning never approves a scan or changes the update interval.
 
+While FreshClam runs, Preferences → Updates shows **Signature update in progress** with an indeterminate spinner and the observed start time. This live indicator refreshes every two seconds while the pane remains visible; no fictional percentage is displayed. The installed updater atomically records the updater PID and start time in `signatures/update-in-progress` and removes only its own marker after success or failure. Invalid, stale, symlinked, or dead-process markers cannot indicate an active update. The separate historical attempt/success timestamps and explicit manual update actions remain available. A progress indicator never authorizes scanning or changes the existing 48-hour signature freshness requirement.
+
 ```sh
 bash update-malware-signatures.sh
 ```
