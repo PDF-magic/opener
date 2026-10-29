@@ -199,8 +199,10 @@ class NativeRasterizationTests(unittest.TestCase):
         self.assertLess(max(gray) - min(gray), 12)
         self.assertTrue(all(100 <= channel <= 155 for channel in gray))
         self.assertLess(cyan[0], 50)
-        self.assertGreater(cyan[1], 190)
-        self.assertGreater(cyan[2], 190)
+        # Core Graphics color-manages DeviceCMYK into sRGB; the exact
+        # channel values depend on its system CMYK profile.
+        self.assertGreater(cyan[1] - cyan[0], 100)
+        self.assertGreater(cyan[2] - cyan[0], 100)
 
     def test_source_javascript_and_attachment_not_copied_to_raster_pdf(self):
         source = sample_pdf(with_actions=True)
