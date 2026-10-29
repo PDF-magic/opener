@@ -193,9 +193,10 @@ class FindingExplanationsTests(unittest.TestCase):
         native = (Path(__file__).with_name("scan-progress-view.swift")
                   .read_text(encoding="utf-8"))
         self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
-        self.assertIn('guard let value = rawAssessment as? String, value == "notConfirmed" else', native)
-        self.assertIn('malwareAssessment = "notConfirmed"', native)
-        self.assertIn('— \\(resultLabel) · Malware not confirmed', native)
+        self.assertIn('guard let value = rawAssessment as? String,', native)
+        self.assertIn('let label = Self.malwareAssessments[value] else {', native)
+        self.assertIn('malwareAssessmentLabel = "Malware not confirmed"', native)
+        self.assertIn('— \\(resultLabel) · \\(malwareAssessmentLabel)', native)
 
     def test_scanner_and_profile_remain_untouched(self):
         scanner = (Path(__file__).parent / "scan-and-open.py").read_text()
