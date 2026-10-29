@@ -49,11 +49,14 @@ def sparse_xref_pdf():
         offsets[number] = len(data)
         data.extend(str(number).encode() + b" 0 obj\n" + content + b"\nendobj\n")
     startxref = len(data)
-    data.extend(b"xref\n0 4\n0000000000 65535 f \n")
-    for number in (1, 2, 3):
-        data.extend(f"{offsets[number]:010d} 00000 n \n".encode())
-    data.extend(b"900 1\n")
-    data.extend(f"{offsets[900]:010d} 00000 n \n".encode())
+    # Explicitly mark every unoccupied object slot free; some strict parser
+    # versions refuse sparse subsections without a complete free-entry table.
+    data.extend(b"xref\n0 901\n0000000000 65535 f \n")
+    for number in range(1, 901):
+        if number in offsets:
+            data.extend(f"{offsets[number]:010d} 00000 n \n".encode())
+        else:
+            data.extend(b"0000000000 00000 f \n")
     data.extend(
         b"trailer\n<< /Size 901 /Root 1 0 R >>\nstartxref\n"
         + str(startxref).encode() + b"\n%%EOF\n"
