@@ -60,6 +60,64 @@ private enum ProtectionLevelCheckCatalog {
   ]
 }
 
+// A bundle-only, optional measurement record. There is deliberately no
+// benchmark number in the app until sufficient actual completed stage work
+// has been measured. Native settings never start a scan or write preferences.
+private struct ProtectionPerformanceEvidence: Decodable {
+  struct Measurement: Decodable {
+    let profile: String
+    let sampleCount: Int
+    let medianAdditionalMilliseconds: Double
+    let p90AdditionalMilliseconds: Double
+  }
+
+  let schemaVersion: Int
+  let scope: String
+  let platform: String
+  let workload: String
+  let measurements: [Measurement]
+
+  private static let resource: ProtectionPerformanceEvidence? = {
+    guard let location = Bundle.main.url(
+      forResource: "protection-performance", withExtension: "json"
+    ), let contents = try? Data(contentsOf: location),
+      contents.count <= 16_384 else {
+      return nil
+    }
+    return try? JSONDecoder().decode(ProtectionPerformanceEvidence.self, from: contents)
+  }()
+
+  static func description(for profile: String) -> String {
+    let unavailable = "No representative performance measurements yet."
+    guard let report = resource,
+      report.schemaVersion == 1,
+      report.scope == "instrumentedAdditionalStages",
+      report.measurements.count <= 3,
+      report.platform.count >= 3, report.platform.count <= 90,
+      report.workload.count >= 3, report.workload.count <= 100,
+      report.measurements.filter({ $0.profile == profile }).count == 1,
+      let evidence = report.measurements.first(where: { $0.profile == profile })
+    else {
+      return unavailable
+    }
+
+    let milliseconds = evidence.medianAdditionalMilliseconds
+    let p90 = evidence.p90AdditionalMilliseconds
+    guard evidence.sampleCount >= 5, evidence.sampleCount <= 101,
+      milliseconds.isFinite, p90.isFinite,
+      milliseconds > 0, milliseconds <= 3_600_000,
+      p90 >= milliseconds, p90 <= 3_600_000
+    else {
+      return unavailable
+    }
+
+    return String(
+      format: "Measured additional inspection time: approx. %.1f ms median, %.1f ms at the 90th percentile (%d samples). %@ · %@. Not a measured end-to-end opening estimate.",
+      milliseconds, p90, evidence.sampleCount, report.platform, report.workload
+    )
+  }
+}
+
 private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
   case standard
   case enhanced
@@ -173,6 +231,10 @@ struct ProtectionSettingsView: View {
                       .font(.footnote)
                       .foregroundStyle(.secondary)
                       .fixedSize(horizontal: false, vertical: true)
+                    Text(ProtectionPerformanceEvidence.description(for: tier.rawValue))
+                      .font(.footnote)
+                      .foregroundStyle(.secondary)
+                      .fixedSize(horizontal: false, vertical: true)
                     Text("Required checks: \(tier.requiredChecks.map(\.title).joined(separator: ", "))")
                       .font(.footnote)
                       .foregroundStyle(.secondary)
@@ -213,6 +275,9 @@ struct ProtectionSettingsView: View {
                 Text("Previewing \(selectedPreview.title)")
                   .font(.headline)
                 Text(selectedPreview.detail)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                Text(ProtectionPerformanceEvidence.description(for: selectedPreview.rawValue))
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
                 Text("Required checks")
