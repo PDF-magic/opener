@@ -189,7 +189,7 @@ class NativeRasterizationTests(unittest.TestCase):
         offer = copies.offer_sanitized_pdf_copy(stream.getvalue())
         self.assertIsNotNone(offer)
         self.assertEqual(offer.page_count, len(expected))
-        self.assertTrue(copies._passive_pages(offer.pdf_bytes, len(expected), source_geometry))
+        self.assertTrue(copies._passive_pages(offer.pdf_bytes, len(expected), tuple(source_geometry)))
         output = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
         actual_geometry = [
             (float(page.mediabox.width), float(page.mediabox.height),
