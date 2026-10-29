@@ -171,7 +171,7 @@ class PDFDeclaredMetadataTests(unittest.TestCase):
         self.assert_rejected(document(writer))
 
         writer = pdf_writer()
-        writer._info.get_object()[NameObject("/Title")] = ByteStringObject(b"\xff\xfe")
+        writer._info.get_object()[NameObject("/Title")] = ByteStringObject(b"\xfe\xff\x00")
         self.assert_rejected(document(writer))
 
         writer = pdf_writer()
