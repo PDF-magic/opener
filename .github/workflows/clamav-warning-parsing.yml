@@ -1,0 +1,26 @@
+name: ClamAV warning-result parsing
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  warning-results-fail-closed:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Reject warning-shaped clean results and unsafe handoffs
+        run: |
+          python3 test-detection-policy.py -v
+          python3 test-scan-failure-presentation.py -v
