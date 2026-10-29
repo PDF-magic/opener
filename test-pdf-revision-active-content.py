@@ -56,7 +56,7 @@ class PDFHistoricalActiveTests(unittest.TestCase):
                 if (event == "exception" and frame.f_code.co_name in
                         ("inspect_pdf_incremental_revisions", "_read_xref")):
                     failures.append((frame.f_code.co_name, frame.f_lineno,
-                                     type(argument[1]).__name__))
+                                     type(argument[1]).__name__, str(argument[1])[:180]))
                 return trace
             sys.settrace(trace)
             try:
