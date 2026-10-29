@@ -177,6 +177,9 @@ struct EnhancedFindingsProgressSnapshot {
         "blocking": ("stopOpening", "Opening stopped"),
         "inspectionIncomplete": ("rerunOrRepairInspection", "Inspection incomplete"),
     ]
+    private static let malwareAssessments = [
+        "notConfirmed": "Malware not confirmed",
+    ]
     private static let maxDisplayedRows = 64
 
     static func decode(_ data: Data) -> EnhancedFindingsProgressSnapshot? {
@@ -247,18 +250,19 @@ struct EnhancedFindingsProgressSnapshot {
                 // Enhanced findings are heuristic/structural evidence, never a
                 // scanner-confirmed malware verdict. Legacy v2 reports default
                 // to unconfirmed; unknown future values fail closed.
-                let malwareAssessment: String
+                let malwareAssessmentLabel: String
                 if let rawAssessment = result["malwareAssessment"] {
-                    guard let value = rawAssessment as? String, value == "notConfirmed" else {
+                    guard let value = rawAssessment as? String,
+                          let label = Self.malwareAssessments[value] else {
                         return nil
                     }
-                    malwareAssessment = value
+                    malwareAssessmentLabel = label
                 } else {
-                    // Older schema-v2 findings predate this additive field.
-                    malwareAssessment = "notConfirmed"
+                    // Older schema-v2 reports predate this additive field.
+                    malwareAssessmentLabel = "Malware not confirmed"
                 }
                 if rows.count < maxDisplayedRows {
-                    rows.append("\(stageName) · \(severityName) · \(codeName) — \(resultLabel) · Malware not confirmed")
+                    rows.append("\(stageName) · \(severityName) · \(codeName) — \(resultLabel) · \(malwareAssessmentLabel)")
                 }
             }
         }
