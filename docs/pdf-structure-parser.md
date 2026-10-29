@@ -200,3 +200,22 @@ calls do **not** acquire a time limit. Future policy orchestration must call
 the timed interface for untrusted analysis. The deployed Built-in ClamAV
 scan, selectable profiles, cache, quarantine and user preferences are
 unchanged.
+
+
+### Decoded stream size limits (opener-0433)
+
+The optional structure parser now enforces an **8 MiB decoded-output limit per
+indexed stream** and a **32 MiB cumulative decoded-output limit**, including
+otherwise unreferenced streams. It uses scoped `pypdf.apply_configuration`
+limits for supported decoding filters **before** constructing `PdfReader`,
+so automatic cross-reference and object-stream decompression is bounded too.
+The configuration is restored after each call; no global parser configuration
+or installed scanner settings change. Exceeding either limit returns the
+existing fixed, path-free structure-inspection limit error and never produces
+an opening authorization. Encoded or decoded payloads are not exposed in
+result records. This is a decoded-data budget, not a full CPU or memory sandbox;
+future Enhanced activation still needs independent process isolation.
+
+The offline `test-pdf-decompressed-size.py` suite verifies inclusive per-stream
+and cumulative limits, over-limit compressed streams and implicit cross-reference
+stream decoding, settings restoration, and unchanged Built-in scanner isolation.
