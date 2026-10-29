@@ -15,6 +15,7 @@ import re
 
 MAX_STRUCTURE_INPUT_BYTES = 16 * 1024 * 1024
 MAX_STRUCTURE_PAGES = 1024
+MAX_STRUCTURE_OBJECTS = 4096
 MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES = 8 * 1024 * 1024
 MAX_STRUCTURE_TOTAL_DECOMPRESSED_BYTES = 32 * 1024 * 1024
 MAX_STRUCTURE_RECURSION_DEPTH = 64
@@ -246,6 +247,11 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
             reader = PdfReader(BytesIO(contents), strict=True)
             if reader.is_encrypted:
                 raise PDFStructureParseError(_ENCRYPTED)
+            # Bound all indexed PDF objects before stream and page-tree checks.
+            total_objects = sum(len(entries) for entries in reader.xref.values())
+            total_objects += len(reader.xref_objStm)
+            if total_objects > MAX_STRUCTURE_OBJECTS:
+                raise PDFStructureParseError(_SIZE)
             # Check original bytes, not a library-recovered stream payload.
             from pdf_stream_lengths import validate_pdf_stream_lengths
             validate_pdf_stream_lengths(contents, reader)
