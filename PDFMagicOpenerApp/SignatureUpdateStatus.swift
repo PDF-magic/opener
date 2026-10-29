@@ -55,7 +55,11 @@ struct SignatureUpdateStatus {
     // Read a bounded ASCII timestamp, never arbitrary scanner logs or files.
     var bytes = [UInt8](repeating: 0, count: 48)
     let count = bytes.withUnsafeMutableBytes { buffer in
-      read(descriptor, buffer.baseAddress, buffer.count)
+      #if canImport(Darwin)
+      return Darwin.read(descriptor, buffer.baseAddress, buffer.count)
+      #else
+      return Glibc.read(descriptor, buffer.baseAddress, buffer.count)
+      #endif
     }
     guard count > 0,
           let raw = String(bytes: bytes.prefix(Int(count)), encoding: .ascii),
