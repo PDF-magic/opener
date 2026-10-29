@@ -33,6 +33,8 @@ jobs:
         run: python3 test-maximum-multi-column-fidelity.py -v
       - name: Verify scanned-document fixtures and degradation metrics
         run: python3 test-maximum-scanned-documents.py -v
+      - name: Verify vector graphics fixture and shape metrics
+        run: python3 test-maximum-vector-graphics.py -v
       - name: Reject unsupported sanitization and unsafe fallback on Linux
         run: python3 test-maximum-sanitization-blocking.py -v
 
@@ -62,5 +64,7 @@ jobs:
         run: python3 test-maximum-multi-column-fidelity.py -v
       - name: Verify actual scanned pages remain legible after conversion
         run: python3 test-maximum-scanned-documents.py -v
+      - name: Verify actual vector graphics fidelity after CoreGraphics conversion
+        run: python3 test-maximum-vector-graphics.py -v
       - name: Reject unsupported sanitization and unsafe fallback on macOS
         run: python3 test-maximum-sanitization-blocking.py -v
