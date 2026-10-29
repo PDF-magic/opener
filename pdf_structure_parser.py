@@ -27,10 +27,31 @@ class PDFStructureParseError(RuntimeError):
 
 @dataclass(frozen=True)
 class PDFStructure:
-    """Parsed structural evidence only. Never permission to open a document."""
+    """Validated, immutable parser evidence; never an opening authorization.
+
+    Version 1 of the JSON contract intentionally exposes only known metadata:
+    PDF version and bounded page count. PDF-controlled strings, document paths,
+    attachment names, page content and parser exception text are excluded.
+    """
 
     pdf_version: str
     page_count: int
+
+    def __post_init__(self):
+        allowed_versions = {*(f"1.{minor}" for minor in range(8)), "2.0"}
+        if type(self.pdf_version) is not str or self.pdf_version not in allowed_versions:
+            raise ValueError("Unsupported PDF structural version")
+        if type(self.page_count) is not int or not 1 <= self.page_count <= MAX_STRUCTURE_PAGES:
+            raise ValueError("Invalid PDF structural page count")
+
+    def to_dict(self) -> dict[str, str | int | bool]:
+        """Return a detached, stable and JSON-serializable output record."""
+        return {
+            "schemaVersion": 1,
+            "pdfVersion": self.pdf_version,
+            "pageCount": self.page_count,
+            "authorizesOpen": False,
+        }
 
 
 def parse_pdf_structure(contents: bytes) -> PDFStructure:
