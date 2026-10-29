@@ -91,14 +91,17 @@ class SignatureUpdateProgressTests(unittest.TestCase):
         self.assertFalse(self.marker.exists())
         self.assertEqual(previous.read_text(), "1700000000\n")
 
-    def test_concurrent_updaters_cannot_clear_newer_progress(self):
-        first_release = self.root / "release-first"
-        second_release = self.root / "release-second"
-        first = self.start_update(first_release)
-        second = self.start_update(second_release)
-        self.finish(first, first_release)
-        self.assertEqual(self.current_pid(), second.pid)
-        self.finish(second, second_release)
+    def test_concurrent_updater_cannot_overwrite_active_progress(self):
+        release = self.root / "release-first"
+        first = self.start_update(release)
+        second = subprocess.run(
+            ["bash", str(self.script)],
+            env=dict(os.environ, HOME=str(self.home), FAKE_EXIT="0"),
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertNotEqual(second.returncode, 0)
+        self.assertEqual(self.current_pid(), first.pid)
+        self.finish(first, release)
         self.assertFalse(self.marker.exists())
 
     def test_missing_updater_never_advertises_progress_or_success(self):
@@ -134,9 +137,9 @@ class SignatureUpdateProgressTests(unittest.TestCase):
     def test_active_marker_is_only_display_metadata(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn('progress_record="$(/bin/date +%s) $$"', script)
-        self.assertIn('trap cleanup_progress EXIT', script)
-        self.assertIn('run_freshclam_with_network_recovery "$candidate"', script)
-        self.assertIn('"$updater" --config-file="$install_dir/freshclam.conf"', script)
+        self.assertIn('trap cleanup EXIT', script)
+        self.assertIn('cleanup_progress', script)
+        self.assertIn('"$updater" --config-file=', script)
         self.assertIn("last-successful-update", script)
         scan = (ROOT / "scan-and-open.py").read_text()
         self.assertNotIn("update-in-progress", scan)

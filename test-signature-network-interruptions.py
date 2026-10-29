@@ -135,7 +135,8 @@ class NetworkInterruptionTests(unittest.TestCase):
     def test_scanner_policy_and_user_update_settings_are_unchanged(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn("run_freshclam_with_network_recovery", script)
-        self.assertIn('trap cleanup_progress EXIT', script)
+        self.assertIn('trap cleanup EXIT', script)
+        self.assertIn('cleanup_progress', script)
         self.assertIn('"$updater" --config-file=', script.replace('"$candidate" --config-file=', '"$updater" --config-file='))
         self.assertIn('trap \'interrupt_update 143\' TERM', script)
         self.assertNotIn("curl ", script)
