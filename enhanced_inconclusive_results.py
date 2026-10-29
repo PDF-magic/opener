@@ -46,8 +46,12 @@ _UNRESOLVED_CODES = frozenset({
     FindingCode.inspectionFailure,
 })
 _ROUTINE_CODES = frozenset({FindingCode.incrementalRevision})
-if (_UNRESOLVED_CODES & _ROUTINE_CODES or
-        _UNRESOLVED_CODES | _ROUTINE_CODES != frozenset(FindingCode)):
+# Confirmed malicious content is terminal blocking evidence, not an inconclusive
+# inspection result. Its explanation policy still denies opening independently.
+_TERMINAL_CODES = frozenset({FindingCode.knownMaliciousContent})
+if (_UNRESOLVED_CODES & (_ROUTINE_CODES | _TERMINAL_CODES) or
+        _ROUTINE_CODES & _TERMINAL_CODES or
+        (_UNRESOLVED_CODES | _ROUTINE_CODES | _TERMINAL_CODES) != frozenset(FindingCode)):
     raise RuntimeError("Every finding code needs an explicit inconclusive policy")
 
 

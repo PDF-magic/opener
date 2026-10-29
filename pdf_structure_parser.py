@@ -17,6 +17,8 @@ MAX_STRUCTURE_INPUT_BYTES = 16 * 1024 * 1024
 MAX_STRUCTURE_PAGES = 1024
 MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES = 8 * 1024 * 1024
 MAX_STRUCTURE_TOTAL_DECOMPRESSED_BYTES = 32 * 1024 * 1024
+MAX_STRUCTURE_RECURSION_DEPTH = 64
+_NESTING_TOKENS = re.compile(rb'<<|>>|stream(?:\r\n|\n|\r)|[\[\]()%<>]')
 _HEADER = re.compile(rb"\A%PDF-(1\.[0-7]|2\.0)[\r\n]")
 _ERROR = "PDF structure could not be verified; opening was stopped."
 _ENCRYPTED = "Encrypted PDF structure cannot be inspected; opening was stopped."
@@ -87,6 +89,99 @@ class PDFStructureParseFailure:
         }
 
 
+def _validate_direct_nesting(contents: bytes) -> None:
+    """Bound direct PDF arrays/dictionaries before pypdf can recurse into them.
+
+    Stream bytes, comments, literal strings (including escaped parentheses),
+    and hex strings are not object containers. This bounded lexical preflight
+    does not replace strict parsing; uncertain or unbalanced syntax fails closed.
+    """
+    containers = []
+    literal_depth = 0
+    skip_before = 0
+    for match in _NESTING_TOKENS.finditer(contents):
+        position = match.start()
+        if position < skip_before:
+            continue
+        token = match.group()
+        if literal_depth:
+            if token in (b"(", b")"):
+                escapes = 0
+                previous = position - 1
+                while previous >= 0 and contents[previous] == 92:
+                    escapes += 1
+                    previous -= 1
+                if escapes % 2 == 0:
+                    literal_depth += 1 if token == b"(" else -1
+            continue
+        if token == b"%":
+            lf = contents.find(b"\n", position + 1)
+            cr = contents.find(b"\r", position + 1)
+            ends = [end for end in (lf, cr) if end >= 0]
+            skip_before = min(ends) + 1 if ends else len(contents)
+        elif token == b"(":
+            literal_depth = 1
+        elif token == b"<":
+            end = contents.find(b">", position + 1)
+            if end < 0:
+                raise PDFStructureParseError(_ERROR)
+            skip_before = end + 1
+        elif token.startswith(b"stream"):
+            # A stream body begins only after an indirect object's dictionary.
+            # Never interpret arbitrary binary stream payload as PDF containers.
+            previous = position - 1
+            while previous >= 0 and contents[previous] in b" \t\f\r\n":
+                previous -= 1
+            if not containers and contents[max(0, previous - 1):previous + 1] == b">>":
+                end = contents.find(b"endstream", match.end())
+                if end < 0:
+                    raise PDFStructureParseError(_ERROR)
+                skip_before = end + len(b"endstream")
+        elif token in (b"<<", b"["):
+            containers.append(token)
+            if len(containers) > MAX_STRUCTURE_RECURSION_DEPTH:
+                raise PDFStructureParseError(_ERROR)
+        elif token in (b">>", b"]"):
+            expected = b"<<" if token == b">>" else b"["
+            if not containers or containers[-1] != expected:
+                raise PDFStructureParseError(_ERROR)
+            containers.pop()
+    if containers or literal_depth:
+        raise PDFStructureParseError(_ERROR)
+
+
+def _validate_page_tree_depth(root) -> None:
+    """Walk /Pages iteratively before invoking pypdf's recursive flattening."""
+    from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
+
+    pending = [(root.raw_get("/Pages"), 0)]
+    seen_refs = set()
+    seen_direct = set()
+    while pending:
+        node, depth = pending.pop()
+        if depth > MAX_STRUCTURE_RECURSION_DEPTH:
+            raise PDFStructureParseError(_ERROR)
+        if isinstance(node, IndirectObject):
+            identity = (node.idnum, node.generation)
+            if identity in seen_refs:
+                raise PDFStructureParseError(_ERROR)
+            seen_refs.add(identity)
+            node = node.get_object()
+        else:
+            identity = id(node)
+            if identity in seen_direct:
+                raise PDFStructureParseError(_ERROR)
+            seen_direct.add(identity)
+        if not isinstance(node, DictionaryObject):
+            raise PDFStructureParseError(_ERROR)
+        if node.get("/Type") == "/Page":
+            continue
+        children = node.get("/Kids")
+        if not isinstance(children, ArrayObject):
+            raise PDFStructureParseError(_ERROR)
+        pending.extend((child, depth + 1) for child in children)
+
+
 def _verify_decoded_stream_budget(reader) -> None:
     """Count decoded bytes for all indexed streams, including unreferenced ones.
 
@@ -119,9 +214,8 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
     existing secure file-handling workflow. The strict pypdf reader resolves
     traditional cross-reference tables, PDF 1.5 cross-reference streams, and
     compressed objects in object streams as needed to traverse the page tree.
-    Bound every indexed decoded stream (including unused content streams)
-    without interpreting or executing its data. Never follow attachments,
-    links, or invoke user-specified applications.
+    Avoid decoding page content streams, following attachments/links, or
+    invoking user-specified applications.
     """
     if type(contents) is not bytes:
         raise PDFStructureParseError(_ERROR)
@@ -130,6 +224,7 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
     header = _HEADER.match(contents[:9])
     if header is None or b"%%EOF" not in contents[-1024:]:
         raise PDFStructureParseError(_ERROR)
+    _validate_direct_nesting(contents)
 
     try:
         from pypdf import PdfReader, apply_configuration
@@ -138,9 +233,6 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         raise PDFStructureParseError(_DEPENDENCY) from None
 
     try:
-        # Context-local pypdf limits also cover xref/object streams decoded
-        # during PdfReader construction, before our explicit stream walk.
-        # Never change process-wide parser configuration or scanner policy.
         with apply_configuration(
             maximum_declared_stream_length=MAX_STRUCTURE_INPUT_BYTES,
             zlib_maximum_output_length=MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES,
@@ -161,6 +253,7 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
             root = reader.trailer["/Root"]
             if root.get("/Type") != "/Catalog":
                 raise PDFStructureParseError(_ERROR)
+            _validate_page_tree_depth(root)
             pages = reader.pages
             count = len(pages)
             if count < 1 or count > MAX_STRUCTURE_PAGES:

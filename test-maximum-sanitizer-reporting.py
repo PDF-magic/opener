@@ -51,7 +51,7 @@ class SanitizerReportingTests(unittest.TestCase):
                 (137, copies.SanitizerFailureKind.PROCESS_FAILED),
             ):
                 with self.subTest(code=code), patch.object(
-                    copies.subprocess, "run",
+                    copies, "run_limited_converter",
                     return_value=subprocess.CompletedProcess([], code, b""),
                 ):
                     report = copies.attempt_sanitized_pdf_copy(data)
@@ -78,20 +78,20 @@ class SanitizerReportingTests(unittest.TestCase):
     def test_timeout_start_error_and_invalid_output_are_not_malware(self):
         data = valid_pdf()
         scenarios = (
-            (subprocess.TimeoutExpired("private", 1), copies.SanitizerFailureKind.TIMED_OUT),
+            (copies.SanitizerProcessTimedOut("private"), copies.SanitizerFailureKind.TIMED_OUT),
             (OSError("/private/secret/file"), copies.SanitizerFailureKind.LAUNCH_FAILED),
         )
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")):
             for error, kind in scenarios:
                 with self.subTest(kind=kind), patch.object(
-                    copies.subprocess, "run", side_effect=error
+                    copies, "run_limited_converter", side_effect=error
                 ):
                     report = copies.attempt_sanitized_pdf_copy(data)
                     self.assertEqual(report.failure.kind, kind)
                     self.assertNotIn("private", report.failure.message)
             for output in (b"", b"not pdf", b"X" * (copies.MAX_OUTPUT_BYTES + 1)):
                 with patch.object(
-                    copies.subprocess, "run",
+                    copies, "run_limited_converter",
                     return_value=subprocess.CompletedProcess([], 0, output),
                 ):
                     self.assertEqual(
@@ -104,7 +104,7 @@ class SanitizerReportingTests(unittest.TestCase):
         converted = data + b"changed"
         final = b"%PDF-1.7\nnew sanitized copy"
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
-                patch.object(copies.subprocess, "run",
+                patch.object(copies, "run_limited_converter",
                              return_value=subprocess.CompletedProcess([], 0, converted)), \
                 patch.object(copies, "remove_active_pdf_functionality", return_value=final), \
                 patch.object(copies, "_passive_pages", return_value=True), \

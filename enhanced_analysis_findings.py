@@ -13,7 +13,9 @@ from enum import Enum
 MAX_REPORTED_STAGES = 32
 MAX_FINDINGS_PER_STAGE = 128
 MAX_PDF_OBJECT_NUMBER = 2**31 - 1
+MAX_PDF_OBJECT_GENERATION = 65535
 MAX_PAGE_NUMBER = 1_000_000
+FINDING_IDENTIFIER_VERSION = 1
 
 
 class AnalysisStage(str, Enum):
@@ -39,6 +41,7 @@ class FindingCode(str, Enum):
     malformedStructure = "malformedStructure"
     conflictingStructure = "conflictingStructure"
     unresolvedReference = "unresolvedReference"
+    knownMaliciousContent = "knownMaliciousContent"
     activeContent = "activeContent"
     suspiciousUrl = "suspiciousUrl"
     unexpectedEmbeddedFile = "unexpectedEmbeddedFile"
@@ -49,9 +52,13 @@ class FindingCode(str, Enum):
 
 
 class FindingSeverity(str, Enum):
+    """Conservative classification of a finding, not an opening authorization."""
+
     informational = "informational"
+    reviewRequired = "reviewRequired"
     suspicious = "suspicious"
     critical = "critical"
+    blocking = "blocking"
 
 
 class StageOutcome(str, Enum):
@@ -67,6 +74,7 @@ class AnalysisFinding:
     severity: FindingSeverity
     object_number: int | None = None
     page_number: int | None = None
+    object_generation_number: int | None = None
 
     def __post_init__(self):
         if type(self.code) is not FindingCode or type(self.severity) is not FindingSeverity:
@@ -75,14 +83,50 @@ class AnalysisFinding:
                              (self.page_number, MAX_PAGE_NUMBER)):
             if value is not None and (type(value) is not int or not 1 <= value <= upper):
                 raise ValueError("Finding locations must be bounded positive integers")
+        if self.object_generation_number is not None:
+            if self.object_number is None:
+                raise ValueError("An object generation requires its object number")
+            if (type(self.object_generation_number) is not int or
+                    not 0 <= self.object_generation_number <= MAX_PDF_OBJECT_GENERATION):
+                raise ValueError("Object generation must be a bounded nonnegative integer")
+
+    @property
+    def finding_id(self) -> str:
+        """Stable evidence-signature ID, independent of severity or run order.
+
+        The identifier is scoped by code and the available object/page location,
+        not by document identity. Identical signatures intentionally share an ID.
+        """
+        object_number = "none" if self.object_number is None else str(self.object_number)
+        page_number = "none" if self.page_number is None else str(self.page_number)
+        return (
+            f"finding-v{FINDING_IDENTIFIER_VERSION}:{self.code.value}:"
+            f"object={object_number}:page={page_number}"
+        )
+
+    @property
+    def object_reference(self) -> dict[str, int] | None:
+        """Return the complete indirect reference only when both parts are known."""
+        if self.object_number is None or self.object_generation_number is None:
+            return None
+        return {
+            "objectNumber": self.object_number,
+            "generationNumber": self.object_generation_number,
+        }
 
     def to_dict(self):
-        return {
+        result = {
             "code": self.code.value,
+            "findingId": self.finding_id,
             "severity": self.severity.value,
             "objectNumber": self.object_number,
             "pageNumber": self.page_number,
         }
+        # Do not invent generation zero when the producer knows only an object
+        # number. The field is additive and absent until the full reference exists.
+        if self.object_reference is not None:
+            result["objectReference"] = self.object_reference
+        return result
 
 
 @dataclass(frozen=True)

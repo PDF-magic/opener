@@ -3,6 +3,8 @@
 from pathlib import Path
 import unittest
 
+from scanner_argument_validation import validated_file_size_options
+
 ROOT = Path(__file__).resolve().parent
 PAGE = ROOT / "PDFMagicOpenerApp" / "AdvancedScanningSettingsView.swift"
 
@@ -38,10 +40,13 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     ):
       with self.subTest(contract=contract):
         self.assertIn(contract, source)
-    from scanner_argument_validation import validated_file_size_options
     self.assertEqual(
         validated_file_size_options(is_pdf=False),
         ("--max-filesize=512M", "--max-scansize=1024M"),
+    )
+    self.assertEqual(
+        validated_file_size_options(is_pdf=True),
+        ("--max-filesize=0", "--max-scansize=0"),
     )
     self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", argv)
     self.assertIn('"--alert-exceeds-max=yes"', argv)
@@ -52,12 +57,15 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     self.assertIn("does not change scanner behavior or reset saved choices", source)
     self.assertIn("Advanced scanner parameters are not editable here.", source)
     for forbidden in (
-        "Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage",
+        "Toggle(", "Picker(", "Slider(", "@AppStorage",
         "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
         "write(to:", "createFile(", "clamscan(", "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
+    self.assertEqual(source.count("Button("), 3)
+    self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
+    self.assertIn('Button("Cancel", role: .cancel)', source)
 
   def test_both_ci_jobs_verify_the_defaults_summary(self):
     source = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")

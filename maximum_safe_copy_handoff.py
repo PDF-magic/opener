@@ -15,7 +15,8 @@ import tempfile
 import threading
 
 from maximum_sanitized_copy import (
-    MAX_OUTPUT_BYTES, MAX_SOURCE_BYTES, SanitizedCopyOffer,
+    GENERATED_CONTENT_ORIGIN, MAX_OUTPUT_BYTES, MAX_SOURCE_BYTES,
+    OFFER_LABEL, SanitizedCopyOffer,
     _passive_pages, offer_sanitized_pdf_copy,
 )
 from scan_results import EFFECTIVE_POLICY_ID
@@ -41,11 +42,26 @@ class MaximumSafeCopyHandoff:
     copy_path: Path
     scanned: bool = True
     original_opened: bool = False
+    content_origin: str = GENERATED_CONTENT_ORIGIN
+    display_label: str = OFFER_LABEL
+
+    def to_public_metadata(self):
+        """Display a generated-copy label without exposing its private path."""
+        return {
+            "contentOrigin": GENERATED_CONTENT_ORIGIN,
+            "isUntouchedOriginal": False,
+            "label": OFFER_LABEL,
+            "freshlyScanned": True,
+            "originalOpened": False,
+        }
 
     def __post_init__(self):
         if (not isinstance(self.copy_path, Path) or not self.copy_path.is_absolute() or
                 self.copy_path.suffix.lower() != ".pdf" or
-                self.scanned is not True or self.original_opened is not False):
+                self.scanned is not True or self.original_opened is not False or
+                type(self.content_origin) is not str or
+                self.content_origin != GENERATED_CONTENT_ORIGIN or
+                self.display_label != OFFER_LABEL):
             raise ValueError("Only a separate scanned copy can be a Maximum handoff")
 
 
@@ -180,6 +196,7 @@ def open_required_maximum_safe_copy(source_path, *, disposition):
                 offer.permits_open is not False or
                 offer.needs_separate_scan is not True or
                 offer.rasterized is not True or
+                offer.content_origin != GENERATED_CONTENT_ORIGIN or
                 type(offer.pdf_bytes) is not bytes or
                 not 0 < len(offer.pdf_bytes) <= MAX_OUTPUT_BYTES or
                 offer.pdf_bytes == source or

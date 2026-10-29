@@ -24,7 +24,12 @@ private func convert(_ data: Data) -> Data? {
 
     var usedPixels = 0
     for index in 1...document.numberOfPages {
-        guard let page = document.page(at: index), page.rotationAngle == 0 else {
+        guard let page = document.page(at: index) else {
+            output.closePDF()
+            return nil
+        }
+        let rotation = ((page.rotationAngle % 360) + 360) % 360
+        guard [0, 90, 180, 270].contains(rotation) else {
             output.closePDF()
             return nil
         }
@@ -48,12 +53,16 @@ private func convert(_ data: Data) -> Data? {
             return nil
         }
         usedPixels += width * height
-        guard let bitmap = CGContext(
-            data: nil, width: width, height: height,
-            bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-        ) else {
+        // Normalize supported source color spaces to a stable, device-independent
+        // sRGB destination before flattening. The copy preserves visual color,
+        // not source color dictionaries or embedded profile metadata.
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let bitmap = CGContext(
+                data: nil, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+              ) else {
             output.closePDF()
             return nil
         }
@@ -68,7 +77,9 @@ private func convert(_ data: Data) -> Data? {
         }
 
         let destination = CGRect(x: 0, y: 0, width: media.width, height: media.height)
-        output.beginPDFPage([kCGPDFContextMediaBox as String: destination] as CFDictionary)
+        // Core Graphics expects page-box rectangles as CFData, not CGRect values.
+        let mediaBoxData = withUnsafeBytes(of: destination) { Data($0) }
+        output.beginPDFPage([kCGPDFContextMediaBox as String: mediaBoxData] as CFDictionary)
         output.draw(image, in: destination)
         output.endPDFPage()
         if CFDataGetLength(outputData) > maxOutputBytes {

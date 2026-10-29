@@ -57,6 +57,25 @@ object streams pending its own graph-validation scope; this task does not
 relax that restriction. Neither parser is wired into the installed Built-in
 ClamAV gate, which retains its mandatory safety and handoff checks.
 
+### Bounded recursive structure parsing (opener-0432)
+
+The optional parser now rejects more than **64 nested direct PDF array/dictionary
+containers** before constructing a pypdf reader. A bounded lexical pass ignores
+literal and hex strings, comments, and stream payloads rather than treating
+their bytes as object nesting. Unbalanced or ambiguous syntax fails closed.
+Before pypdf flattens the page tree, an iterative preflight independently
+limits indirect `/Pages` / `/Kids` traversal to **64 edges** and rejects
+cycles or repeated references. This prevents a hostile page hierarchy from
+recursing until Python's interpreter stack is exhausted.
+
+The fixed message exposes no document content or path. The limit is on
+structural recursion, not page count, elapsed time, memory or stream
+decompression; those remain independently bounded or deferred to separate
+checklist tasks. No installed Built-in scanning policy or preference is
+changed. `test-pdf-recursion-depth.py` verifies boundary depths, malformed
+cycles, deeply nested arrays, literal strings, comments and opaque streams
+against the real pinned pypdf reader in CI.
+
 ## Structured parser output (opener-0413)
 
 A successful `parse_pdf_structure(pdf_bytes)` call returns the frozen
