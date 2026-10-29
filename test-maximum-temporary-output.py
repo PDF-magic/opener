@@ -49,7 +49,7 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
         try:
             names = [lease.path.name for lease in leases]
             self.assertEqual(len(set(names)), len(names))
-            self.assertTrue(all(re.fullmatch(r"safe-copy-[0-9a-f]{32}\\.pdf", name)
+            self.assertTrue(all(re.fullmatch(r"safe-copy-[0-9a-f]{32}\.pdf", name)
                                 for name in names))
             with patch.object(cleanup.secrets, "token_hex",
                               return_value="a" * 32) as random_token:
