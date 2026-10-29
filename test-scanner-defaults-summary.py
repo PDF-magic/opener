@@ -38,7 +38,12 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     ):
       with self.subTest(contract=contract):
         self.assertIn(contract, source)
-    self.assertIn('("--max-filesize=512M", "--max-scansize=1024M")', argv)
+    from scanner_argument_validation import validated_file_size_options
+    self.assertEqual(
+        validated_file_size_options(is_pdf=False),
+        ("--max-filesize=512M", "--max-scansize=1024M"),
+    )
+    self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", argv)
     self.assertIn('"--alert-exceeds-max=yes"', argv)
     self.assertIn('"--alert-encrypted=yes"', argv)
 
