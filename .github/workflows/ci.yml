@@ -339,6 +339,7 @@ jobs:
             PDFMagicOpenerApp/*SettingsView.swift PDFMagicOpenerApp/MainPreferencesView.swift \
             PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
             PDFMagicOpenerApp/ScanProgressPreference.swift \
+            PDFMagicOpenerApp/SignatureUpdateStatus.swift \
             test-preferences-large-text.swift -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
