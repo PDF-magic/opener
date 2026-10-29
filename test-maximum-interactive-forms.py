@@ -185,7 +185,7 @@ class InteractiveFormFixtureTests(unittest.TestCase):
         reader = PdfReader(BytesIO(_source_pdf()), strict=True)
         self.assertEqual(len(reader.pages), 2)
         form = reader.trailer["/Root"]["/AcroForm"].get_object()
-        self.assertFalse(form["/NeedAppearances"])
+        self.assertIs(form["/NeedAppearances"].value, False)
         fields = [ref.get_object() for ref in form["/Fields"]]
         self.assertEqual(len(fields), 3)
         self.assertEqual(len(reader.get_fields()), 3)
@@ -266,7 +266,7 @@ class NativeInteractiveFormFidelityTests(unittest.TestCase):
         self.assertNotIn("/AcroForm", result.trailer["/Root"])
         self.assertNotIn("/Names", result.trailer["/Root"])
         self.assertNotIn("PRIVATE", repr(result.trailer))
-        self.assertEqual(result.get_fields(), {})
+        self.assertFalse(result.get_fields())
         for index, page in enumerate(result.pages):
             with self.subTest(page=index):
                 self.assertEqual(
