@@ -45,6 +45,8 @@ class FindingExplanationsTests(unittest.TestCase):
         variants = (
             (FindingSeverity.informational, FindingResult.recorded,
              FindingNextAction.continueRequiredChecks),
+            (FindingSeverity.reviewRequired, FindingResult.reviewRequired,
+             FindingNextAction.requestReviewBeforeOpening),
             (FindingSeverity.suspicious, FindingResult.reviewRequired,
              FindingNextAction.requestReviewBeforeOpening),
             (FindingSeverity.critical, FindingResult.blocking,

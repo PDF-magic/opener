@@ -128,5 +128,26 @@ class StructuredAnalysisFindingsTests(unittest.TestCase):
         self.assertIs(report.to_dict()["authorizesOpen"], False)
 
 
+    def test_review_required_severity_is_explicit_and_blocks(self):
+        finding = AnalysisFinding(
+            FindingCode.incrementalRevision, FindingSeverity.reviewRequired,
+            object_number=12,
+        )
+        report = StructuredAnalysisFindings(
+            (AnalysisStage.incrementalRevisions,),
+            (StageAnalysis(AnalysisStage.incrementalRevisions,
+                           StageOutcome.completed, (finding,)),),
+        )
+        payload = report.to_dict()
+        self.assertEqual(payload["stageResults"][0]["findings"][0], {
+            "code": "incrementalRevision",
+            "severity": "reviewRequired",
+            "objectNumber": 12,
+            "pageNumber": None,
+        })
+        self.assertTrue(payload["requiresBlock"])
+        self.assertFalse(payload["authorizesOpen"])
+
+
 if __name__ == "__main__":
     unittest.main()

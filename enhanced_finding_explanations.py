@@ -74,7 +74,7 @@ def _result_for(finding: AnalysisFinding) -> FindingResult:
         return FindingResult.inspectionIncomplete
     if finding.severity is FindingSeverity.critical:
         return FindingResult.blocking
-    if finding.severity is FindingSeverity.suspicious:
+    if finding.severity in (FindingSeverity.reviewRequired, FindingSeverity.suspicious):
         return FindingResult.reviewRequired
     return FindingResult.recorded
 
