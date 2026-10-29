@@ -12,10 +12,15 @@ from io import BytesIO
 import os
 from pathlib import Path
 import stat
-import subprocess
 import sys
 
 from maximum_active_content_removal import remove_active_pdf_functionality
+from maximum_sanitizer_process import (
+    SanitizerProcessExecutionError,
+    SanitizerProcessOutputLimitExceeded,
+    SanitizerProcessTimedOut,
+    run_limited_converter,
+)
 from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
@@ -380,22 +385,19 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
         return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
 
     try:
-        converted = subprocess.run(
-            [str(converter)],
-            input=source_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=CONVERSION_TIMEOUT_SECONDS,
-            close_fds=True,
-            start_new_session=True,
-            check=False,
-            cwd="/",
-            env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
-                 "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
+        converted = run_limited_converter(
+            (str(converter),),
+            source_bytes,
+            timeout_seconds=CONVERSION_TIMEOUT_SECONDS,
+            max_output_bytes=MAX_OUTPUT_BYTES,
+            environment={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
+                         "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
         )
-    except subprocess.TimeoutExpired:
+    except SanitizerProcessTimedOut:
         return _failed(SanitizerFailureKind.TIMED_OUT)
-    except (OSError, subprocess.SubprocessError):
+    except SanitizerProcessOutputLimitExceeded:
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+    except (OSError, SanitizerProcessExecutionError):
         return _failed(SanitizerFailureKind.LAUNCH_FAILED)
     except Exception:
         return _failed(SanitizerFailureKind.LAUNCH_FAILED)

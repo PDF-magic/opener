@@ -134,7 +134,7 @@ class SanitizedStructureTests(unittest.TestCase):
         original = output_pdf(pages=1)
         converted = output_pdf(pages=2)
         with (patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")),
-              patch.object(copies.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, converted)),
+              patch.object(copies, "run_limited_converter", return_value=subprocess.CompletedProcess([], 0, converted)),
               patch.object(copies, "remove_active_pdf_functionality", return_value=converted),
               patch.object(copies, "_passive_pages", return_value=True),
               patch.object(copies, "verify_sanitized_pdf_structure",
@@ -142,7 +142,7 @@ class SanitizedStructureTests(unittest.TestCase):
             self.assertIsNone(copies.offer_sanitized_pdf_copy(original))
             verify.assert_called_once()
         with (patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")),
-              patch.object(copies.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, converted)),
+              patch.object(copies, "run_limited_converter", return_value=subprocess.CompletedProcess([], 0, converted)),
               patch.object(copies, "remove_active_pdf_functionality", return_value=converted),
               patch.object(copies, "_passive_pages", return_value=True),
               patch.object(copies, "verify_sanitized_pdf_structure",

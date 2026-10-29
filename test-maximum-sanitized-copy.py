@@ -29,7 +29,7 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         invalid = (b"", "not bytes", bytearray(sample_pdf()), b"not a PDF",
                    b"%PDF" * (copies.MAX_SOURCE_BYTES // 4 + 1))
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
-                patch.object(copies.subprocess, "run") as invoked:
+                patch.object(copies, "run_limited_converter") as invoked:
             for item in invalid:
                 with self.subTest(type=type(item).__name__):
                     self.assertIsNone(copies.offer_sanitized_pdf_copy(item))
@@ -37,7 +37,7 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
 
     def test_unavailable_converter_never_produces_offer_or_launch(self):
         with patch.object(copies, "_trusted_converter", return_value=None), \
-                patch.object(copies.subprocess, "run") as invoked:
+                patch.object(copies, "run_limited_converter") as invoked:
             self.assertIsNone(copies.offer_sanitized_pdf_copy(sample_pdf()))
             invoked.assert_not_called()
 
@@ -48,7 +48,7 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         stream = BytesIO()
         writer.write(stream)
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
-                patch.object(copies.subprocess, "run") as invoked:
+                patch.object(copies, "run_limited_converter") as invoked:
             self.assertIsNone(copies.offer_sanitized_pdf_copy(stream.getvalue()))
             self.assertIsNone(copies.offer_sanitized_pdf_copy(b"%PDF-1.7\nbroken"))
             invoked.assert_not_called()
@@ -64,9 +64,9 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")):
             for result in scenarios:
                 with self.subTest(result=result.returncode, size=len(result.stdout)), \
-                        patch.object(copies.subprocess, "run", return_value=result):
+                        patch.object(copies, "run_limited_converter", return_value=result):
                     self.assertIsNone(copies.offer_sanitized_pdf_copy(original))
-            with patch.object(copies.subprocess, "run",
+            with patch.object(copies, "run_limited_converter",
                               return_value=subprocess.CompletedProcess([], 0, different)), \
                     patch.object(copies, "_passive_pages", return_value=True), \
                     patch.object(copies, "remove_active_pdf_functionality",
@@ -91,27 +91,27 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         original = sample_pdf()
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")):
             for error in (OSError("/private/secret/path"),
-                          subprocess.TimeoutExpired(["private path"], 1)):
+                          copies.SanitizerProcessTimedOut("private path")):
                 with self.subTest(type=type(error).__name__), \
-                        patch.object(copies.subprocess, "run", side_effect=error):
+                        patch.object(copies, "run_limited_converter", side_effect=error):
                     self.assertIsNone(copies.offer_sanitized_pdf_copy(original))
 
     def test_spawn_is_noninteractive_without_original_path_or_shell(self):
         original = sample_pdf()
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
-                patch.object(copies.subprocess, "run",
+                patch.object(copies, "run_limited_converter",
                              return_value=subprocess.CompletedProcess([], 0, b"%PDF-different")) as invoked:
             self.assertIsNone(copies.offer_sanitized_pdf_copy(original))
         args, kwargs = invoked.call_args
-        self.assertEqual(args[0], ["/usr/bin/true"])
-        self.assertIs(kwargs["input"], original)
-        self.assertIs(kwargs["stderr"], subprocess.DEVNULL)
-        self.assertTrue(kwargs["start_new_session"])
-        self.assertTrue(kwargs["close_fds"])
-        self.assertEqual(kwargs["timeout"], copies.CONVERSION_TIMEOUT_SECONDS)
-        self.assertEqual(kwargs["cwd"], "/")
-        self.assertNotIn("shell", kwargs)
-        self.assertNotIn("HTTP_PROXY", kwargs["env"])
+        self.assertEqual(args[0], ("/usr/bin/true",))
+        self.assertIs(args[1], original)
+        self.assertEqual(kwargs["timeout_seconds"], copies.CONVERSION_TIMEOUT_SECONDS)
+        self.assertEqual(kwargs["max_output_bytes"], copies.MAX_OUTPUT_BYTES)
+        self.assertEqual(kwargs["environment"], {
+            "PATH": "/usr/bin:/bin", "HOME": "/var/empty",
+            "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
+        })
+        self.assertNotIn("HTTP_PROXY", kwargs["environment"])
 
     def test_action_bearing_pdf_is_not_mistaken_for_passive_output(self):
         source = sample_pdf(with_actions=True)
