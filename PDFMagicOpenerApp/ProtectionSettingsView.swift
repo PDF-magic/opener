@@ -244,6 +244,7 @@ struct ProtectionSettingsView: View {
   @State private var pendingLowerPreview: PlannedProtectionTier?
   @State private var showLowerPreviewWarning = false
   @State private var showExactEffectivePolicy = false
+  @State private var showExistingExceptions = false
   @State private var showProtectionResetConfirmation = false
 
   var body: some View {
@@ -468,6 +469,27 @@ struct ProtectionSettingsView: View {
               .font(.footnote)
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
+            DisclosureGroup(isExpanded: $showExistingExceptions) {
+              VStack(alignment: .leading, spacing: 8) {
+                Text("Existing exceptions: none")
+                  .font(.subheadline.weight(.semibold))
+                  .accessibilityIdentifier("existingProtectionExceptionsEmpty")
+                Text("No protection exceptions exist or can be saved. There are no approved files, folders, download sources, applications or protection levels to review.")
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                Text("Rejected exception requests are not saved as exceptions. Mandatory scanning and fail-closed opening still apply to every file.")
+                  .font(.footnote)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.top, 8)
+            } label: {
+              Text("Review existing exceptions (0)")
+                .font(.subheadline.weight(.semibold))
+            }
+            .accessibilityIdentifier("reviewExistingProtectionExceptions")
+            .accessibilityHint("Expand the read-only exception list. There are no exceptions. This does not change scanning or settings.")
           }
           .frame(maxWidth: .infinity, alignment: .leading)
         }

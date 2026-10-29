@@ -35,3 +35,19 @@ decision contract, attempted changes and hostile exception requests,
 read-only accessible UI, scanner invariants and a real mocked-infected
 scan that blocks despite an attempted exempt protection-level label.
 The existing CI runs these tests and compiles the macOS app.
+
+## Review existing exceptions (opener-0349)
+
+Preferences → Protection → **Protection exceptions** now provides a read-only
+**Review existing exceptions (0)** disclosure. Opening it shows **Existing
+exceptions: none**, explains that no approved exceptions can be saved, and
+clarifies that refused requests are not saved as exception entries. The zero
+count represents the immutable unsupported-exceptions policy, not a query of
+private files, request records, or user preferences. No list of sensitive file
+paths is created.
+
+Expanding or collapsing this information is a local presentation state only.
+It does not create, edit, delete, approve, or persist an exception, nor does
+it touch the scanner, cache, quarantine, selected PDF application or saved
+protection preview. The `test-protection-exceptions-review.py` regression
+is run by CI; the macOS build verifies the native view still compiles.
