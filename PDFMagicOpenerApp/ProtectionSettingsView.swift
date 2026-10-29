@@ -209,6 +209,7 @@ struct ProtectionSettingsView: View {
   @State private var selectedPreview: PlannedProtectionTier?
   @State private var previewSaveStatus: String?
   @State private var showExactEffectivePolicy = false
+  @State private var showProtectionResetConfirmation = false
 
   var body: some View {
     ScrollView {
@@ -386,6 +387,21 @@ struct ProtectionSettingsView: View {
         }
         .accessibilityIdentifier("plannedProtectionCardsSection")
 
+        GroupBox("Protection settings reset") {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("Restore the saved planned protection preview to Standard. This does not change Built-in ClamAV protection, your chosen PDF application, scan notifications or other settings.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Button("Reset Protection Settings") {
+              showProtectionResetConfirmation = true
+            }
+            .accessibilityIdentifier("resetProtectionSettingsButton")
+            .accessibilityHint("Confirm before resetting only the saved planned protection preview to Standard.")
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityIdentifier("resetProtectionSettingsSection")
+
         GroupBox("Malware scanning") {
           protectionDetail(
             "ClamAV scanning",
@@ -428,6 +444,27 @@ struct ProtectionSettingsView: View {
         selectedPreview = tier
       }
     }
+    .confirmationDialog(
+      "Reset Protection Settings?",
+      isPresented: $showProtectionResetConfirmation
+    ) {
+      Button("Reset Protection Settings", role: .destructive) {
+        resetProtectionPreview()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Reset only the planned protection preview to Standard? Your active Built-in ClamAV scanner, PDF app, notifications and other preferences will not change.")
+    }
+  }
+
+  private func resetProtectionPreview() {
+    guard ProtectionSettingsReset.reset() else {
+      previewSaveStatus = "Could not reset the protection preview. Your saved choice was preserved."
+      return
+    }
+    // Reflect the value only after the shared preference confirms persistence.
+    selectedPreview = PlannedProtectionTier(rawValue: PreferredProtectionLevel.standard.rawValue)
+    previewSaveStatus = "Protection preview reset to Standard. Active protection remains Built-in."
   }
 
   private func includedCheckDetail(_ check: ProtectionLevelCheck) -> some View {
