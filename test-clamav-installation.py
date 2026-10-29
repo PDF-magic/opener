@@ -51,7 +51,9 @@ class ClamAVInstallationTests(unittest.TestCase):
         self.assertEqual(
             gate.detect_clamav_installation(), str(self.candidates[0])
         )
-        self.assertEqual(gate.scanner_path(), str(self.candidates[0]))
+        # This test covers binary discovery, not the compatibility policy.
+        with patch.object(gate, "require_supported_scanner_version", return_value="1.4.2"):
+            self.assertEqual(gate.scanner_path(), str(self.candidates[0]))
         self.candidates[0].unlink()
         self.assertEqual(
             gate.detect_clamav_installation(), str(self.candidates[1])

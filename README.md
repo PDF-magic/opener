@@ -80,10 +80,17 @@ hint. Labels are derived from the existing page titles and preserve native
 sidebar selection, keyboard navigation, and current-page state.
 
 The **Updates** sidebar entry (opener-0182) provides a read-only page
-showing the installed application version and explaining application
-and ClamAV definition updates. It does not check for, download, or
-install updates, claim unverified update status, or modify any scan
-protections or saved preferences.
+showing the installed application version and explaining application and
+ClamAV definition updates. The malware-definition section (opener-0380)
+also shows the last attempted and last successful FreshClam update times,
+read from the existing local timestamps added in opener-0378. Unknown,
+invalid, future, symlinked or unavailable records display **Unavailable**;
+a newer attempt without a newer success is not presented as a confirmed
+successful update. Times are displayed in the user's local time zone.
+This is historical status only: it cannot prove signatures are fresh or
+complete and does not replace the installed 48-hour scanner freshness gate.
+Opening Settings does not run updates, modify saved preferences or change
+scanner protections.
 
 **Technical help text (opener-0194):** Inline, accessible informational notes
 clarify ClamAV malware scans, fail-closed behavior, locally available files,
@@ -235,11 +242,13 @@ native helper. Cancel from the progress window is available when the toggle
 is enabled; while it is hidden, closing the opener or other process-level
 controls may interrupt a scan without approving any document.
 
+**ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `scanner_startup_benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regression tests only, not a production ClamAV benchmark.
+
 The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
-Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Successful clean and cached scans also retain the original `com.apple.quarantine` extended attribute, leaving Gatekeeper and OS-level downloaded-file protections in place for PDFs and application bundles. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
+Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Successful clean and cached scans also retain the original `com.apple.quarantine` extended attribute, leaving Gatekeeper and OS-level downloaded-file protections in place for PDFs and application bundles. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. Zero-byte files, including empty members of application bundles, are explicitly rejected before scanner execution or clean-cache reuse. An empty file is never treated as successfully scanned, even if ClamAV would skip it. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
 
 Each accepted native PDF open request also has an in-memory `ScanRequest.requestTimestamp` (`Date`) set when the open event is accepted. Repeated events for the same resolved file retain the original request timestamp. This field is not logged or persisted, and is distinct from the scan time used in the clean-file cache.
 
@@ -294,6 +303,18 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
 
 The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. To update manually:
+
+The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
+
+**Signature-update failures (opener-0384):** The existing automatic or manual updater records an additional, atomic `signatures/last-failed-update` marker only when its run exits unsuccessfully. The marker contains the failure time and one fixed, path-free category (`freshclam-error` or `updater-unavailable`); it never exposes FreshClam stderr, document contents or installed paths. Preferences → Updates shows the last recorded failure and its sanitized explanation, distinguishes an unresolved failure from a subsequent recorded success, and treats missing or corrupt markers as unknown. The last-successful marker still advances only after FreshClam succeeds, and the 48-hour scan gate remains authoritative; a failure warning never approves a scan or changes the update interval.
+
+**Signature database protection (opener-0385; also opener-0387):** Automatic and manual FreshClam runs acquire one exclusive update lock before any database or update-record changes. Concurrent invocations cannot publish competing snapshots. FreshClam operates on a private, same-filesystem staging copy; the complete result is promoted only after successful completion and validation. A failed or interrupted update retains the previous usable database, custom signatures and success timestamp, with a rollback copy during promotion. An orphaned lock requires recovery before a later update can proceed, failing closed instead of allowing corruption. The independent 48-hour scanner freshness gate remains authoritative.
+
+**Incomplete signature downloads (opener-0388):** After FreshClam exits successfully, the updater detects residual partial-transfer files (`.tmp`, `.part`, `.partial`, `.download`, `.cdiff`), empty ClamAV database files, and truncated recognizable ClamAV database headers. Incomplete results prevent the successful-update timestamp from advancing and record a fixed `incomplete-download` failure in Updates without exposing updater logs. This lightweight detection does not replace full signature verification or change the scanner's independent freshness and fail-closed checks.
+
+**Network interruptions (opener-0389):** FreshClam remains responsible for its configured mirrors, proxy, connection and receive timeouts. If it exits unsuccessfully, the updater makes at most **one** additional attempt (after a one-second pause), using the existing configured FreshClam command. A persistent connection failure or signal-terminated updater never records a successful update; the existing sanitized failure record and progress cleanup run normally. When the updater is terminated with HUP, INT or TERM, it forwards termination to its running FreshClam child and exits without retrying. Subsequent scheduled or user-initiated runs can try again. This does not bypass the 48-hour scan freshness gate or implement signature database rollback, which is handled separately.
+
+While FreshClam runs, Preferences → Updates shows **Signature update in progress** with an indeterminate spinner and the observed start time. This live indicator refreshes every two seconds while the pane remains visible; no fictional percentage is displayed. The installed updater atomically records the updater PID and start time in `signatures/update-in-progress` and removes only its own marker after success or failure. Invalid, stale, symlinked, or dead-process markers cannot indicate an active update. The separate historical attempt/success timestamps and explicit manual update actions remain available. A progress indicator never authorizes scanning or changes the existing 48-hour signature freshness requirement.
 
 ```sh
 bash update-malware-signatures.sh
@@ -848,3 +869,5 @@ For compatibility with existing installations, runtime scripts and signatures re
 ## License
 
 Licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+**Manual signature-update controls (opener-0381):** The Updates preferences pane includes **Check for Updates Now** for a user-initiated, read-only comparison of the ClamAV-published DNS TXT main/daily signature revisions against bounded local database headers. Missing DNS information or unreadable local metadata reports that the comparison is unavailable, never that the signatures are current. **Update Signatures Now** explicitly runs the already installed FreshClam updater using its existing configuration and timestamp records; it does not change the four-hour schedule or saved preferences. Both controls act only after a click, display a result, and never authorize document opening, override scan failures, remove quarantine, or disable the existing 48-hour database freshness gate.

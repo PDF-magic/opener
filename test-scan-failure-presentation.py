@@ -86,6 +86,7 @@ class ScanFailurePresentationTests(unittest.TestCase):
                      patch.object(opener, "pdf_fallback_application", return_value=None), \
                      patch.object(opener, "record_scan_destination"), \
                      patch.object(opener, "verify_launch_target"), \
+                     patch.object(opener, "verify_local_file_available"), \
                      patch.object(opener, "read_signature_database_version", return_value=None), \
                      patch.object(opener, "run_scan_command", return_value=scan), \
                      patch.object(opener, "remove_quarantine") as unquarantine, \
