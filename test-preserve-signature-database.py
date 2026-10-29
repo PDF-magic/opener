@@ -48,12 +48,12 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assertIn(CANDIDATES, script)
         self.script = self.root / "update.sh"
         self.script.write_text(script.replace(CANDIDATES, str(self.fake)))
-        (self.signatures / "main.cvd").write_bytes(b"usable main database\\n")
-        (self.signatures / "daily.cld").write_bytes(b"usable daily database\\n")
-        (self.signatures / "last-successful-update").write_text("1700000000\\n")
-        (self.signatures / "custom.ndb").write_bytes(b"user signatures\\n")
+        (self.signatures / "main.cvd").write_bytes(b"usable main database\n")
+        (self.signatures / "daily.cld").write_bytes(b"usable daily database\n")
+        (self.signatures / "last-successful-update").write_text("1700000000\n")
+        (self.signatures / "custom.ndb").write_bytes(b"user signatures\n")
         (self.install / "freshclam.conf").write_text(
-            'DatabaseDirectory "' + str(self.signatures) + '"\\n'
+            'DatabaseDirectory "' + str(self.signatures) + '"\n'
         )
         self.original = {
             p.name: p.read_bytes()
@@ -90,8 +90,8 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
     def test_success_publishes_new_databases_and_preserves_custom_data(self):
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.signatures / "main.cvd").read_bytes(), b"new main database\\n")
-        self.assertEqual((self.signatures / "daily.cld").read_bytes(), b"new daily database\\n")
+        self.assertEqual((self.signatures / "main.cvd").read_bytes(), b"new main database\n")
+        self.assertEqual((self.signatures / "daily.cld").read_bytes(), b"new daily database\n")
         self.assertEqual((self.signatures / "custom.ndb").read_bytes(),
                          self.original["custom.ndb"])
         self.assertGreater(int((self.signatures / "last-successful-update").read_text()), 1700000000)
@@ -141,7 +141,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assertNotEqual(second.returncode, 0)
         out, err = first.communicate(timeout=10)
         self.assertEqual(first.returncode, 0, (out, err))
-        self.assertEqual((self.signatures / "main.cvd").read_bytes(), b"new main database\\n")
+        self.assertEqual((self.signatures / "main.cvd").read_bytes(), b"new main database\n")
         self.assert_no_work_dirs()
 
     def test_scan_gate_remains_independent_and_ci_runs_regressions(self):
