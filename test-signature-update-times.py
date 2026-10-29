@@ -37,6 +37,11 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         names = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
         self.assertIn(names, original)
         self.script = self.root / "test-update.sh"
+        # Synthetic update tests bypass only the separately tested ClamAV
+        # stage-load probe in their disposable updater copy.
+        first = original.index("# BEGIN staged database verification (opener-0386)")
+        last = original.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
+        original = original[:first] + original[last:]
         self.script.write_text(original.replace(names, str(self.fake)))
         self.called = self.root / "called"
 

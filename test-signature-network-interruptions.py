@@ -53,6 +53,11 @@ class NetworkInterruptionTests(unittest.TestCase):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, script)
         self.script = self.root / "updater.sh"
+        # Synthetic update tests bypass only the separately tested ClamAV
+        # stage-load probe in their disposable updater copy.
+        first = script.index("# BEGIN staged database verification (opener-0386)")
+        last = script.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
+        script = script[:first] + script[last:]
         self.script.write_text(script.replace(CANDIDATES, str(self.fake)))
 
     def environment(self, mode):
