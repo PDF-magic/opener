@@ -1,0 +1,22 @@
+name: ClamAV structural-success priority
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  structural-success-priority:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the pinned passive PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Ensure structural success cannot override a ClamAV detection
+        run: python3 test-scan-and-open.py -v -k structural_success_cannot_override_clamav_detection

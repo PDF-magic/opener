@@ -24,6 +24,17 @@ def main() -> int:
     from maximum_isolated_worker import _apply_limits
     _apply_limits()  # OS CPU/memory/no-file limits BEFORE importing renderer.
 
+    if sys.platform == "linux":
+        from maximum_network_isolation import (
+            apply_linux_child_process_denial, apply_linux_network_denial,
+        )
+        apply_linux_network_denial()
+        apply_linux_child_process_denial()
+    elif (sys.platform != "darwin" or
+          os.environ.get("PDF_MAGIC_RENDER_NETWORK_SANDBOX") != "seatbelt-v1"):
+        # macOS must be launched through the parent's sandbox-exec wrapper.
+        return 2
+
     from maximum_isolated_renderer import (
         MAGIC, MAX_DOCUMENT_PAGES, MAX_METADATA_BYTES, MAX_PDF_BYTES,
         MAX_PNG_BYTES, MAX_RENDER_PIXELS, MAX_RENDER_SIDE,
