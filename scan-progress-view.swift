@@ -244,8 +244,21 @@ struct EnhancedFindingsProgressSnapshot {
                 if resultID != "recorded" {
                     calculatedBlock = true
                 }
+                // Enhanced findings are heuristic/structural evidence, never a
+                // scanner-confirmed malware verdict. Legacy v2 reports default
+                // to unconfirmed; unknown future values fail closed.
+                let malwareAssessment: String
+                if let rawAssessment = result["malwareAssessment"] {
+                    guard let value = rawAssessment as? String, value == "notConfirmed" else {
+                        return nil
+                    }
+                    malwareAssessment = value
+                } else {
+                    // Older schema-v2 findings predate this additive field.
+                    malwareAssessment = "notConfirmed"
+                }
                 if rows.count < maxDisplayedRows {
-                    rows.append("\(stageName) · \(severityName) · \(codeName) — \(resultLabel)")
+                    rows.append("\(stageName) · \(severityName) · \(codeName) — \(resultLabel) · Malware not confirmed")
                 }
             }
         }

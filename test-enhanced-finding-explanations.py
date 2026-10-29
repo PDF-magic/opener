@@ -35,7 +35,10 @@ class FindingExplanationsTests(unittest.TestCase):
         for entry in payload["stageResults"][0]["findings"]:
             outcome = entry["result"]
             self.assertTrue(outcome["explanation"])
-            self.assertEqual(set(outcome), {"outcome", "explanation", "nextAction"})
+            self.assertEqual(set(outcome), {
+                "outcome", "explanation", "nextAction", "malwareAssessment"
+            })
+            self.assertEqual(outcome["malwareAssessment"], "notConfirmed")
             self.assertNotIn("/tmp/", str(outcome))
             self.assertNotIn("http://", str(outcome))
         self.assertTrue(payload["requiresBlock"])  # failures cannot be informational bypasses
@@ -74,7 +77,8 @@ class FindingExplanationsTests(unittest.TestCase):
             self.assertEqual(result.to_dict()["stageResults"][0]["findings"][0]["result"],
                              {"outcome": "inspectionIncomplete",
                               "explanation": ExplainedFinding(finding).explanation,
-                              "nextAction": "rerunOrRepairInspection"})
+                              "nextAction": "rerunOrRepairInspection",
+                              "malwareAssessment": "notConfirmed"})
 
     def test_preserves_expected_stage_order_missing_and_incomplete_stages(self):
         finding = AnalysisFinding(FindingCode.unresolvedReference,
@@ -153,6 +157,24 @@ class FindingExplanationsTests(unittest.TestCase):
         for private in ("https://private.example/secret", "document.pdf",
                         "/Users/private", "subprocess.run"):
             self.assertNotIn(private, serialized)
+
+    def test_heuristic_findings_never_claim_confirmed_malware(self):
+        for code in (FindingCode.activeContent, FindingCode.suspiciousUrl,
+                     FindingCode.unexpectedEmbeddedFile):
+            finding = AnalysisFinding(code, FindingSeverity.critical)
+            result = ExplainedFinding(finding).to_dict()["result"]
+            self.assertEqual(result["outcome"], "blocking")
+            self.assertEqual(result["malwareAssessment"], "notConfirmed")
+            self.assertNotIn("malware was detected", result["explanation"].lower())
+            self.assertNotIn("confirmed malware", result["explanation"].lower())
+
+        # The native panel displays uncertainty and rejects unknown assessment values.
+        native = (Path(__file__).with_name("scan-progress-view.swift")
+                  .read_text(encoding="utf-8"))
+        self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
+        self.assertIn('guard let value = rawAssessment as? String, value == "notConfirmed" else', native)
+        self.assertIn('malwareAssessment = "notConfirmed"', native)
+        self.assertIn('— \\(resultLabel) · Malware not confirmed', native)
 
     def test_scanner_and_profile_remain_untouched(self):
         scanner = (Path(__file__).parent / "scan-and-open.py").read_text()
