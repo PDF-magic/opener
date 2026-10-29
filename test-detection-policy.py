@@ -38,6 +38,11 @@ class DetectionDecisionTests(unittest.TestCase):
         version = patch.object(opener, 'scan_engine_version', return_value=None)
         version.start()
         self.addCleanup(version.stop)
+        # The macOS local-download guard requires a built native launcher.
+        # Test the scan verdict separately from that unrelated native preflight.
+        local = patch.object(opener, 'verify_local_file_available')
+        local.start()
+        self.addCleanup(local.stop)
 
     def test_detection_contains_only_evidence_and_cannot_be_modified(self):
         raw = result(1, 'file: Malware FOUND')
