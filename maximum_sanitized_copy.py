@@ -35,6 +35,7 @@ OFFER_EXPLANATION = (
     "This is newly generated content, not the untouched original PDF. "
     "Pages are flattened into images; searchable text, links, forms, "
     "attachments and other interactive features are not preserved. "
+    "OCR restoration is not included. "
     "This is not a malware-clean verdict; scan the generated copy separately."
 )
 
@@ -58,6 +59,8 @@ class SanitizedCopyOffer:
     permits_open: bool = False
     needs_separate_scan: bool = True
     rasterized: bool = True
+    # OCR is reserved for a separate future opt-in feature, not this safe-copy offer.
+    ocr_restored: bool = False
     content_origin: str = GENERATED_CONTENT_ORIGIN
     warning: str = CONVERSION_CHANGE_WARNING
 
@@ -71,6 +74,7 @@ class SanitizedCopyOffer:
             "conversionWarning": CONVERSION_CHANGE_WARNING,
             "requiresFreshScan": True,
             "authorizesOpen": False,
+            "ocrRestored": False,
         }
 
     def __post_init__(self):
@@ -84,6 +88,7 @@ class SanitizedCopyOffer:
                 self.permits_open is not False or
                 self.needs_separate_scan is not True or
                 self.rasterized is not True or
+                self.ocr_restored is not False or
                 type(self.content_origin) is not str or
                 self.content_origin != GENERATED_CONTENT_ORIGIN):
             raise ValueError("Sanitized copies never grant scan or open approval")
