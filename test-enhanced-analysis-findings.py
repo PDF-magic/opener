@@ -33,18 +33,43 @@ class StructuredAnalysisFindingsTests(unittest.TestCase):
             "requiresBlock": True,
             "stageResults": [
                 {"stage": "embeddedUrls", "outcome": "completed", "findings": [
-                    {"code": "suspiciousUrl", "severity": "suspicious",
-                     "objectNumber": 42, "pageNumber": 2},
+                    {"code": "suspiciousUrl",
+                     "findingId": "finding-v1:suspiciousUrl:object=42:page=2",
+                     "severity": "suspicious", "objectNumber": 42, "pageNumber": 2},
                 ]},
                 {"stage": "incrementalRevisions", "outcome": "completed", "findings": [
-                    {"code": "incrementalRevision", "severity": "informational",
-                     "objectNumber": None, "pageNumber": None},
+                    {"code": "incrementalRevision",
+                     "findingId": "finding-v1:incrementalRevision:object=none:page=none",
+                     "severity": "informational", "objectNumber": None, "pageNumber": None},
                 ]},
             ],
         })
         self.assertEqual(report.incomplete_stages, ())
         payload["stageResults"][0]["findings"].clear()
         self.assertEqual(len(report.to_dict()["stageResults"][0]["findings"]), 1)
+
+    def test_finding_identifier_is_stable_and_scoped_to_code_and_location(self):
+        first = AnalysisFinding(FindingCode.suspiciousUrl, FindingSeverity.suspicious,
+                                object_number=42, page_number=2)
+        changed_severity = AnalysisFinding(FindingCode.suspiciousUrl, FindingSeverity.critical,
+                                           object_number=42, page_number=2)
+        self.assertEqual(first.finding_id,
+                         "finding-v1:suspiciousUrl:object=42:page=2")
+        self.assertEqual(first.finding_id, changed_severity.finding_id)
+        self.assertEqual(first.to_dict()["findingId"], first.finding_id)
+        self.assertNotEqual(first.finding_id, AnalysisFinding(
+            FindingCode.activeContent, FindingSeverity.suspicious,
+            object_number=42, page_number=2).finding_id)
+        self.assertNotEqual(first.finding_id, AnalysisFinding(
+            FindingCode.suspiciousUrl, FindingSeverity.suspicious,
+            object_number=43, page_number=2).finding_id)
+        self.assertNotEqual(first.finding_id, AnalysisFinding(
+            FindingCode.suspiciousUrl, FindingSeverity.suspicious,
+            object_number=42, page_number=3).finding_id)
+        no_location = AnalysisFinding(FindingCode.incrementalRevision,
+                                      FindingSeverity.informational)
+        self.assertEqual(no_location.finding_id,
+                         "finding-v1:incrementalRevision:object=none:page=none")
 
     def test_missing_or_partial_stage_is_reported_and_blocks(self):
         report = StructuredAnalysisFindings(

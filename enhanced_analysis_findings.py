@@ -14,6 +14,7 @@ MAX_REPORTED_STAGES = 32
 MAX_FINDINGS_PER_STAGE = 128
 MAX_PDF_OBJECT_NUMBER = 2**31 - 1
 MAX_PAGE_NUMBER = 1_000_000
+FINDING_IDENTIFIER_VERSION = 1
 
 
 class AnalysisStage(str, Enum):
@@ -76,9 +77,24 @@ class AnalysisFinding:
             if value is not None and (type(value) is not int or not 1 <= value <= upper):
                 raise ValueError("Finding locations must be bounded positive integers")
 
+    @property
+    def finding_id(self) -> str:
+        """Stable evidence-signature ID, independent of severity or run order.
+
+        The identifier is scoped by code and the available object/page location,
+        not by document identity. Identical signatures intentionally share an ID.
+        """
+        object_number = "none" if self.object_number is None else str(self.object_number)
+        page_number = "none" if self.page_number is None else str(self.page_number)
+        return (
+            f"finding-v{FINDING_IDENTIFIER_VERSION}:{self.code.value}:"
+            f"object={object_number}:page={page_number}"
+        )
+
     def to_dict(self):
         return {
             "code": self.code.value,
+            "findingId": self.finding_id,
             "severity": self.severity.value,
             "objectNumber": self.object_number,
             "pageNumber": self.page_number,
