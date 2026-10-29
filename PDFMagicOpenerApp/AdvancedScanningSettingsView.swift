@@ -48,7 +48,7 @@ struct AdvancedScanningSettingsView: View {
         }
         .accessibilityIdentifier("advancedScanningResultsSection")
 
-        Text("Advanced scanning controls are not configurable in this version. Existing scanner protections and your saved choices remain unchanged.")
+        Text("Advanced scanning controls are not configurable in this version. Scanner parameters are not user-editable: fixed ClamAV options protect the scan gate. Existing scanner protections and your saved choices remain unchanged.")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)

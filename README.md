@@ -89,6 +89,8 @@ a newer attempt without a newer success is not presented as a confirmed
 successful update. Times are displayed in the user's local time zone.
 This is historical status only: it cannot prove signatures are fresh or
 complete and does not replace the installed 48-hour scanner freshness gate.
+
+**Stale-signature warning (opener-0392):** Preferences → Updates shows an explicit warning when the recorded last successful signature check is **older than 48 hours**, using the same inclusive boundary as the scan gate. A missing, malformed, future, or unreadable successful-update timestamp instead produces a separate **freshness cannot be verified** warning, never a claim that definitions are current. The warning re-evaluates the installed timestamp about once per minute while the pane remains open, including when the automatic update agent runs. No background update is triggered by viewing the warning; signature database validity, malware scanning, quarantine, and the scanner's fail-closed 48-hour freshness policy remain authoritative.
 Opening Settings does not run updates, modify saved preferences or change
 scanner protections.
 
@@ -241,6 +243,12 @@ the PDF handler after updating the application to deploy the compatible
 native helper. Cancel from the progress window is available when the toggle
 is enabled; while it is hidden, closing the opener or other process-level
 controls may interrupt a scan without approving any document.
+
+**Scanner parameter editability (opener-0397):** ClamAV command-line parameters
+are **not user-editable**. The fixed, validated scan gate remains authoritative;
+Advanced Scanning is informational. Supported saved preferences, including
+the selected PDF viewer, are unaffected. See the
+[scanner parameter decision](docs/scanner-parameters-decision.md).
 
 **ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `scanner_startup_benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regression tests only, not a production ClamAV benchmark.
 
