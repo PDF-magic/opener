@@ -559,7 +559,7 @@ def require_supported_scanner_version(scanner):
     builds cannot authorize a scan or a previously cached clean handoff.
     """
     version = scan_engine_version(scanner)
-    if version is None:
+    if version is None or re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version) is None:
         raise RuntimeError(
             'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.')
     if re.fullmatch(r'1\.(?:4|5)\.[0-9]+', version) is None:
