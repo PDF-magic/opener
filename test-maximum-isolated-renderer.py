@@ -443,6 +443,40 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual(str(error.exception), renderer.BLOCK_MESSAGE)
         run.assert_not_called()
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
+    def test_renderer_sandbox_context_trusts_only_valid_runtime_paths(self):
+        source_root = Path(__file__).resolve().parent
+        worker = source_root / "maximum_render_worker.py"
+        support_files = (
+            source_root / "maximum_isolated_worker.py",
+            source_root / "maximum_network_isolation.py",
+            source_root / "maximum_isolated_renderer.py",
+        )
+        python = str(Path(sys.executable).resolve(strict=True))
+        prefix = str(Path(sys.prefix).resolve(strict=True))
+        base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
+        checks = {
+            "sandbox executable": renderer._trusted_regular_file(
+                renderer.SANDBOX_EXEC, executable=True
+            ),
+            "python executable": renderer._trusted_regular_file(
+                python, executable=True
+            ),
+            "worker": renderer._trusted_regular_file(str(worker.resolve(strict=True))),
+            "source root": renderer._trusted_directory(str(source_root)),
+            "python prefix": renderer._trusted_directory(prefix, runtime=True),
+            "base prefix": renderer._trusted_directory(base_prefix, runtime=True),
+        }
+        checks.update({
+            "support " + path.name: renderer._trusted_regular_file(
+                str(path.resolve(strict=True))
+            )
+            for path in support_files
+        })
+        self.assertTrue(all(checks.values()), checks)
+        context = renderer._renderer_sandbox_context(worker)
+        self.assertEqual(context["worker"], str(worker.resolve(strict=True)))
+
     def test_renderer_rejects_worker_outside_trusted_directory(self):
         with tempfile.TemporaryDirectory(prefix="opener-render-outside-") as directory:
             outside_worker = Path(directory) / "worker.py"
