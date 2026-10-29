@@ -14,6 +14,7 @@ import re
 
 MAX_STRUCTURE_INPUT_BYTES = 16 * 1024 * 1024
 MAX_STRUCTURE_PAGES = 1024
+MAX_STRUCTURE_OBJECTS = 4096
 _HEADER = re.compile(rb"\A%PDF-(1\.[0-7]|2\.0)[\r\n]")
 _ERROR = "PDF structure could not be verified; opening was stopped."
 _ENCRYPTED = "Encrypted PDF structure cannot be inspected; opening was stopped."
@@ -81,6 +82,13 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted:
             raise PDFStructureParseError(_ENCRYPTED)
+        # Bound all indexed indirect objects before resolving the catalog or
+        # traversing pages. Include objects stored inside /ObjStm containers;
+        # they do not appear in the classic cross-reference dictionary.
+        total_objects = sum(len(entries) for entries in reader.xref.values())
+        total_objects += len(reader.xref_objStm)
+        if total_objects > MAX_STRUCTURE_OBJECTS:
+            raise PDFStructureParseError(_SIZE)
         root = reader.trailer["/Root"]
         if root.get("/Type") != "/Catalog":
             raise PDFStructureParseError(_ERROR)

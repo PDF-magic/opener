@@ -26,7 +26,10 @@ untrusted files.
 
 The parser accepts immutable in-memory bytes only and refuses an unavailable
 dependency, invalid PDF header or EOF, encrypted documents, parsing errors,
-empty page trees, more than 1,024 pages or more than 16 MiB of input. Errors
+empty page trees, more than **4,096 indexed indirect objects** (including
+compressed object-stream entries), more than 1,024 pages or more than 16 MiB
+of input. The total-object budget is checked before catalog resolution and page
+tree traversal. Errors
 are fixed, path-free and fail closed. It intentionally does **not** execute
 JavaScript, decode arbitrary page content or embedded attachments, launch
 files, change preferences, or grant permission to open a PDF. Structure parsing
