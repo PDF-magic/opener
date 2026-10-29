@@ -81,6 +81,9 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted:
             raise PDFStructureParseError(_ENCRYPTED)
+        # Check original bytes, not a library-recovered stream payload.
+        from pdf_stream_lengths import validate_pdf_stream_lengths
+        validate_pdf_stream_lengths(contents, reader)
         root = reader.trailer["/Root"]
         if root.get("/Type") != "/Catalog":
             raise PDFStructureParseError(_ERROR)
