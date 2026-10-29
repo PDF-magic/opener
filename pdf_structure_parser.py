@@ -8,6 +8,7 @@ scan-time budget and verify the same file bytes before any future handoff.
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
 import re
 
@@ -27,10 +28,61 @@ class PDFStructureParseError(RuntimeError):
 
 @dataclass(frozen=True)
 class PDFStructure:
-    """Parsed structural evidence only. Never permission to open a document."""
+    """Validated, immutable parser evidence; never an opening authorization.
+
+    Version 1 of the JSON contract intentionally exposes only known metadata:
+    PDF version and bounded page count. PDF-controlled strings, document paths,
+    attachment names, page content and parser exception text are excluded.
+    """
 
     pdf_version: str
     page_count: int
+
+    def __post_init__(self):
+        allowed_versions = {*(f"1.{minor}" for minor in range(8)), "2.0"}
+        if type(self.pdf_version) is not str or self.pdf_version not in allowed_versions:
+            raise ValueError("Unsupported PDF structural version")
+        if type(self.page_count) is not int or not 1 <= self.page_count <= MAX_STRUCTURE_PAGES:
+            raise ValueError("Invalid PDF structural page count")
+
+    def to_dict(self) -> dict[str, str | int | bool]:
+        """Return a detached, stable and JSON-serializable output record."""
+        return {
+            "schemaVersion": 1,
+            "pdfVersion": self.pdf_version,
+            "pageCount": self.page_count,
+            "authorizesOpen": False,
+        }
+
+
+class PDFStructureFailureCode(str, Enum):
+    """Trusted, path-free failure categories, never sourced from PDF strings."""
+
+    invalidInput = "invalidInput"
+    invalidStructure = "invalidStructure"
+    sizeLimit = "sizeLimit"
+    encrypted = "encrypted"
+    dependencyUnavailable = "dependencyUnavailable"
+
+
+@dataclass(frozen=True)
+class PDFStructureParseFailure:
+    """Non-clean parser outcome that never represents permission to proceed."""
+
+    code: PDFStructureFailureCode
+
+    def __post_init__(self):
+        if type(self.code) is not PDFStructureFailureCode:
+            raise TypeError("A known parsing failure code is required")
+
+    def to_dict(self) -> dict[str, str | int | bool]:
+        """Return detached, bounded, JSON-compatible diagnostic metadata."""
+        return {
+            "schemaVersion": 1,
+            "status": "failure",
+            "failureCode": self.code.value,
+            "authorizesOpen": False,
+        }
 
 
 def parse_pdf_structure(contents: bytes) -> PDFStructure:
@@ -60,6 +112,9 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted:
             raise PDFStructureParseError(_ENCRYPTED)
+        # Check original bytes, not a library-recovered stream payload.
+        from pdf_stream_lengths import validate_pdf_stream_lengths
+        validate_pdf_stream_lengths(contents, reader)
         root = reader.trailer["/Root"]
         if root.get("/Type") != "/Catalog":
             raise PDFStructureParseError(_ERROR)
@@ -77,3 +132,29 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         raise PDFStructureParseError(_ERROR) from None
 
     return PDFStructure(pdf_version=header.group(1).decode("ascii"), page_count=count)
+
+# Map only fixed error messages created by this module. The wrapper never
+# serializes exception text, raw input, filenames, object values, or paths.
+_FAILURE_CODES = {
+    _ERROR: PDFStructureFailureCode.invalidStructure,
+    _ENCRYPTED: PDFStructureFailureCode.encrypted,
+    _DEPENDENCY: PDFStructureFailureCode.dependencyUnavailable,
+    _SIZE: PDFStructureFailureCode.sizeLimit,
+}
+
+
+def parse_pdf_structure_result(contents: bytes) -> PDFStructure | PDFStructureParseFailure:
+    """Return strict parsing evidence or a structured, fail-closed failure.
+
+    Keep parse_pdf_structure's existing exception behavior for older callers.
+    This explicit result-based API is optional and does not authorize opening,
+    cache reuse, profile activation, or any change to the installed scan gate.
+    """
+    if type(contents) is not bytes:
+        return PDFStructureParseFailure(PDFStructureFailureCode.invalidInput)
+    try:
+        return parse_pdf_structure(contents)
+    except PDFStructureParseError as error:
+        return PDFStructureParseFailure(
+            _FAILURE_CODES.get(str(error), PDFStructureFailureCode.invalidStructure)
+        )
