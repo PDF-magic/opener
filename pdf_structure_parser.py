@@ -15,6 +15,7 @@ import re
 
 MAX_STRUCTURE_INPUT_BYTES = 16 * 1024 * 1024
 MAX_STRUCTURE_PAGES = 1024
+MAX_STRUCTURE_OBJECTS = 4096
 MAX_STRUCTURE_RECURSION_DEPTH = 64
 _NESTING_TOKENS = re.compile(rb'<<|>>|stream(?:\r\n|\n|\r)|[\[\]()%<>]')
 _HEADER = re.compile(rb"\A%PDF-(1\.[0-7]|2\.0)[\r\n]")
@@ -208,6 +209,11 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted:
             raise PDFStructureParseError(_ENCRYPTED)
+        # Enforce the complete indirect-object budget before stream and graph checks.
+        total_objects = sum(len(entries) for entries in reader.xref.values())
+        total_objects += len(reader.xref_objStm)
+        if total_objects > MAX_STRUCTURE_OBJECTS:
+            raise PDFStructureParseError(_SIZE)
         # Check original bytes, not a library-recovered stream payload.
         from pdf_stream_lengths import validate_pdf_stream_lengths
         validate_pdf_stream_lengths(contents, reader)
