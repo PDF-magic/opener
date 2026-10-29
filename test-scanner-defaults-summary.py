@@ -55,17 +55,26 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     source = PAGE.read_text(encoding="utf-8")
     self.assertIn("does not change scanner behavior or reset saved choices", source)
     self.assertIn("Advanced scanner parameters are not editable here.", source)
+    # The read-only defaults panel cannot offer editing controls. Other
+    # advanced-settings sections may contain separately confirmed actions
+    # such as Restore Recommended Limits; they are not scanner-default edits.
+    defaults_panel = source[
+      source.index("GroupBox {"):
+      source.index('accessibilityIdentifier("advancedScanningDefaultsSection")')
+    ]
+    for forbidden in ("Toggle(", "Button(", "Picker(", "Slider("):
+      with self.subTest(defaults_control=forbidden):
+        self.assertNotIn(forbidden, defaults_panel)
     for forbidden in (
-        "Toggle(", "Picker(", "Slider(", "@AppStorage",
-        "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
-        "write(to:", "createFile(", "clamscan(", "target-app.txt",
+        "@AppStorage", "UserDefaults", "Process(", "FileHandle(",
+        "NSWorkspace", "write(to:", "createFile(", "clamscan(",
+        "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
-    # The only buttons allowed on this page are the opt-in, confirmed
-    # Restore Recommended Limits action and its cancellation control.
-    self.assertEqual(source.count("Button("), 3)
-    self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
+
+    self.assertIn('Button("Restore Recommended Limits")', source)
+    self.assertIn("showRestoreRecommendedLimitsConfirmation = true", source)
     self.assertIn('Button("Cancel", role: .cancel)', source)
 
   def test_both_ci_jobs_verify_the_defaults_summary(self):

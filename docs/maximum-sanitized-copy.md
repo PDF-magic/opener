@@ -48,7 +48,14 @@ deployed conversion UI.
 
 An offer is **not** a claim that the source or output is malware-free.
 Rasterization loses searchable/selectable text, links, forms and other
-features; unusual page content may render differently. The offer has
+features; unusual page content may render differently. **Flattening can
+invalidate digital signatures.** A generated image-only PDF does not preserve
+the original cryptographic signatures or their verification status and must
+not be treated as a signed original; retain the untouched source for signature
+verification. Sources with recognized signature flags or certification
+permissions are already rejected before conversion, and the fixed offer
+explanation warns about signatures for all other supported sources.
+The offer has
 `permits_open=False` and `needs_separate_scan=True`. Its PDF bytes remain
 in memory: this module does not save files, launch a viewer, alter
 quarantine, or approve a new document. A future Maximum UI can display
