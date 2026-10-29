@@ -1,4 +1,6 @@
 # Optional Enhanced PDF structure inspection dependency (opener-0283).
 # Installed by scanner-tests CI; not added to the current Built-in scan handler.
-# Review security advisories before deliberately upgrading this pin.
+# Selected after parser-version, malformed-file, memory and license review
+# (opener-0406: docs/pdf-parser-evaluation.md). Review security advisories
+# and verify CI compatibility before deliberately upgrading this pin.
 pypdf==6.21.3
