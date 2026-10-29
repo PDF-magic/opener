@@ -1,11 +1,13 @@
-"""Network-denied subprocess for a future Maximum PDF inspection worker.
+"""Kernel-enforced network denial for optional Maximum-only worker processes.
 
-This standalone launcher does not activate Maximum, replace the installed
-ClamAV scanner, open documents, or modify user preferences. Calls require a
-trusted executable and are rejected if macOS network isolation is unavailable.
+These helpers do not activate Maximum, replace the installed ClamAV scanner,
+open documents, or modify user preferences. Network isolation fails closed
+when the operating-system enforcement mechanism is unavailable.
 """
 
 from dataclasses import dataclass
+import ctypes
+import errno
 import os
 import subprocess
 import sys
@@ -40,6 +42,90 @@ class OfflineWorkerCompletion:
     def __post_init__(self):
         if self.network_denied is not True or self.authorizes_open is not False:
             raise ValueError("Offline worker results cannot authorize opening")
+
+
+
+LINUX_NETWORK_SYSCALLS = (
+    "socket", "socketpair", "connect", "bind", "listen", "accept", "accept4",
+    "getsockname", "getpeername", "sendto", "recvfrom", "sendmsg", "recvmsg",
+    "shutdown", "setsockopt", "getsockopt", "recvmmsg", "sendmmsg",
+    "io_uring_setup", "io_uring_enter", "io_uring_register", "socketcall",
+)
+LINUX_REQUIRED_NETWORK_SYSCALLS = frozenset((
+    "socket", "socketpair", "connect", "bind", "listen", "accept", "accept4",
+    "getsockname", "getpeername", "sendto", "recvfrom", "sendmsg", "recvmsg",
+    "shutdown", "setsockopt", "getsockopt", "recvmmsg", "sendmmsg",
+))
+SCMP_ACT_ALLOW = 0x7FFF0000
+SCMP_ACT_ERRNO = 0x00050000
+PR_SET_NO_NEW_PRIVS = 38
+
+
+def apply_linux_network_denial() -> None:
+    """Install a process-wide seccomp filter before the renderer reads a PDF.
+
+    Deny socket creation and all ordinary socket I/O operations, plus io_uring
+    entry points that could otherwise submit network operations. The filter is
+    inherited by child processes and threads. No permissive fallback exists.
+    """
+    if sys.platform != "linux":
+        raise MaximumNetworkIsolationError(BLOCK_MESSAGE)
+
+    library = None
+    context = None
+    try:
+        # Require the system runtime library; do not shell out to discover it.
+        library = ctypes.CDLL("libseccomp.so.2", use_errno=True)
+        library.seccomp_init.argtypes = [ctypes.c_uint32]
+        library.seccomp_init.restype = ctypes.c_void_p
+        library.seccomp_rule_add.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int, ctypes.c_uint,
+        ]
+        library.seccomp_rule_add.restype = ctypes.c_int
+        library.seccomp_syscall_resolve_name.argtypes = [ctypes.c_char_p]
+        library.seccomp_syscall_resolve_name.restype = ctypes.c_int
+        library.seccomp_load.argtypes = [ctypes.c_void_p]
+        library.seccomp_load.restype = ctypes.c_int
+        library.seccomp_release.argtypes = [ctypes.c_void_p]
+        library.seccomp_release.restype = None
+
+        context = library.seccomp_init(SCMP_ACT_ALLOW)
+        if not context:
+            raise RuntimeError
+
+        resolved_required = set()
+        denied_action = SCMP_ACT_ERRNO | errno.EPERM
+        for name in LINUX_NETWORK_SYSCALLS:
+            number = library.seccomp_syscall_resolve_name(name.encode("ascii"))
+            if number < 0:
+                if name in LINUX_REQUIRED_NETWORK_SYSCALLS:
+                    raise RuntimeError
+                continue
+            if library.seccomp_rule_add(context, denied_action, number, 0) < 0:
+                raise RuntimeError
+            if name in LINUX_REQUIRED_NETWORK_SYSCALLS:
+                resolved_required.add(name)
+        if resolved_required != LINUX_REQUIRED_NETWORK_SYSCALLS:
+            raise RuntimeError
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.prctl.argtypes = [
+            ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong,
+            ctypes.c_ulong, ctypes.c_ulong,
+        ]
+        libc.prctl.restype = ctypes.c_int
+        if libc.prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0:
+            raise RuntimeError
+        if library.seccomp_load(context) < 0:
+            raise RuntimeError
+    except Exception:
+        raise MaximumNetworkIsolationError(BLOCK_MESSAGE) from None
+    finally:
+        if context and library is not None:
+            try:
+                library.seccomp_release(context)
+            except Exception:
+                pass
 
 
 def run_maximum_offline_worker(command: tuple[str, ...], *, timeout_seconds: int = 120):
