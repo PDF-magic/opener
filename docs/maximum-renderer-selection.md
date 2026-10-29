@@ -6,7 +6,7 @@ Review date: 2026-10-29.
 
 Use **PyMuPDF 2.0** (the `pymupdf` distribution, embedding **MuPDF 1.28.5**) as the
 raster renderer for the planned Maximum sanitization pipeline. Pin the exact release
-in `.github/workflows/maximum-isolated-renderer.yml`; do not use a floating version.
+in `.github/workflows/maximum-isolated-renderer.yml`; do not use a floating version. The dedicated CI installs the exact renderer wheel with `--no-deps`: this worker calls the native rendering API only and does not use the additional layout/LLM packages, avoiding unnecessary runtime surface and memory pressure under the worker's fixed limits.
 PyMuPDF is already integrated behind `maximum_render_worker.py`, supports actual PDF
 page-to-PNG rendering on Linux and macOS, and is maintained by Artifex. The upstream
 2.0 release is dated 2026-10-19 and states that existing rendering APIs continue to

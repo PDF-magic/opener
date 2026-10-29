@@ -56,5 +56,4 @@ differences, scaling, bounded batches, encrypted/invalid inputs,
 worker failures, protocol tampering, immutability and noninterference
 with the deployed scanner. The dedicated
 `.github/workflows/maximum-isolated-renderer.yml` workflow installs
-`pymupdf==2.0` and runs the regression suite in both operating systems.
-Existing CI workflows and user preferences are preserved.
+`pymupdf==2.0` with `--no-deps` and runs the regression suite in both operating systems. The worker uses only the native rendering API; the extra layout/LLM packages in the distribution's dependency set are unused and can consume the bounded worker's memory budget. The engine selection, security history, and licensing constraints are recorded in [the renderer selection review](maximum-renderer-selection.md). Existing CI workflows and user preferences are preserved.
