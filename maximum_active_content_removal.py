@@ -54,6 +54,7 @@ def remove_active_pdf_functionality(
     try:
         reader = PdfReader(BytesIO(raster_pdf), strict=True)
         if reader.is_encrypted or len(reader.pages) != expected_pages:
+            return None
         writer = PdfWriter()
         total_pixels = 0
         for index, source in enumerate(reader.pages):
