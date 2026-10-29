@@ -1,0 +1,20 @@
+name: Lower protection preview warnings
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lower-preview-warning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify preview warnings and mandatory scanner policy
+        run: python3 test-protection-lower-preview-warning.py -v

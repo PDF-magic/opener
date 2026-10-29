@@ -27,6 +27,10 @@ class ClamAVVersionSupportTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.pdf = Path(temporary.name) / "private example.pdf"
         self.pdf.write_bytes(b"%PDF-1.4\nexample\n")
+        # Installation discovery requires a regular executable file.
+        file_check = patch.object(opener.Path, "is_file", return_value=True)
+        file_check.start()
+        self.addCleanup(file_check.stop)
         executable = patch.object(opener.os, "access",
                                   side_effect=lambda path, mode: path == SCANNER)
         executable.start()
@@ -37,10 +41,18 @@ class ClamAVVersionSupportTests(unittest.TestCase):
             with self.subTest(version=version):
                 with patch.object(opener.subprocess, "check_output",
                                   return_value=f"ClamAV {version}/27800/Mon Oct 26") as read:
-                    self.assertEqual(opener.scanner_path(), SCANNER)
+                    self.assertEqual(opener.scanner_path(require_supported_version=True), SCANNER)
                 read.assert_called_once_with(
                     [SCANNER, "--version"], text=True, timeout=5,
                     stderr=subprocess.DEVNULL)
+
+    def test_advisory_installation_and_version_discovery_remain_read_only(self):
+        # The separate detection tasks do not become enforced scan admission.
+        with patch.object(opener.subprocess, "check_output",
+                          return_value="ClamAV 1.3.2/27800") as query:
+            self.assertEqual(opener.scanner_path(), SCANNER)
+            self.assertEqual(opener.detect_installed_clamav_version(), "1.3.2")
+        query.assert_called_once()
 
     def test_unsupported_releases_never_select_a_scanner(self):
         for version in ("0.103.12", "1.0.9", "1.3.2", "1.6.0", "2.0.0"):
@@ -48,7 +60,7 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                 with patch.object(opener.subprocess, "check_output",
                                   return_value=f"ClamAV {version}/27800"):
                     with self.assertRaisesRegex(RuntimeError, UNSUPPORTED):
-                        opener.scanner_path()
+                        opener.scanner_path(require_supported_version=True)
 
     def test_unverifiable_versions_fail_closed_without_exposing_raw_output(self):
         cases = (subprocess.TimeoutExpired([SCANNER, "--version"], 5),
@@ -66,7 +78,7 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                     else:
                         read.return_value = response
                     with self.assertRaisesRegex(RuntimeError, UNVERIFIED) as error:
-                        opener.scanner_path()
+                        opener.scanner_path(require_supported_version=True)
                 self.assertNotIn("private", str(error.exception))
                 self.assertNotIn(SCANNER, str(error.exception))
 
@@ -75,7 +87,7 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                 patch.object(opener.subprocess, "check_output",
                              return_value="ClamAV 1.3.2/27800") as read:
             with self.assertRaisesRegex(RuntimeError, UNSUPPORTED):
-                opener.scanner_path()
+                opener.scanner_path(require_supported_version=True)
         self.assertEqual(read.call_count, 1)
 
     def test_unsupported_version_stops_main_before_scan_cache_and_handoff(self):

@@ -50,6 +50,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
+    'A zero-length file cannot be scanned; opening was stopped.',
     'Only regular files and application bundles can be scanned.',
     'Select a file or application, rather than a folder.',
     'The malware scan timed out; opening was stopped.',
@@ -355,13 +356,40 @@ def read_signature_database_version():
 
 
 
-def scanner_path():
-    for candidate in ('/opt/homebrew/bin/clamscan', '/usr/local/bin/clamscan', '/usr/local/clamav/bin/clamscan'):
-        if os.access(candidate, os.X_OK):
-            # Fail before any scanner, cache or launch path can run. A newer
-            # executable later on PATH must not mask an unsupported selection.
-            require_supported_scanner_version(candidate)
-            return candidate
+# Match the paths supported by the installer and the existing scan gate. Do not
+# trust an arbitrary PATH entry or execute any candidate during discovery.
+CLAMAV_CANDIDATES = (
+    '/opt/homebrew/bin/clamscan',
+    '/usr/local/bin/clamscan',
+    '/usr/local/clamav/bin/clamscan',
+)
+
+
+def detect_clamav_installation() -> Optional[str]:
+    """Read-only detection of an installed, executable ClamAV scanner.
+
+    A directory with execute/search permission is not a scanner. This reports
+    binary availability, not signature freshness or a successful malware scan.
+    """
+    for candidate in CLAMAV_CANDIDATES:
+        try:
+            if Path(candidate).is_file() and os.access(candidate, os.X_OK):
+                return candidate
+        except OSError:
+            # Inaccessible installations must never be treated as available.
+            continue
+    return None
+
+
+def scanner_path(*, require_supported_version=False):
+    scanner = detect_clamav_installation()
+    if scanner is not None:
+        # Keep read-only installation/version discovery nonblocking. Installed
+        # scan entry points explicitly require a compatible engine before any
+        # signature lookup, cache reuse, scan or file-opening side effects.
+        if require_supported_version:
+            require_supported_scanner_version(scanner)
+        return scanner
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
 
@@ -410,6 +438,10 @@ def fingerprint(path):
                 raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
             size = entry.stat().st_size
+            # ClamAV may skip empty files; never cache or open an unscanned input.
+            # This also protects empty members of recursively scanned app bundles.
+            if size == 0:
+                raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
             if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
             digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
@@ -552,11 +584,11 @@ def scan_engine_version(scanner):
 
 
 def require_supported_scanner_version(scanner):
-    """Require a supported ClamAV engine branch before accepting a scanner.
+    """Reject unsupported and unverified ClamAV before a real scan can start.
 
-    ClamAV 1.4 LTS and 1.5 are the supported feature branches as of 2026.
-    Unknown output, EOL versions, future unreviewed releases and development
-    builds cannot authorize a scan or a previously cached clean handoff.
+    ClamAV 1.4 LTS and 1.5 are supported feature branches. Unverified,
+    end-of-life, future and prerelease engines cannot authorize launching,
+    even with a previously cached clean result.
     """
     version = scan_engine_version(scanner)
     if version is None or re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version) is None:
@@ -566,6 +598,20 @@ def require_supported_scanner_version(scanner):
         raise RuntimeError(
             'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.')
     return version
+
+
+def detect_installed_clamav_version():
+    """Read the currently installed engine version without running a file scan.
+
+    This advisory metadata is independent of cached scan-result provenance.
+    An unknown version must never be interpreted as a clean scan or bypass
+    the mandatory signature, integrity, and quarantine checks.
+    """
+    try:
+        scanner = scanner_path()
+    except (OSError, RuntimeError):
+        return None
+    return scan_engine_version(scanner)
 
 
 def record_scan_destination(destination):
@@ -933,7 +979,7 @@ def scan_and_open_generated_copy(item, offer):
     # The existing normal scanner may trust a content-addressed cache. A
     # generated output must be freshly scanned regardless of earlier scans,
     # including those of an identical file or of its original source.
-    scanner = scanner_path()
+    scanner = scanner_path(require_supported_version=True)
     policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
     with scan_slot():
         check_database()
@@ -988,7 +1034,7 @@ def main(items):
         return 1
 
     try:
-        scanner = scanner_path()
+        scanner = scanner_path(require_supported_version=True)
         check_database()
     except (OSError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
