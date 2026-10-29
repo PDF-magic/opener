@@ -13,7 +13,9 @@ The actual conversion runs in a separately compiled native
 `maximum-sanitized-copy` executable built from `maximum_sanitized_copy.swift`,
 using Apple's CoreGraphics PDF renderer. It reads bytes on stdin and
 generates a PDF from only new raster images, not the source catalog,
-actions, annotations, scripts, embedded files, metadata, forms or links.
+actions, annotations, scripts, embedded files, arbitrary metadata, forms or
+links. Only source page order, media-box dimensions and validated right-angle
+rotation are retained.
 Conversion is bounded to 16 MiB input, 16 pages, 2048-pixel longest
 page side, 24 million total pixels, 32 MiB output, and 45 elapsed
 seconds. Password-protected PDFs, cropped pages, and out-of-range dimensions remain

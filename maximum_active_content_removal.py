@@ -1,7 +1,7 @@
 """Remove active PDF features from an already rasterized Maximum copy.
 
-Only decoded RGB pixel planes and bounded page dimensions cross into a fresh
-PDF writer. No source PDF objects, actions, annotations, scripts, form fields,
+Only decoded RGB pixel planes, bounded page dimensions, and validated
+right-angle page rotations cross into a fresh PDF writer. No source PDF objects, actions, annotations, scripts, form fields,
 attachments, metadata, or page content streams are cloned. This is NOT a
 substitute for the upstream isolated renderer or mandatory scanner gate.
 """
