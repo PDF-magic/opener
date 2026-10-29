@@ -62,7 +62,7 @@ struct UpdatesSettingsView: View {
                       .font(.headline)
                     Text("Checking and downloading ClamAV definitions…")
                       .foregroundStyle(.secondary)
-                    Text("Started at \\(active.startedAt.formatted(date: .abbreviated, time: .standard))")
+                    Text("Started at \(active.startedAt.formatted(date: .abbreviated, time: .standard))")
                       .font(.footnote)
                       .foregroundStyle(.secondary)
                   }
