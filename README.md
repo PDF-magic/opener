@@ -74,6 +74,19 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+**Scanner feature check (opener-0357):** The opt-in, read-only
+`scanner_feature_check.py` utility inspects only the selected ClamAV
+binary's `--help` declarations. Run
+`python3 scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
+the trusted installed `clamscan` path). It reports whether PDF,
+archive, document, and executable-type scanning switches are advertised
+and whether the options used by the existing Built-in scan gate appear.
+Missing, timed-out, malformed, or failed help probes report **unknown**,
+not a clean scan or an unsupported engine. Advertised options do not
+prove a feature is enabled, working, or safe; the installed scanner must
+still complete the existing full scan before any file can open.
+This diagnostic never changes scanner options or saved preferences.
+
 **VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
 group label and each page entry announces its section name and a navigation
 hint. Labels are derived from the existing page titles and preserve native
@@ -246,7 +259,9 @@ controls may interrupt a scan without approving any document.
 
 **Scanner parameter editability (opener-0397):** ClamAV command-line parameters
 are **not user-editable**. The fixed, validated scan gate remains authoritative;
-Advanced Scanning is informational. Supported saved preferences, including
+Advanced Scanning has no scanner-parameter editor; its confirmed Restore
+Recommended Limits action can only clear a recognized optional metadata
+override, not change the installed scan gate. Supported saved preferences, including
 the selected PDF viewer, are unaffected. See the
 [scanner parameter decision](docs/scanner-parameters-decision.md).
 
@@ -897,3 +912,5 @@ For compatibility with existing installations, runtime scripts and signatures re
 Licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 **Manual signature-update controls (opener-0381):** The Updates preferences pane includes **Check for Updates Now** for a user-initiated, read-only comparison of the ClamAV-published DNS TXT main/daily signature revisions against bounded local database headers. Missing DNS information or unreadable local metadata reports that the comparison is unavailable, never that the signatures are current. **Update Signatures Now** explicitly runs the already installed FreshClam updater using its existing configuration and timestamp records; it does not change the four-hour schedule or saved preferences. Both controls act only after a click, display a result, and never authorize document opening, override scan failures, remove quarantine, or disable the existing 48-hour database freshness gate.
+
+**Per-file mandatory signature gate (opener-0393):** The existing 48-hour successful-update requirement and nonempty regular `main`/`daily` ClamAV definition requirements remain mandatory for every file in a batch, not only when the batch starts. If signature files or the successful-update marker become invalid between files, subsequent scans and cached-clean handoffs are refused. Symlinked signature directories and successful-update markers are rejected rather than trusted. An update attempt, a saved preference, or an earlier clean result cannot override these mandatory checks.

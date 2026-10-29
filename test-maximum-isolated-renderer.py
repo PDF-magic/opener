@@ -2,9 +2,11 @@
 """Real PDF rasterization and isolation regressions for opener-0314."""
 
 from dataclasses import FrozenInstanceError
+import errno
 import json
 import os
 from pathlib import Path
+import socket
 import struct
 import subprocess
 import sys
@@ -113,6 +115,86 @@ class MaximumRendererTests(unittest.TestCase):
                     renderer.render_isolated_pdf_pages(self.pdf, pages)
             run.assert_not_called()
 
+
+    def test_macos_renderer_is_started_under_fixed_network_and_process_deny_profile(self):
+        document = pymupdf.open(stream=self.pdf, filetype="pdf")
+        try:
+            png = document[0].get_pixmap(
+                colorspace=pymupdf.csRGB, alpha=False, annots=False,
+            ).tobytes("png")
+        finally:
+            document.close()
+        with (
+            patch.object(renderer.sys, "platform", "darwin"),
+            patch.object(renderer.os.path, "isfile", return_value=True),
+            patch.object(renderer.os, "access", return_value=True),
+            patch.object(renderer.subprocess, "run", return_value=(
+                subprocess.CompletedProcess([], 0, frame(png))
+            )) as run,
+        ):
+            result = renderer.render_isolated_pdf_page(self.pdf, 0)
+        command = tuple(run.call_args.args[0])
+        self.assertEqual(command[:3], (
+            renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_SANDBOX_PROFILE,
+        ))
+        self.assertEqual(command[3:6], (sys.executable, "-I", "-B"))
+        self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
+        self.assertEqual(command[-1], "0")
+        self.assertFalse(result.permits_open)
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux seccomp enforcement test")
+    def test_linux_kernel_filter_denies_socket_connect_bind_and_listen(self):
+        script = "\n".join((
+            "import errno, socket, sys",
+            "sys.path.insert(0, sys.argv[1])",
+            "outbound = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
+            "bound = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
+            "from maximum_network_isolation import apply_linux_network_denial",
+            "apply_linux_network_denial()",
+            "def denied(action):",
+            "    try:",
+            "        action()",
+            "    except OSError as error:",
+            "        return error.errno in (errno.EPERM, errno.EACCES)",
+            "    return False",
+            "port = int(sys.argv[2])",
+            "checks = (",
+            "    denied(lambda: socket.socket(socket.AF_INET, socket.SOCK_STREAM)),",
+            "    denied(lambda: outbound.connect(('127.0.0.1', port))),",
+            "    denied(lambda: bound.bind(('127.0.0.1', 0))),",
+            "    denied(lambda: bound.listen(1)),",
+            ")",
+            "sys.exit(0 if all(checks) else 17)",
+        ))
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            port = listener.getsockname()[1]
+            completed = subprocess.run(
+                (sys.executable, "-I", "-B", "-c", script, str(ROOT), str(port)),
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, timeout=10, check=False,
+                close_fds=True, cwd="/",
+                env={
+                    "PATH": "/usr/bin:/bin",
+                    "HOME": "/nonexistent",
+                    "LANG": "C",
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                    "PYTHONNOUSERSITE": "1",
+                },
+            )
+        self.assertEqual(completed.returncode, 0)
+
+    def test_renderer_fails_closed_on_unsupported_platform(self):
+        with (
+            patch.object(renderer.sys, "platform", "win32"),
+            patch.object(renderer.subprocess, "run") as run,
+        ):
+            with self.assertRaises(renderer.MaximumPDFRenderError) as error:
+                renderer.render_isolated_pdf_page(self.pdf, 0)
+        self.assertEqual(str(error.exception), renderer.BLOCK_MESSAGE)
+        run.assert_not_called()
+
     def test_child_starts_with_isolation_flags_and_private_bytes(self):
         real_run = subprocess.run
         calls = []
@@ -122,7 +204,13 @@ class MaximumRendererTests(unittest.TestCase):
         with patch.object(renderer.subprocess, "run", side_effect=observe):
             renderer.render_isolated_pdf_page(self.pdf, 0)
         command, opts = calls[0]
-        self.assertEqual(command[:3], (sys.executable, "-I", "-B"))
+        if sys.platform == "darwin":
+            self.assertEqual(command[:3], (
+                renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_SANDBOX_PROFILE,
+            ))
+            self.assertEqual(command[3:6], (sys.executable, "-I", "-B"))
+        else:
+            self.assertEqual(command[:3], (sys.executable, "-I", "-B"))
         self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
         self.assertEqual(command[-1], "0")
         self.assertIs(opts["input"], self.pdf)
@@ -133,8 +221,12 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual(opts["timeout"], renderer.WORKER_WALL_SECONDS)
         self.assertEqual(set(opts["env"]), {
             "PATH", "HOME", "LANG", "PYTHONDONTWRITEBYTECODE",
-            "PYTHONNOUSERSITE",
+            "PYTHONNOUSERSITE", "PDF_MAGIC_RENDER_NETWORK_SANDBOX",
         })
+        self.assertEqual(
+            opts["env"]["PDF_MAGIC_RENDER_NETWORK_SANDBOX"],
+            "seatbelt-v1" if sys.platform == "darwin" else "seccomp-v1",
+        )
 
     def test_bad_pdf_and_out_of_range_page_fail_closed(self):
         for data, page in ((b"%PDF-1.4\nPrivate content", 0), (self.pdf, 2),
@@ -234,6 +326,11 @@ class MaximumRendererTests(unittest.TestCase):
     def test_worker_applies_limits_before_raster_import_and_deployed_gate_untouched(self):
         worker = (ROOT / "maximum_render_worker.py").read_text()
         self.assertLess(worker.index("_apply_limits()"), worker.index("import pymupdf"))
+        self.assertLess(worker.index("apply_linux_network_denial()"),
+                        worker.index("import pymupdf"))
+        self.assertLess(worker.index("apply_linux_network_denial()"),
+                        worker.index("document_bytes = sys.stdin.buffer.read"))
+        self.assertIn('os.environ.get("PDF_MAGIC_RENDER_NETWORK_SANDBOX")', worker)
         self.assertIn("annots=False", worker)
         self.assertIn("MAX_RENDER_PIXELS", worker)
         self.assertIn("doc.needs_pass", worker)
@@ -259,7 +356,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("ubuntu-latest", ci)
         self.assertIn("macos-latest", ci)
         self.assertIn("test-maximum-isolated-renderer.py -v", ci)
-        self.assertIn("pymupdf==1.26.7", ci)
+        self.assertIn("pymupdf==2.0", ci)
 
 
 if __name__ == "__main__":

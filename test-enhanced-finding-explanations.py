@@ -35,7 +35,10 @@ class FindingExplanationsTests(unittest.TestCase):
         for entry in payload["stageResults"][0]["findings"]:
             outcome = entry["result"]
             self.assertTrue(outcome["explanation"])
-            self.assertEqual(set(outcome), {"outcome", "explanation", "nextAction"})
+            self.assertEqual(set(outcome), {
+                "outcome", "explanation", "nextAction", "malwareAssessment"
+            })
+            self.assertEqual(outcome["malwareAssessment"], "notConfirmed")
             self.assertNotIn("/tmp/", str(outcome))
             self.assertNotIn("http://", str(outcome))
         self.assertTrue(payload["requiresBlock"])  # failures cannot be informational bypasses
@@ -45,9 +48,13 @@ class FindingExplanationsTests(unittest.TestCase):
         variants = (
             (FindingSeverity.informational, FindingResult.recorded,
              FindingNextAction.continueRequiredChecks),
+            (FindingSeverity.reviewRequired, FindingResult.reviewRequired,
+             FindingNextAction.requestReviewBeforeOpening),
             (FindingSeverity.suspicious, FindingResult.reviewRequired,
              FindingNextAction.requestReviewBeforeOpening),
             (FindingSeverity.critical, FindingResult.blocking,
+             FindingNextAction.stopOpening),
+            (FindingSeverity.blocking, FindingResult.blocking,
              FindingNextAction.stopOpening),
         )
         for severity, outcome, action in variants:
@@ -61,6 +68,27 @@ class FindingExplanationsTests(unittest.TestCase):
                 self.assertEqual(result.to_dict()["pageNumber"], 4)
                 self.assertEqual(result.to_dict()["result"]["outcome"], outcome.value)
 
+    def test_known_malicious_content_always_blocks_even_at_informational_severity(self):
+        for severity in FindingSeverity:
+            with self.subTest(severity=severity):
+                finding = AnalysisFinding(FindingCode.knownMaliciousContent, severity)
+                explained = ExplainedFinding(finding)
+                self.assertIs(explained.result, FindingResult.blocking)
+                self.assertIs(explained.next_action, FindingNextAction.stopOpening)
+                self.assertEqual(
+                    explained.explanation,
+                    "Known malicious content was identified; opening is blocked.",
+                )
+                self.assertNotIn("EICAR", explained.explanation)
+        report = explain_analysis_findings(report_for(AnalysisFinding(
+            FindingCode.knownMaliciousContent, FindingSeverity.informational,
+        )))
+        self.assertTrue(report.requires_block)
+        self.assertFalse(report.authorizes_open)
+        item = report.to_dict()["stageResults"][0]["findings"][0]
+        self.assertEqual(item["result"]["outcome"], "blocking")
+        self.assertEqual(item["result"]["nextAction"], "stopOpening")
+
     def test_inspection_failure_and_limit_cannot_be_downgraded_to_informational(self):
         for code in (FindingCode.inspectionFailure, FindingCode.resourceLimit):
             finding = AnalysisFinding(code, FindingSeverity.informational)
@@ -70,7 +98,8 @@ class FindingExplanationsTests(unittest.TestCase):
             self.assertEqual(result.to_dict()["stageResults"][0]["findings"][0]["result"],
                              {"outcome": "inspectionIncomplete",
                               "explanation": ExplainedFinding(finding).explanation,
-                              "nextAction": "rerunOrRepairInspection"})
+                              "nextAction": "rerunOrRepairInspection",
+                              "malwareAssessment": "notConfirmed"})
 
     def test_preserves_expected_stage_order_missing_and_incomplete_stages(self):
         finding = AnalysisFinding(FindingCode.unresolvedReference,
@@ -119,6 +148,9 @@ class FindingExplanationsTests(unittest.TestCase):
         self.assertEqual(original.to_dict()["schemaVersion"], 1)
         self.assertEqual([x["objectNumber"] for x in output["stageResults"][0]["findings"]],
                          [8, 9])
+        self.assertEqual([x["findingId"] for x in output["stageResults"][0]["findings"]],
+                         ["finding-v1:suspiciousUrl:object=8:page=none",
+                          "finding-v1:suspiciousUrl:object=9:page=none"])
         self.assertEqual([x["result"]["outcome"] for x in output["stageResults"][0]["findings"]],
                          ["reviewRequired", "blocking"])
         output["stageResults"][0]["findings"].clear()
@@ -146,6 +178,25 @@ class FindingExplanationsTests(unittest.TestCase):
         for private in ("https://private.example/secret", "document.pdf",
                         "/Users/private", "subprocess.run"):
             self.assertNotIn(private, serialized)
+
+    def test_heuristic_findings_never_claim_confirmed_malware(self):
+        for code in (FindingCode.activeContent, FindingCode.suspiciousUrl,
+                     FindingCode.unexpectedEmbeddedFile):
+            finding = AnalysisFinding(code, FindingSeverity.critical)
+            result = ExplainedFinding(finding).to_dict()["result"]
+            self.assertEqual(result["outcome"], "blocking")
+            self.assertEqual(result["malwareAssessment"], "notConfirmed")
+            self.assertNotIn("malware was detected", result["explanation"].lower())
+            self.assertNotIn("confirmed malware", result["explanation"].lower())
+
+        # The native panel displays uncertainty and rejects unknown assessment values.
+        native = (Path(__file__).with_name("scan-progress-view.swift")
+                  .read_text(encoding="utf-8"))
+        self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
+        self.assertIn('guard let value = rawAssessment as? String,', native)
+        self.assertIn('let label = Self.malwareAssessments[value] else {', native)
+        self.assertIn('malwareAssessmentLabel = "Malware not confirmed"', native)
+        self.assertIn('— \\(resultLabel) · \\(malwareAssessmentLabel)', native)
 
     def test_scanner_and_profile_remain_untouched(self):
         scanner = (Path(__file__).parent / "scan-and-open.py").read_text()

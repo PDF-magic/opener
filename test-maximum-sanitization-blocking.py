@@ -118,7 +118,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
                 pdf = unsupported_pdf(feature)
                 with patch.object(sanitizer, "_trusted_converter",
                                   return_value=Path("/usr/bin/true")), \
-                     patch.object(sanitizer.subprocess, "run") as run:
+                     patch.object(sanitizer, "run_limited_converter") as run:
                     decision = sanitizer.assess_sanitized_pdf_copy(pdf)
                     self.assertBlocked(
                         decision, sanitizer.SanitizationBlockReason.unsupportedFeature)
@@ -132,7 +132,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
             with self.subTest(item=type(data).__name__), \
                  patch.object(sanitizer, "_trusted_converter",
                               return_value=Path("/usr/bin/true")), \
-                 patch.object(sanitizer.subprocess, "run") as run:
+                 patch.object(sanitizer, "run_limited_converter") as run:
                 decision = sanitizer.assess_sanitized_pdf_copy(data)
                 self.assertEqual(decision.action, "block")
                 self.assertIsNone(decision.offer)
@@ -147,7 +147,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
             with self.subTest(reason=reason), \
                  patch.object(sanitizer, "_trusted_converter",
                               return_value=Path("/usr/bin/true")), \
-                 patch.object(sanitizer.subprocess, "run") as run:
+                 patch.object(sanitizer, "run_limited_converter") as run:
                 self.assertBlocked(sanitizer.assess_sanitized_pdf_copy(data), reason)
                 run.assert_not_called()
 
@@ -173,15 +173,15 @@ class UnsupportedSanitizationTests(unittest.TestCase):
                           return_value=Path("/usr/bin/true")):
             for completed in outputs:
                 with self.subTest(code=completed.returncode, size=len(completed.stdout)), \
-                     patch.object(sanitizer.subprocess, "run", return_value=completed):
+                     patch.object(sanitizer, "run_limited_converter", return_value=completed):
                     expected = (sanitizer.SanitizationBlockReason.conversionFailed
                                 if completed.returncode != 0
                                 else sanitizer.SanitizationBlockReason.outputUnverified)
                     self.assertBlocked(sanitizer.assess_sanitized_pdf_copy(pdf), expected)
             for error in (OSError("/private/secret.pdf"),
-                          subprocess.TimeoutExpired("secret.pdf", 2)):
+                          sanitizer.SanitizerProcessTimedOut("secret.pdf")):
                 with self.subTest(type=type(error).__name__), \
-                     patch.object(sanitizer.subprocess, "run", side_effect=error):
+                     patch.object(sanitizer, "run_limited_converter", side_effect=error):
                     self.assertBlocked(sanitizer.assess_sanitized_pdf_copy(pdf),
                                        sanitizer.SanitizationBlockReason.conversionFailed)
 
@@ -190,7 +190,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
         converted = source_pdf(pages=2)
         with patch.object(sanitizer, "_trusted_converter",
                           return_value=Path("/usr/bin/true")), \
-             patch.object(sanitizer.subprocess, "run",
+             patch.object(sanitizer, "run_limited_converter",
                           return_value=subprocess.CompletedProcess([], 0, converted)):
             for rebuilt in (None, "not bytes", original, b""):
                 with self.subTest(rebuilt=type(rebuilt).__name__), \
@@ -215,7 +215,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
         cleaned = source_pdf()
         with patch.object(sanitizer, "_trusted_converter",
                           return_value=Path("/usr/bin/true")), \
-             patch.object(sanitizer.subprocess, "run",
+             patch.object(sanitizer, "run_limited_converter",
                           return_value=subprocess.CompletedProcess([], 0, converted)), \
              patch.object(sanitizer, "remove_active_pdf_functionality",
                           return_value=cleaned), \
@@ -235,7 +235,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
         cleaned = source_pdf(pages=3)
         with patch.object(sanitizer, "_trusted_converter",
                           return_value=Path("/usr/bin/true")), \
-             patch.object(sanitizer.subprocess, "run",
+             patch.object(sanitizer, "run_limited_converter",
                           return_value=subprocess.CompletedProcess([], 0, converted)), \
              patch.object(sanitizer, "remove_active_pdf_functionality",
                           return_value=cleaned), \
@@ -289,7 +289,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
         writer.write(out)
         with patch.object(sanitizer, "_trusted_converter",
                           return_value=Path("/usr/bin/true")), \
-             patch.object(sanitizer.subprocess, "run",
+             patch.object(sanitizer, "run_limited_converter",
                           return_value=subprocess.CompletedProcess([], 2, b"")) as run:
             decision = sanitizer.assess_sanitized_pdf_copy(out.getvalue())
         run.assert_called_once()

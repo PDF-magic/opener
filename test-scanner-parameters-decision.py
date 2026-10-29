@@ -75,9 +75,13 @@ class ScannerParameterDecisionTests(unittest.TestCase):
                 "AdvancedScanningSettingsView.swift").read_text(encoding="utf-8")
         self.assertIn("Scanner parameters are not user-editable", page)
         self.assertIn("your saved choices remain unchanged", page)
+        # The sole allowed action clears optional metadata after confirmation,
+        # not an executable ClamAV parameter or scanner control.
+        self.assertEqual(page.count('Button("Restore Recommended Limits"'), 2)
+        self.assertIn("RecommendedScannerLimitsReset.restore()", page)
         for term in (
             "TextField(", "SecureField(", "Toggle(", "Picker(", "Slider(",
-            "Stepper(", "Button(", "@AppStorage", "UserDefaults",
+            "Stepper(", "@AppStorage", "UserDefaults",
             "Process(", "write(to:", "run_scan_command(",
         ):
             with self.subTest(control=term):

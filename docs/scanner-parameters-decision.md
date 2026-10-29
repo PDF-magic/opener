@@ -22,15 +22,18 @@ three-minute timeout. Encrypted inputs, exceeded limits, scanner failures,
 and inconclusive results remain fail-closed. This decision does not
 change signature updates, malware handling, quarantine, or cache reuse.
 
-The Advanced Scanning preferences page remains **read-only**. This is
-different from supported user customizations: the selected PDF viewer,
+The Advanced Scanning preferences page has **no editor for scanner
+parameters**. The confirmed Restore Recommended Limits action only removes
+a recognized optional concurrency-override metadata key, if present; it
+cannot change the installed ClamAV limits or enable user-editable flags.
+This is different from supported user customizations: the selected PDF viewer,
 scan-progress presentation, and notification preferences remain saved
 and independently configurable. Protection previews do not switch the
 installed malware gate.
 
 ## Implementation boundary
 
-No new setting key, migration, scanner argument parser, command-line flag,
+No active scanner setting, migration, scanner argument parser, command-line flag,
 exclusion editor, timeout editor, or user-controlled scanner executable is
 introduced. No existing saved settings are reset. Regression coverage
 verifies that the fixed argument validator rejects overrides, that the

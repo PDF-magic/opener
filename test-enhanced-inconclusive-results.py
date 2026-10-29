@@ -64,8 +64,9 @@ class InconclusiveOpeningTests(unittest.TestCase):
             FindingCode.resourceLimit,
             FindingCode.inspectionFailure,
         }
-        self.assertEqual(unresolved | {FindingCode.incrementalRevision},
-                         set(FindingCode))
+        self.assertEqual(unresolved | {
+            FindingCode.incrementalRevision, FindingCode.knownMaliciousContent,
+        }, set(FindingCode))
         for code in unresolved:
             with self.subTest(code=code):
                 source = report(AnalysisFinding(
@@ -79,6 +80,17 @@ class InconclusiveOpeningTests(unittest.TestCase):
                 self.assertEqual(assessment.evidence[0].reason, code)
                 self.assertEqual(assessment.evidence[0].object_number, 9)
                 self.assertEqual(assessment.evidence[0].page_number, 2)
+
+    def test_known_malicious_content_blocks_without_mislabeling_it_inconclusive(self):
+        source = report(AnalysisFinding(
+            FindingCode.knownMaliciousContent, FindingSeverity.informational,
+        ))
+        assessment = assess_inconclusive_opening(source)
+        self.assertEqual(assessment.evidence, ())
+        self.assertFalse(assessment.blocks_for_inconclusive)
+        self.assertTrue(assessment.requires_block)
+        self.assertEqual(assessment.decision, InconclusiveOpeningDecision.block)
+        self.assertFalse(assessment.authorizes_open)
 
     def test_informational_incremental_revision_is_not_automatically_inconclusive(self):
         source = report(AnalysisFinding(

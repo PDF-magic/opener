@@ -47,6 +47,9 @@ _RULES = MappingProxyType({
     FindingCode.unresolvedReference: (
         FollowUpInspection.inspectObjectRelationships,
     ),
+    # Confirmed malicious content is terminal blocking evidence; no further
+    # inspection can turn this policy response into an opening authorization.
+    FindingCode.knownMaliciousContent: (),
     FindingCode.activeContent: (
         FollowUpInspection.inspectActiveActions,
     ),
