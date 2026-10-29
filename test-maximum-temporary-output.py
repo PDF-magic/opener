@@ -2,6 +2,7 @@
 """opener-0325: clean only owned temporary Maximum PDFs, never arbitrary files."""
 from concurrent.futures import ThreadPoolExecutor
 import os
+import re
 from pathlib import Path
 import stat
 import tempfile
@@ -33,7 +34,7 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
     def test_private_exclusive_output_and_explicit_idempotent_release(self):
         lease = self.stage()
         self.assertEqual(lease.path.read_bytes(), b"%PDF-1.7\nsafe generated content")
-        self.assertEqual(lease.path.name, "safe-copy.pdf")
+        self.assertRegex(lease.path.name, r"^safe-copy-[0-9a-f]{32}\.pdf$")
         self.assertEqual(stat.S_IMODE(lease.path.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(lease.path.parent.stat().st_mode), 0o700)
         self.assertFalse(lease.released)
@@ -42,6 +43,23 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
         self.assertFalse(lease.path.exists())
         self.assertFalse(lease.path.parent.exists())
         lease.release()
+
+    def test_filename_uses_128_bits_of_unpredictable_randomness(self):
+        leases = [self.stage() for _ in range(12)]
+        try:
+            names = [lease.path.name for lease in leases]
+            self.assertEqual(len(set(names)), len(names))
+            self.assertTrue(all(re.fullmatch(r"safe-copy-[0-9a-f]{32}\.pdf", name)
+                                for name in names))
+            with patch.object(cleanup.secrets, "token_hex",
+                              return_value="a" * 32) as random_token:
+                deterministic = self.stage()
+            random_token.assert_called_once_with(16)
+            self.assertEqual(deterministic.path.name, "safe-copy-" + "a" * 32 + ".pdf")
+            deterministic.release()
+        finally:
+            for lease in leases:
+                lease.release()
 
     def test_success_is_not_prematurely_deleted_and_context_failure_is_cleaned(self):
         keep = self.stage()
@@ -83,6 +101,43 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
         self.assertEqual(str(caught.exception), cleanup.BLOCK_MESSAGE)
         self.assertEqual(len(self.created), 1)
         self.assertFalse(self.created[0].exists())
+
+    def test_verify_rejects_file_link_and_inode_substitution(self):
+        lease = self.stage()
+        lease.verify()
+        protected = Path(self.parent.name) / "protected.pdf"
+        protected.write_bytes(b"keep original bytes")
+        lease.path.unlink()
+        lease.path.symlink_to(protected)
+        with self.assertRaises(cleanup.MaximumTemporaryOutputError) as caught:
+            lease.verify()
+        self.assertEqual(str(caught.exception), cleanup.BLOCK_MESSAGE)
+        self.assertEqual(protected.read_bytes(), b"keep original bytes")
+        lease.path.unlink()
+        lease.path.parent.rmdir()
+
+    def test_verify_rejects_directory_link_and_hardlinked_output(self):
+        lease = self.stage()
+        protected = Path(self.parent.name) / "protected"
+        protected.mkdir()
+        old = lease.path.parent.with_name(lease.path.parent.name + "-old")
+        lease.path.parent.rename(old)
+        lease.path.parent.symlink_to(protected, target_is_directory=True)
+        with self.assertRaises(cleanup.MaximumTemporaryOutputError):
+            lease.verify()
+        lease.path.parent.unlink()
+        old.rename(lease.path.parent)
+        duplicate = Path(self.parent.name) / "linked.pdf"
+        os.link(lease.path, duplicate)
+        try:
+            with self.assertRaises(cleanup.MaximumTemporaryOutputError):
+                lease.verify()
+        finally:
+            duplicate.unlink()
+        # Even after removing the extra hard link, inode ctime has changed:
+        # the original lease must not accept it as the initial file.
+        with self.assertRaises(cleanup.MaximumTemporaryOutputError):
+            lease.verify()
 
     def test_file_symlink_substitution_does_not_follow_or_delete_target(self):
         protected = Path(self.parent.name) / "protected.pdf"

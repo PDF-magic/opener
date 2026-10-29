@@ -4,10 +4,14 @@ Future Maximum-only handoff primitive (opener-0320), never selected by the
 installed Built-in handler. The source is converted, but never a launch target.
 An absent/invalid copy, scan failure or launch failure cannot fall back to it.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import hashlib
+import hmac
 from enum import Enum
 import importlib.util
 import os
+import secrets
+from weakref import WeakKeyDictionary
 from pathlib import Path
 import stat
 import sys
@@ -20,6 +24,9 @@ from maximum_sanitized_copy import (
     _passive_pages, offer_sanitized_pdf_copy,
 )
 from scan_results import EFFECTIVE_POLICY_ID
+from maximum_temporary_output import (
+    MaximumTemporaryOutputError, stage_maximum_temporary_pdf,
+)
 
 
 BLOCK_MESSAGE = "Maximum safe-copy handoff could not finish; opening was stopped."
@@ -27,6 +34,21 @@ BLOCK_MESSAGE = "Maximum safe-copy handoff could not finish; opening was stopped
 
 class MaximumSafeCopyError(RuntimeError):
     """A fixed error without document paths, filenames or PDF contents."""
+
+
+@dataclass(frozen=True, eq=False)
+class SourceScanRequest:
+    """Opaque correlation handle for one trusted source scan request.
+
+    A handle records provenance only. It is not a scanner verdict or
+    authorization to open a PDF, and it never contains a source filename.
+    """
+
+    request_id: str
+
+
+_SOURCE_SCAN_REQUESTS = WeakKeyDictionary()
+_SOURCE_SCAN_LOCK = threading.RLock()
 
 
 class MaximumCopyDisposition(Enum):
@@ -44,6 +66,7 @@ class MaximumSafeCopyHandoff:
     original_opened: bool = False
     content_origin: str = GENERATED_CONTENT_ORIGIN
     display_label: str = OFFER_LABEL
+    source_scan_request_id: str | None = field(default=None, repr=False)
 
     def to_public_metadata(self):
         """Display a generated-copy label without exposing its private path."""
@@ -62,7 +85,12 @@ class MaximumSafeCopyHandoff:
                 self.scanned is not True or self.original_opened is not False or
                 type(self.content_origin) is not str or
                 self.content_origin != GENERATED_CONTENT_ORIGIN or
-                self.display_label != OFFER_LABEL):
+                self.display_label != OFFER_LABEL or
+                (self.source_scan_request_id is not None and
+                 (type(self.source_scan_request_id) is not str or
+                  len(self.source_scan_request_id) != 32 or
+                  any(character not in '0123456789abcdef'
+                      for character in self.source_scan_request_id)))):
             raise ValueError("Only a separate scanned copy can be a Maximum handoff")
 
 
@@ -99,6 +127,33 @@ def _read_source(path):
         raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
 
 
+def begin_source_scan_request(source_path) -> SourceScanRequest:
+    """Bind an opaque request ID to a read-only source snapshot.
+
+    The future Maximum coordinator must still complete all mandatory source
+    scans independently. This request context must not be treated as a clean
+    verdict, and no source filename is retained in the public handoff.
+    """
+    source, identity = _read_source(source_path)
+    request = SourceScanRequest(secrets.token_hex(16))
+    with _SOURCE_SCAN_LOCK:
+        _SOURCE_SCAN_REQUESTS[request] = (
+            Path(source_path), identity, hashlib.sha256(source).digest()
+        )
+    return request
+
+
+def _matches_source_request(request, source_path, source, identity):
+    if type(request) is not SourceScanRequest:
+        return False
+    with _SOURCE_SCAN_LOCK:
+        binding = _SOURCE_SCAN_REQUESTS.get(request)
+    return (binding is not None and
+            binding[0] == Path(source_path) and
+            binding[1] == identity and
+            hmac.compare_digest(binding[2], hashlib.sha256(source).digest()))
+
+
 def _source_unchanged(path, identity):
     try:
         fresh = os.stat(path, follow_symlinks=False)
@@ -108,47 +163,48 @@ def _source_unchanged(path, identity):
         return False
 
 
+# Reuse the ownership lease from opener-0325 rather than deleting a
+# reconstructed pathname directly. Failed verification never follows a link.
+_STAGED_LEASES = {}
+_STAGED_LOCK = threading.RLock()
+
+
 def _stage_private_copy(pdf_bytes):
-    """New 0700 private directory and exclusive 0600 PDF; never source path."""
-    directory = None
-    staged = False
+    """Stage an exclusive owned PDF through the existing symlink-safe lease."""
     try:
-        directory = Path(tempfile.mkdtemp(prefix="pdf-magic-safe-copy-"))
-        if stat.S_IMODE(directory.stat().st_mode) != 0o700:
-            raise MaximumSafeCopyError(BLOCK_MESSAGE)
-        path = directory / "safe-copy.pdf"
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        descriptor = os.open(path, flags, 0o600)
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(pdf_bytes)
-            stream.flush()
-            os.fsync(stream.fileno())
-            created = os.fstat(stream.fileno())
-        if (not stat.S_ISREG(created.st_mode) or
-                stat.S_IMODE(created.st_mode) != 0o600 or
-                created.st_size != len(pdf_bytes) or
-                not path.is_file() or path.is_symlink()):
-            raise MaximumSafeCopyError(BLOCK_MESSAGE)
-        staged = True
-        return path
-    except (OSError, ValueError):
+        lease = stage_maximum_temporary_pdf(pdf_bytes)
+    except MaximumTemporaryOutputError:
         raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
-    finally:
-        # A failed staging attempt must not leave a partial private file.
-        if directory is not None and not staged:
-            _discard_private_copy(directory / "safe-copy.pdf")
+    with _STAGED_LOCK:
+        _STAGED_LEASES[lease.path] = lease
+    return lease.path
+
+
+def _validate_staged_copy(path):
+    """Reject replaced files, hard links, or swapped directories before use."""
+    with _STAGED_LOCK:
+        lease = _STAGED_LEASES.get(Path(path))
+        if lease is None:
+            raise MaximumSafeCopyError(BLOCK_MESSAGE)
+        try:
+            lease.verify()
+        except MaximumTemporaryOutputError:
+            raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
 
 
 def _discard_private_copy(path):
-    try:
-        os.unlink(path)
-    except OSError:
-        pass
-    try:
-        os.rmdir(Path(path).parent)
-    except OSError:
-        pass
+    """Clean only our recorded inode, never an attacker-supplied path."""
+    with _STAGED_LOCK:
+        key = Path(path)
+        lease = _STAGED_LEASES.get(key)
+        if lease is None:
+            return
+        try:
+            lease.release()
+        except MaximumTemporaryOutputError:
+            # A replacement must be left untouched, not unlinked by name.
+            return
+        _STAGED_LEASES.pop(key, None)
 
 
 _SCAN_GATE = None
@@ -177,7 +233,7 @@ def _scan_staged_copy(path, offer):
     return module.scan_and_open_generated_copy(str(path), offer)
 
 
-def open_required_maximum_safe_copy(source_path, *, disposition):
+def open_required_maximum_safe_copy(source_path, *, disposition, source_request=None):
     """Open only a newly reconstructed copy after its own mandatory scan.
 
     The future Maximum policy coordinator must first finish the source's
@@ -186,12 +242,16 @@ def open_required_maximum_safe_copy(source_path, *, disposition):
     activate an unavailable profile or infer policy from request metadata.
     Neither scan failure nor converter failure can open the original file.
     """
-    if disposition is not MaximumCopyDisposition.REQUIRED:
+    if (disposition is not MaximumCopyDisposition.REQUIRED or
+            type(source_request) is not SourceScanRequest):
         raise MaximumSafeCopyError(BLOCK_MESSAGE)
     path = None
     success = False
     try:
         source, source_identity = _read_source(source_path)
+        if not _matches_source_request(source_request, source_path,
+                                       source, source_identity):
+            raise MaximumSafeCopyError(BLOCK_MESSAGE)
         offer = offer_sanitized_pdf_copy(source)
         if (type(offer) is not SanitizedCopyOffer or
                 offer.permits_open is not False or
@@ -205,9 +265,11 @@ def open_required_maximum_safe_copy(source_path, *, disposition):
                 not _source_unchanged(source_path, source_identity)):
             raise MaximumSafeCopyError(BLOCK_MESSAGE)
         path = _stage_private_copy(offer.pdf_bytes)
+        _validate_staged_copy(path)
         if Path(source_path).samefile(path):
             raise MaximumSafeCopyError(BLOCK_MESSAGE)
         result = _scan_staged_copy(path, offer)
+        _validate_staged_copy(path)
         if (getattr(result, "status", None) != "clean" or
                 getattr(result, "effective_policy_id", None) != EFFECTIVE_POLICY_ID or
                 getattr(result, "from_cache", None) is not False):
@@ -215,7 +277,9 @@ def open_required_maximum_safe_copy(source_path, *, disposition):
         success = True
         # Leave only the copy available to the launched viewer. The parent
         # private temp directory is eligible for normal OS temp cleanup.
-        return MaximumSafeCopyHandoff(path)
+        return MaximumSafeCopyHandoff(
+            path, source_scan_request_id=source_request.request_id
+        )
     except Exception:
         raise MaximumSafeCopyError(BLOCK_MESSAGE) from None
     finally:

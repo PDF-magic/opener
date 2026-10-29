@@ -4,19 +4,28 @@ This is a passive sanitization primitive. It never scans, saves, opens, or
 authorizes a PDF; failure to complete within the deadline returns no output.
 """
 import os
+from pathlib import Path
 import selectors
 import signal
+import stat
 import subprocess
+import sys
 import time
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_WALL_SECONDS = 45
+MAX_SANITIZER_MEMORY_BYTES = 1024 * 1024 * 1024
+MEMORY_POLL_INTERVAL_SECONDS = 0.05
+MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE = 125
 REAP_TIMEOUT_SECONDS = 3
 READ_CHUNK_BYTES = 65536
 BLOCK_MESSAGE = "PDF sanitization exceeded execution limits; no copy was offered."
 TIMEOUT_MESSAGE = "PDF sanitization exceeded its execution deadline; no copy was offered."
 OUTPUT_LIMIT_MESSAGE = "PDF sanitization exceeded its output limit; no copy was offered."
+MEMORY_LIMIT_MESSAGE = (
+    "PDF sanitization exceeded or could not verify its memory limit; no copy was offered."
+)
 
 
 class SanitizerProcessExecutionError(RuntimeError):
@@ -29,6 +38,244 @@ class SanitizerProcessTimedOut(SanitizerProcessExecutionError):
 
 class SanitizerProcessOutputLimitExceeded(SanitizerProcessExecutionError):
     """The converter produced more bytes than the output budget."""
+
+
+class SanitizerProcessMemoryLimitError(SanitizerProcessExecutionError):
+    """The converter exceeded its memory ceiling or the ceiling could not be verified."""
+
+
+def _memory_limited_command(command: tuple[str, ...]) -> tuple[str, ...]:
+    """Apply a Linux address-space limit or require the macOS RSS watchdog."""
+    if sys.platform == "linux":
+        try:
+            source = Path(__file__).resolve(strict=True)
+            launcher = source.with_name("maximum_sanitizer_memory_launcher.py")
+            if launcher.is_symlink() or launcher.resolve(strict=True) != launcher:
+                raise OSError
+            info = launcher.lstat()
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+                or info.st_uid not in (0, os.geteuid())
+                or not os.access(launcher, os.R_OK)
+            ):
+                raise OSError
+            python = str(Path(sys.executable).resolve(strict=True))
+            if not os.path.isabs(python) or not os.access(python, os.X_OK):
+                raise OSError
+            if not os.path.isdir("/proc") or not os.access("/proc", os.R_OK | os.X_OK):
+                raise OSError
+            return (python, "-I", "-B", str(launcher), "--", *command)
+        except (OSError, RuntimeError, TypeError, ValueError):
+            raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE) from None
+    if sys.platform == "darwin":
+        if not os.path.isfile("/bin/ps") or not os.access("/bin/ps", os.X_OK):
+            raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+        return command
+    raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+
+
+def _linux_process_group_memory_bytes(process_group_id: int, *, allow_empty: bool) -> int:
+    """Sum resident pages for a Linux process group using trusted procfs data."""
+    try:
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        if type(page_size) is not int or page_size <= 0:
+            raise OSError
+        total = 0
+        found = False
+        with os.scandir("/proc") as entries:
+            for entry in entries:
+                if not entry.name.isdecimal():
+                    continue
+                pid = int(entry.name)
+                member = False
+                try:
+                    with open(f"/proc/{pid}/stat", "rb") as stream:
+                        record = stream.read()
+                    closing = record.rfind(b")")
+                    if closing < 0:
+                        raise ValueError
+                    fields = record[closing + 2:].split()
+                    if len(fields) < 3:
+                        raise ValueError
+                    if int(fields[2]) != process_group_id:
+                        continue
+                    member = True
+                    with open(f"/proc/{pid}/statm", "rb") as stream:
+                        memory_fields = stream.read().split()
+                    if len(memory_fields) < 2:
+                        raise ValueError
+                    resident_pages = int(memory_fields[1])
+                    if resident_pages < 0:
+                        raise ValueError
+                    total += resident_pages * page_size
+                    found = True
+                except FileNotFoundError:
+                    # A process may exit between the /proc directory listing
+                    # and reading its status; the next poll sees the final group.
+                    continue
+                except PermissionError:
+                    if member or pid == process_group_id:
+                        raise
+                    continue
+                except (OSError, ValueError, IndexError):
+                    if member or pid == process_group_id:
+                        raise
+                    continue
+        if not found and not allow_empty:
+            raise OSError
+        return total
+    except (OSError, ValueError, OverflowError):
+        raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE) from None
+
+
+def _darwin_process_group_memory_bytes(
+    process_group_id: int, *, allow_empty: bool, timeout_seconds: float,
+) -> int:
+    """Sum macOS process-group RSS; failed or malformed probes fail closed."""
+    try:
+        deadline = time.monotonic() + max(0.001, timeout_seconds)
+        timeout = max(0.001, min(timeout_seconds, 0.25))
+        completed = subprocess.run(
+            ("/bin/ps", "-o", "rss=", "-g", str(process_group_id)),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            cwd="/",
+            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+            timeout=timeout,
+            check=False,
+        )
+        if completed.returncode == 0:
+            values = []
+            for line in completed.stdout.decode("ascii").splitlines():
+                if not line.strip():
+                    continue
+                value = line.strip()
+                if not value.isdecimal():
+                    raise ValueError
+                values.append(int(value))
+            if values:
+                # ps reports RSS in KiB on macOS.
+                return sum(values) * 1024
+            if not allow_empty:
+                raise OSError
+        elif not allow_empty:
+            raise OSError
+
+        # A process can exit between the wait-status check and the targeted
+        # ps snapshot. Verify that the process group is truly gone and that
+        # the monitoring command itself still works before accepting zero.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired("/bin/ps", timeout_seconds)
+        completed = subprocess.run(
+            ("/bin/ps", "-A", "-o", "pid=,pgid=,rss="),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            cwd="/",
+            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+            timeout=max(0.001, min(remaining, 0.25)),
+            check=True,
+        )
+        total_kib = 0
+        found = False
+        for line in completed.stdout.decode("ascii").splitlines():
+            if not line.strip():
+                continue
+            fields = line.split()
+            if (len(fields) != 3 or not fields[0].isdecimal()
+                    or not fields[1].isdecimal()):
+                raise ValueError
+            if int(fields[1]) != process_group_id:
+                continue
+            if not fields[2].isdecimal():
+                raise ValueError
+            total_kib += int(fields[2])
+            found = True
+        if found:
+            return total_kib * 1024
+        if not allow_empty:
+            raise OSError
+        return 0
+    except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+        raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE) from None
+
+
+def _process_group_memory_bytes(
+    process_group_id: int, *, allow_empty: bool, timeout_seconds: float,
+) -> int:
+    """Measure aggregate process-group RSS without trusting converter output."""
+    if type(process_group_id) is not int or process_group_id <= 0:
+        raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+    if sys.platform == "linux":
+        return _linux_process_group_memory_bytes(process_group_id, allow_empty=allow_empty)
+    if sys.platform == "darwin":
+        return _darwin_process_group_memory_bytes(
+            process_group_id, allow_empty=allow_empty, timeout_seconds=timeout_seconds,
+        )
+    raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+
+
+def _process_has_exited_without_reaping(process) -> bool:
+    """Detect child exit while retaining its PID until process-group cleanup."""
+    if process.returncode is not None:
+        return True
+    if sys.platform == "linux":
+        if (
+            callable(getattr(os, "waitid", None))
+            and all(hasattr(os, name) for name in ("P_PID", "WEXITED", "WNOHANG", "WNOWAIT"))
+        ):
+            try:
+                result = os.waitid(
+                    os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT,
+                )
+            except (AttributeError, ChildProcessError, OSError, ValueError):
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+            return result is not None and result.si_pid != 0
+        try:
+            with open(f"/proc/{process.pid}/stat", "rb") as stream:
+                record = stream.read()
+            closing = record.rfind(b")")
+            if closing < 0:
+                raise ValueError
+            fields = record[closing + 2:].split()
+            if not fields:
+                raise ValueError
+            state = fields[0]
+            if state in (b"Z", b"X", b"x"):
+                return True
+            if state not in (b"R", b"S", b"D", b"T", b"t", b"W", b"K", b"P", b"I"):
+                raise ValueError
+            return False
+        except (OSError, ValueError, IndexError):
+            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+    if sys.platform == "darwin":
+        try:
+            completed = subprocess.run(
+                ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                cwd="/",
+                env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+                timeout=0.25,
+                check=True,
+            )
+            states = [
+                line.strip() for line in completed.stdout.decode("ascii").splitlines()
+                if line.strip()
+            ]
+            if len(states) != 1 or not states[0][0].isalpha():
+                raise ValueError
+            return states[0][0].upper() == "Z"
+        except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+    raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
 
 def _stop_process_group(process):
@@ -87,12 +334,13 @@ def run_limited_converter(
     max_output_bytes: int,
     environment: dict[str, str],
 ) -> subprocess.CompletedProcess:
-    """Run a trusted converter with a hard wall deadline and bounded output.
+    """Run a trusted converter with hard input/output/time and memory bounds.
 
-    The caller supplies a fixed executable and sanitized environment; document
-    data is provided only on stdin. A dedicated POSIX session is always killed
-    and reaped, even after apparent success, so descendants cannot outlive the
-    converter or hold stdout open indefinitely. stdout is capped while reading.
+    Linux starts the converter through a fixed launcher that imposes RLIMIT_AS
+    before exec. Both supported platforms poll aggregate process-group RSS and
+    terminate the complete group if its 1-GiB budget is exceeded or cannot be
+    measured. The caller supplies a fixed executable and sanitized environment;
+    document data is provided only on stdin. stdout is capped while reading.
     """
     if (
         os.name != "posix"
@@ -116,8 +364,9 @@ def run_limited_converter(
 
     process = None
     try:
+        launch_command = _memory_limited_command(command)
         process = subprocess.Popen(
-            command,
+            launch_command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -134,11 +383,51 @@ def run_limited_converter(
             os.set_blocking(process.stdout.fileno(), False)
             events.register(process.stdin, selectors.EVENT_WRITE)
             events.register(process.stdout, selectors.EVENT_READ)
-            while events.get_map():
+            while events.get_map() or not _process_has_exited_without_reaping(process):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
-                for key, _ in events.select(timeout=min(remaining, 0.25)):
+                if events.get_map():
+                    ready = events.select(timeout=min(remaining, MEMORY_POLL_INTERVAL_SECONDS))
+                else:
+                    time.sleep(min(remaining, MEMORY_POLL_INTERVAL_SECONDS))
+                    ready = []
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
+                allow_empty = _process_has_exited_without_reaping(process)
+                try:
+                    resident_bytes = _process_group_memory_bytes(
+                        process.pid,
+                        allow_empty=allow_empty,
+                        timeout_seconds=remaining,
+                    )
+                except SanitizerProcessMemoryLimitError:
+                    if time.monotonic() >= deadline:
+                        raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE) from None
+                    # The child may exit between the non-reaping wait check and
+                    # the process-table snapshot. Retry only after confirming
+                    # that exit; any surviving descendants remain in the group.
+                    if (
+                        not allow_empty
+                        and _process_has_exited_without_reaping(process)
+                    ):
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE) from None
+                        try:
+                            resident_bytes = _process_group_memory_bytes(
+                                process.pid, allow_empty=True, timeout_seconds=remaining,
+                            )
+                        except SanitizerProcessMemoryLimitError:
+                            if time.monotonic() >= deadline:
+                                raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE) from None
+                            raise
+                    else:
+                        raise
+                if resident_bytes > MAX_SANITIZER_MEMORY_BYTES:
+                    raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+                for key, _ in ready:
                     if key.fileobj is process.stdout:
                         remaining_capacity = max_output_bytes - len(output)
                         chunk = os.read(
@@ -170,10 +459,21 @@ def run_limited_converter(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
+        if not _process_has_exited_without_reaping(process):
+            raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
+        # Stop descendants before reaping the group leader, so its PID cannot
+        # be reused for an unrelated process group during cleanup.
+        _stop_process_group(process)
         try:
-            return_code = process.wait(timeout=remaining)
+            return_code = process.wait(timeout=REAP_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE) from None
+        _close_pipe(process.stdin)
+        _close_pipe(process.stdout)
+        process = None
+        if (sys.platform == "linux" and
+                return_code == MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE):
+            raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
         return subprocess.CompletedProcess(command, return_code, bytes(output), None)
     except SanitizerProcessExecutionError:
         raise

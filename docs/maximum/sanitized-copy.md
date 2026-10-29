@@ -21,6 +21,14 @@ page side, 24 million total pixels, 32 MiB output, and 45 elapsed
 seconds. Password-protected PDFs, cropped pages, and out-of-range dimensions remain
 unsupported. Pages are emitted in source order with their media-box dimensions
 and validated right-angle rotation (0, 90, 180, or 270 degrees) preserved.
+The sanitizer also enforces a fixed 1 GiB process-group memory budget.
+Linux applies a non-increasing hard `RLIMIT_AS` cap before converter `exec`
+and monitors aggregate process-group RSS. On macOS, a watchdog checks the
+process group's RSS every 50 ms and terminates it when the budget is exceeded.
+The macOS watchdog is fail-closed but not an atomic kernel-enforced limit;
+a native allocation can briefly exceed the target before its next poll.
+Missing or unreadable memory measurements also stop conversion.
+
 The rebuilt PDF is checked against the source page geometry before it can be
 offered, so a missing, reordered, resized, or wrongly rotated page fails closed.
 
@@ -40,7 +48,14 @@ deployed conversion UI.
 
 An offer is **not** a claim that the source or output is malware-free.
 Rasterization loses searchable/selectable text, links, forms and other
-features; unusual page content may render differently. The offer has
+features; unusual page content may render differently. **Flattening can
+invalidate digital signatures.** A generated image-only PDF does not preserve
+the original cryptographic signatures or their verification status and must
+not be treated as a signed original; retain the untouched source for signature
+verification. Sources with recognized signature flags or certification
+permissions are already rejected before conversion, and the fixed offer
+explanation warns about signatures for all other supported sources.
+The offer has
 `permits_open=False` and `needs_separate_scan=True`. Its PDF bytes remain
 in memory: this module does not save files, launch a viewer, alter
 quarantine, or approve a new document. A future Maximum UI can display

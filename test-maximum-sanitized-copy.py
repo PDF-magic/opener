@@ -122,6 +122,23 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             copies.SanitizedCopyOffer(original, 1, needs_separate_scan=False)
 
+    def test_flattening_signature_warning_is_in_offer_and_public_metadata(self):
+        offer = copies.SanitizedCopyOffer(b"%PDF-test", 1)
+        public = offer.to_public_metadata()
+        for explanation in (offer.explanation, public["explanation"]):
+            self.assertIn("Flattening can invalidate digital signatures", explanation)
+            self.assertIn("must not be treated as a signed original", explanation)
+            self.assertIn("scan the generated copy separately", explanation)
+        self.assertFalse(public["isUntouchedOriginal"])
+        self.assertFalse(public["authorizesOpen"])
+        self.assertTrue(public["requiresFreshScan"])
+        self.assertFalse(offer.permits_open)
+        self.assertTrue(offer.needs_separate_scan)
+        with self.assertRaises(ValueError):
+            copies.SanitizedCopyOffer(
+                b"%PDF-test", 1, explanation="Digital signatures remain valid."
+            )
+
     def test_timeout_and_process_error_fail_to_offer_without_disclosure(self):
         original = sample_pdf()
         with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")):

@@ -19,6 +19,7 @@ import sys
 from maximum_active_content_removal import remove_active_pdf_functionality
 from maximum_sanitizer_process import (
     SanitizerProcessExecutionError,
+    SanitizerProcessMemoryLimitError,
     SanitizerProcessOutputLimitExceeded,
     SanitizerProcessTimedOut,
     run_limited_converter,
@@ -33,9 +34,11 @@ GENERATED_CONTENT_ORIGIN = "generatedContent"
 OFFER_LABEL = "Save generated sanitized PDF copy"
 OFFER_EXPLANATION = (
     "This is newly generated content, not the untouched original PDF. "
-    "Pages are flattened into images; searchable text, links, forms, "
-    "attachments and other interactive features are not preserved. "
+    "Flattening pages into images can remove selectable text and searchability; "
+    "links, forms, attachments and other interactive features are not preserved. "
     "OCR restoration is not included. "
+    "Flattening can invalidate digital signatures; the generated copy "
+    "must not be treated as a signed original. "
     "This is not a malware-clean verdict; scan the generated copy separately."
 )
 
@@ -101,6 +104,7 @@ class SanitizerFailureKind(str, Enum):
     UNAVAILABLE = "sanitizerUnavailable"
     CRASHED = "sanitizerCrashed"
     TIMED_OUT = "sanitizerTimedOut"
+    MEMORY_LIMIT_FAILED = "sanitizerMemoryLimitFailed"
     LAUNCH_FAILED = "sanitizerLaunchFailed"
     PROCESS_FAILED = "sanitizerProcessFailed"
     INVALID_OUTPUT = "sanitizerInvalidOutput"
@@ -120,6 +124,10 @@ _FAILURE_MESSAGES = {
     ),
     SanitizerFailureKind.TIMED_OUT: (
         "The PDF sanitizer timed out; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.MEMORY_LIMIT_FAILED: (
+        "The PDF sanitizer exceeded or could not verify its memory limit; conversion stopped. "
+        "This is not a malware detection."
     ),
     SanitizerFailureKind.LAUNCH_FAILED: (
         "The PDF sanitizer could not start; conversion stopped. This is not a malware detection."
@@ -425,8 +433,26 @@ def _passive_pages(
             images = images.get_object()
             if not images:
                 return False
-            if any(obj.get_object().get("/Subtype") != "/Image"
-                   for obj in images.values()):
+            # Only the fixed image drawing instruction emitted by our fresh
+            # pixel-plane writer is permitted. OCR text operators, invisible
+            # overlays, appended content streams and resource substitutions
+            # must never pass the final output or generated-rescan gate.
+            if set(images) != {"/Im0"} or any(
+                    obj.get_object().get("/Subtype") != "/Image"
+                    for obj in images.values()):
+                return False
+            from pypdf.generic import StreamObject
+            content = page.get("/Contents")
+            if content is None:
+                return False
+            content = content.get_object()
+            if not isinstance(content, StreamObject) or "/Filter" in content:
+                return False
+            width, height, _ = geometry
+            expected_drawing = (
+                f"q {width:.4f} 0 0 {height:.4f} 0 0 cm /Im0 Do Q\n"
+            ).encode("ascii")
+            if content.get_data() != expected_drawing:
                 return False
         return True
     except Exception:
@@ -476,6 +502,8 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
             environment={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
                          "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
         )
+    except SanitizerProcessMemoryLimitError:
+        return _failed(SanitizerFailureKind.MEMORY_LIMIT_FAILED)
     except SanitizerProcessTimedOut:
         return _failed(SanitizerFailureKind.TIMED_OUT)
     except SanitizerProcessOutputLimitExceeded:

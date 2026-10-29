@@ -2,9 +2,9 @@
 
 `enhanced_blocking_policy.determine_blocking_findings(report)` classifies
 *validated, structured* Enhanced PDF findings into three dispositions. It
-is separate from [inconclusive-evidence enforcement](enhanced-inconclusive-results.md),
-[follow-up inspection planning](enhanced-additional-inspections.md), and
-[human-readable explanations](enhanced-finding-explanations.md). This policy
+is separate from [inconclusive-evidence enforcement](inconclusive-results.md),
+[follow-up inspection planning](additional-inspections.md), and
+[human-readable explanations](finding-explanations.md). This policy
 does not inspect bytes, execute actions, run a scanner, or authorize opening.
 
 | Finding code | Minimum disposition | Why |
