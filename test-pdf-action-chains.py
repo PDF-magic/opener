@@ -157,7 +157,7 @@ class PDFActionChainTests(unittest.TestCase):
         self.assert_rejected(pdf_with_action=malformed)
 
     def assert_rejected(self, pdf_with_action=None, raw=None):
-        if raw is None:
+        if pdf_with_action is not None:
             raw = pdf_action(pdf_with_action)
         with self.assertRaises(PDFActionChainInspectionError) as raised:
             inspect_pdf_action_chains(raw)
