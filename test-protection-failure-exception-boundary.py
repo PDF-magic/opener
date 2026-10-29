@@ -11,6 +11,12 @@ from unittest.mock import patch
 
 from scan_results import ScanResultStatus
 from scanner_failure_policy import ScannerFailureKind, response_for_scanner_failure
+from protection_exception_policy import (
+    EXCEPTION_SUPPORT_DECISION,
+    ProtectionExceptionNotSupported,
+    UNSUPPORTED_EXCEPTION_MESSAGE,
+    request_protection_exception,
+)
 from protection_failure_exception_boundary import (
     EXCEPTION_REJECTION_MESSAGE,
     ProtectionBlockOrigin,
@@ -45,6 +51,13 @@ class ProtectionFailureExceptionBoundaryTests(unittest.TestCase):
                     "authorizesOpen": False,
                     "userExceptionApproved": False,
                 })
+
+    def test_exception_rejection_matches_authoritative_unsupported_policy(self):
+        self.assertIs(EXCEPTION_REJECTION_MESSAGE, UNSUPPORTED_EXCEPTION_MESSAGE)
+        self.assertFalse(EXCEPTION_SUPPORT_DECISION.supported)
+        with self.assertRaises(ProtectionExceptionNotSupported) as raised:
+            request_protection_exception({"approved": True, "feature": "interactive form"})
+        self.assertEqual(str(raised.exception), EXCEPTION_REJECTION_MESSAGE)
 
     def test_exception_requests_rejected_without_forging_scanner_outcome(self):
         class Poison:
