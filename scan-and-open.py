@@ -881,7 +881,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
             if requires_scan():
                 signature_version_before = read_signature_database_version()
                 try:
-                    scan = run_scan_command(command, timeout=timeout)
+                    scan = run_scan_command(command, timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf
+                                else policy_snapshot.other_timeout_seconds))
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 detection = capture_detection(scan)
