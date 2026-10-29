@@ -55,7 +55,6 @@ class PDFStructure:
         }
 
 
-
 class PDFStructureFailureCode(str, Enum):
     """Trusted, path-free failure categories, never sourced from PDF strings."""
 
@@ -113,6 +112,9 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted:
             raise PDFStructureParseError(_ENCRYPTED)
+        # Check original bytes, not a library-recovered stream payload.
+        from pdf_stream_lengths import validate_pdf_stream_lengths
+        validate_pdf_stream_lengths(contents, reader)
         root = reader.trailer["/Root"]
         if root.get("/Type") != "/Catalog":
             raise PDFStructureParseError(_ERROR)
@@ -130,7 +132,6 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         raise PDFStructureParseError(_ERROR) from None
 
     return PDFStructure(pdf_version=header.group(1).decode("ascii"), page_count=count)
-
 
 # Map only fixed error messages created by this module. The wrapper never
 # serializes exception text, raw input, filenames, object values, or paths.
