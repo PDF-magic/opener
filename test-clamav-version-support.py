@@ -43,8 +43,7 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                     stderr=subprocess.DEVNULL)
 
     def test_unsupported_releases_never_select_a_scanner(self):
-        for version in ("0.103.12", "1.0.9", "1.3.2", "1.6.0", "2.0.0",
-                        "1.4.6-rc1", "1.5.4+unreviewed", "1.5.4.1"):
+        for version in ("0.103.12", "1.0.9", "1.3.2", "1.6.0", "2.0.0"):
             with self.subTest(version=version):
                 with patch.object(opener.subprocess, "check_output",
                                   return_value=f"ClamAV {version}/27800"):
@@ -56,7 +55,9 @@ class ClamAVVersionSupportTests(unittest.TestCase):
                  FileNotFoundError("private executable path"),
                  subprocess.CalledProcessError(1, [SCANNER, "--version"]),
                  UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
-                 "not ClamAV; /private/secret", "ClamAV 1.5", "")
+                 "not ClamAV; /private/secret", "ClamAV 1.5", "",
+                 "ClamAV 1.4.6-rc1/27800",
+                 "ClamAV 1.5.4+unreviewed/27800", "ClamAV 1.5.4.1/27800")
         for response in cases:
             with self.subTest(response=repr(response)):
                 with patch.object(opener.subprocess, "check_output") as read:
