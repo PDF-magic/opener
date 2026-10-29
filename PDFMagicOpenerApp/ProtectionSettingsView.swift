@@ -355,6 +355,22 @@ struct ProtectionSettingsView: View {
         }
         .accessibilityIdentifier("resetProtectionSettingsSection")
 
+        GroupBox("Protection exceptions") {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Protection exceptions are not supported.")
+              .font(.subheadline.weight(.semibold))
+            Text("No file, folder, download source or application can be exempted from mandatory malware scanning, signature freshness, file integrity verification or fail-closed opening.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Text("A verified clean-scan cache hit or an approved alternative PDF viewer is not an exception and cannot override a blocked or incomplete scan. There is no protection allowlist or bypass control.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityIdentifier("protectionExceptionsUnsupported")
+
         GroupBox("Malware scanning") {
           protectionDetail(
             "ClamAV scanning",
