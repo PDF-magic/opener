@@ -33,8 +33,8 @@ GENERATED_CONTENT_ORIGIN = "generatedContent"
 OFFER_LABEL = "Save generated sanitized PDF copy"
 OFFER_EXPLANATION = (
     "This is newly generated content, not the untouched original PDF. "
-    "Pages are flattened into images; searchable text, links, forms, "
-    "attachments and other interactive features are not preserved. "
+    "Flattening pages into images can remove selectable text and searchability; "
+    "links, forms, attachments and other interactive features are not preserved. "
     "This is not a malware-clean verdict; scan the generated copy separately."
 )
 

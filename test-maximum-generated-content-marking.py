@@ -30,6 +30,17 @@ class GeneratedCopyOriginTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             offer.content_origin = "original"
 
+    def test_flattening_warning_explains_selectable_text_loss(self):
+        offer = SanitizedCopyOffer(b"%PDF-1.4\\nsynthetic output", 1)
+        for message in (offer.explanation, offer.to_public_metadata()["explanation"]):
+            with self.subTest(message=message):
+                self.assertIn(
+                    "Flattening pages into images can remove selectable text", message
+                )
+                self.assertIn("searchability", message)
+                self.assertIn("scan the generated copy separately", message)
+                self.assertNotIn("synthetic output", message)
+
     def test_cannot_relabel_generated_offer_as_original(self):
         params = {"pdf_bytes": b"%PDF-synthetic", "page_count": 1}
         for change in (
