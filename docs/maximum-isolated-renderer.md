@@ -29,10 +29,15 @@ and is explicitly disarmed before interpreter shutdown, avoiding a late
 `SIGALRM` after valid PNG delivery. Parent-side
 process isolation also uses Python `-I -B`, no shell, a minimal environment,
 closed inherited file descriptors, a new process session, 30-second
-deadline, private stdin and discarded stderr. This separate process
-boundary does **not** by itself prove an OS-enforced network or filesystem
-sandbox; full Maximum production integration must enforce those separate
-policies, especially on macOS, before enabling the tier.
+deadline, private stdin and discarded stderr. Network isolation is enforced
+before the renderer processes PDF bytes: macOS launches the child under the
+fixed `/usr/bin/sandbox-exec` Seatbelt profile `(deny network*)`; Linux
+installs a libseccomp filter before reading the PDF or importing PyMuPDF.
+That filter denies socket creation and socket operations including connect,
+bind and listen, as well as available io_uring entry points. If the required
+mechanism cannot be applied, rendering fails closed without an unsandboxed
+retry. A dedicated filesystem sandbox remains a separate prerequisite before
+enabling the Maximum tier in production.
 
 Documents with more than 512 pages, password-protected PDFs, invalid
 pages or malformed data fail closed. The renderer rejects absurd page
@@ -51,5 +56,4 @@ differences, scaling, bounded batches, encrypted/invalid inputs,
 worker failures, protocol tampering, immutability and noninterference
 with the deployed scanner. The dedicated
 `.github/workflows/maximum-isolated-renderer.yml` workflow installs
-`pymupdf==1.26.7` and runs the regression suite in both operating systems.
-Existing CI workflows and user preferences are preserved.
+`pymupdf==2.0` with `--no-deps` and runs the regression suite in both operating systems. The worker uses only the native rendering API; the extra layout/LLM packages in the distribution's dependency set are unused and can consume the bounded worker's memory budget. The engine selection, security history, and licensing constraints are recorded in [the renderer selection review](maximum-renderer-selection.md). Existing CI workflows and user preferences are preserved.

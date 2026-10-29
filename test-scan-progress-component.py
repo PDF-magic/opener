@@ -9,6 +9,13 @@ COMPONENT = Path(__file__).with_name("scan-progress-view.swift")
 
 
 class ScanProgressComponentTests(unittest.TestCase):
+    def test_malware_assessment_is_validated_and_used_in_the_display_label(self):
+        source = COMPONENT.read_text()
+        self.assertIn('private static let malwareAssessments = [', source)
+        self.assertIn('let malwareAssessmentLabel: String', source)
+        self.assertIn('· \\(malwareAssessmentLabel)', source)
+        self.assertNotIn('· Malware not confirmed")', source)
+
     def test_existing_native_progress_panel_can_be_used_without_pdf_opener(self):
         source = COMPONENT.read_text()
         self.assertIn("final class ScanProgressPanel: NSPanel", source)
@@ -133,43 +140,108 @@ try FileManager.default.removeItem(at: fixture)
 precondition(panel.protectionProfileDetailsLabel.frame.minY > panel.destinationBrowserLabel.frame.maxY)
 precondition(panel.contentView?.subviews.contains(where: { $0 === panel.cancelButton }) == true)
 precondition(panel.enhancedFindingsLabel.isHidden)
+precondition(panel.enhancedFindingsDetailsButton.isHidden)
+precondition(panel.enhancedFindingsDetailsButton.title == "Show technical details")
+precondition(panel.enhancedFindingsDetailsButton.accessibilityIdentifier() == "enhancedFindingsDetailsToggle")
 precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.contentView?.frame.height == 458)
+precondition(panel.contentView?.subviews.contains(where: { $0 === panel.enhancedFindingsDetailsButton }) == true)
 precondition(panel.contentView?.subviews.contains(where: { $0 === panel.enhancedFindingsScrollView }) == true)
 let findingReport: [String: Any] = [
     "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": true,
     "stageResults": [
         [
             "stage": "embeddedUrls", "outcome": "completed",
-            "findings": [[
-                "code": "suspiciousUrl", "severity": "suspicious",
-                "objectNumber": 12, "pageNumber": NSNull(),
-                "result": [
-                    "outcome": "reviewRequired",
-                    "nextAction": "requestReviewBeforeOpening",
-                    "explanation": "https://sensitive.invalid/never-display",
+            "findings": [
+                [
+                    "code": "suspiciousUrl", "severity": "suspicious",
+                    "objectNumber": 12, "pageNumber": NSNull(),
+                    "result": [
+                        "outcome": "reviewRequired",
+                        "nextAction": "requestReviewBeforeOpening",
+                        "explanation": "https://sensitive.invalid/never-display",
+                        "malwareAssessment": "notConfirmed",
+                    ],
                 ],
-            ]],
+                [
+                    "code": "incrementalRevision", "severity": "blocking",
+                    "objectNumber": NSNull(), "pageNumber": NSNull(),
+                    "result": [
+                        "outcome": "blocking",
+                        "nextAction": "stopOpening",
+                        "explanation": "This finding must stop opening.",
+                    ],
+                ],
+            ],
         ],
         ["stage": "javascriptActions", "outcome": "notRun", "findings": []],
     ],
 ]
 let findingData = try JSONSerialization.data(withJSONObject: findingReport)
 panel.updateEnhancedFindings(from: findingData)
-precondition(panel.contentView?.frame.height == 650)
+precondition(panel.contentView?.frame.height == 500)
 precondition(!panel.enhancedFindingsLabel.isHidden)
-precondition(!panel.enhancedFindingsScrollView.isHidden)
-precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 1"))
+precondition(!panel.enhancedFindingsDetailsButton.isHidden)
+precondition(panel.enhancedFindingsDetailsButton.title == "Show technical details")
+precondition(panel.enhancedFindingsDetailsButton.accessibilityLabel() == "Show technical details")
+precondition(panel.enhancedFindingsScrollView.isHidden)
+precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 2"))
 precondition(panel.enhancedFindingsLabel.stringValue.contains("incomplete stages: 1"))
 precondition(panel.enhancedFindingsLabel.accessibilityIdentifier() == "enhancedFindingsSummary")
 precondition(panel.enhancedFindingsTextView.accessibilityIdentifier() == "enhancedFindingsDetails")
 precondition(panel.enhancedFindingsTextView.string.contains("Embedded URLs"))
 precondition(panel.enhancedFindingsTextView.string.contains("Suspicious URL"))
 precondition(panel.enhancedFindingsTextView.string.contains("Review required"))
+precondition(panel.enhancedFindingsTextView.string.contains("Blocking"))
+precondition(panel.enhancedFindingsTextView.string.contains("Opening stopped"))
+precondition(panel.enhancedFindingsTextView.string.contains("Malware not confirmed"))
 precondition(panel.enhancedFindingsTextView.string.contains("JavaScript actions: inspection not run"))
 precondition(!panel.enhancedFindingsTextView.string.contains("sensitive.invalid"))
+panel.enhancedFindingsDetailsButton.performClick(nil)
+precondition(panel.contentView?.frame.height == 650)
+precondition(panel.enhancedFindingsDetailsButton.title == "Hide technical details")
+precondition(!panel.enhancedFindingsScrollView.isHidden)
+precondition(panel.enhancedFindingsScrollView.frame.maxY < panel.enhancedFindingsDetailsButton.frame.minY)
+precondition(panel.enhancedFindingsLabel.frame.minY > panel.enhancedFindingsDetailsButton.frame.maxY)
+panel.enhancedFindingsDetailsButton.performClick(nil)
+precondition(panel.contentView?.frame.height == 500)
+precondition(panel.enhancedFindingsDetailsButton.title == "Show technical details")
+precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.protectionProfileLabel.stringValue == "Active protection profile: Built-in")
 precondition(panel.cancelButton.title == "Cancel")
+let knownMaliciousReport: [String: Any] = [
+    "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": true,
+    "stageResults": [[
+        "stage": "executableContent", "outcome": "completed",
+        "findings": [[
+            "code": "knownMaliciousContent", "severity": "informational",
+            "objectNumber": 23, "pageNumber": NSNull(),
+            "result": [
+                "outcome": "blocking", "nextAction": "stopOpening",
+                "explanation": "Known malicious content was identified; opening is blocked.",
+            ],
+        ]],
+    ]],
+]
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: knownMaliciousReport))
+precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 1"))
+precondition(panel.enhancedFindingsTextView.string.contains("Known malicious content"))
+precondition(panel.enhancedFindingsTextView.string.contains("Opening stopped"))
+var downgradedMaliciousReport = knownMaliciousReport
+var maliciousStages = downgradedMaliciousReport["stageResults"] as! [[String: Any]]
+var maliciousStage = maliciousStages[0]
+var maliciousFindings = maliciousStage["findings"] as! [[String: Any]]
+maliciousFindings[0]["result"] = [
+    "outcome": "recorded", "nextAction": "continueRequiredChecks",
+    "explanation": "No risk",
+]
+maliciousStage["findings"] = maliciousFindings
+maliciousStages[0] = maliciousStage
+downgradedMaliciousReport["stageResults"] = maliciousStages
+downgradedMaliciousReport["requiresBlock"] = false
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: downgradedMaliciousReport))
+precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+precondition(!panel.enhancedFindingsTextView.string.contains("No risk"))
 var badReport = findingReport
 badReport["stageResults"] = [[
     "stage": "embeddedUrls", "outcome": "completed",
@@ -181,8 +253,29 @@ badReport["stageResults"] = [[
 ]]
 panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: badReport))
 precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+precondition(panel.contentView?.frame.height == 500)
+precondition(panel.enhancedFindingsDetailsButton.title == "Show technical details")
+precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.enhancedFindingsTextView.string.contains("could not be verified"))
 precondition(!panel.enhancedFindingsTextView.string.contains("SECRET"))
+let invalidAssessmentReport: [String: Any] = [
+    "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": true,
+    "stageResults": [[
+        "stage": "embeddedUrls", "outcome": "completed",
+        "findings": [[
+            "code": "suspiciousUrl", "severity": "suspicious",
+            "result": [
+                "outcome": "reviewRequired",
+                "nextAction": "requestReviewBeforeOpening",
+                "explanation": "Fixed explanation only",
+                "malwareAssessment": "confirmed",
+            ],
+        ]],
+    ]],
+]
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: invalidAssessmentReport))
+precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+precondition(!panel.enhancedFindingsTextView.string.contains("confirmed"))
 panel.updateEnhancedFindings(from: Data(repeating: 65, count: 256 * 1024 + 1))
 precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
 let emptyReport: [String: Any] = [
@@ -191,9 +284,13 @@ let emptyReport: [String: Any] = [
 ]
 panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: emptyReport))
 precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 0"))
+precondition(panel.contentView?.frame.height == 500)
+precondition(panel.enhancedFindingsDetailsButton.title == "Show technical details")
+precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.enhancedFindingsTextView.string.contains("not a clean verdict"))
 panel.updateEnhancedFindings(from: nil)
 precondition(panel.enhancedFindingsLabel.isHidden)
+precondition(panel.enhancedFindingsDetailsButton.isHidden)
 precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.enhancedFindingsTextView.string.isEmpty)
 precondition(panel.contentView?.frame.height == 458)

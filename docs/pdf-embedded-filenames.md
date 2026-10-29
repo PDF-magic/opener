@@ -1,0 +1,11 @@
+# Inspect embedded PDF filenames — opener-0454
+
+The optional `pdf_embedded_filenames.inspect_embedded_filenames(contents)` stage examines bounded embedded file specification filenames (`/F`, `/UF`, legacy `/DOS`, `/Mac`, `/Unix`) and `/EmbeddedFiles` name-tree entry labels. It reuses the existing attachment discovery across catalog and page `/AF`, attachment annotations and embedded-file name trees. This is separate from the existing attachment-bytes ClamAV stage (PR #181), which intentionally never inspects filenames.
+
+Inspectors identify suspicious path separators, drive/URI-like colons, executable extensions, deceptive document-plus-executable double extensions, Unicode direction overrides and invisible/control characters, trailing dots/spaces, and disagreements between a file specification and a name-tree alias. These are **indicators only**, not malware findings. Names are never used as filesystem paths or command arguments.
+
+The immutable result contains only attachment/file-specification counts, name-tree label counts, the number of flagged specifications and **fixed category identifiers**. It never contains raw names, URLs, attachments or parser exception text, and `authorizes_open=False` always. Unreadable or missing `/F` and `/UF` values, malformed embedded file references, encrypted PDFs, bad name trees, unsupported inputs, and resource-budget violations fail closed with a fixed message. No attachments are extracted, streamed, opened, executed or decoded.
+
+Budgets: the existing strict structure parser's 16 MiB input/1,024 pages, 32 attachment specifications, 256 name-tree nodes, 4,096 followed indirect references, a maximum of 255 Unicode characters per filename, and 8,192 characters total. This planned Enhanced-only stage is **not wired into the installed scanner**; its absence of findings never clears quarantine or authorizes opening. The existing Built-in ClamAV scan gate, saved preferences, caches, signatures and app-launch behavior remain unchanged.
+
+CI runs `test-pdf-embedded-filenames.py` alongside the attachment inspection suite and the broader scanner regressions, including Unicode and special paths, name-tree aliases, associated files, annotation references, corrupt specs and isolation tests.

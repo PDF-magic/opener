@@ -11,7 +11,8 @@ import zlib
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import (
-    ArrayObject, DictionaryObject, NameObject, NumberObject, StreamObject,
+    ArrayObject, ByteStringObject, DictionaryObject, NameObject, NumberObject,
+    StreamObject, TextStringObject,
 )
 import maximum_sanitized_copy as copies
 from maximum_sanitized_structure import (
@@ -21,8 +22,12 @@ from maximum_sanitized_structure import (
 )
 
 
-def output_pdf(*, pages=1, compressed=False):
+def output_pdf(*, pages=1, compressed=False, info_metadata=False,
+               catalog_metadata=False, page_metadata=False, file_id=False,
+               piece_info=False, last_modified=False):
     writer = PdfWriter()
+    # Valid generated-output fixtures model the sanitized writer's no-Info policy.
+    writer._info = None
     for _ in range(pages):
         page = writer.add_blank_page(width=120, height=150)
         content = StreamObject()
@@ -31,6 +36,29 @@ def output_pdf(*, pages=1, compressed=False):
             content._data = zlib.compress(content._data)
             content[NameObject("/Filter")] = NameObject("/FlateDecode")
         page[NameObject("/Contents")] = writer._add_object(content)
+    if info_metadata:
+        writer.add_metadata({"/Title": "PRIVATE-INFO-TITLE"})
+    def metadata_stream():
+        stream = StreamObject()
+        stream._data = b"PRIVATE-XMP-METADATA"
+        stream.update({
+            NameObject("/Type"): NameObject("/Metadata"),
+            NameObject("/Subtype"): NameObject("/XML"),
+        })
+        return stream
+    if catalog_metadata:
+        writer._root_object[NameObject("/Metadata")] = writer._add_object(metadata_stream())
+    if page_metadata:
+        writer.pages[0][NameObject("/Metadata")] = writer._add_object(metadata_stream())
+    if piece_info:
+        writer.pages[0][NameObject("/PieceInfo")] = DictionaryObject()
+    if last_modified:
+        writer.pages[0][NameObject("/LastModified")] = TextStringObject("PRIVATE-LAST-MODIFIED")
+    if file_id:
+        writer._ID = ArrayObject([
+            ByteStringObject(b"PRIVATE-DOCUMENT-ID"),
+            ByteStringObject(b"PRIVATE-DOCUMENT-ID"),
+        ])
     output = BytesIO()
     writer.write(output)
     return output.getvalue()
@@ -54,6 +82,21 @@ class SanitizedStructureTests(unittest.TestCase):
                     self.assertNotIn("pdf_bytes", vars(result))
                     with self.assertRaises(FrozenInstanceError):
                         result.permits_open = True
+
+    def test_document_metadata_is_rejected_by_final_output_verifier(self):
+        cases = (
+            ("Info dictionary", output_pdf(info_metadata=True)),
+            ("catalog XMP", output_pdf(catalog_metadata=True)),
+            ("page XMP", output_pdf(page_metadata=True)),
+            ("page PieceInfo", output_pdf(piece_info=True)),
+            ("page LastModified", output_pdf(last_modified=True)),
+            ("trailer file identifier", output_pdf(file_id=True)),
+        )
+        for label, candidate in cases:
+            with self.subTest(metadata=label):
+                with self.assertRaises(SanitizedPDFStructureError) as error:
+                    verify_sanitized_pdf_structure(candidate, 1)
+                self.assertEqual(str(error.exception), BLOCK_MESSAGE)
 
     def test_wrong_page_count_extra_pages_or_missing_pages_rejected(self):
         pdf = output_pdf(pages=2)
@@ -94,6 +137,7 @@ class SanitizedStructureTests(unittest.TestCase):
         pdf = output_pdf()
         reader = PdfReader(BytesIO(pdf), strict=True)
         writer = PdfWriter()
+        writer._info = None
         writer.add_blank_page(width=100, height=100)
         pages = writer._root_object["/Pages"]
         pages[NameObject("/Count")] = NumberObject(2)
@@ -116,6 +160,7 @@ class SanitizedStructureTests(unittest.TestCase):
 
     def test_non_stream_contents_and_encrypted_output_are_rejected(self):
         writer = PdfWriter()
+        writer._info = None
         page = writer.add_blank_page(width=100, height=100)
         page[NameObject("/Contents")] = ArrayObject([NumberObject(17)])
         data = BytesIO()
@@ -123,6 +168,7 @@ class SanitizedStructureTests(unittest.TestCase):
         with self.assertRaises(SanitizedPDFStructureError):
             verify_sanitized_pdf_structure(data.getvalue(), 1)
         writer = PdfWriter()
+        writer._info = None
         writer.add_blank_page(width=100, height=100)
         writer.encrypt("secret")
         data = BytesIO()
@@ -134,7 +180,7 @@ class SanitizedStructureTests(unittest.TestCase):
         original = output_pdf(pages=1)
         converted = output_pdf(pages=2)
         with (patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")),
-              patch.object(copies.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, converted)),
+              patch.object(copies, "run_limited_converter", return_value=subprocess.CompletedProcess([], 0, converted)),
               patch.object(copies, "remove_active_pdf_functionality", return_value=converted),
               patch.object(copies, "_passive_pages", return_value=True),
               patch.object(copies, "verify_sanitized_pdf_structure",
@@ -142,7 +188,7 @@ class SanitizedStructureTests(unittest.TestCase):
             self.assertIsNone(copies.offer_sanitized_pdf_copy(original))
             verify.assert_called_once()
         with (patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")),
-              patch.object(copies.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, converted)),
+              patch.object(copies, "run_limited_converter", return_value=subprocess.CompletedProcess([], 0, converted)),
               patch.object(copies, "remove_active_pdf_functionality", return_value=converted),
               patch.object(copies, "_passive_pages", return_value=True),
               patch.object(copies, "verify_sanitized_pdf_structure",

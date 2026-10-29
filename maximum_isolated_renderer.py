@@ -6,10 +6,13 @@ Maximum protection. The PDF never becomes a worker pathname (opener-0314).
 
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
 import sys
+
+from maximum_network_isolation import RENDERER_SANDBOX_PROFILE, SANDBOX_EXEC
 
 MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
@@ -110,6 +113,19 @@ def _decode_response(stdout: bytes, expected_index: int) -> RenderedPDFPage:
     )
 
 
+def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
+    """Construct a renderer command with OS-enforced network isolation."""
+    python_command = (sys.executable, "-I", "-B", str(worker), str(page_index))
+    if sys.platform == "darwin":
+        if not os.path.isfile(SANDBOX_EXEC) or not os.access(SANDBOX_EXEC, os.X_OK):
+            raise MaximumPDFRenderError(BLOCK_MESSAGE)
+        return (SANDBOX_EXEC, "-p", RENDERER_SANDBOX_PROFILE, *python_command)
+    if sys.platform == "linux":
+        # The child installs seccomp before reading input or importing MuPDF.
+        return python_command
+    raise MaximumPDFRenderError(BLOCK_MESSAGE)
+
+
 def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPage:
     """Render one requested page inside an isolated limited Python worker.
 
@@ -125,8 +141,8 @@ def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPa
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
 
     worker = Path(__file__).resolve().with_name("maximum_render_worker.py")
-    command = (sys.executable, "-I", "-B", str(worker), str(page_index))
     try:
+        command = _renderer_command(worker, page_index)
         complete = subprocess.run(
             command, input=pdf_bytes,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -138,6 +154,9 @@ def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPa
                 "LANG": "C",
                 "PYTHONDONTWRITEBYTECODE": "1",
                 "PYTHONNOUSERSITE": "1",
+                "PDF_MAGIC_RENDER_NETWORK_SANDBOX": (
+                    "seatbelt-v1" if sys.platform == "darwin" else "seccomp-v1"
+                ),
             },
         )
         if complete.returncode != 0:

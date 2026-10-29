@@ -74,6 +74,19 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+**Scanner feature check (opener-0357):** The opt-in, read-only
+`scanner_feature_check.py` utility inspects only the selected ClamAV
+binary's `--help` declarations. Run
+`python3 scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
+the trusted installed `clamscan` path). It reports whether PDF,
+archive, document, and executable-type scanning switches are advertised
+and whether the options used by the existing Built-in scan gate appear.
+Missing, timed-out, malformed, or failed help probes report **unknown**,
+not a clean scan or an unsupported engine. Advertised options do not
+prove a feature is enabled, working, or safe; the installed scanner must
+still complete the existing full scan before any file can open.
+This diagnostic never changes scanner options or saved preferences.
+
 **VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
 group label and each page entry announces its section name and a navigation
 hint. Labels are derived from the existing page titles and preserve native
@@ -246,7 +259,9 @@ controls may interrupt a scan without approving any document.
 
 **Scanner parameter editability (opener-0397):** ClamAV command-line parameters
 are **not user-editable**. The fixed, validated scan gate remains authoritative;
-Advanced Scanning is informational. Supported saved preferences, including
+Advanced Scanning has no scanner-parameter editor; its confirmed Restore
+Recommended Limits action can only clear a recognized optional metadata
+override, not change the installed scan gate. Supported saved preferences, including
 the selected PDF viewer, are unaffected. See the
 [scanner parameter decision](docs/scanner-parameters-decision.md).
 
@@ -263,6 +278,18 @@ The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift`
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
 Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Successful clean and cached scans also retain the original `com.apple.quarantine` extended attribute, leaving Gatekeeper and OS-level downloaded-file protections in place for PDFs and application bundles. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. Zero-byte files, including empty members of application bundles, are explicitly rejected before scanner execution or clean-cache reuse. An empty file is never treated as successfully scanned, even if ClamAV would skip it. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
+
+**Scanner file-size validation (opener-0399):** Before constructing the
+ClamAV command, a shared validator checks permitted per-file and aggregate
+size limits. Standalone PDFs retain their existing `0/0` (unlimited
+configured) options, subject to ClamAV's independent engine limits. Other
+files and app bundles retain the fixed 512 MiB per-file and 1024 MiB
+aggregate defaults. Potential non-PDF limits must be positive integer
+MiB values, at most those defaults, with aggregate at least per-file;
+zero, booleans, fractional values, negative values, and oversized
+proposals fail validation. This does **not** expose editable ClamAV
+settings: the active command validator still rejects changed scanner
+arguments, even narrower ones, and no saved preferences are modified.
 
 Each accepted native PDF open request also has an in-memory `ScanRequest.requestTimestamp` (`Date`) set when the open event is accepted. Repeated events for the same resolved file retain the original request timestamp. This field is not logged or persisted, and is distinct from the scan time used in the clean-file cache.
 

@@ -7,6 +7,7 @@ import unittest
 from scanner_argument_validation import (
     InvalidScannerArguments,
     validate_scanner_arguments,
+    validated_file_size_options,
 )
 
 ROOT = Path(__file__).resolve().parent
@@ -53,9 +54,15 @@ class ScannerParameterDecisionTests(unittest.TestCase):
         validator = (ROOT / "scanner_argument_validation.py").read_text(
             encoding="utf-8"
         )
+        # The active gate now obtains fixed size arguments from the shared
+        # validator, so verify the exact options instead of stale literals.
+        self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", scanner)
+        self.assertEqual(validated_file_size_options(is_pdf=True),
+                         ("--max-filesize=0", "--max-scansize=0"))
+        self.assertEqual(validated_file_size_options(is_pdf=False),
+                         ("--max-filesize=512M", "--max-scansize=1024M"))
+        self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", validator)
         for phrase in (
-            "size_options = ('--max-filesize=0', '--max-scansize=0')",
-            "size_options = ('--max-filesize=512M', '--max-scansize=1024M')",
             "'--alert-exceeds-max=yes', '--alert-encrypted=yes'",
             "'--max-scantime=0', '--no-summary', '--', str(path)",
             "validate_scanner_arguments(command, scanner=scanner,",
@@ -68,9 +75,13 @@ class ScannerParameterDecisionTests(unittest.TestCase):
                 "AdvancedScanningSettingsView.swift").read_text(encoding="utf-8")
         self.assertIn("Scanner parameters are not user-editable", page)
         self.assertIn("your saved choices remain unchanged", page)
+        # The sole allowed action clears optional metadata after confirmation,
+        # not an executable ClamAV parameter or scanner control.
+        self.assertEqual(page.count('Button("Restore Recommended Limits"'), 2)
+        self.assertIn("RecommendedScannerLimitsReset.restore()", page)
         for term in (
             "TextField(", "SecureField(", "Toggle(", "Picker(", "Slider(",
-            "Stepper(", "Button(", "@AppStorage", "UserDefaults",
+            "Stepper(", "@AppStorage", "UserDefaults",
             "Process(", "write(to:", "run_scan_command(",
         ):
             with self.subTest(control=term):

@@ -66,12 +66,20 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # Protection's buttons select in-memory comparison previews only.
         if filename == "ProtectionSettingsView.swift" and term.startswith("Button"):
           continue
+        # Advanced Scanning's single confirmed metadata reset is not a
+        # scanner-parameter editor or bypass. Forbid every other button.
+        if filename == "AdvancedScanningSettingsView.swift" and term == "Button(":
+          continue
         # Updates now has two explicit, user-initiated actions; keep all
         # scanner bypass and settings mutation prohibitions intact.
         if filename == "UpdatesSettingsView.swift" and term in ("Button(", "Process(", "URLSession"):
           continue
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
+      if filename == "AdvancedScanningSettingsView.swift":
+        self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
+        self.assertIn('Button("Cancel", role: .cancel)', source)
+        self.assertIn("RecommendedScannerLimitsReset.restore()", source)
       if filename == "UpdatesSettingsView.swift":
         self.assertIn('Button("Check for Updates Now")', source)
         self.assertIn('Button("Update Signatures Now")', source)

@@ -22,24 +22,44 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Classify embedded PDF file types without executing attachments
+        run: python3 test-pdf-embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
         run: python3 test-pdf-structure-parser.py -v
       - name: Enforce the total PDF object budget before graph traversal
         run: python3 test-pdf-object-limit.py -v
+      - name: Enforce hard wall-clock timeout on optional PDF structure analysis
+        run: python3 test-timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
         run: python3 test-pdf-cross-reference-parsing.py -v
+      - name: Reject malformed direct and indirect PDF stream lengths
+        run: python3 test-pdf-stream-lengths.py -v
       - name: Verify bounded structured PDF parser output contract
         run: python3 test-pdf-parser-output.py -v
+      - name: Verify structured, fail-closed PDF parsing failure results
+        run: python3 test-pdf-parser-failure-result.py -v
       - name: Verify the evaluated parser, BSD license and consistent version pin
         run: python3 test-pdf-parser-evaluation.py -v
       - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
         run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Inspect indirect PDF object links and page-tree consistency
         run: python3 test-pdf-object-relationships.py -v
+      - name: Detect suspiciously repeated PDF object structures
+        run: python3 test-pdf-repeated-structures.py -v
       - name: Inspect automatic PDF action hooks without executing them
         run: python3 test-pdf-automatic-actions.py -v
+      - name: Detect unusual and contradictory PDF action chains
+        run: python3 test-pdf-action-chains.py -v
       - name: Inspect JavaScript action payloads without evaluating them
         run: python3 test-pdf-javascript-actions.py -v
+      - name: Detect hidden active PDF content in incremental revisions
+        run: python3 test-pdf-revision-active-content.py -v
+      - name: Detect XFA form entries without decoding XML
+        run: python3 test-pdf-xfa-forms.py -v
+      - name: Extract declared PDF document metadata without executing contents
+        run: python3 test-pdf-declared-metadata.py -v
+      - name: Inspect PDF document permissions without decryption
+        run: python3 test-pdf-document-permissions.py -v
       - name: Verify built-in active protection profile label and unchanged scanner gates
         run: python3 test-active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
@@ -52,6 +72,8 @@ jobs:
         run: python3 test-preserve-signature-database.py -v
       - name: Verify staged signatures before activation
         run: python3 test-validate-signature-database.py -v
+      - name: Test signature directory permission failures and rollback
+        run: python3 test-signature-directory-permissions.py -v
       - name: Verify ClamAV signature update failures are recorded safely
         run: python3 test-signature-update-failures.py -v
       - name: Detect incomplete ClamAV signature downloads
@@ -68,6 +90,8 @@ jobs:
         run: python3 test-scanner-failure-policy.py -v
       - name: Reject unapproved ClamAV arguments before scanner invocation
         run: python3 test-scanner-arguments.py -v
+      - name: Validate scanner file-size limits without relaxing active flags
+        run: python3 test-scanner-file-size-limits.py -v
       - name: Verify fixed, non-editable ClamAV parameters
         run: python3 test-scanner-parameters-decision.py -v
       - name: Audit safety-fixed ClamAV scanner parameters
@@ -88,6 +112,10 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
           python3 test-enhanced-embedded-files.py -v
+      - name: Inspect embedded PDF filenames without opening attachments
+        run: python3 test-pdf-embedded-filenames.py -v
+      - name: Detect suspiciously large PDF embedded objects
+        run: python3 test-pdf-embedded-object-sizes.py -v
       - name: Detect excessive PDF decompression requirements safely
         run: python3 test-pdf-decompression-requirements.py -v
       - name: Detect unexpected executable signatures in embedded PDF streams
@@ -110,6 +138,8 @@ jobs:
         run: python3 test-pdf-format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: python3 test-effective-protection-policy.py -v
+      - name: Identify PDF features unsupported by the current structural analyzer
+        run: python3 test-pdf-unsupported-feature-inspection.py -v
       - name: Verify fail-closed response to unsupported PDF features
         run: python3 test-unsupported-pdf-features.py -v
       - name: Verify resource budgets for every protection policy stage
@@ -216,6 +246,8 @@ jobs:
         run: python3 test-pdf-handler-status.py -v
       - name: Verify active scan policy cannot change during execution
         run: python3 test-scan-policy-snapshot.py -v
+      - name: Verify installed scanner configuration boundary values
+        run: python3 test-scanner-configuration-boundaries.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: python3 test-retain-os-quarantine.py -v
       - name: Verify Standard baseline parity with the existing scanner
@@ -228,6 +260,8 @@ jobs:
         run: python3 test-scan-and-open.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: python3 test-installed-clamav-version.py -v
+      - name: Inspect scanner-advertised capabilities without scanning documents
+        run: python3 test-scanner-feature-check.py -v
       - name: Verify Standard signature database files exist before scanning
         run: python3 test-signature-database-existence.py -v
       - name: Verify cancellation and scanner process-group cleanup
@@ -249,6 +283,8 @@ jobs:
         run: python3 test-download-availability.py -v
       - name: Inspect PDF annotations without evaluating their contents
         run: python3 test-pdf-annotations.py -v
+      - name: Detect PDF rich-media content without media execution
+        run: python3 test-pdf-rich-media.py -v
       - name: Verify locally accessible iCloud Drive PDFs
         run: python3 test-icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
@@ -332,7 +368,7 @@ jobs:
 
       - name: Verify scan result contract
         run: python3 test-scan-results.py
-      - name: Verify structured Enhanced analysis findings and incomplete-stage safety
+      - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: python3 test-enhanced-analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
         run: python3 test-enhanced-finding-explanations.py -v
@@ -353,6 +389,8 @@ jobs:
         run: python3 test-scanner-defaults-summary.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: python3 test-validate-signature-database.py -v
+      - name: Test signature directory permissions on macOS
+        run: python3 test-signature-directory-permissions.py -v
       - name: Test read-only ClamAV signature revision parsing
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
@@ -445,6 +483,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
           "$RUNNER_TEMP/TestResetGeneralPreferences"
+      - name: Verify Restore Recommended Limits preserves scanner safety and customizations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-recommended-scanner-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
+          "$RUNNER_TEMP/TestRecommendedScannerLimits"
       - name: Test versioned configuration serialization and compatibility
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"

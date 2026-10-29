@@ -15,6 +15,7 @@ location, along with a distinct `requiresAdditionalInspection` flag and
 | malformedStructure | Validate structure; inspect object relationships |
 | conflictingStructure | Inspect object relationships and revision history |
 | unresolvedReference | Inspect object relationships |
+| knownMaliciousContent | No follow-up; confirmed malicious content remains blocked |
 | activeContent | Inspect automatic and other active actions without running them |
 | suspiciousUrl | Review embedded URLs without following them |
 | unexpectedEmbeddedFile | Inspect embedded files and executable signatures |
@@ -22,6 +23,10 @@ location, along with a distinct `requiresAdditionalInspection` flag and
 | unsupportedFeature | Review unsupported features; no silent fallback |
 | resourceLimit | Review resource limits and retry a failed inspection safely, without increasing limits automatically |
 | inspectionFailure | Retry or repair the failed inspection, without treating it as clean |
+
+Known malicious content is terminal blocking evidence, not a request for
+another inspection: its follow-up list stays empty, but the separate finding
+explanation and blocking policy still deny opening.
 
 The report aggregates required checks in a deterministic, deduplicated order,
 but **preserves every finding separately** in the originating expected-stage
