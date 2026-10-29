@@ -216,6 +216,8 @@ jobs:
         run: python3 test-pdf-handler-status.py -v
       - name: Verify active scan policy cannot change during execution
         run: python3 test-scan-policy-snapshot.py -v
+      - name: Verify installed scanner configuration boundary values
+        run: python3 test-scanner-configuration-boundaries.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: python3 test-retain-os-quarantine.py -v
       - name: Verify Standard baseline parity with the existing scanner
