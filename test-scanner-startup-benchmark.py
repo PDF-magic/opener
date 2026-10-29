@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from scanner_argument_validation import validated_file_size_options
 import subprocess
 import sys
 import tempfile
@@ -104,9 +105,15 @@ class BenchmarkTests(unittest.TestCase):
         self.assertNotIn("scanner_startup_benchmark", live)
         self.assertNotIn("clamdscan", live)
         self.assertNotIn("clamd --", live)
+        # Live size flags are now generated through the strict shared
+        # validator, not embedded as string literals in scan-and-open.py.
+        self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", live)
         for option in benchmark.command("/scanner", Path("/db"), Path("/fixture"))[1:-1]:
-            self.assertIn(option if not option.startswith("--database=")
-                          else "--database=", live)
+            if option.startswith(("--max-filesize=", "--max-scansize=")):
+                self.assertIn(option, validated_file_size_options(is_pdf=True))
+            else:
+                self.assertIn(option if not option.startswith("--database=")
+                              else "--database=", live)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 test-scanner-startup-benchmark.py -v", ci)
         readme = (ROOT / "README.md").read_text()
