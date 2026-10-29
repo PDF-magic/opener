@@ -1,0 +1,52 @@
+name: Main integration verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.py"
+      - "**.swift"
+      - "**.sh"
+      - "**.command"
+      - "**.json"
+      - "**.plist"
+      - "**.entitlements"
+      - "**.sb"
+      - "**.toml"
+      - "**.yaml"
+      - "**.yml"
+      - "requirements*.txt"
+      - ".github/workflows/**"
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos-security-integration:
+    name: macOS security integration
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the pinned PDF parser used by isolation checks
+        run: python3 -m pip install --disable-pip-version-check "pypdf==5.9.0"
+      - name: Verify the macOS filesystem sandbox denies unapproved access
+        run: python3 test-maximum-filesystem-sandbox.py -v
+      - name: Verify isolated PDF analysis boundaries
+        run: python3 test-maximum-isolated-analysis.py -v
+      - name: Verify worker termination and cleanup
+        run: python3 test-maximum-process-termination.py -v
+      - name: Verify worker memory limits and fail-closed behavior
+        run: python3 test-maximum-memory-limits.py -v
+      - name: Verify application-bundle symlink containment
+        run: python3 test-bundle-symlink-containment.py -v
