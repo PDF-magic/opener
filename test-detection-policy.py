@@ -38,6 +38,11 @@ class DetectionDecisionTests(unittest.TestCase):
         version = patch.object(opener, 'scan_engine_version', return_value=None)
         version.start()
         self.addCleanup(version.stop)
+        # The macOS local-download guard requires a built native launcher.
+        # Test the scan verdict separately from that unrelated native preflight.
+        local = patch.object(opener, 'verify_local_file_available')
+        local.start()
+        self.addCleanup(local.stop)
 
     def test_detection_contains_only_evidence_and_cannot_be_modified(self):
         raw = result(1, 'file: Malware FOUND')
@@ -88,6 +93,52 @@ class DetectionDecisionTests(unittest.TestCase):
                 self.assertIsNot(decision, evidence)
                 if not expected:
                     self.assertTrue(decision.reason)
+
+    def test_diagnostic_lines_ending_in_clean_status_are_not_success(self):
+        # A suffix-only parser can accidentally accept warnings as clean.
+        cases = (
+            'WARNING: OK',
+            'warn: OK',
+            'ERROR: OK',
+            'FAILED: OK',
+            'SKIPPED: OK',
+            'LibClamAV Warning: OK',
+            'ClamAV Warning: Empty file\nfile: OK',
+            'file: OK\nWARNING: Empty file',
+            'file: OK\nLibClamAV Warning: OK',
+            'file: OK\nERROR: OK',
+        )
+        for stdout in cases:
+            with self.subTest(stdout=stdout):
+                decision = opener.decide_opening(
+                    opener.capture_detection(result(0, stdout)))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(
+                    decision.reason,
+                    'The malware scan did not confirm a complete scan; opening was stopped.',
+                )
+        # "warning" in an actual absolute file path is not a diagnostic.
+        clean = opener.decide_opening(opener.capture_detection(
+            result(0, '/tmp/warning-report.pdf: OK')))
+        self.assertTrue(clean.allowed)
+
+    def test_warning_shaped_ok_cannot_cache_or_launch_pdf(self):
+        # Exercise the real scan-to-handoff gate, not just the classifier.
+        with patch.object(opener, 'SCAN_REQUEST_DB',
+                          Path(self.temp.name) / 'request.sqlite3'):
+            for stdout in ('WARNING: OK', 'file: OK\nLibClamAV Warning: OK'):
+                with self.subTest(stdout=stdout), \
+                     patch.object(opener, 'run_scan_command',
+                                  return_value=result(0, stdout)) as run, \
+                     patch.object(opener, 'remember_clean') as cache, \
+                     patch.object(opener, 'remove_quarantine') as quarantine, \
+                     patch.object(opener, 'launch_clean_file') as launch:
+                    with self.assertRaisesRegex(RuntimeError, 'did not confirm'):
+                        opener.scan_and_open(str(self.file), '/scanner')
+                    run.assert_called_once()
+                    cache.assert_not_called()
+                    quarantine.assert_not_called()
+                    launch.assert_not_called()
 
     def test_rejected_scan_cannot_remove_quarantine_or_launch(self):
         cases = (

@@ -54,6 +54,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
+    'A zero-length file cannot be scanned; opening was stopped.',
     'Only regular files and application bundles can be scanned.',
     'Select a file or application, rather than a folder.',
     'The malware scan timed out; opening was stopped.',
@@ -63,6 +64,8 @@ SAFE_SCAN_FAILURES = frozenset((
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
     'The clean scan cache could not be verified; opening was stopped.',
+    'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.',
+    'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.',
     'The requested PDF is not available locally; opening was stopped.',
 ))
 
@@ -385,6 +388,9 @@ def detect_clamav_installation() -> Optional[str]:
 def scanner_path():
     scanner = detect_clamav_installation()
     if scanner is not None:
+        # A discoverable executable is not necessarily a supported engine.
+        # Fail before signature, cache, scan or handoff operations can run.
+        require_supported_scanner_version(scanner)
         return scanner
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
@@ -434,6 +440,10 @@ def fingerprint(path):
                 raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
             size = entry.stat().st_size
+            # ClamAV may skip empty files; never cache or open an unscanned input.
+            # This also protects empty members of recursively scanned app bundles.
+            if size == 0:
+                raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
             if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
             digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
@@ -569,12 +579,29 @@ def scan_engine_version(scanner):
         validate_scanner_version_arguments(version_command, scanner=scanner)
         output = subprocess.check_output(
             version_command, text=True, timeout=5, stderr=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError, InvalidScannerArguments):
+    except (OSError, subprocess.SubprocessError, UnicodeError, InvalidScannerArguments):
         return None
     match = re.match(
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
         output.strip())
     return match.group(1) if match else None
+
+
+def require_supported_scanner_version(scanner):
+    """Reject unsupported and unverified ClamAV before a real scan can start.
+
+    ClamAV 1.4 LTS and 1.5 are supported feature branches. Unverified,
+    end-of-life, future and prerelease engines cannot authorize launching,
+    even with a previously cached clean result.
+    """
+    version = scan_engine_version(scanner)
+    if version is None or re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version) is None:
+        raise RuntimeError(
+            'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.')
+    if re.fullmatch(r'1\.(?:4|5)\.[0-9]+', version) is None:
+        raise RuntimeError(
+            'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.')
+    return version
 
 
 def detect_installed_clamav_version():
@@ -584,11 +611,13 @@ def detect_installed_clamav_version():
     An unknown version must never be interpreted as a clean scan or bypass
     the mandatory signature, integrity, and quarantine checks.
     """
+    # Read-only advisory detection must not invoke admission checks. In
+    # particular, unsupported installed versions may still be reported.
     try:
-        scanner = scanner_path()
+        scanner = detect_clamav_installation()
     except (OSError, RuntimeError):
         return None
-    return scan_engine_version(scanner)
+    return scan_engine_version(scanner) if scanner is not None else None
 
 
 def record_scan_destination(destination):
@@ -707,6 +736,15 @@ class OpeningDecision:
     detection_names: tuple[str, ...] = ()
 
 
+# ClamAV diagnostics are not successful file verdicts, even when their text
+# happens to end with ": OK" or ": Empty file". Restrict this check to
+# leading labels so paths containing "warning" remain valid scan targets.
+_CLAMAV_DIAGNOSTIC_LINE = re.compile(
+    r"^(?:(?:Lib)?ClamAV\s+)?(?:warning|warn|error|failed|skipped)\s*:",
+    re.IGNORECASE,
+)
+
+
 def capture_detection(completed_process):
     """Record what ClamAV reported, without conferring opening permission."""
     names = ScanResult.from_clamav_output(completed_process.stdout).detection_names
@@ -741,7 +779,9 @@ def decide_opening(detection):
     # detection. An explicit OK with no unexpected output is still required.
     lines = detection.stdout.splitlines()
     if (not any(line.endswith(': OK') for line in lines) or
-            any(not line.endswith((': OK', ': Empty file')) for line in lines) or
+            any(not line.endswith((': OK', ': Empty file')) or
+                _CLAMAV_DIAGNOSTIC_LINE.match(line.lstrip())
+                for line in lines) or
             detection.stderr.strip()):
         return OpeningDecision(
             False, 'The malware scan did not confirm a complete scan; opening was stopped.',
@@ -841,8 +881,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
             if requires_scan():
                 signature_version_before = read_signature_database_version()
                 try:
-                    scan = run_scan_command(command, timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf
-                                else policy_snapshot.other_timeout_seconds))
+                    scan = run_scan_command(command, timeout=timeout)
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
                 detection = capture_detection(scan)
