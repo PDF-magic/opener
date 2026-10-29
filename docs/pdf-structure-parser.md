@@ -117,3 +117,31 @@ This is **optional Enhanced inspection**, not a universal PDF repair detector
 or an authorization to open. Separate increment-revision, graph and ambiguity
 inspections remain distinct; the installed Built-in ClamAV gate and all saved
 preferences are unchanged.
+
+
+### Hard analysis deadline (opener-0434)
+
+`timed_pdf_structure_analysis.parse_pdf_structure_timed(bytes)` is an
+**opt-in, process-isolated** wrapper around the existing strict parser. It
+accepts bounded in-memory bytes only, launches a fixed trusted Python worker,
+and returns the same immutable `PDFStructure` metadata contract. The
+parent accepts only exact, validated fields and never authorizes opening.
+
+The trusted supervisor `maximum_process_termination.run_limited_worker`
+enforces a monotonic deadline and kills and reaps the entire worker process
+group on timeout, output overflow, abnormal exit or cleanup failure. Its
+existing maximum is 30 seconds, conservatively below the declared 120-second
+`PDF_STRUCTURE_VALIDATION` stage budget. This task does not enlarge or
+alter the existing Maximum worker limits. A timeout or incomplete analysis
+raises a fixed, content-free error; no result is treated as clean by default.
+The child runs with isolated Python flags, a fixed environment, no document
+path, no shell and no network request from the wrapper.
+
+`test-timed-pdf-structure-analysis.py` exercises successful parsing in a
+real worker, input/output contract rejection, and an intentionally hung child
+whose process is terminated by the real supervisor's short test deadline.
+The foundational `parse_pdf_structure` API is unchanged; direct in-process
+calls do **not** acquire a time limit. Future policy orchestration must call
+the timed interface for untrusted analysis. The deployed Built-in ClamAV
+scan, selectable profiles, cache, quarantine and user preferences are
+unchanged.
