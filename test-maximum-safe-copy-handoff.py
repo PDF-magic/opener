@@ -75,8 +75,8 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         for handoff in handoffs:
             self.addCleanup(route._discard_private_copy, handoff.copy_path)
         self.assertEqual(len({handoff.copy_path.name for handoff in handoffs}), 8)
-        with patch.object(route.secrets, "token_hex",
-                          return_value="b" * 32) as random_token:
+        with patch("maximum_temporary_output.secrets.token_hex",
+                   return_value="b" * 32) as random_token:
             handoff = self._open()
         self.addCleanup(route._discard_private_copy, handoff.copy_path)
         random_token.assert_called_once_with(16)
