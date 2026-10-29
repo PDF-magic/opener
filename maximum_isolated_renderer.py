@@ -68,7 +68,8 @@ def _trusted_regular_file(path: str, *, executable: bool = False) -> bool:
         info = os.stat(path, follow_symlinks=False)
         return (
             stat.S_ISREG(info.st_mode) and
-            not info.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and
+            not info.st_mode & stat.S_IWOTH and
+            (not info.st_mode & stat.S_IWGRP or info.st_uid == 0) and
             info.st_uid in (0, os.geteuid()) and
             (not executable or os.access(path, os.X_OK))
         )
@@ -87,7 +88,8 @@ def _trusted_directory(path: str, *, runtime: bool = False) -> bool:
         info = os.stat(path, follow_symlinks=False)
         return (
             stat.S_ISDIR(info.st_mode) and
-            not info.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and
+            not info.st_mode & stat.S_IWOTH and
+            (not info.st_mode & stat.S_IWGRP or info.st_uid == 0) and
             info.st_uid in (0, os.geteuid())
         )
     except OSError:
