@@ -137,8 +137,14 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
                 break
             time.sleep(0.02)
         self.assertTrue(started.exists(), "First update never reached FreshClam")
+        attempt = self.signatures / "last-attempted-update"
+        original_stamp_inode = attempt.stat().st_ino
         second = self.invoke()
         self.assertNotEqual(second.returncode, 0)
+        self.assertIn("Another signature update", second.stderr)
+        # The loser must be stopped at lock acquisition, before it can
+        # rewrite shared update metadata or touch the signature database.
+        self.assertEqual(attempt.stat().st_ino, original_stamp_inode)
         out, err = first.communicate(timeout=10)
         self.assertEqual(first.returncode, 0, (out, err))
         self.assertEqual((self.signatures / "main.cvd").read_bytes(), b"new main database\n")
