@@ -21,7 +21,10 @@ class ActiveProtectionProfileTests(unittest.TestCase):
 
   def test_profile_describes_the_existing_fail_closed_scan_gate(self):
     engine = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-    self.assertIn("def scanner_path():", engine)
+    self.assertIn("def scanner_path(*, require_supported_version=False):", engine)
+    self.assertIn("if require_supported_version:", engine)
+    self.assertIn("require_supported_scanner_version(scanner)", engine)
+    self.assertEqual(engine.count("scanner_path(require_supported_version=True)"), 2)
     self.assertIn("'ClamAV is unavailable.", engine)
     self.assertIn("'--alert-exceeds-max=yes', '--alert-encrypted=yes'", engine)
     self.assertIn("if not cached_clean(cache_id):", engine)
