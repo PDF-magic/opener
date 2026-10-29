@@ -3271,26 +3271,34 @@ jobs:
           set -euo pipefail
           ci_workflow_id="$(gh api "repos/$REPO/actions/workflows/ci.yml" --jq '.id')"
           open_pr_shas="$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[].head.sha')"
-          queued_runs="$(gh api --paginate "repos/$REPO/actions/runs?status=queued&per_page=100" --jq '.workflow_runs[] | [.id, .workflow_id, .head_branch, .head_sha, .event] | @tsv')"
           cancelled=0
-          preserved=0
-          while IFS=$'\t' read -r run_id workflow_id branch sha event; do
-            [[ -z "$run_id" ]] && continue
-            if [[ "$workflow_id" == "$ci_workflow_id" && "$sha" == "$CURRENT_SHA" ]]; then
-              continue
-            fi
-            if [[ "$event" == "pull_request" ]] && grep -Fxq "$sha" <<< "$open_pr_shas"; then
-              preserved=$((preserved + 1))
-              continue
-            fi
-            if gh api --method POST "repos/$REPO/actions/runs/$run_id/cancel" >/dev/null; then
-              cancelled=$((cancelled + 1))
-              if (( cancelled > 0 && cancelled % 25 == 0 )); then
-                echo "Cancelled $cancelled obsolete queued runs so far."
+          declare -A preserved_ids=()
+          while true; do
+            queued_runs="$(gh api --paginate "repos/$REPO/actions/runs?status=queued&per_page=100" --jq '.workflow_runs[] | [.id, .workflow_id, .head_branch, .head_sha, .event] | @tsv')"
+            [[ -z "$queued_runs" ]] && break
+            batch_cancelled=0
+            while IFS=$'\t' read -r run_id workflow_id branch_name sha event; do
+              [[ -z "$run_id" ]] && continue
+              if [[ "$workflow_id" == "$ci_workflow_id" && "$sha" == "$CURRENT_SHA" ]]; then
+                continue
               fi
-            else
-              echo "Could not cancel queued run $run_id; it may have started or already been cancelled." >&2
+              if [[ "$event" == "pull_request" ]] && grep -Fxq "$sha" <<< "$open_pr_shas"; then
+                preserved_ids["$run_id"]=1
+                continue
+              fi
+              if gh api --method POST "repos/$REPO/actions/runs/$run_id/cancel" >/dev/null; then
+                cancelled=$((cancelled + 1))
+                batch_cancelled=$((batch_cancelled + 1))
+                if (( cancelled % 25 == 0 )); then
+                  echo "Cancelled $cancelled obsolete queued runs so far."
+                fi
+              else
+                echo "Could not cancel queued run $run_id; it may have started or already been cancelled." >&2
+              fi
+            done <<< "$queued_runs"
+            if (( batch_cancelled == 0 )); then
+              break
             fi
-          done <<< "$queued_runs"
-          echo "Cancelled $cancelled obsolete queued runs; preserved $preserved runs for current open PR heads."
+          done
+          echo "Cancelled $cancelled obsolete queued runs; preserved ${#preserved_ids[@]} queued runs for current open PR heads."
 
