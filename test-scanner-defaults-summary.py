@@ -55,10 +55,20 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     source = PAGE.read_text(encoding="utf-8")
     self.assertIn("does not change scanner behavior or reset saved choices", source)
     self.assertIn("Advanced scanner parameters are not editable here.", source)
+    # The read-only defaults panel cannot offer editing controls. Other
+    # advanced-settings sections may contain separately confirmed actions
+    # such as Restore Recommended Limits; they are not scanner-default edits.
+    defaults_panel = source[
+      source.index("GroupBox {"):
+      source.index('accessibilityIdentifier("advancedScanningDefaultsSection")')
+    ]
+    for forbidden in ("Toggle(", "Button(", "Picker(", "Slider("):
+      with self.subTest(defaults_control=forbidden):
+        self.assertNotIn(forbidden, defaults_panel)
     for forbidden in (
-        "Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage",
-        "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
-        "write(to:", "createFile(", "clamscan(", "target-app.txt",
+        "@AppStorage", "UserDefaults", "Process(", "FileHandle(",
+        "NSWorkspace", "write(to:", "createFile(", "clamscan(",
+        "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
