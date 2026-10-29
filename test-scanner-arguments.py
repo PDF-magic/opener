@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("arg_validation_gate", ROOT / "scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
+UNSET = object()
 
 
 class ScannerArgumentTests(unittest.TestCase):
@@ -37,15 +38,15 @@ class ScannerArgumentTests(unittest.TestCase):
             "--max-scantime=0", "--no-summary", "--", str(self.document),
         ]
 
-    def check(self, command, *, is_pdf=True, scanner=None, database=None,
-              document=None, timeout=None):
+    def check(self, command, *, is_pdf=True, scanner=UNSET, database=UNSET,
+              document=UNSET, timeout=UNSET):
         return validate_scanner_arguments(
             command,
-            scanner=self.scanner if scanner is None else scanner,
-            database=self.database if database is None else database,
-            document=self.document if document is None else document,
+            scanner=self.scanner if scanner is UNSET else scanner,
+            database=self.database if database is UNSET else database,
+            document=self.document if document is UNSET else document,
             is_pdf=is_pdf,
-            timeout=(1800 if is_pdf else 180) if timeout is None else timeout,
+            timeout=(1800 if is_pdf else 180) if timeout is UNSET else timeout,
         )
 
     def test_both_fixed_scanner_commands_accept_only_the_intended_modes(self):
@@ -140,6 +141,8 @@ class ScannerArgumentTests(unittest.TestCase):
             with patch.object(gate, "CACHE_DB", Path(directory) / "cache.sqlite3"), \
                  patch.object(gate, "SCAN_REQUEST_DB", Path(directory) / "requests.sqlite3"), \
                  patch.object(gate, "record_scan_destination"), \
+                 patch.object(gate, "intended_destination", return_value="com.brave.Browser"), \
+                 patch.object(gate, "pdf_fallback_application", return_value=None), \
                  patch.object(gate, "verify_local_file_available"), \
                  patch.object(gate, "run_scan_command") as run, \
                  patch.object(gate, "remove_quarantine") as quarantine, \
@@ -153,6 +156,24 @@ class ScannerArgumentTests(unittest.TestCase):
                 launch.assert_not_called()
                 self.assertFalse((Path(directory) / "cache.sqlite3").exists())
 
+    def test_invalid_database_option_blocks_real_scan_before_execution(self):
+        with tempfile.TemporaryDirectory(prefix="scanner-database-gate-") as directory:
+            path = Path(directory) / "untrusted.pdf"
+            path.write_bytes(b"%PDF-1.4\nsynthetic test fixture")
+            with patch.object(gate, "CACHE_DB", Path(directory) / "cache.sqlite3"), \
+                 patch.object(gate, "SCAN_REQUEST_DB", Path(directory) / "requests.sqlite3"), \
+                 patch.object(gate, "DATABASE", Path(directory) / "signatures\n--quiet"), \
+                 patch.object(gate, "record_scan_destination"), \
+                 patch.object(gate, "intended_destination", return_value="com.brave.Browser"), \
+                 patch.object(gate, "pdf_fallback_application", return_value=None), \
+                 patch.object(gate, "verify_local_file_available"), \
+                 patch.object(gate, "run_scan_command") as run, \
+                 patch.object(gate, "launch_clean_file") as launch:
+                with self.assertRaises(InvalidScannerArguments):
+                    gate.scan_and_open(path, self.scanner)
+                run.assert_not_called()
+                launch.assert_not_called()
+
     def test_valid_real_gate_passes_exact_arguments_and_keeps_clean_policy(self):
         with tempfile.TemporaryDirectory(prefix="scanner-argument-allowed-") as directory:
             path = Path(directory) / "--report.pdf"
@@ -161,7 +182,10 @@ class ScannerArgumentTests(unittest.TestCase):
             with patch.object(gate, "CACHE_DB", Path(directory) / "cache.sqlite3"), \
                  patch.object(gate, "SCAN_REQUEST_DB", Path(directory) / "requests.sqlite3"), \
                  patch.object(gate, "record_scan_destination"), \
+                 patch.object(gate, "intended_destination", return_value="com.brave.Browser"), \
+                 patch.object(gate, "pdf_fallback_application", return_value=None), \
                  patch.object(gate, "verify_local_file_available"), \
+                 patch.object(gate, "read_signature_database_version", return_value="main=1,daily=2"), \
                  patch.object(gate, "verify_launch_target"), \
                  patch.object(gate, "scan_engine_version", return_value="test"), \
                  patch.object(gate, "run_scan_command", return_value=clean) as run, \
