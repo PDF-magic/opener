@@ -701,6 +701,15 @@ class OpeningDecision:
     detection_names: tuple[str, ...] = ()
 
 
+# ClamAV diagnostics are not successful file verdicts, even when their text
+# happens to end with ": OK" or ": Empty file". Restrict this check to
+# leading labels so paths containing "warning" remain valid scan targets.
+_CLAMAV_DIAGNOSTIC_LINE = re.compile(
+    r"^(?:(?:Lib)?ClamAV\s+)?(?:warning|warn|error|failed|skipped)\s*:",
+    re.IGNORECASE,
+)
+
+
 def capture_detection(completed_process):
     """Record what ClamAV reported, without conferring opening permission."""
     names = ScanResult.from_clamav_output(completed_process.stdout).detection_names
@@ -735,7 +744,9 @@ def decide_opening(detection):
     # detection. An explicit OK with no unexpected output is still required.
     lines = detection.stdout.splitlines()
     if (not any(line.endswith(': OK') for line in lines) or
-            any(not line.endswith((': OK', ': Empty file')) for line in lines) or
+            any(not line.endswith((': OK', ': Empty file')) or
+                _CLAMAV_DIAGNOSTIC_LINE.match(line.lstrip())
+                for line in lines) or
             detection.stderr.strip()):
         return OpeningDecision(
             False, 'The malware scan did not confirm a complete scan; opening was stopped.',
