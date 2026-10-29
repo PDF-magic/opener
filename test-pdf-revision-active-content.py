@@ -24,7 +24,7 @@ def append_revision(original, number, data):
     at = len(updated)
     updated.extend(str(number).encode() + b" 0 obj\n" + data + b"\nendobj\n")
     xref = len(updated)
-    updated.extend(b"xref\n" + str(number).encode() + b" 1\n")
+    # A zero-indexed free entry avoids library xref offset correction.\n    updated.extend(b"xref\n0 1\n0000000000 65535 f \n")\n    updated.extend(str(number).encode() + b" 1\n")
     updated.extend(f"{at:010d} 00000 n \n".encode())
     updated.extend(b"trailer\n<< /Size 12 /Root 1 0 R /Prev " + previous + b" >>\n")
     updated.extend(b"startxref\n" + str(xref).encode() + b"\n%%EOF\n")
