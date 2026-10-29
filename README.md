@@ -74,6 +74,19 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+**Scanner feature check (opener-0357):** The opt-in, read-only
+`scanner_feature_check.py` utility inspects only the selected ClamAV
+binary's `--help` declarations. Run
+`python3 scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
+the trusted installed `clamscan` path). It reports whether PDF,
+archive, document, and executable-type scanning switches are advertised
+and whether the options used by the existing Built-in scan gate appear.
+Missing, timed-out, malformed, or failed help probes report **unknown**,
+not a clean scan or an unsupported engine. Advertised options do not
+prove a feature is enabled, working, or safe; the installed scanner must
+still complete the existing full scan before any file can open.
+This diagnostic never changes scanner options or saved preferences.
+
 **VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
 group label and each page entry announces its section name and a navigation
 hint. Labels are derived from the existing page titles and preserve native
