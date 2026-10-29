@@ -1,0 +1,305 @@
+name: Consolidated security and platform checks
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  pdf-structure-tests:
+    name: PDF structure tests (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: pdf / bundle-symlink-containment / Reject application bundle symlink escapes
+        run: python3 test-bundle-symlink-containment.py -v
+      - name: pdf / pdf-ambiguity / Install existing Enhanced PDF parser dependency
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: pdf / pdf-ambiguity / Reject conflicting or ambiguous PDF structures
+        run: python3 test-pdf-structure-ambiguity.py -v
+
+      - name: pdf / pdf-automatic-external-requests / Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-automatic-external-requests / Detect network-targeting actions reached from automatic triggers
+        run: python3 test-pdf-automatic-external-requests.py -v
+      - name: pdf / pdf-automatic-external-requests / Preserve form action inspection regressions
+        run: python3 test-pdf-form-actions.py -v
+
+      - name: pdf / pdf-document-permissions / Install pinned optional PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-embedded-file-types / Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-embedded-filenames / Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-embedded-object-sizes / Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-form-actions / Install maintained PDF parser
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: pdf / pdf-incremental-revisions / Install PDF parser used by the Enhanced inspection suites
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: pdf / pdf-incremental-revisions / Inspect incremental PDF revisions without authorizing opening
+        run: python3 test-pdf-incremental-revisions.py -v
+
+      - name: pdf / pdf-repeated-structures / Install pinned optional PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-unsupported-feature-inspection / Install pinned optional PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: pdf / pdf-unsupported-feature-inspection / Preserve unusual object-count inspection
+        run: python3 test-pdf-unusual-object-counts.py -v
+      - name: pdf / pdf-unusual-object-counts / Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+  protection-policy-tests:
+    name: Protection policy tests (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: policy / clamav-structural-success-priority / Install the pinned passive PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: policy / clamav-structural-success-priority / Ensure structural success cannot override a ClamAV detection
+        run: python3 test-scan-and-open.py -v -k structural_success_cannot_override_clamav_detection
+
+      - name: policy / combined-scan-results / Verify combined scan evidence and fail-closed behavior
+        run: python3 test-combined-scan-results.py -v
+
+      - name: policy / document-security-report / Verify concise document-security reporting
+        run: python3 test-document-security-report.py -v
+
+      - name: policy / effective-policy-display / Compare expanded policy JSON with enforced scanner resolver
+        run: python3 test-effective-policy-display.py -v
+
+      - name: policy / enhanced-blocking-policy / Test exhaustive Enhanced finding blocking rules
+        run: python3 test-enhanced-blocking-policy.py -v
+      - name: policy / enhanced-blocking-policy / Verify existing fail-closed Enhanced analysis policies
+        run: |
+          python3 test-enhanced-analysis-findings.py -v
+          python3 test-enhanced-inconclusive-results.py -v
+          python3 test-enhanced-additional-inspections.py -v
+      - name: policy / enhanced-new-install-default / Guard against unsupported default recommendations and preference changes
+        run: python3 test-enhanced-new-install-default.py -v
+
+      - name: policy / finding-object-references / Verify generation-aware PDF object references on findings
+        run: python3 test-enhanced-finding-object-references.py -v
+      - name: policy / protection-exception-opening-paths / Verify exception claims never bypass scan and opening gates
+        run: python3 test-protection-exception-opening-paths.py -v
+
+      - name: policy / protection-exception-reason / Verify fixed rejection-reason record and mandatory scan
+        run: |
+          python3 test-protection-exception-reason.py -v
+          # The existing exception-decision test uses a Linux-specific
+          # temporary path assertion; keep its established Linux CI coverage.
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            python3 test-protection-exceptions-decision.py -v
+          fi
+
+      - name: policy / protection-lower-preview-warning / Verify preview warnings and mandatory scanner policy
+        run: python3 test-protection-lower-preview-warning.py -v
+
+  maximum-portable-tests:
+    name: Portable Maximum contracts (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: maximum / maximum-child-process-restriction / Verify operating-system child-process restrictions
+        run: python3 test-maximum-child-process-restriction.py -v
+
+      - name: maximum / maximum-generated-content-marking / Install pinned sanitizer PDF inspection dependencies
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: maximum / maximum-generated-content-marking / Verify trusted generated-copy labeling and reject original relabeling
+        run: python3 test-maximum-generated-content-marking.py -v
+      - name: maximum / maximum-generated-content-marking / Preserve sanitization and active-content removal regressions
+        run: |
+          python3 test-maximum-sanitized-copy.py -v
+          python3 test-maximum-active-content-removal.py -v
+      - name: maximum / maximum-generated-content-marking / Preserve fresh generated-copy scan
+        run: python3 test-maximum-generated-rescan.py -v
+      - name: maximum / maximum-generated-content-marking / Preserve required safe-copy handoff
+        run: python3 test-maximum-safe-copy-handoff.py -v
+
+      - name: maximum / maximum-generated-rescan / Install strict PDF validator
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: maximum / maximum-isolated-analysis / Install pinned PDF parser
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: maximum / maximum-isolated-analysis / Verify real isolated PDF subprocess boundaries
+        run: python3 test-maximum-isolated-analysis.py -v
+      - name: maximum / maximum-isolated-analysis / Terminate worker groups on policy limits
+        run: python3 test-maximum-process-termination.py -v
+
+      - name: maximum / maximum-isolated-renderer / Install pinned PDF raster renderer
+        run: python3 -m pip install --no-deps --disable-pip-version-check 'pymupdf==2.0'
+      - name: maximum / maximum-isolated-renderer / Verify renderer selection, security review and license
+        run: python3 test-maximum-renderer-selection.py -v
+      - name: maximum / maximum-isolated-renderer / Verify real isolated page rasterization and fail-closed limits
+        run: python3 test-maximum-isolated-renderer.py -v
+      - name: maximum / maximum-memory-limits / Install pinned passive PDF parser
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: maximum / maximum-memory-limits / Verify Maximum worker memory ceilings and fail-closed behavior
+        run: python3 test-maximum-memory-limits.py -v
+      - name: maximum / maximum-offline-worker / Verify Maximum offline worker fails closed without a macOS sandbox
+        run: python3 test-maximum-network-isolation.py -v
+
+      - name: maximum / maximum-password-fidelity / Install pinned PDF test dependencies
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: maximum / maximum-password-fidelity / Verify encrypted PDFs block Maximum conversion and never prompt
+        run: python3 test-maximum-password-protected.py -v
+
+      - name: maximum / maximum-safe-copy-handoff / Install pinned sanitization dependencies
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: maximum / maximum-safe-copy-handoff / Compile the real sanitized conversion worker on macOS
+        if: runner.os == 'macOS'
+        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+      - name: maximum / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
+        run: python3 test-maximum-temporary-output.py -v
+      - name: maximum / maximum-sanitized-copy / Install strict PDF validation dependency
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0' 'cryptography==46.0.4'
+      - name: maximum / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
+        run: python3 test-maximum-sanitizer-time-limits.py -v
+      - name: maximum / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
+        run: python3 test-maximum-sanitizer-memory-limits.py -v
+      - name: maximum / maximum-sanitized-copy / Verify page geometry, supported-only copy offers and scanner isolation
+        run: |
+          python3 test-maximum-active-content-removal.py -v
+          python3 test-maximum-sanitized-copy.py -v
+          python3 test-maximum-sanitizer-reporting.py -v
+      - name: maximum / maximum-sanitized-copy / Verify optional OCR stays separate from sanitized copies
+        run: python3 test-maximum-ocr-separation.py -v
+      - name: maximum / maximum-sanitized-copy / Require an explicit warning for meaningful PDF conversion changes
+        run: python3 test-maximum-conversion-warning.py -v
+      - name: maximum / maximum-sanitized-copy / Reject OCR overlays and active PDF content after rasterization
+        run: python3 test-maximum-ocr-safety.py -v
+      - name: maximum / maximum-sanitized-copy / Verify text-readability metrics and source PDF fixtures
+        run: python3 test-maximum-text-readability.py -v
+      - name: maximum / maximum-sanitized-copy / Verify image-detail metrics and embedded-picture fixtures
+        run: python3 test-maximum-image-readability.py -v
+      - name: maximum / maximum-sanitized-copy / Verify multi-column fixture geometry and layout metrics
+        run: python3 test-maximum-multi-column-fidelity.py -v
+      - name: maximum / maximum-sanitized-copy / Check rotated-page fixtures and orientation negative controls
+        run: python3 test-maximum-rotated-pages.py -v
+      - name: maximum / maximum-sanitized-copy / Verify scanned-document fixtures and degradation metrics
+        run: python3 test-maximum-scanned-documents.py -v
+      - name: maximum / maximum-sanitized-copy / Verify vector graphics fixture and shape metrics
+        run: python3 test-maximum-vector-graphics.py -v
+      - name: maximum / maximum-sanitized-copy / Verify transparency fixtures and alpha-compositing metrics
+        run: python3 test-maximum-transparency.py -v
+      - name: maximum / maximum-sanitized-copy / Validate annotation fixtures and negative fidelity controls
+        run: python3 test-maximum-annotations.py -v
+      - name: maximum / maximum-sanitized-copy / Validate real interactive form fixtures and visual negative controls
+        run: python3 test-maximum-interactive-forms.py -v
+      - name: maximum / maximum-sanitized-copy / Verify signed PDF CMS signatures and fail-closed Maximum handling
+        run: python3 test-maximum-digital-signatures.py -v
+      - name: maximum / maximum-sanitized-copy / Reject unsupported sanitization and unsafe fallback on Linux
+        run: python3 test-maximum-sanitization-blocking.py -v
+
+      - name: maximum / maximum-sanitized-structure / Install pinned strict PDF parser
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: maximum / maximum-sanitized-structure / Verify metadata-free sanitized output structure and final-offer gate
+        run: python3 test-maximum-sanitized-structure.py -v
+
+      - name: maximum / opened-document-origin / Verify successful original versus generated handoff audit
+        run: python3 test-opened-document-origin.py -v
+
+  macos-native-tests:
+    name: macOS-native security tests
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: mac / blocking-severity-native / Compile native PDF opener with the shared scan progress component
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+          python3 test-scan-progress-component.py -v
+
+
+      - name: mac / maximum-filesystem-sandbox / Prove the kernel sandbox denies user file reads and writes
+        run: python3 test-maximum-filesystem-sandbox.py -v
+
+
+      - name: mac / maximum-generated-rescan / Install strict PDF validator
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: mac / maximum-generated-rescan / Build isolated optional CoreGraphics raster converter
+        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+      - name: mac / maximum-generated-rescan / Verify converted PDF re-enters mandatory scan before browser handoff
+        run: python3 test-maximum-generated-rescan.py -v
+
+
+      - name: mac / maximum-password-fidelity / Install pinned PDF test dependencies
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: mac / maximum-password-fidelity / Verify real converter refuses password-protected PDFs
+        run: python3 test-maximum-password-protected.py -v
+
+      - name: mac / maximum-safe-copy-handoff / Install pinned sanitization dependencies
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: mac / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
+        run: python3 test-maximum-temporary-output.py -v
+      - name: mac / maximum-safe-copy-handoff / Verify random filenames, source-request association and separately scanned handoff
+        run: python3 test-maximum-safe-copy-handoff.py -v
+
+      - name: mac / maximum-sanitized-copy / Install strict PDF validation dependency
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0' 'cryptography==46.0.4'
+      - name: mac / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
+        run: python3 test-maximum-sanitizer-time-limits.py -v
+      - name: mac / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
+        run: python3 test-maximum-sanitizer-memory-limits.py -v
+      - name: mac / maximum-sanitized-copy / Verify real conversion preserves page order, dimensions, rotation and discards PDF actions
+        run: |
+          python3 test-maximum-active-content-removal.py -v
+          python3 test-maximum-sanitized-copy.py -v
+          python3 test-maximum-sanitizer-reporting.py -v
+      - name: mac / maximum-sanitized-copy / Verify optional OCR stays separate from sanitized copies
+        run: python3 test-maximum-ocr-separation.py -v
+      - name: mac / maximum-sanitized-copy / Require conversion warnings for real native-generated PDF copies
+        run: python3 test-maximum-conversion-warning.py -v
+      - name: mac / maximum-sanitized-copy / Reject OCR overlays and active PDF content after rasterization
+        run: python3 test-maximum-ocr-safety.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual converted PDF text remains visually legible
+        run: python3 test-maximum-text-readability.py -v
+      - name: mac / maximum-sanitized-copy / Verify pictures stay visually readable after actual conversion
+        run: python3 test-maximum-image-readability.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual two- and three-column PDF conversion fidelity
+        run: python3 test-maximum-multi-column-fidelity.py -v
+      - name: mac / maximum-sanitized-copy / Verify real rotated-page visual fidelity after conversion
+        run: python3 test-maximum-rotated-pages.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual scanned pages remain legible after conversion
+        run: python3 test-maximum-scanned-documents.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual vector graphics fidelity after CoreGraphics conversion
+        run: python3 test-maximum-vector-graphics.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual transparency and blend fidelity after conversion
+        run: python3 test-maximum-transparency.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual annotated PDF visual fidelity and removal
+        run: python3 test-maximum-annotations.py -v
+      - name: mac / maximum-sanitized-copy / Verify actual interactive AcroForm raster fidelity and removal
+        run: python3 test-maximum-interactive-forms.py -v
+      - name: mac / maximum-sanitized-copy / Verify signed PDF CMS signatures and fail-closed Maximum handling
+        run: python3 test-maximum-digital-signatures.py -v
+      - name: mac / maximum-sanitized-copy / Reject unsupported sanitization and unsafe fallback on macOS
+        run: python3 test-maximum-sanitization-blocking.py -v
+
+      - name: mac / maximum-sanitized-structure / Install pinned strict PDF parser
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: mac / maximum-sanitized-structure / Verify metadata-free sanitized output structure and final-offer gate
+        run: python3 test-maximum-sanitized-structure.py -v
+
+
+
+
