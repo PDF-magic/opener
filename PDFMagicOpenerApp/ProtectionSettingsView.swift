@@ -155,6 +155,24 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
     }
   }
 
+  // This view may only preview named protection tiers. A complete,
+  // separately verified engine-to-scan-gate integration is required before
+  // any tier can become an effective selection.
+  var activationBlockReason: String {
+    switch self {
+    case .standard:
+      return "Standard activation unavailable: the named Standard policy has not been integrated with the installed PDF scan gate. The Built-in ClamAV policy remains active."
+    case .enhanced:
+      return "Enhanced activation unavailable: required PDF structure validation is not integrated as a mandatory scan engine. The existing Built-in ClamAV policy remains active."
+    case .maximum:
+      return "Maximum activation unavailable: required PDF structure validation and isolated behavior analysis are not integrated as mandatory scan engines. The existing Built-in ClamAV policy remains active."
+    }
+  }
+
+  var unavailableMandatoryChecks: [ProtectionLevelCheck] {
+    requiredChecks.filter { $0.availability == .planned }
+  }
+
   // Required/optional status comes from the inactive structured policy contract.
   // Planned checks remain labeled planned even when individual analyzers exist.
   var requiredChecks: [ProtectionLevelCheck] {
@@ -256,6 +274,10 @@ struct ProtectionSettingsView: View {
                       .font(.footnote)
                       .foregroundStyle(.secondary)
                       .fixedSize(horizontal: false, vertical: true)
+                    Text(tier.activationBlockReason)
+                      .font(.footnote)
+                      .foregroundStyle(.secondary)
+                      .fixedSize(horizontal: false, vertical: true)
                     Text(ProtectionPerformanceEvidence.description(for: tier.rawValue))
                       .font(.footnote)
                       .foregroundStyle(.secondary)
@@ -292,7 +314,7 @@ struct ProtectionSettingsView: View {
               .accessibilityValue(selectedPreview == tier
                                   ? "Selected for preview, not active"
                                   : "Not selected, not active")
-              .accessibilityHint("Show \(tier.title) details. This does not change scanning.")
+              .accessibilityHint("Show \(tier.title) details. This does not change scanning. Activation stays blocked while mandatory engines are unavailable.")
             }
 
             if let previewSaveStatus {
@@ -308,6 +330,22 @@ struct ProtectionSettingsView: View {
                 Text("Previewing \(selectedPreview.title)")
                   .font(.headline)
                 Text(selectedPreview.detail)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                Text(selectedPreview.activationBlockReason)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .accessibilityIdentifier("profileActivationBlockedReason")
+                if !selectedPreview.unavailableMandatoryChecks.isEmpty {
+                  Text("Unavailable mandatory engines")
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                  ForEach(selectedPreview.unavailableMandatoryChecks) { check in
+                    includedCheckDetail(check)
+                  }
+                }
+                Text("Dependency status describes policy integration, not a live test of installed scanner binaries. A missing mandatory engine never enables selection.")
+                  .font(.footnote)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
                 Text(ProtectionPerformanceEvidence.description(for: selectedPreview.rawValue))
