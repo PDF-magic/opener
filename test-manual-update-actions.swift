@@ -7,7 +7,7 @@ struct ManualUpdateActionsTests {
     func verify(_ json: String, _ installed: String, _ expected: String) {
       let result = ManualUpdateActions.releaseMessage(
         data: Data(json.utf8), installedVersion: installed)
-      precondition(result.contains(expected), "Unexpected result: \\(result)")
+      precondition(result.contains(expected), "Unexpected result: \(result)")
     }
     verify(#"{"tag_name":"v1.1.0"}"#, "1.0", "is available")
     verify(#"{"tag_name":"1.0"}"#, "1.0.0", "No newer")

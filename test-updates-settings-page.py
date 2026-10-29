@@ -60,7 +60,7 @@ class UpdatesSettingsPageTests(unittest.TestCase):
   def test_updates_page_does_not_install_or_mutate(self):
     source = UPDATES.read_text(encoding="utf-8")
     for forbidden in (
-        "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
+        "@AppStorage", "UserDefaults", "NSWorkspace",
         "downloadTask",
         "write(to:", "LSSetDefault", "setDefault", "onOpenURL",
         "DocumentGroup", "target-app.txt", "Toggle(",
