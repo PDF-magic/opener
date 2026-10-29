@@ -416,6 +416,7 @@ class MaximumRendererTests(unittest.TestCase):
     def test_filesystem_policy_is_deny_by_default_and_read_only(self):
         profile = renderer.RENDERER_FILESYSTEM_PROFILE
         self.assertIn("(deny default)", profile)
+        self.assertIn("(allow file-map-executable", profile)
         self.assertIn('(literal (param "PYTHON"))', profile)
         self.assertIn('(literal (param "WORKER_SUPPORT"))', profile)
         self.assertIn('(literal (param "NETWORK_SUPPORT"))', profile)
@@ -528,7 +529,7 @@ class MaximumRendererTests(unittest.TestCase):
             command = filesystem_sandbox_command(probe, str(private), str(write_target))
             outcome = subprocess.run(
                 command, stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 timeout=renderer.WORKER_WALL_SECONDS, check=False,
                 close_fds=True, start_new_session=True, cwd="/",
                 env={
@@ -539,7 +540,10 @@ class MaximumRendererTests(unittest.TestCase):
                     "PYTHONNOUSERSITE": "1",
                 },
             )
-            self.assertEqual(outcome.returncode, 0)
+            self.assertEqual(
+                outcome.returncode, 0,
+                outcome.stderr.decode("utf-8", "replace"),
+            )
             self.assertEqual(private.read_bytes(), b"private marker")
             self.assertFalse(write_target.exists())
 

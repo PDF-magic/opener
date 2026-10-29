@@ -30,6 +30,13 @@ BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped.
 RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
 (allow process-exec (literal (param "PYTHON")))
+(allow file-map-executable
+    (literal (param "PYTHON"))
+    (subpath (param "PYTHON_PREFIX"))
+    (subpath (param "PYTHON_BASE_PREFIX"))
+    (subpath "/System")
+    (subpath "/usr/lib")
+    (subpath "/Library/Frameworks"))
 (allow sysctl-read)
 (allow file-read-metadata (subpath "/"))
 (allow file-read*
