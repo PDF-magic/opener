@@ -16,8 +16,8 @@ import tempfile
 import threading
 
 from maximum_sanitized_copy import (
-    GENERATED_CONTENT_ORIGIN, MAX_OUTPUT_BYTES, MAX_SOURCE_BYTES,
-    OFFER_LABEL, SanitizedCopyOffer,
+    CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN, MAX_OUTPUT_BYTES,
+    MAX_SOURCE_BYTES, OFFER_LABEL, SanitizedCopyOffer,
     _passive_pages, offer_sanitized_pdf_copy,
 )
 from scan_results import EFFECTIVE_POLICY_ID
@@ -52,6 +52,7 @@ class MaximumSafeCopyHandoff:
             "contentOrigin": GENERATED_CONTENT_ORIGIN,
             "isUntouchedOriginal": False,
             "label": OFFER_LABEL,
+            "conversionWarning": CONVERSION_CHANGE_WARNING,
             "freshlyScanned": True,
             "originalOpened": False,
         }
