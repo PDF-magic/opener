@@ -29,8 +29,10 @@ MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_PAGES = 16
 CONVERSION_TIMEOUT_SECONDS = 45
-OFFER_LABEL = "Save rasterized PDF copy"
+GENERATED_CONTENT_ORIGIN = "generatedContent"
+OFFER_LABEL = "Save generated sanitized PDF copy"
 OFFER_EXPLANATION = (
+    "This is newly generated content, not the untouched original PDF. "
     "Pages are flattened into images; searchable text, links, forms, "
     "attachments and other interactive features are not preserved. "
     "This is not a malware-clean verdict; scan the generated copy separately."
@@ -48,6 +50,18 @@ class SanitizedCopyOffer:
     permits_open: bool = False
     needs_separate_scan: bool = True
     rasterized: bool = True
+    content_origin: str = GENERATED_CONTENT_ORIGIN
+
+    def to_public_metadata(self):
+        """Fixed presentation evidence; never include bytes or private paths."""
+        return {
+            "contentOrigin": GENERATED_CONTENT_ORIGIN,
+            "isUntouchedOriginal": False,
+            "label": OFFER_LABEL,
+            "explanation": OFFER_EXPLANATION,
+            "requiresFreshScan": True,
+            "authorizesOpen": False,
+        }
 
     def __post_init__(self):
         if (type(self.pdf_bytes) is not bytes or
@@ -58,7 +72,9 @@ class SanitizedCopyOffer:
                 self.explanation != OFFER_EXPLANATION or
                 self.permits_open is not False or
                 self.needs_separate_scan is not True or
-                self.rasterized is not True):
+                self.rasterized is not True or
+                type(self.content_origin) is not str or
+                self.content_origin != GENERATED_CONTENT_ORIGIN):
             raise ValueError("Sanitized copies never grant scan or open approval")
 
 
