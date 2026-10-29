@@ -12,7 +12,7 @@ import struct
 import subprocess
 import sys
 
-from maximum_network_isolation import NETWORK_DENY_PROFILE, SANDBOX_EXEC
+from maximum_network_isolation import RENDERER_SANDBOX_PROFILE, SANDBOX_EXEC
 
 MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
@@ -119,7 +119,7 @@ def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
     if sys.platform == "darwin":
         if not os.path.isfile(SANDBOX_EXEC) or not os.access(SANDBOX_EXEC, os.X_OK):
             raise MaximumPDFRenderError(BLOCK_MESSAGE)
-        return (SANDBOX_EXEC, "-p", NETWORK_DENY_PROFILE, *python_command)
+        return (SANDBOX_EXEC, "-p", RENDERER_SANDBOX_PROFILE, *python_command)
     if sys.platform == "linux":
         # The child installs seccomp before reading input or importing MuPDF.
         return python_command
