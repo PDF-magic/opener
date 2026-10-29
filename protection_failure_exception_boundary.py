@@ -9,15 +9,15 @@ from dataclasses import dataclass
 from enum import Enum
 
 from scan_results import ScanResultStatus
+from protection_exception_policy import UNSUPPORTED_EXCEPTION_MESSAGE
 from scanner_failure_policy import (
     ScannerFailureKind,
     UNKNOWN_SCANNER_FAILURE_RESPONSE,
     response_for_scanner_failure,
 )
 
-EXCEPTION_REJECTION_MESSAGE = (
-    "Feature exceptions are not supported; mandatory scanning remains required."
-)
+# Use the same fixed denial as the already merged no-exceptions policy.
+EXCEPTION_REJECTION_MESSAGE = UNSUPPORTED_EXCEPTION_MESSAGE
 
 
 class ProtectionBlockOrigin(str, Enum):
