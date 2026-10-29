@@ -7,7 +7,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent
-WORKFLOW = (ROOT / ".github/workflows/maximum-isolated-renderer.yml").read_text(encoding="utf-8")
+WORKFLOW = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
 DECISION = (ROOT / "docs/maximum/renderer-selection.md").read_text(encoding="utf-8")
 WORKER = (ROOT / "maximum_render_worker.py").read_text(encoding="utf-8")
 LICENSE = (ROOT / "LICENSE").read_text(encoding="utf-8")
