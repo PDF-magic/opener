@@ -72,6 +72,8 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
       with self.subTest(required=required):
         self.assertIn(required, page)
     self.assertIn('static let concurrencyOverrideKey = "maxConcurrentScans"', shared)
+    self.assertLess(shared.index("enum RecommendedScannerLimitsReset {"),
+                    shared.index("struct PDFMagicConfigurationSchema:"))
     self.assertIn('defaults.removeObject(forKey: concurrencyOverrideKey)', shared)
     self.assertIn('defaults.set(previous, forKey: concurrencyOverrideKey)', shared)
     for forbidden in ("removePersistentDomain", "setPersistentDomain", "clamscan",
