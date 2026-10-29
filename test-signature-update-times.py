@@ -67,8 +67,11 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         self.assertIsNotNone(report["lastSuccessfulUpdateUtc"])
         for field in report.values():
             self.assertTrue(field.endswith("Z"))
-        self.assertEqual(int((self.signatures / status.SUCCESS_STAMP).read_text()),
-                         int((self.signatures / status.ATTEMPT_STAMP).read_text()))
+        attempt = int((self.signatures / status.ATTEMPT_STAMP).read_text())
+        success = int((self.signatures / status.SUCCESS_STAMP).read_text())
+        self.assertGreaterEqual(success, attempt)
+        # The synthetic updater runs within a ten-second subprocess timeout.
+        self.assertLessEqual(success - attempt, 10)
 
     def test_failed_update_records_attempt_without_modifying_last_success(self):
         self.assertEqual(self.invoke().returncode, 0)

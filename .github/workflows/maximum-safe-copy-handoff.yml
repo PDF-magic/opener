@@ -25,5 +25,5 @@ jobs:
       - name: Compile the real sanitized conversion worker on macOS
         if: runner.os == 'macOS'
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
-      - name: Verify only the separately scanned safe copy reaches handoff
+      - name: Verify random safe-copy filenames and separately scanned handoff
         run: python3 test-maximum-safe-copy-handoff.py -v
