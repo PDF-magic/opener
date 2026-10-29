@@ -229,6 +229,43 @@ enum PlannedProtectionLevelPreference {
   }
 }
 
+// Explicit, narrow reset of the *planned preview* metadata only. The
+// effective Built-in scan policy and all other preferences are out of scope.
+// Unknown future selections are never coerced into a known profile.
+enum ProtectionSettingsReset {
+  @discardableResult
+  static func reset(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    guard ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
+            PDFMagicConfigurationSchema.currentVersion,
+          SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn,
+          let original = defaults.object(forKey: PlannedProtectionLevelPreference.key) as? String,
+          original == PlannedProtectionLevelPreference.newInstallationMarker ||
+            PreferredProtectionLevel(rawValue: original) != nil else {
+      return false
+    }
+
+    // Standard is the safe existing-installation planned-level baseline;
+    // this does not authorize the unimplemented Standard scanner policy.
+    let standard = PreferredProtectionLevel.standard.rawValue
+    if original == standard { return true }
+    defaults.set(standard, forKey: PlannedProtectionLevelPreference.key)
+    if defaults.synchronize(),
+       defaults.string(forKey: PlannedProtectionLevelPreference.key) == standard,
+       SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn {
+      return true
+    }
+
+    // Persistence errors must not silently discard an explicit choice.
+    defaults.set(original, forKey: PlannedProtectionLevelPreference.key)
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
 // A read-only effective view shared by the preferences app and native PDF
 // opener. Each setting uses the same per-user domain, defaults and validation.
 // It cannot modify a scanner verdict or any persisted configuration.
