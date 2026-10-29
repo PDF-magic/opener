@@ -353,10 +353,35 @@ def read_signature_database_version():
 
 
 
+# Match the paths supported by the installer and the existing scan gate. Do not
+# trust an arbitrary PATH entry or execute any candidate during discovery.
+CLAMAV_CANDIDATES = (
+    '/opt/homebrew/bin/clamscan',
+    '/usr/local/bin/clamscan',
+    '/usr/local/clamav/bin/clamscan',
+)
+
+
+def detect_clamav_installation() -> Optional[str]:
+    """Read-only detection of an installed, executable ClamAV scanner.
+
+    A directory with execute/search permission is not a scanner. This reports
+    binary availability, not signature freshness or a successful malware scan.
+    """
+    for candidate in CLAMAV_CANDIDATES:
+        try:
+            if Path(candidate).is_file() and os.access(candidate, os.X_OK):
+                return candidate
+        except OSError:
+            # Inaccessible installations must never be treated as available.
+            continue
+    return None
+
+
 def scanner_path():
-    for candidate in ('/opt/homebrew/bin/clamscan', '/usr/local/bin/clamscan', '/usr/local/clamav/bin/clamscan'):
-        if os.access(candidate, os.X_OK):
-            return candidate
+    scanner = detect_clamav_installation()
+    if scanner is not None:
+        return scanner
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
 
@@ -544,6 +569,20 @@ def scan_engine_version(scanner):
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
         output.strip())
     return match.group(1) if match else None
+
+
+def detect_installed_clamav_version():
+    """Read the currently installed engine version without running a file scan.
+
+    This advisory metadata is independent of cached scan-result provenance.
+    An unknown version must never be interpreted as a clean scan or bypass
+    the mandatory signature, integrity, and quarantine checks.
+    """
+    try:
+        scanner = scanner_path()
+    except (OSError, RuntimeError):
+        return None
+    return scan_engine_version(scanner)
 
 
 def record_scan_destination(destination):

@@ -40,10 +40,14 @@ jobs:
         run: python3 test-scanner-failure-policy.py -v
       - name: Keep scanner failures distinct from rejected feature exceptions
         run: python3 test-protection-failure-exception-boundary.py -v
+      - name: Detect installed ClamAV binaries without weakening the scan gate
+        run: python3 test-clamav-installation.py -v
       - name: Verify fail-closed responses for missing protection dependencies
         run: python3 test-missing-dependency-policy.py -v
       - name: Verify explicit no-exceptions policy cannot bypass required scanner gates
         run: python3 test-protection-exceptions-decision.py -v
+      - name: Review the read-only empty protection exceptions list without altering scan safety
+        run: python3 test-protection-exceptions-review.py -v
       - name: Verify structured policies for every planned protection profile
         run: python3 test-structured-protection-policy.py -v
       - name: Inspect embedded PDF attachments under the planned Enhanced policy
@@ -174,6 +178,8 @@ jobs:
         run: python3 test-standard-scanner-parity.py -v
       - name: Run scan-gate and request-metadata tests
         run: python3 test-scan-and-open.py -v
+      - name: Detect installed ClamAV engine version without affecting scanner policy
+        run: python3 test-installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
         run: python3 test-scanner-feature-check.py -v
       - name: Verify Standard signature database files exist before scanning
