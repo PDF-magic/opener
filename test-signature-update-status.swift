@@ -28,7 +28,7 @@ struct SignatureUpdateStatusTests {
     report = SignatureUpdateStatus.read(from: root, now: now)
     precondition(report.lastAttempt == Date(timeIntervalSince1970: 1_700_000_001))
     precondition(report.message == "Latest attempt is not confirmed successful")
-    let originalSuccess = try String(contentsOf: success)
+    let originalSuccess = try String(contentsOf: success, encoding: .ascii)
     precondition(originalSuccess == "1700000000\n")
 
     try write(success, "1700000001\n")
@@ -49,7 +49,7 @@ struct SignatureUpdateStatusTests {
     try FileManager.default.createSymbolicLink(at: attempt, withDestinationURL: outside)
     report = SignatureUpdateStatus.read(from: root, now: now)
     precondition(report.lastAttempt == nil, "Symlinks must not be read")
-    let originalOutside = try String(contentsOf: outside)
+    let originalOutside = try String(contentsOf: outside, encoding: .ascii)
     precondition(originalOutside == "1700000001\n")
 
     try FileManager.default.removeItem(at: attempt)
@@ -57,7 +57,7 @@ struct SignatureUpdateStatusTests {
     precondition(SignatureUpdateStatus.read(from: root, now: now).lastAttempt == nil)
 
     // This view must never change the success marker or start an updater.
-    let finalSuccess = try String(contentsOf: success)
+    let finalSuccess = try String(contentsOf: success, encoding: .ascii)
     precondition(finalSuccess == "1700000001\n")
     print("PASS: signature update UI reads safe, independent timestamps without writing")
   }
