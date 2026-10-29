@@ -92,6 +92,43 @@ class ActiveRemovalTests(unittest.TestCase):
         ]
         self.assertNotEqual(colors[0], colors[1])
 
+    def test_preserves_page_order_dimensions_and_right_angle_rotations(self):
+        expected = (
+            (72.0, 90.0, 0),
+            (73.0, 91.0, 90),
+            (74.0, 92.0, 180),
+            (75.0, 93.0, 270),
+        )
+        result = removal.remove_active_pdf_functionality(
+            image_pdf(pages=4), 4, expected,
+        )
+        self.assertIsNotNone(result)
+        pages = PdfReader(BytesIO(result), strict=True).pages
+        actual = [
+            (float(page.mediabox.width), float(page.mediabox.height),
+             int(page.get_inherited("/Rotate") or 0) % 360)
+            for page in pages
+        ]
+        self.assertEqual(actual, list(expected))
+        colors = [
+            Image.open(BytesIO(page.images[0].data)).convert("RGB").getpixel((0, 0))
+            for page in pages
+        ]
+        self.assertEqual(colors, [(12, 140, 235), (13, 140, 235),
+                                  (14, 140, 235), (15, 140, 235)])
+
+    def test_geometry_mismatch_and_invalid_rotation_fail_closed(self):
+        raster = image_pdf(pages=2)
+        self.assertIsNone(removal.remove_active_pdf_functionality(
+            raster, 2, ((73.0, 91.0, 0), (72.0, 90.0, 0)),
+        ))
+        self.assertIsNone(removal.remove_active_pdf_functionality(
+            raster, 2, ((72.0, 90.0, 45), (73.0, 91.0, 0)),
+        ))
+        self.assertIsNone(removal.remove_active_pdf_functionality(
+            raster, 2, ((72.0, 90.0, 0),),
+        ))
+
     def test_discarded_source_content_is_replaced_by_fixed_image_drawing(self):
         source = image_pdf(actions=True)
         reader = PdfReader(BytesIO(source))

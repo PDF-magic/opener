@@ -24,7 +24,12 @@ private func convert(_ data: Data) -> Data? {
 
     var usedPixels = 0
     for index in 1...document.numberOfPages {
-        guard let page = document.page(at: index), page.rotationAngle == 0 else {
+        guard let page = document.page(at: index) else {
+            output.closePDF()
+            return nil
+        }
+        let rotation = ((page.rotationAngle % 360) + 360) % 360
+        guard [0, 90, 180, 270].contains(rotation) else {
             output.closePDF()
             return nil
         }
@@ -68,7 +73,9 @@ private func convert(_ data: Data) -> Data? {
         }
 
         let destination = CGRect(x: 0, y: 0, width: media.width, height: media.height)
-        output.beginPDFPage([kCGPDFContextMediaBox as String: destination] as CFDictionary)
+        // Core Graphics expects page-box rectangles as CFData, not CGRect values.
+        let mediaBoxData = withUnsafeBytes(of: destination) { Data($0) }
+        output.beginPDFPage([kCGPDFContextMediaBox as String: mediaBoxData] as CFDictionary)
         output.draw(image, in: destination)
         output.endPDFPage()
         if CFDataGetLength(outputData) > maxOutputBytes {

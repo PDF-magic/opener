@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import NameObject, NumberObject
 import maximum_sanitized_copy as copies
 
 
@@ -52,6 +53,19 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
             self.assertIsNone(copies.offer_sanitized_pdf_copy(stream.getvalue()))
             self.assertIsNone(copies.offer_sanitized_pdf_copy(b"%PDF-1.7\nbroken"))
             invoked.assert_not_called()
+
+    def test_non_right_angle_rotation_fails_before_converter(self):
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=180, height=250)
+        page[NameObject("/Rotate")] = NumberObject(45)
+        stream = BytesIO()
+        writer.write(stream)
+        with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
+                patch.object(copies, "run_limited_converter") as invoked:
+            attempt = copies.attempt_sanitized_pdf_copy(stream.getvalue())
+        self.assertIsNone(attempt.offer)
+        self.assertEqual(attempt.failure.kind, copies.SanitizerFailureKind.UNSUPPORTED_INPUT)
+        invoked.assert_not_called()
 
     def test_only_verified_completed_conversion_is_offered(self):
         original = sample_pdf()
@@ -149,16 +163,40 @@ class NativeRasterizationTests(unittest.TestCase):
         self.assertFalse(offer.permits_open)
         self.assertTrue(offer.needs_separate_scan)
 
-    def test_real_two_page_conversion_preserves_page_count(self):
+    def test_real_conversion_preserves_page_order_dimensions_and_rotation(self):
+        expected = (
+            (180, 240, 0),
+            (200, 260, 90),
+            (220, 280, 180),
+            (240, 300, 270),
+        )
         writer = PdfWriter()
-        writer.add_blank_page(width=180, height=240)
-        writer.add_blank_page(width=200, height=280)
+        for width, height, rotation in expected:
+            page = writer.add_blank_page(width=width, height=height)
+            if rotation:
+                page.rotate(rotation)
         stream = BytesIO()
         writer.write(stream)
+
+        source = PdfReader(BytesIO(stream.getvalue()), strict=True)
+        source_geometry = [
+            (float(page.mediabox.width), float(page.mediabox.height),
+             int(page.get_inherited("/Rotate") or 0) % 360)
+            for page in source.pages
+        ]
+        self.assertEqual(source_geometry, [tuple(item) for item in expected])
+
         offer = copies.offer_sanitized_pdf_copy(stream.getvalue())
         self.assertIsNotNone(offer)
-        self.assertEqual(offer.page_count, 2)
-        self.assertTrue(copies._passive_pages(offer.pdf_bytes, 2))
+        self.assertEqual(offer.page_count, len(expected))
+        self.assertTrue(copies._passive_pages(offer.pdf_bytes, len(expected), tuple(source_geometry)))
+        output = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
+        actual_geometry = [
+            (float(page.mediabox.width), float(page.mediabox.height),
+             int(page.get_inherited("/Rotate") or 0) % 360)
+            for page in output.pages
+        ]
+        self.assertEqual(actual_geometry, source_geometry)
 
 
     def test_maximum_page_rendering_resolution_is_capped_per_page(self):
