@@ -25,6 +25,8 @@ jobs:
           python3 test-maximum-active-content-removal.py -v
           python3 test-maximum-sanitized-copy.py -v
           python3 test-maximum-sanitizer-reporting.py -v
+      - name: Verify optional OCR stays separate from sanitized copies
+        run: python3 test-maximum-ocr-separation.py -v
       - name: Reject OCR overlays and active PDF content after rasterization
         run: python3 test-maximum-ocr-safety.py -v
       - name: Verify text-readability metrics and source PDF fixtures
@@ -68,6 +70,8 @@ jobs:
           python3 test-maximum-active-content-removal.py -v
           python3 test-maximum-sanitized-copy.py -v
           python3 test-maximum-sanitizer-reporting.py -v
+      - name: Verify optional OCR stays separate from sanitized copies
+        run: python3 test-maximum-ocr-separation.py -v
       - name: Reject OCR overlays and active PDF content after rasterization
         run: python3 test-maximum-ocr-safety.py -v
       - name: Verify actual converted PDF text remains visually legible
