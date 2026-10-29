@@ -32,8 +32,7 @@ is vulnerability-free:
   earlier path-traversal issue in the embedded CLI `get` command, affecting 1.26.5
   and fixed in 1.26.7. The existing pin included that fix, but the newer advisory
   above is why 1.26.7 is no longer selected.
-- **Artifact provenance:** at review time, the PyPI 2.0 release page reported no
-  provenance attestations for its files. An exact version pin does not authenticate
+- **Artifact provenance:** at review time, the PyPI 2.0 release page reported no provenance attestations for its files. An exact version pin does not authenticate
   the publisher or prove that a release has no undisclosed vulnerabilities. Recheck
   upstream release notes and advisories at every renderer update, and reassess
   artifact provenance when upgrading.
