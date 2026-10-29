@@ -52,6 +52,9 @@ def post_ocr_copy(original, *, overlay=b"", active_feature=None):
     """Simulate an OCR engine mutating final PDF bytes after verification."""
     writer = PdfWriter()
     writer.append(BytesIO(original))
+    # pypdf appends an incidental /Outlines entry; remove it so the
+    # negative test reaches the OCR-content gate, not a catalog check.
+    writer._root_object.pop(NameObject("/Outlines"), None)
     page = writer.pages[0]
     if overlay:
         commands = page["/Contents"].get_object().get_data()
