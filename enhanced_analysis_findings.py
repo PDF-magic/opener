@@ -53,6 +53,7 @@ class FindingSeverity(str, Enum):
     informational = "informational"
     suspicious = "suspicious"
     critical = "critical"
+    blocking = "blocking"
 
 
 class StageOutcome(str, Enum):

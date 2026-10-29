@@ -51,7 +51,7 @@ assert payload["authorizesOpen"] is False
 ```
 
 `requiresBlock` is a conservative **analysis signal** for any unfinished
-expected stage or suspicious/critical finding. When every *reported* stage
+expected stage or suspicious, critical, or blocking finding. When every *reported* stage
 completes with no blocking findings, this signal may be false, but it is **not**
 a clean verdict and never authorizes opening. The caller's trusted requirements
 must include all applicable inspection stages; remaining baseline checks and the
@@ -61,3 +61,9 @@ This contract can be integrated with [the maintained PDF parser PR #179](https:/
 and the individual Enhanced inspection stages once they are reviewed and merged.
 Until then, Enhanced remains unavailable and the installed Built-in scan gate
 continues unchanged.
+
+The fixed `FindingSeverity` vocabulary includes `informational`, `suspicious`,
+`critical`, and `blocking`. An explicit `blocking` severity means the
+producer is signaling that opening must stop: the blocking policy maps it to
+`denyOpening`, and the explanation adapter reports a blocking result. This is
+evidence only and never authorizes opening.

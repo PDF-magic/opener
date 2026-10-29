@@ -141,15 +141,26 @@ let findingReport: [String: Any] = [
     "stageResults": [
         [
             "stage": "embeddedUrls", "outcome": "completed",
-            "findings": [[
-                "code": "suspiciousUrl", "severity": "suspicious",
-                "objectNumber": 12, "pageNumber": NSNull(),
-                "result": [
-                    "outcome": "reviewRequired",
-                    "nextAction": "requestReviewBeforeOpening",
-                    "explanation": "https://sensitive.invalid/never-display",
+            "findings": [
+                [
+                    "code": "suspiciousUrl", "severity": "suspicious",
+                    "objectNumber": 12, "pageNumber": NSNull(),
+                    "result": [
+                        "outcome": "reviewRequired",
+                        "nextAction": "requestReviewBeforeOpening",
+                        "explanation": "https://sensitive.invalid/never-display",
+                    ],
                 ],
-            ]],
+                [
+                    "code": "incrementalRevision", "severity": "blocking",
+                    "objectNumber": NSNull(), "pageNumber": NSNull(),
+                    "result": [
+                        "outcome": "blocking",
+                        "nextAction": "stopOpening",
+                        "explanation": "This finding must stop opening.",
+                    ],
+                ],
+            ],
         ],
         ["stage": "javascriptActions", "outcome": "notRun", "findings": []],
     ],
@@ -159,13 +170,15 @@ panel.updateEnhancedFindings(from: findingData)
 precondition(panel.contentView?.frame.height == 650)
 precondition(!panel.enhancedFindingsLabel.isHidden)
 precondition(!panel.enhancedFindingsScrollView.isHidden)
-precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 1"))
+precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 2"))
 precondition(panel.enhancedFindingsLabel.stringValue.contains("incomplete stages: 1"))
 precondition(panel.enhancedFindingsLabel.accessibilityIdentifier() == "enhancedFindingsSummary")
 precondition(panel.enhancedFindingsTextView.accessibilityIdentifier() == "enhancedFindingsDetails")
 precondition(panel.enhancedFindingsTextView.string.contains("Embedded URLs"))
 precondition(panel.enhancedFindingsTextView.string.contains("Suspicious URL"))
 precondition(panel.enhancedFindingsTextView.string.contains("Review required"))
+precondition(panel.enhancedFindingsTextView.string.contains("Blocking"))
+precondition(panel.enhancedFindingsTextView.string.contains("Opening stopped"))
 precondition(panel.enhancedFindingsTextView.string.contains("JavaScript actions: inspection not run"))
 precondition(!panel.enhancedFindingsTextView.string.contains("sensitive.invalid"))
 precondition(panel.protectionProfileLabel.stringValue == "Active protection profile: Built-in")

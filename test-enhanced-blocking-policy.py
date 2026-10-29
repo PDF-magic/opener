@@ -50,7 +50,7 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
                     disposition = disposition_for_finding(item)
                     expected = (
                         BlockingDisposition.denyOpening
-                        if code in denial_codes or severity is FindingSeverity.critical
+                        if code in denial_codes or severity in (FindingSeverity.blocking, FindingSeverity.critical)
                         else BlockingDisposition.holdForReview
                         if code in review_codes or severity is FindingSeverity.suspicious
                         else BlockingDisposition.observation

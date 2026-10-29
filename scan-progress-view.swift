@@ -168,6 +168,7 @@ struct EnhancedFindingsProgressSnapshot {
         "informational": "Informational",
         "suspicious": "Suspicious",
         "critical": "Critical",
+        "blocking": "Blocking",
     ]
     private static let actions = [
         "recorded": ("continueRequiredChecks", "Recorded; other checks required"),
@@ -223,12 +224,12 @@ struct EnhancedFindingsProgressSnapshot {
                       let (expectedAction, resultLabel) = Self.actions[resultID] else {
                     return nil
                 }
-                // A malicious or mismatched producer cannot downgrade a
-                // critical result or an incomplete-inspection finding.
+                // A producer cannot downgrade a blocking/critical severity
+                // or an incomplete-inspection finding.
                 let expectedResult: String
                 if code == "resourceLimit" || code == "inspectionFailure" {
                     expectedResult = "inspectionIncomplete"
-                } else if severity == "critical" {
+                } else if severity == "critical" || severity == "blocking" {
                     expectedResult = "blocking"
                 } else if severity == "suspicious" {
                     expectedResult = "reviewRequired"

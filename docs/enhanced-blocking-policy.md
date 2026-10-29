@@ -23,9 +23,10 @@ does not inspect bytes, execute actions, run a scanner, or authorize opening.
 Both **`holdForReview` and `denyOpening` require blocking now**. A hold
 means additional review may eventually resolve the finding under a *separate,
 trusted execution policy*; it is not permission to ignore the risk, execute PDF
-content, or bypass ClamAV. Critical severity always upgrades a finding to
-`denyOpening`. Suspicious severity upgrades `observation` to
-`holdForReview`; severity can never lower a code's minimum disposition.
+content, or bypass ClamAV. Explicit `blocking` severity signals that opening
+must stop, and critical severity also upgrades a finding to `denyOpening`.
+Suspicious severity upgrades `observation` to `holdForReview`; severity can
+never lower a code's minimum disposition.
 Thus a critical revision blocks, a suspicious revision requires review, and
 an informational revision alone is merely recorded.
 

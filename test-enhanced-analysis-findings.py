@@ -153,5 +153,19 @@ class StructuredAnalysisFindingsTests(unittest.TestCase):
         self.assertIs(report.to_dict()["authorizesOpen"], False)
 
 
+    def test_blocking_severity_is_serialized_and_requires_block(self):
+        finding = AnalysisFinding(FindingCode.incrementalRevision,
+                                  FindingSeverity.blocking)
+        report = StructuredAnalysisFindings(
+            (AnalysisStage.incrementalRevisions,),
+            (StageAnalysis(AnalysisStage.incrementalRevisions,
+                           StageOutcome.completed, (finding,)),),
+        )
+        self.assertEqual(finding.to_dict()["severity"], "blocking")
+        self.assertTrue(report.requires_block)
+        self.assertTrue(report.to_dict()["requiresBlock"])
+        self.assertFalse(report.to_dict()["authorizesOpen"])
+
+
 if __name__ == "__main__":
     unittest.main()
