@@ -3,7 +3,9 @@
 import os
 import resource
 import signal
+import subprocess
 import sys
+import time
 import unittest
 from unittest.mock import patch
 
@@ -82,6 +84,88 @@ raise SystemExit(3)
         )
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"ok")
+
+    def test_exit_status_observation_does_not_reap_group_leader(self):
+        process = subprocess.Popen(
+            (sys.executable, "-I", "-B", "-c", "pass"),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+            cwd="/",
+            env=ENV.copy(),
+        )
+        try:
+            deadline = time.monotonic() + 3
+            status = None
+            while status is None and time.monotonic() < deadline:
+                status = sanitizer._process_exit_status_without_reaping(process)
+                if status is None:
+                    time.sleep(0.01)
+            self.assertEqual(status, 0)
+            self.assertIsNone(process.returncode)
+        finally:
+            process.wait(timeout=3)
+
+    def test_macos_process_group_rss_uses_targeted_probe(self):
+        completed = subprocess.CompletedProcess(("ps",), 0, b"120\n80\n", None)
+        with patch.object(sanitizer.subprocess, "run", return_value=completed) as probe:
+            measured = sanitizer._darwin_process_group_memory_bytes(
+                101, allow_empty=False, timeout_seconds=1,
+            )
+        self.assertEqual(measured, 200 * 1024)
+        self.assertEqual(
+            probe.call_args.args[0], ("/bin/ps", "-o", "rss=", "-g", "101"),
+        )
+
+    def test_macos_missing_group_fallback_verifies_process_table(self):
+        targeted = subprocess.CompletedProcess(("ps",), 1, b"", None)
+        table = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 120\n102 101 80\n103 103 999\n", None,
+        )
+        with patch.object(sanitizer.subprocess, "run", side_effect=[targeted, table]) as probe:
+            measured = sanitizer._darwin_process_group_memory_bytes(
+                101, allow_empty=True, timeout_seconds=1,
+            )
+        self.assertEqual(measured, 200 * 1024)
+        self.assertEqual(probe.call_count, 2)
+        self.assertEqual(
+            probe.call_args_list[1].args[0],
+            ("/bin/ps", "-A", "-o", "pid=,pgid=,rss="),
+        )
+
+    def test_macos_missing_group_is_allowed_only_after_exit(self):
+        targeted = subprocess.CompletedProcess(("ps",), 1, b"", None)
+        table = subprocess.CompletedProcess(("ps",), 0, b"1 1 100\n", None)
+        with patch.object(sanitizer.subprocess, "run", return_value=targeted):
+            with self.assertRaises(sanitizer.SanitizerProcessMemoryLimitError):
+                sanitizer._darwin_process_group_memory_bytes(
+                    101, allow_empty=False, timeout_seconds=1,
+                )
+        with patch.object(sanitizer.subprocess, "run", side_effect=[targeted, table]):
+            self.assertEqual(
+                sanitizer._darwin_process_group_memory_bytes(
+                    101, allow_empty=True, timeout_seconds=1,
+                ),
+                0,
+            )
+
+    def test_malformed_macos_process_table_fails_closed(self):
+        targeted = subprocess.CompletedProcess(("ps",), 1, b"", None)
+        malformed = subprocess.CompletedProcess(("ps",), 0, b"not a process row\n", None)
+        with patch.object(sanitizer.subprocess, "run", side_effect=[targeted, malformed]):
+            with self.assertRaises(sanitizer.SanitizerProcessMemoryLimitError):
+                sanitizer._darwin_process_group_memory_bytes(
+                    101, allow_empty=True, timeout_seconds=1,
+                )
+
+    def test_missing_nonreaping_wait_support_fails_before_launch(self):
+        with patch.object(sanitizer.os, "waitid", None):
+            with patch.object(sanitizer.subprocess, "Popen") as launch:
+                with self.assertRaises(sanitizer.SanitizerProcessMemoryLimitError):
+                    run_script("pass")
+        launch.assert_not_called()
 
     def test_memory_overage_kills_the_process_group_and_returns_no_output(self):
         killed = []
