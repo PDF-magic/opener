@@ -164,7 +164,7 @@ def inspect_pdf_embedded_object_sizes(contents: bytes) -> PDFEmbeddedObjectSizes
                     raise PDFEmbeddedObjectSizeError(BLOCK_MESSAGE)
                 if "/Size" in params:
                     declared = _resolve(params.raw_get("/Size"))
-                    if type(declared) is not int or declared < 0:
+                    if not isinstance(declared, int) or isinstance(declared, bool) or declared < 0:
                         raise PDFEmbeddedObjectSizeError(BLOCK_MESSAGE)
                     large_declared += declared > LARGE_DECLARED_BYTES
 

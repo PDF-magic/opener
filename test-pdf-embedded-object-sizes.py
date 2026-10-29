@@ -89,8 +89,7 @@ class EmbeddedObjectSizeTests(unittest.TestCase):
 
     def test_large_compressed_attachment_is_detected_with_bounded_inflation(self):
         writer = writer_with_attachment(b"A" * (2 * 1024 * 1024), compress=True)
-        with patch.object(stage, "LARGE_DECODED_BYTES", 16384):
-            result = inspect_pdf_embedded_object_sizes(document(writer))
+        result = inspect_pdf_embedded_object_sizes(document(writer))
         self.assertEqual(result.embedded_stream_count, 1)
         self.assertEqual(result.large_encoded_count, 0)
         self.assertEqual(result.large_decoded_count, 1)
