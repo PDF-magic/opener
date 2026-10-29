@@ -93,10 +93,15 @@ class UnavailableProtectionDependenciesTests(unittest.TestCase):
         self.assertIn("selectedPreview == tier", source)
         self.assertIn('accessibilityIdentifier("protectionCard-\\(tier.rawValue)")', source)
         self.assertIn("Activation stays blocked while mandatory engines are unavailable.", source)
+        # op. 0336 persists the preview choice only, never an effective
+        # selection. A restored highlight is still not an active scan tier.
+        self.assertIn("PlannedProtectionLevelPreference.saveExplicitChoice(level)", source)
+        self.assertIn("PlannedProtectionLevelPreference.selected()", source)
+        self.assertIn("PreferredProtectionLevel(rawValue: tier.rawValue)", source)
         for forbidden in (
             "UserDefaults", "@AppStorage", "SelectedProtectionProfilePreference",
             "FileManager", "Process(", "NSWorkspace", "URLSession",
-            "scan-and-open", "clamscan(", "save(", "write(to:",
+            "scan-and-open", "clamscan(", "write(to:",
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)

@@ -90,6 +90,10 @@ jobs:
         run: python3 test-protection-settings-cards.py -v
       - name: Verify unavailable mandatory engines block effective profile selection
         run: python3 test-unavailable-protection-dependencies.py -v
+      - name: Verify Reset Protection Settings is confirmed and scoped to preview metadata
+        run: python3 test-reset-protection-settings.py -v
+      - name: Verify selected protection previews are saved without scanner activation
+        run: python3 test-protection-choice-persistence.py -v
       - name: Verify only measured protection timings appear in performance descriptions
         run: python3 test-protection-performance-implications.py -v
       - name: Verify displayed checks for each protection level match the policy schema
@@ -386,6 +390,18 @@ jobs:
           "$RUNNER_TEMP/TestInitialConfiguration"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
           "$RUNNER_TEMP/TestSelectedProtectionProfile"
+      - name: Verify existing installations retain Standard without changing active Built-in policy
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"
+          "$RUNNER_TEMP/TestLegacyStandardPreference"
+      - name: Verify Reset Protection Settings preserves scanner and user customizations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-protection-settings.swift -o "$RUNNER_TEMP/TestProtectionSettingsReset"
+          "$RUNNER_TEMP/TestProtectionSettingsReset"
+      - name: Verify planned protection preview persists across process restarts
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-protection-choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
+          "$RUNNER_TEMP/TestProtectionChoiceRestart"
       - name: Verify settings survive app restart and replacement executable
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"

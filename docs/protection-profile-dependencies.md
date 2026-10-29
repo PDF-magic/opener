@@ -2,8 +2,9 @@
 
 The native Protection settings page offers **preview-only** Standard, Enhanced
 and Maximum cards. Each card now explains why its **effective** policy cannot
-be activated. Choosing a preview remains harmless, in memory, and does not
-change saved preferences or scanner behavior.
+be activated. Choosing a preview saves only a separately scoped **planned preview preference**
+(see merged opener-0336 / PR #226), restores its highlight on reopening
+Settings, and never changes the *effective* scan policy or other preferences.
 
 - **Standard**: the named Standard policy is not integrated with the installed
   PDF scan gate. Its baseline ClamAV checks exist in the separate **Built-in**
@@ -35,5 +36,7 @@ merely because a separate module or binary happens to be present.
 mandatory control, the displayed reasons, no persistent settings writes, and
 the existing fail-closed effective policy resolution. The Linux scanner CI job
 runs this test; the required macOS build compiles the native view. This task
-does not add automatic retries, downgrade blocked profiles, change an existing
-installation's saved values, or authorize opening any PDF.
+does not add automatic retries, downgrade blocked profiles, reset or overwrite an existing
+installation's saved preview values, or authorize opening any PDF.
+
+The persisted preview behavior from [PR #226](https://github.com/PDF-magic/opener/pull/226) is retained. Failed preview saves leave the prior visible selection and stored level intact; explicit preview choices update only their dedicated preference. The activation-block explanations never authorize a scanner-tier change.

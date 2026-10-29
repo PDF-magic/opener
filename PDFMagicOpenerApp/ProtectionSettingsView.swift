@@ -1,8 +1,8 @@
 import SwiftUI
 
 // The installed ClamAV gate owns the effective protection policy. These
-// planned tier cards can be selected for comparison only; they deliberately
-// never persist a selection or imply an unavailable tier is enforcing scans.
+// planned tier cards can be selected for comparison only; their persistent
+// preview preference never claims an unavailable tier is enforcing scans.
 // These display-only check IDs mirror protection_policy_definitions.py.
 // The native view intentionally does not alter scanner policy or preferences.
 private struct ProtectionLevelCheck: Identifiable {
@@ -205,6 +205,8 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
 
 struct ProtectionSettingsView: View {
   @State private var selectedPreview: PlannedProtectionTier?
+  @State private var previewSaveStatus: String?
+  @State private var showProtectionResetConfirmation = false
 
   var body: some View {
     ScrollView {
@@ -241,14 +243,20 @@ struct ProtectionSettingsView: View {
 
         GroupBox("Planned protection levels") {
           VStack(alignment: .leading, spacing: 12) {
-            Text("Choose a card to preview its protections. All three are planned; choosing a card does not enable it, save a preference or change the scanner.")
+            Text("Choose a card to preview its protections. All three are planned; choosing a card does not enable it, but immediately saves your preview choice without changing the scanner.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
 
             ForEach(PlannedProtectionTier.allCases) { tier in
               Button {
-                // This is a UI-only preview; scanner policy is unchanged.
+                // Persist only the planned preview, never the active scanner policy.
+                guard let level = PreferredProtectionLevel(rawValue: tier.rawValue),
+                      PlannedProtectionLevelPreference.saveExplicitChoice(level) else {
+                  previewSaveStatus = "Could not save the preview choice. The previously saved level is unchanged."
+                  return
+                }
                 selectedPreview = tier
+                previewSaveStatus = "\(tier.title) preview saved. Active protection remains Built-in."
               } label: {
                 HStack(alignment: .top, spacing: 12) {
                   Image(systemName: selectedPreview == tier
@@ -309,6 +317,14 @@ struct ProtectionSettingsView: View {
               .accessibilityHint("Show \(tier.title) details. This does not change scanning. Activation stays blocked while mandatory engines are unavailable.")
             }
 
+            if let previewSaveStatus {
+              Text(previewSaveStatus)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("protectionPreviewSaveStatus")
+            }
+
             if let selectedPreview {
               VStack(alignment: .leading, spacing: 6) {
                 Text("Previewing \(selectedPreview.title)")
@@ -362,6 +378,21 @@ struct ProtectionSettingsView: View {
         }
         .accessibilityIdentifier("plannedProtectionCardsSection")
 
+        GroupBox("Protection settings reset") {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("Restore the saved planned protection preview to Standard. This does not change Built-in ClamAV protection, your chosen PDF application, scan notifications or other settings.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Button("Reset Protection Settings") {
+              showProtectionResetConfirmation = true
+            }
+            .accessibilityIdentifier("resetProtectionSettingsButton")
+            .accessibilityHint("Confirm before resetting only the saved planned protection preview to Standard.")
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityIdentifier("resetProtectionSettingsSection")
+
         GroupBox("Malware scanning") {
           protectionDetail(
             "ClamAV scanning",
@@ -389,7 +420,7 @@ struct ProtectionSettingsView: View {
         }
         .accessibilityIdentifier("verifiedHandoffSection")
 
-        Text("These protections are managed by the installed PDF opener. This page is informational and does not change scan settings.")
+        Text("This page is informational and does not change scan settings. Saved preview choices are restored after restarting Settings, while Built-in ClamAV remains active.")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -398,6 +429,33 @@ struct ProtectionSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("protectionSettingsPage")
+    .onAppear {
+      if let stored = PlannedProtectionLevelPreference.selected(),
+         let tier = PlannedProtectionTier(rawValue: stored.rawValue) {
+        selectedPreview = tier
+      }
+    }
+    .confirmationDialog(
+      "Reset Protection Settings?",
+      isPresented: $showProtectionResetConfirmation
+    ) {
+      Button("Reset Protection Settings", role: .destructive) {
+        resetProtectionPreview()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Reset only the planned protection preview to Standard? Your active Built-in ClamAV scanner, PDF app, notifications and other preferences will not change.")
+    }
+  }
+
+  private func resetProtectionPreview() {
+    guard ProtectionSettingsReset.reset() else {
+      previewSaveStatus = "Could not reset the protection preview. Your saved choice was preserved."
+      return
+    }
+    // Reflect the value only after the shared preference confirms persistence.
+    selectedPreview = PlannedProtectionTier(rawValue: PreferredProtectionLevel.standard.rawValue)
+    previewSaveStatus = "Protection preview reset to Standard. Active protection remains Built-in."
   }
 
   private func includedCheckDetail(_ check: ProtectionLevelCheck) -> some View {
