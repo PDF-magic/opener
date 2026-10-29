@@ -225,7 +225,7 @@ def inspect_pdf_unsupported_features(contents: bytes) -> PDFUnsupportedFeatureRe
                 features.add(UnsupportedPDFFeature.INTERACTIVE_FORMS)
             if "/XFA" in obj:
                 features.add(UnsupportedPDFFeature.XFA_FORMS)
-            if ("/EmbeddedFiles" in obj or "/EmbeddedFile" in obj or "/EF" in obj
+            if ("/EmbeddedFiles" in obj or "/EmbeddedFile" in obj or kind == "/EmbeddedFile" or "/EF" in obj
                     or "/AF" in obj or subtype == "/FileAttachment"
                     or kind == "/Filespec"):
                 features.add(UnsupportedPDFFeature.EMBEDDED_FILES)
@@ -247,7 +247,7 @@ def inspect_pdf_unsupported_features(contents: bytes) -> PDFUnsupportedFeatureRe
             if (kind == "/Sig" or field_type == "/Sig" or "/ByteRange" in obj
                     or any(key in obj for key in ("/DocMDP", "/UR", "/UR3"))):
                 features.add(UnsupportedPDFFeature.DIGITAL_SIGNATURES)
-            if "/Prev" in obj:
+            if obj is reader.trailer and "/Prev" in obj:
                 features.add(UnsupportedPDFFeature.INCREMENTAL_REVISIONS)
 
             if "/JS" in obj or action == "/JavaScript":
