@@ -136,7 +136,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
             ("/F", NumberObject(3)),
             ("/F", TextStringObject("")),
             ("/F", TextStringObject("X" * (MAX_FILENAME_CHARACTERS + 1))),
-            ("/F", ByteStringObject(b"\xff\xff")),
+            ("/F", ByteStringObject(b"\xfe\xff\x00")),
             ("/F", TextStringObject("private\x00hidden")),
             ("/Type", NameObject("/Unexpected")),
             ("/EF", NumberObject(7)),
