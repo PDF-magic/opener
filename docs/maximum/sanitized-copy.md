@@ -21,6 +21,14 @@ page side, 24 million total pixels, 32 MiB output, and 45 elapsed
 seconds. Password-protected PDFs, cropped pages, and out-of-range dimensions remain
 unsupported. Pages are emitted in source order with their media-box dimensions
 and validated right-angle rotation (0, 90, 180, or 270 degrees) preserved.
+The sanitizer also enforces a fixed 1 GiB process-group memory budget.
+Linux applies a non-increasing hard `RLIMIT_AS` cap before converter `exec`
+and monitors aggregate process-group RSS. On macOS, a watchdog checks the
+process group's RSS every 50 ms and terminates it when the budget is exceeded.
+The macOS watchdog is fail-closed but not an atomic kernel-enforced limit;
+a native allocation can briefly exceed the target before its next poll.
+Missing or unreadable memory measurements also stop conversion.
+
 The rebuilt PDF is checked against the source page geometry before it can be
 offered, so a missing, reordered, resized, or wrongly rotated page fails closed.
 

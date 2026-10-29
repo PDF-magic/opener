@@ -78,6 +78,8 @@ class SanitizerReportingTests(unittest.TestCase):
     def test_timeout_start_error_and_invalid_output_are_not_malware(self):
         data = valid_pdf()
         scenarios = (
+            (copies.SanitizerProcessMemoryLimitError("private"),
+             copies.SanitizerFailureKind.MEMORY_LIMIT_FAILED),
             (copies.SanitizerProcessTimedOut("private"), copies.SanitizerFailureKind.TIMED_OUT),
             (OSError("/private/secret/file"), copies.SanitizerFailureKind.LAUNCH_FAILED),
         )

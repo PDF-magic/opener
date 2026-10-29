@@ -7,13 +7,15 @@ PDF scan gate. For caller-visible diagnostics, use
 `SanitizerAttempt` containing exactly one `offer` or `failure`.
 
 `SanitizerFailureReport` distinguishes `sanitizerCrashed`,
-`sanitizerTimedOut`, `sanitizerLaunchFailed`,
-`sanitizerProcessFailed`, `sanitizerInvalidOutput`,
+`sanitizerTimedOut`, `sanitizerMemoryLimitFailed`,
+`sanitizerLaunchFailed`, `sanitizerProcessFailed`, `sanitizerInvalidOutput`,
 `unsupportedInput` and `sanitizerUnavailable`. A POSIX worker's
 **negative exit status** indicates signal termination and is reported as a
 sanitizer crash. A positive nonzero exit is a failed conversion, **not** a
-claim about what caused it; a timeout is separate. Malformed or incomplete
-sanitizer output is rejected, never offered.
+claim about what caused it; a timeout is separate. The memory-limit category
+means the fixed budget was exceeded or the supervisor could not verify usage;
+it is not a malware verdict. Malformed or incomplete sanitizer output is
+rejected, never offered.
 
 The failure report's detached `to_dict()` contains a fixed sanitized
 user message, `status="sanitizerFailure"`,
