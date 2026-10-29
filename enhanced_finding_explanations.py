@@ -41,6 +41,8 @@ _EXPLANATIONS = MappingProxyType({
         "Conflicting PDF structures prevent an unambiguous interpretation.",
     FindingCode.unresolvedReference:
         "A referenced PDF object could not be resolved reliably.",
+    FindingCode.knownMaliciousContent:
+        "Known malicious content was identified; opening is blocked.",
     FindingCode.activeContent:
         "A PDF active-content capability was found; this does not prove execution.",
     FindingCode.suspiciousUrl:
@@ -70,6 +72,10 @@ _HANDLING = MappingProxyType({
 def _result_for(finding: AnalysisFinding) -> FindingResult:
     if type(finding) is not AnalysisFinding:
         raise TypeError("Expected a validated structured finding")
+    # Confirmed malicious content is code-level blocking evidence, not a
+    # severity suggestion that a producer may downgrade to informational.
+    if finding.code is FindingCode.knownMaliciousContent:
+        return FindingResult.blocking
     if finding.code in _INCOMPLETE_CODES:
         return FindingResult.inspectionIncomplete
     if finding.severity in (FindingSeverity.blocking, FindingSeverity.critical):

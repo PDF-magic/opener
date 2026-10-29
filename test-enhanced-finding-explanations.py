@@ -68,6 +68,27 @@ class FindingExplanationsTests(unittest.TestCase):
                 self.assertEqual(result.to_dict()["pageNumber"], 4)
                 self.assertEqual(result.to_dict()["result"]["outcome"], outcome.value)
 
+    def test_known_malicious_content_always_blocks_even_at_informational_severity(self):
+        for severity in FindingSeverity:
+            with self.subTest(severity=severity):
+                finding = AnalysisFinding(FindingCode.knownMaliciousContent, severity)
+                explained = ExplainedFinding(finding)
+                self.assertIs(explained.result, FindingResult.blocking)
+                self.assertIs(explained.next_action, FindingNextAction.stopOpening)
+                self.assertEqual(
+                    explained.explanation,
+                    "Known malicious content was identified; opening is blocked.",
+                )
+                self.assertNotIn("EICAR", explained.explanation)
+        report = explain_analysis_findings(report_for(AnalysisFinding(
+            FindingCode.knownMaliciousContent, FindingSeverity.informational,
+        )))
+        self.assertTrue(report.requires_block)
+        self.assertFalse(report.authorizes_open)
+        item = report.to_dict()["stageResults"][0]["findings"][0]
+        self.assertEqual(item["result"]["outcome"], "blocking")
+        self.assertEqual(item["result"]["nextAction"], "stopOpening")
+
     def test_inspection_failure_and_limit_cannot_be_downgraded_to_informational(self):
         for code in (FindingCode.inspectionFailure, FindingCode.resourceLimit):
             finding = AnalysisFinding(code, FindingSeverity.informational)
@@ -172,9 +193,10 @@ class FindingExplanationsTests(unittest.TestCase):
         native = (Path(__file__).with_name("scan-progress-view.swift")
                   .read_text(encoding="utf-8"))
         self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
-        self.assertIn('guard let value = rawAssessment as? String, value == "notConfirmed" else', native)
-        self.assertIn('malwareAssessment = "notConfirmed"', native)
-        self.assertIn('— \\(resultLabel) · Malware not confirmed', native)
+        self.assertIn('guard let value = rawAssessment as? String,', native)
+        self.assertIn('let label = Self.malwareAssessments[value] else {', native)
+        self.assertIn('malwareAssessmentLabel = "Malware not confirmed"', native)
+        self.assertIn('— \\(resultLabel) · \\(malwareAssessmentLabel)', native)
 
     def test_scanner_and_profile_remain_untouched(self):
         scanner = (Path(__file__).parent / "scan-and-open.py").read_text()
