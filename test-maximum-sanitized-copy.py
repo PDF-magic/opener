@@ -161,5 +161,39 @@ class NativeRasterizationTests(unittest.TestCase):
         self.assertTrue(copies._passive_pages(offer.pdf_bytes, 2))
 
 
+    def test_maximum_page_rendering_resolution_is_capped_per_page(self):
+        # Exercise the real CoreGraphics renderer at the largest supported
+        # page dimensions, then inspect the *generated image* rather than
+        # merely asserting the configured source constant.
+        writer = PdfWriter()
+        writer.add_blank_page(width=1440, height=1440)
+        source = BytesIO()
+        writer.write(source)
+
+        offer = copies.offer_sanitized_pdf_copy(source.getvalue())
+        self.assertIsNotNone(offer)
+        self.assertFalse(offer.permits_open)
+        self.assertTrue(offer.needs_separate_scan)
+
+        reader = PdfReader(BytesIO(offer.pdf_bytes), strict=True)
+        self.assertEqual(len(reader.pages), 1)
+        resources = reader.pages[0]["/Resources"].get_object()
+        xobjects = resources["/XObject"].get_object()
+        images = [
+            reference.get_object()
+            for reference in xobjects.values()
+            if reference.get_object().get("/Subtype") == "/Image"
+        ]
+        self.assertEqual(len(images), 1)
+        image = images[0]
+        width = int(image["/Width"])
+        height = int(image["/Height"])
+        self.assertGreater(width, 0)
+        self.assertGreater(height, 0)
+        self.assertLessEqual(width, 2048)
+        self.assertLessEqual(height, 2048)
+        self.assertLessEqual(width * height, 24_000_000)
+
+
 if __name__ == "__main__":
     unittest.main()
