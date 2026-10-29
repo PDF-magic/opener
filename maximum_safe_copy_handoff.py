@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 import importlib.util
 import os
+import secrets
 from pathlib import Path
 import stat
 import sys
@@ -110,12 +111,13 @@ def _source_unchanged(path, identity):
 def _stage_private_copy(pdf_bytes):
     """New 0700 private directory and exclusive 0600 PDF; never source path."""
     directory = None
+    path = None
     staged = False
     try:
         directory = Path(tempfile.mkdtemp(prefix="pdf-magic-safe-copy-"))
         if stat.S_IMODE(directory.stat().st_mode) != 0o700:
             raise MaximumSafeCopyError(BLOCK_MESSAGE)
-        path = directory / "safe-copy.pdf"
+        path = directory / f"safe-copy-{secrets.token_hex(16)}.pdf"
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
         flags |= getattr(os, "O_CLOEXEC", 0)
         descriptor = os.open(path, flags, 0o600)
@@ -136,7 +138,13 @@ def _stage_private_copy(pdf_bytes):
     finally:
         # A failed staging attempt must not leave a partial private file.
         if directory is not None and not staged:
-            _discard_private_copy(directory / "safe-copy.pdf")
+            if path is not None:
+                _discard_private_copy(path)
+            else:
+                try:
+                    os.rmdir(directory)
+                except OSError:
+                    pass
 
 
 def _discard_private_copy(path):
