@@ -163,6 +163,32 @@ class NativeRasterizationTests(unittest.TestCase):
         self.assertFalse(offer.permits_open)
         self.assertTrue(offer.needs_separate_scan)
 
+    def test_debug_page_geometry_path(self):
+        source_bytes = sample_pdf()
+        converter = copies._trusted_converter()
+        original = PdfReader(BytesIO(source_bytes), strict=True)
+        geometry = tuple(copies._page_geometry(page) for page in original.pages)
+        converted = copies.run_limited_converter(
+            (str(converter),), source_bytes,
+            timeout_seconds=copies.CONVERSION_TIMEOUT_SECONDS,
+            max_output_bytes=copies.MAX_OUTPUT_BYTES,
+            environment={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
+                         "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+        rendered = PdfReader(BytesIO(converted.stdout), strict=True)
+        print("DEBUG source geometry", geometry)
+        print("DEBUG rendered geometry", [
+            (float(page.mediabox.width), float(page.mediabox.height),
+             repr(page.get_inherited("/Rotate")), repr(page.cropbox),
+             repr(page.mediabox), copies._page_geometry(page))
+            for page in rendered.pages
+        ])
+        import maximum_active_content_removal as removal
+        print("DEBUG rebuild without expected geometry",
+              removal.remove_active_pdf_functionality(converted.stdout, 1) is not None)
+        print("DEBUG rebuild with expected geometry",
+              removal.remove_active_pdf_functionality(converted.stdout, 1, geometry) is not None)
+
     def test_real_conversion_preserves_page_order_dimensions_and_rotation(self):
         expected = (
             (180, 240, 0),
