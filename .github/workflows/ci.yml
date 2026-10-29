@@ -384,6 +384,10 @@ jobs:
           "$RUNNER_TEMP/TestInitialConfiguration"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
           "$RUNNER_TEMP/TestSelectedProtectionProfile"
+      - name: Verify existing installations retain Standard without changing active Built-in policy
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"
+          "$RUNNER_TEMP/TestLegacyStandardPreference"
       - name: Verify settings survive app restart and replacement executable
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"

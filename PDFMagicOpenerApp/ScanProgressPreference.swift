@@ -146,6 +146,89 @@ enum SelectedProtectionProfilePreference {
   }
 }
 
+// This is a *planned level preference*, never the installed scanner policy.
+// Existing installations get the Standard preview preference; new installs
+// retain no named preference until a separately verified selection workflow.
+// Neither this marker nor an explicit user change authorizes opening a PDF.
+enum PreferredProtectionLevel: String {
+  case standard
+  case enhanced
+  case maximum
+}
+
+enum PlannedProtectionLevelPreference {
+  static let key = "preferredProtectionLevel"
+  // Distinguish a fresh installation from an older one across later launches.
+  // This value is not a selectable protection tier or active scanner policy.
+  static let newInstallationMarker = "unassigned"
+  static let suiteName = ScanProgressPreference.suiteName
+
+  static func selected(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> PreferredProtectionLevel? {
+    guard let defaults else { return nil }
+    _ = defaults.synchronize()
+    guard let raw = defaults.object(forKey: key) as? String else { return nil }
+    return PreferredProtectionLevel(rawValue: raw)
+  }
+
+  // Determine the cohort *before* InitialConfiguration creates any defaults.
+  // Ignore unrelated arbitrary application keys; require a recognized legacy
+  // configuration marker or an existing supported preference.
+  static func wasInstalledBeforeInitialization(defaults: UserDefaults) -> Bool {
+    let legacyKeys = [
+      ActiveConfigurationSchemaVersion.key,
+      SelectedProtectionProfilePreference.key,
+      ScanProgressPreference.key,
+      SuccessfulScanNotificationPreference.key,
+      BlockedFileNotificationPreference.key,
+    ]
+    return legacyKeys.contains { defaults.object(forKey: $0) != nil }
+  }
+
+  // Existing installations keep Standard, while a new installation receives
+  // a neutral marker that prevents false legacy detection after app restart.
+  // Both cases require a valid schema and Built-in effective scanner policy.
+  // Never reset an explicit user selection or malformed/future value.
+  @discardableResult
+  static func initializeForInstallation(
+    defaults: UserDefaults, existingBeforeInitialization: Bool
+  ) -> Bool {
+    guard ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
+            PDFMagicConfigurationSchema.currentVersion,
+          SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn,
+          defaults.object(forKey: key) == nil else { return false }
+    // A fresh install needs a durable neutral marker; otherwise a second
+    // launch would misidentify its newly written baseline keys as legacy.
+    defaults.set(existingBeforeInitialization
+      ? PreferredProtectionLevel.standard.rawValue : newInstallationMarker,
+      forKey: key)
+    return true
+  }
+
+  // An explicit preview choice is separate from selectedProtectionProfile.
+  // It never changes the effective Built-in policy or scanner settings.
+  @discardableResult
+  static func saveExplicitChoice(
+    _ level: PreferredProtectionLevel,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults,
+          ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
+            PDFMagicConfigurationSchema.currentVersion,
+          SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn else {
+      return false
+    }
+    let oldValue = defaults.object(forKey: key)
+    defaults.set(level.rawValue, forKey: key)
+    if defaults.synchronize() && selected(defaults: defaults) == level { return true }
+    if let oldValue { defaults.set(oldValue, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
 // A read-only effective view shared by the preferences app and native PDF
 // opener. Each setting uses the same per-user domain, defaults and validation.
 // It cannot modify a scanner verdict or any persisted configuration.
@@ -198,6 +281,9 @@ enum InitialConfiguration {
     defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
   ) -> Bool {
     guard let defaults else { return false }
+    // Capture legacy state before a first-run initialization writes its keys.
+    let existingBeforeInitialization =
+      PlannedProtectionLevelPreference.wasInstalledBeforeInitialization(defaults: defaults)
     // Record the active version without overwriting incompatible metadata.
     guard ActiveConfigurationSchemaVersion.recordIfNeeded(defaults: defaults) else { return false }
     var initializedMissingSetting = false
@@ -214,6 +300,11 @@ enum InitialConfiguration {
       initializedMissingSetting = true
     }
     if PDFMagicPolicySettingsUpgrade.seedMissingStoredPolicy(defaults: defaults) {
+      initializedMissingSetting = true
+    }
+    if PlannedProtectionLevelPreference.initializeForInstallation(
+      defaults: defaults, existingBeforeInitialization: existingBeforeInitialization
+    ) {
       initializedMissingSetting = true
     }
     // A relaunch or an in-place upgrade must not re-save already persisted
