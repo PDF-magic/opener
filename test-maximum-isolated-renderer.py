@@ -169,7 +169,8 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("(deny default)", command[2])
         self.assertIn("(deny network*)", command[2])
         self.assertIn("(deny process-fork)", command[2])
-        self.assertIn('(subpath (param "WORKER_DIR"))', command[2])
+        self.assertIn('(literal (param "WORKER_SUPPORT"))', command[2])
+        self.assertNotIn('(subpath (param "WORKER_DIR"))', command[2])
         self.assertNotIn("(allow file-write", command[2])
         python_index = command.index(context["python"])
         self.assertEqual(command[python_index:python_index + 3],
@@ -377,6 +378,11 @@ class MaximumRendererTests(unittest.TestCase):
                         worker.index("import pymupdf"))
         self.assertLess(worker.index("apply_linux_network_denial()"),
                         worker.index("document_bytes = sys.stdin.buffer.read"))
+        linux_fs_guard = worker.index(
+            "Linux currently lacks the parent-enforced renderer filesystem"
+        )
+        self.assertLess(linux_fs_guard, worker.index("document_bytes = sys.stdin.buffer.read"))
+        self.assertLess(linux_fs_guard, worker.index("import pymupdf"))
         self.assertIn('os.environ.get("PDF_MAGIC_RENDER_NETWORK_SANDBOX")', worker)
         self.assertIn("annots=False", worker)
         self.assertIn("MAX_RENDER_PIXELS", worker)
