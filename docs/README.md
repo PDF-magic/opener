@@ -1,0 +1,22 @@
+# Technical documentation
+
+The reference pages are grouped by feature rather than keeping every page in one flat directory.
+
+| Area | Contents |
+| --- | --- |
+| [Enhanced](enhanced/) | Analysis and inspection behavior |
+| [Maximum](maximum/) | Maximum-profile isolation, conversion, and fidelity |
+| [PDF](pdf/) | PDF structures, metadata, embedded content, and parsing |
+| [Protection](protection/) | Protection policies, choices, and exceptions |
+| [Scanner](scanner/) | Scanner arguments, safety, and failure handling |
+
+General installation, application, browser, and operational guides remain in this `docs/` directory.
+
+## Filename conventions
+
+- Use lowercase **kebab-case** for documentation, scripts, and non-importable assets.
+- When a folder already names a feature, do **not** repeat that prefix in the filename: `docs/pdf/structure-parser.md` rather than `docs/pdf/pdf-structure-parser.md`.
+- Keep native tool conventions where names are part of an interface. Importable Python modules retain `snake_case.py`; Swift/Xcode source and project identifiers retain their established names. Those require separate, tested API or build-system migrations.
+- GitHub Actions workflow files remain directly in `.github/workflows/`, as GitHub requires.
+
+The CI documentation check verifies that pages in these feature folders retain kebab-case names, avoid duplicate directory prefixes, and point to existing local Markdown destinations.

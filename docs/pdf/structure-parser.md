@@ -1,7 +1,7 @@
 # Optional PDF structure parser (opener-0283)
 
 The comparative selection and memory evaluation for opener-0406 is in
-[PDF parser evaluation](pdf-parser-evaluation.md). The current version pin
+[PDF parser evaluation](parser-evaluation.md). The current version pin
 is retained deliberately; it is not an unreviewed dependency upgrade.
 
 The `pdf_structure_parser.parse_pdf_structure(bytes)` entry point uses the

@@ -27,5 +27,5 @@ jobs:
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: Reject temporary PDF symlink, hardlink and directory substitutions
         run: python3 test-maximum-temporary-output.py -v
-      - name: Verify random safe-copy filenames and separately scanned handoff
+      - name: Verify random filenames, source-request association and separately scanned handoff
         run: python3 test-maximum-safe-copy-handoff.py -v
