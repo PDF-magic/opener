@@ -1,8 +1,6 @@
 name: Optional technical finding details
 
 on:
-  push:
-    branches: [main]
   pull_request:
     paths:
       - "scan-progress-view.swift"
@@ -11,6 +9,10 @@ on:
       - "brave-pdf-opener.swift"
       - "PDFMagicOpenerApp/ScanProgressPreference.swift"
       - "twilight-reading.png"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
