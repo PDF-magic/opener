@@ -36,7 +36,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         # The trusted converter is independently covered by opener-0313/0315.
         return SanitizedCopyOffer(b"%PDF-copy fixture", 1)
 
-    def _open(self, scan=None):
+    def _open(self, scan=None, source_request=None):
         if scan is None:
             scan = lambda p, s: SimpleNamespace(
                 status="clean", effective_policy_id=EFFECTIVE_POLICY_ID,
@@ -46,7 +46,9 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 patch.object(route, "_scan_staged_copy", side_effect=scan):
             return route.open_required_maximum_safe_copy(
                 self.source,
-                disposition=route.MaximumCopyDisposition.REQUIRED)
+                disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=(source_request if source_request is not None
+                                else route.begin_source_scan_request(self.source)))
 
     def test_required_policy_opens_only_private_separately_scanned_copy(self):
         requests = []
@@ -75,9 +77,10 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         for handoff in handoffs:
             self.addCleanup(route._discard_private_copy, handoff.copy_path)
         self.assertEqual(len({handoff.copy_path.name for handoff in handoffs}), 8)
+        request = route.begin_source_scan_request(self.source)
         with patch.object(route.secrets, "token_hex",
                           return_value="b" * 32) as random_token:
-            handoff = self._open()
+            handoff = self._open(source_request=request)
         self.addCleanup(route._discard_private_copy, handoff.copy_path)
         random_token.assert_called_once_with(16)
         self.assertEqual(handoff.copy_path.name, "safe-copy-" + "b" * 32 + ".pdf")
@@ -101,7 +104,8 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 with self.assertRaises(route.MaximumSafeCopyError):
                     route.open_required_maximum_safe_copy(
                         self.source,
-                        disposition=route.MaximumCopyDisposition.REQUIRED)
+                        disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=route.begin_source_scan_request(self.source))
                 launch.assert_not_called()
 
     def test_failed_copy_scan_or_launch_never_retries_original(self):
@@ -137,14 +141,16 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
             ) as converter, self.assertRaises(route.MaximumSafeCopyError):
                 route.open_required_maximum_safe_copy(
                     item,
-                    disposition=route.MaximumCopyDisposition.REQUIRED)
+                    disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=route.begin_source_scan_request(self.source))
             converter.assert_not_called()
         self.source.write_bytes(b"%PDF-bad")
         with patch.object(route, "offer_sanitized_pdf_copy") as converter, \
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
                 self.source,
-                disposition=route.MaximumCopyDisposition.REQUIRED)
+                disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=route.begin_source_scan_request(self.source))
         # The converter is allowed to reject malformed input, never open it.
         self.assertEqual(converter.call_count, 1)
 
@@ -158,7 +164,8 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
                 self.source,
-                disposition=route.MaximumCopyDisposition.REQUIRED)
+                disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=route.begin_source_scan_request(self.source))
         scan.assert_not_called()
 
     def test_failed_private_copy_write_cleans_up_without_a_scan(self):
@@ -176,10 +183,64 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
                 self.source,
-                disposition=route.MaximumCopyDisposition.REQUIRED)
+                disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=route.begin_source_scan_request(self.source))
         self.assertEqual(len(created), 1)
         self.assertFalse(created[0].exists())
         scanner.assert_not_called()
+
+    def test_every_safe_copy_retains_its_own_source_scan_request(self):
+        first = route.begin_source_scan_request(self.source)
+        second = route.begin_source_scan_request(self.source)
+        self.assertNotEqual(first.request_id, second.request_id)
+        self.assertEqual(len(first.request_id), 32)
+        self.assertTrue(all(char in "0123456789abcdef"
+                            for char in first.request_id))
+        self.assertNotIn(self.source.name, repr(first))
+
+        one = self._open(source_request=first)
+        two = self._open(source_request=second)
+        self.addCleanup(route._discard_private_copy, one.copy_path)
+        self.addCleanup(route._discard_private_copy, two.copy_path)
+        self.assertNotEqual(one.copy_path, two.copy_path)
+        self.assertEqual(one.source_scan_request_id, first.request_id)
+        self.assertEqual(two.source_scan_request_id, second.request_id)
+        self.assertNotIn(first.request_id, str(one.to_public_metadata()))
+        self.assertNotIn(str(self.source), str(one.to_public_metadata()))
+        self.assertEqual(self.source.read_bytes(), self.original)
+        with self.assertRaises(FrozenInstanceError):
+            one.source_scan_request_id = second.request_id
+
+    def test_missing_forged_or_wrong_source_request_never_converts(self):
+        legitimate = route.begin_source_scan_request(self.source)
+        forged = route.SourceScanRequest(legitimate.request_id)
+        other = Path(self.temporary.name) / "other-source.pdf"
+        other.write_bytes(self.original)
+        wrong_source = route.begin_source_scan_request(other)
+        for request in (None, "request", forged, wrong_source):
+            with self.subTest(request=type(request).__name__), \
+                    patch.object(route, "offer_sanitized_pdf_copy") as convert, \
+                    patch.object(route, "_stage_private_copy") as stage, \
+                    self.assertRaises(route.MaximumSafeCopyError):
+                route.open_required_maximum_safe_copy(
+                    self.source, disposition=route.MaximumCopyDisposition.REQUIRED,
+                    source_request=request)
+            convert.assert_not_called()
+            stage.assert_not_called()
+        self.assertEqual(self.source.read_bytes(), self.original)
+        self.assertEqual(other.read_bytes(), self.original)
+
+    def test_changed_source_invalidates_its_request_before_conversion(self):
+        request = route.begin_source_scan_request(self.source)
+        self.source.write_bytes(self.original + b"modified after source request")
+        with patch.object(route, "offer_sanitized_pdf_copy") as convert, \
+                patch.object(route, "_stage_private_copy") as stage, \
+                self.assertRaises(route.MaximumSafeCopyError):
+            route.open_required_maximum_safe_copy(
+                self.source, disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=request)
+        convert.assert_not_called()
+        stage.assert_not_called()
 
     @unittest.skipUnless(sys.platform == "darwin",
                          "Native sanitized conversion only runs on macOS")
@@ -198,7 +259,8 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         with patch.object(route, "_scan_staged_copy", side_effect=scanner):
             result = route.open_required_maximum_safe_copy(
                 self.source,
-                disposition=route.MaximumCopyDisposition.REQUIRED)
+                disposition=route.MaximumCopyDisposition.REQUIRED,
+                source_request=route.begin_source_scan_request(self.source))
         self.addCleanup(route._discard_private_copy, result.copy_path)
         self.assertEqual(destination, [result.copy_path])
         self.assertFalse(result.original_opened)
