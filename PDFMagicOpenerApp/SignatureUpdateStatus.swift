@@ -20,6 +20,8 @@ struct SignatureUpdateStatus {
       return "The installed FreshClam updater was unavailable. Definitions may be outdated."
     case "freshclam-error":
       return "FreshClam did not finish successfully. Definitions may be outdated."
+    case "incomplete-download":
+      return "Incomplete ClamAV signature download detected. Definitions may be outdated."
     default:
       return nil
     }
@@ -85,7 +87,7 @@ struct SignatureUpdateStatus {
     }
     guard Int64(count) == metadata.st_size,
           let raw = String(bytes: bytes.prefix(Int(count)), encoding: .ascii),
-          let match = raw.range(of: #"^[0-9]{1,12} (freshclam-error|updater-unavailable)\n?$"#,
+          let match = raw.range(of: #"^[0-9]{1,12} (freshclam-error|updater-unavailable|incomplete-download)\n?$"#,
                                 options: .regularExpression),
           match == raw.startIndex..<raw.endIndex else { return nil }
     let fields = raw.trimmingCharacters(in: .newlines).split(separator: " ")
