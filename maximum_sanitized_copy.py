@@ -35,6 +35,8 @@ OFFER_EXPLANATION = (
     "This is newly generated content, not the untouched original PDF. "
     "Pages are flattened into images; searchable text, links, forms, "
     "attachments and other interactive features are not preserved. "
+    "Flattening can invalidate digital signatures; the generated copy "
+    "must not be treated as a signed original. "
     "This is not a malware-clean verdict; scan the generated copy separately."
 )
 
