@@ -80,10 +80,17 @@ hint. Labels are derived from the existing page titles and preserve native
 sidebar selection, keyboard navigation, and current-page state.
 
 The **Updates** sidebar entry (opener-0182) provides a read-only page
-showing the installed application version and explaining application
-and ClamAV definition updates. It does not check for, download, or
-install updates, claim unverified update status, or modify any scan
-protections or saved preferences.
+showing the installed application version and explaining application and
+ClamAV definition updates. The malware-definition section (opener-0380)
+also shows the last attempted and last successful FreshClam update times,
+read from the existing local timestamps added in opener-0378. Unknown,
+invalid, future, symlinked or unavailable records display **Unavailable**;
+a newer attempt without a newer success is not presented as a confirmed
+successful update. Times are displayed in the user's local time zone.
+This is historical status only: it cannot prove signatures are fresh or
+complete and does not replace the installed 48-hour scanner freshness gate.
+Opening Settings does not run updates, modify saved preferences or change
+scanner protections.
 
 **Technical help text (opener-0194):** Inline, accessible informational notes
 clarify ClamAV malware scans, fail-closed behavior, locally available files,
@@ -299,7 +306,7 @@ The installer downloads ClamAV's official signatures and installs a user LaunchA
 
 The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
 
-While FreshClam is actually running, Preferences → Updates displays **Signature update in progress** with an indeterminate spinner and the observed start time. It refreshes the display every two seconds while visible; a progress percentage is intentionally not invented. The updater places an atomic, owner-PID-tagged `signatures/update-in-progress` marker for the lifetime of its update and removes only its own marker when finished or failed. A stale marker, dead process, invalid file, or symlink never displays live progress. This status does not imply a successful update, relax the 48-hour freshness gate, or change user settings.
+While FreshClam runs, Preferences → Updates displays **Signature update in progress** with an indeterminate spinner and observed start time. The page refreshes every two seconds while visible, including the historical attempt and success timestamps. No download percentage is invented. The updater writes a tiny PID-tagged `signatures/update-in-progress` marker and clears only its own marker when it finishes or fails. Dead processes, stale records, symlinks and malformed markers cannot show active progress. This display does not guarantee success, relax the scanner's 48-hour freshness check or change any user preferences.
 
 ```sh
 bash update-malware-signatures.sh

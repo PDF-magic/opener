@@ -3,6 +3,22 @@ import SwiftUI
 // An informational Updates page only. It must not download or install
 // software, alter ClamAV definitions, or write to user preferences.
 struct UpdatesSettingsView: View {
+
+  // A read-only snapshot taken when the Updates pane is constructed.
+  // Times are displayed in the user's local time zone; "Unavailable" is
+  // intentional for older installations or invalid/unreadable markers.
+  private func timestampRow(_ label: String, _ date: Date?) -> some View {
+    let value = date.map { $0.formatted(date: .abbreviated, time: .standard) }
+      ?? "Unavailable"
+    return ViewThatFits(in: .horizontal) {
+      LabeledContent(label, value: value)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(label).font(.headline)
+        Text(value).fixedSize(horizontal: false, vertical: true)
+      }
+    }
+  }
+
   private var applicationVersion: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
       ?? "Unavailable"
@@ -48,10 +64,9 @@ struct UpdatesSettingsView: View {
         .accessibilityIdentifier("applicationUpdatesSection")
 
         GroupBox("Malware definition updates") {
-          VStack(alignment: .leading, spacing: 10) {
-            // A live indeterminate indicator, never a guessed percentage:
-            // FreshClam does not expose trustworthy per-file progress here.
-            TimelineView(.periodic(from: .now, by: 2)) { timeline in
+          TimelineView(.periodic(from: .now, by: 2)) { timeline in
+            let signatureStatus = SignatureUpdateStatus.readInstalled()
+            VStack(alignment: .leading, spacing: 10) {
               if let active = SignatureUpdateProgress.readInstalled(now: timeline.date) {
                 HStack(alignment: .center, spacing: 12) {
                   ProgressView()
@@ -62,7 +77,7 @@ struct UpdatesSettingsView: View {
                       .font(.headline)
                     Text("Checking and downloading ClamAV definitions…")
                       .foregroundStyle(.secondary)
-                    Text("Started at \(active.startedAt.formatted(date: .abbreviated, time: .standard))")
+                    Text("Started at " + active.startedAt.formatted(date: .abbreviated, time: .standard))
                       .font(.footnote)
                       .foregroundStyle(.secondary)
                   }
@@ -75,17 +90,28 @@ struct UpdatesSettingsView: View {
                   .foregroundStyle(.secondary)
                   .accessibilityIdentifier("signatureUpdateIdle")
               }
-            }
-            Text("ClamAV malware definitions are maintained by the existing scanner update workflow, independently of these application preferences. This page does not check their freshness or modify them.")
+            Text(signatureStatus.message)
+              .font(.headline)
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("signatureUpdateSummary")
+            timestampRow("Last attempted update", signatureStatus.lastAttempt)
+              .accessibilityIdentifier("signatureUpdateLastAttempt")
+            timestampRow("Last successful update", signatureStatus.lastSuccess)
+              .accessibilityIdentifier("signatureUpdateLastSuccess")
+            Text("Times are shown in your local time zone.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+            Text("ClamAV definitions are maintained by the existing scanner update workflow independently of these preferences. These timestamps do not verify signature freshness or database health.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
-            Label("Malware definitions describe threats recognized by the scanner. Their update schedule is separate from app updates, and this page cannot confirm when they were last refreshed.", systemImage: "info.circle")
+            Label("Malware definitions describe threats recognized by the scanner. Their update schedule is separate from app updates. An attempted update is not proof of success. The installed scanner still checks signature freshness and database validity before scanning; viewing this page never starts an update.", systemImage: "info.circle")
               .font(.footnote)
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
           }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(8)
         }
         .accessibilityIdentifier("malwareDefinitionUpdatesSection")
 
