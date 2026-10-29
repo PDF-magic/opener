@@ -306,6 +306,8 @@ The installer downloads ClamAV's official signatures and installs a user LaunchA
 
 The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
 
+While FreshClam runs, Preferences → Updates shows **Signature update in progress** with an indeterminate spinner and the observed start time. This live indicator refreshes every two seconds while the pane remains visible; no fictional percentage is displayed. The installed updater atomically records the updater PID and start time in `signatures/update-in-progress` and removes only its own marker after success or failure. Invalid, stale, symlinked, or dead-process markers cannot indicate an active update. The separate historical attempt/success timestamps and explicit manual update actions remain available. A progress indicator never authorizes scanning or changes the existing 48-hour signature freshness requirement.
+
 ```sh
 bash update-malware-signatures.sh
 ```
