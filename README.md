@@ -852,3 +852,5 @@ For compatibility with existing installations, runtime scripts and signatures re
 ## License
 
 Licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+**Manual update controls (opener-0381):** The Updates preferences pane includes **Check for Updates Now** for a user-initiated, read-only check against the project's published GitHub application releases. If no release is published or the network is unavailable, it reports that honestly rather than claiming the installed version is current. **Update Signatures Now** explicitly runs the already installed FreshClam updater using its existing configuration and timestamp records; it does not change the four-hour schedule or saved preferences. Both actions display a result and never authorize document opening, override scan failures, remove quarantine, or disable the existing 48-hour database freshness gate.
