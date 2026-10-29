@@ -50,6 +50,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
+    'A zero-length file cannot be scanned; opening was stopped.',
     'Only regular files and application bundles can be scanned.',
     'Select a file or application, rather than a folder.',
     'The malware scan timed out; opening was stopped.',
@@ -430,6 +431,10 @@ def fingerprint(path):
                 raise RuntimeError('Application bundle contains a link outside the bundle; opening was stopped.')
         elif entry.is_file():
             size = entry.stat().st_size
+            # ClamAV may skip empty files; never cache or open an unscanned input.
+            # This also protects empty members of recursively scanned app bundles.
+            if size == 0:
+                raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
             if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
             digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
