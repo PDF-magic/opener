@@ -24,8 +24,18 @@ def append_revision(original, number, data):
     at = len(updated)
     updated.extend(str(number).encode() + b" 0 obj\n" + data + b"\nendobj\n")
     xref = len(updated)
-    # A zero-indexed free entry avoids library xref offset correction.\n    updated.extend(b"xref\n0 1\n0000000000 65535 f \n")\n    updated.extend(str(number).encode() + b" 1\n")
-    updated.extend(f"{at:010d} 00000 n \n".encode())
+    # Full zero-indexed xref snapshot: strict readers must never guess offsets.
+    # All test objects are generated here; no untrusted external data is read.
+    import re
+    offsets = {int(match.group(1)): match.start()
+               for match in re.finditer(rb"(?m)^([1-9][0-9]*) 0 obj\b", bytes(updated))}
+    updated.extend(b"xref\n0 12\n0000000000 65535 f \n")
+    for identifier in range(1, 12):
+        at_offset = offsets.get(identifier)
+        if at_offset is None:
+            updated.extend(b"0000000000 00000 f \n")
+        else:
+            updated.extend(f"{at_offset:010d} 00000 n \n".encode())
     updated.extend(b"trailer\n<< /Size 12 /Root 1 0 R /Prev " + previous + b" >>\n")
     updated.extend(b"startxref\n" + str(xref).encode() + b"\n%%EOF\n")
     return bytes(updated)
