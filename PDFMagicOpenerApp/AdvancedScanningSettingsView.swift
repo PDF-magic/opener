@@ -48,6 +48,28 @@ struct AdvancedScanningSettingsView: View {
         }
         .accessibilityIdentifier("advancedScanningResultsSection")
 
+        GroupBox {
+          VStack(alignment: .leading, spacing: 8) {
+            Label("Unusually resource-intensive settings", systemImage: "exclamationmark.triangle.fill")
+              .font(.headline)
+              .accessibilityAddTraits(.isHeader)
+
+            Text("Large or complex documents, and unusually high file-size limits, archive-depth limits, or scan timeouts, can substantially increase CPU use, memory pressure, and scanning time. Review resource impact before raising any optional scanner limits if they become available.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("Scanner limits are currently fixed by the installed scan gate. This informational warning cannot change scanning, approve a file, bypass a failed scan, or modify your saved choices.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .padding(12)
+          .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+          Label("Resource usage warning", systemImage: "exclamationmark.triangle")
+        }
+        .accessibilityIdentifier("advancedScanningResourceWarning")
+
         Text("Advanced scanning controls are not configurable in this version. Scanner parameters are not user-editable: fixed ClamAV options protect the scan gate. Existing scanner protections and your saved choices remain unchanged.")
           .font(.footnote)
           .foregroundStyle(.secondary)

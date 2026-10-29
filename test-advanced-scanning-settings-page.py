@@ -46,6 +46,43 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, page)
 
+  def test_resource_usage_warning_is_accessible_and_read_only(self):
+    page = PAGE.read_text(encoding="utf-8")
+    warning = page.split('Label("Unusually resource-intensive settings"', 1)[1]
+    warning = warning.split('accessibilityIdentifier("advancedScanningResourceWarning")', 1)[0]
+    for required in (
+        "exclamationmark.triangle.fill",
+        "file-size limits",
+        "archive-depth limits",
+        "scan timeouts",
+        "CPU use",
+        "memory pressure",
+        "scanning time",
+        "Review resource impact before raising",
+        "Scanner limits are currently fixed",
+        "informational warning",
+        "cannot change scanning",
+        "bypass a failed scan",
+        "saved choices",
+        'Label("Resource usage warning"',
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, warning)
+    self.assertIn('accessibilityIdentifier("advancedScanningResourceWarning")', page)
+    self.assertIn("Advanced scanning controls are not configurable in this version.", page)
+    self.assertLess(page.index("advancedScanningResultsSection"),
+                    page.index("advancedScanningResourceWarning"))
+    for forbidden in ("Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage",
+                      "UserDefaults", "Process(", "NSWorkspace", "write(to:"):
+      self.assertNotIn(forbidden, warning)
+
+  def test_resource_warning_regression_is_run_by_existing_ci(self):
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    self.assertIn("python3 test-advanced-scanning-settings-page.py -v", ci)
+    self.assertIn("macos-build:", ci)
+
   def test_page_is_part_of_built_swiftui_app_target(self):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = AdvancedScanningSettingsView.swift;", project)
