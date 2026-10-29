@@ -126,7 +126,7 @@ class ExceptionOpeningPathTests(unittest.TestCase):
         self.assert_blocked_side_effects()
 
     def test_changed_file_cannot_be_opened_with_exception_label(self):
-        def modify(_command, _timeout):
+        def modify(_command, timeout):
             self.pdf.write_bytes(self.original + b"changed during scan\n")
             return subprocess.CompletedProcess([], 0, "untrusted.pdf: OK\n", "")
         self.scan.side_effect = modify
