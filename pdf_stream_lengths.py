@@ -148,8 +148,19 @@ def validate_pdf_stream_lengths(contents: bytes, reader) -> int:
         raise PDFStreamLengthError(_FAILURE)
       data_start = marker.end()
       boundary = data_start + declared
-      if boundary > len(contents) or _STREAM_END.match(contents, boundary) is None:
+      if boundary > len(contents):
         raise PDFStreamLengthError(_FAILURE)
+      if _STREAM_END.match(contents, boundary) is None:
+        # Some valid streams count the final line ending as payload data.
+        # Then endstream starts at the declared byte boundary, while the
+        # required preceding EOL is included in the declared length.
+        contained_eol = (
+          boundary > data_start
+          and contents[boundary - 1] in b"\r\n"
+          and re.match(rb"endstream(?=[\s%]|\Z)", contents, boundary) is not None
+        )
+        if not contained_eol:
+          raise PDFStreamLengthError(_FAILURE)
       inspected += 1
     return inspected
   except PDFStreamLengthError:

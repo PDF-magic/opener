@@ -83,7 +83,7 @@ class PDFStreamLengthTests(unittest.TestCase):
 
   def test_off_by_one_negative_and_invalid_indirect_lengths_rejected(self):
     payload = b"12345678"
-    for length in (7, 9, 0, -1, 999999):
+    for length in (7, 10, 0, -1, 999999):
       for indirect in (False, True):
         with self.subTest(length=length, indirect=indirect):
           self.rejected(pdf_with_stream(payload, declared=length, indirect=indirect))

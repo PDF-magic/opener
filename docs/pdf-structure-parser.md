@@ -100,7 +100,10 @@ members are not themselves PDF stream objects.
 
 The bounded preflight preserves embedded `endstream` text inside legitimate
 payloads by locating the boundary at the declared byte offset rather than
-searching for the next occurrence of that string. An off-by-one length,
+searching for the next occurrence of that string.
+It accepts either a delimiter line ending after those bytes or a final
+line ending already included within the declared stream payload; those two
+valid encodings are not always distinguishable from a one-byte difference. An off-by-one length,
 noninteger or negative length, missing stream terminator, or unresolvable
 indirect length raises a fixed, content-free failure. Only metadata is read;
 page content streams are not decompressed or executed by this check.
