@@ -73,7 +73,9 @@ private func convert(_ data: Data) -> Data? {
         }
 
         let destination = CGRect(x: 0, y: 0, width: media.width, height: media.height)
-        output.beginPDFPage([kCGPDFContextMediaBox as String: destination] as CFDictionary)
+        // Core Graphics expects page-box rectangles as CFData, not CGRect values.
+        let mediaBoxData = withUnsafeBytes(of: destination) { Data($0) }
+        output.beginPDFPage([kCGPDFContextMediaBox as String: mediaBoxData] as CFDictionary)
         output.draw(image, in: destination)
         output.endPDFPage()
         if CFDataGetLength(outputData) > maxOutputBytes {
