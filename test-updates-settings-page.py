@@ -73,16 +73,16 @@ class UpdatesSettingsPageTests(unittest.TestCase):
   def test_manual_actions_are_explicit_and_do_not_change_scanner_gate(self):
     view = UPDATES.read_text(encoding="utf-8")
     for expected in (
-        "ManualUpdateActions.checkApplicationUpdates(",
+        "ManualUpdateActions.checkSignatureUpdates()",
         "ManualUpdateActions.updateSignatures()",
-        'URL(string: "https://api.github.com/repos/PDF-magic/opener/releases/latest")',
+        '"current.cvd.clamav.net"',
         'process.executableURL = URL(fileURLWithPath: "/bin/bash")',
         'update-malware-signatures.sh',
         "lstat(script.path, &metadata)",
         "process.waitUntilExit()",
         "process.terminationStatus == 0",
         "Signature update failed.",
-        "No published application release is available for comparison.",
+        "Newer ClamAV signatures are advertised.",
     ):
       with self.subTest(expected=expected):
         self.assertIn(expected, view)

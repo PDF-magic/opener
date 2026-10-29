@@ -3,8 +3,8 @@ import SwiftUI
 // An informational Updates page only. It must not download or install
 // software, alter ClamAV definitions, or write to user preferences.
 struct UpdatesSettingsView: View {
-  @State private var checkingApplicationUpdates = false
-  @State private var applicationUpdateMessage: String?
+  @State private var checkingSignatureUpdates = false
+  @State private var signatureCheckMessage: String?
   @State private var updatingSignatures = false
   @State private var signatureUpdateMessage: String?
 
@@ -39,29 +39,10 @@ struct UpdatesSettingsView: View {
               .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Button("Check for Updates Now") {
-              checkingApplicationUpdates = true
-              applicationUpdateMessage = nil
-              Task {
-                applicationUpdateMessage = await ManualUpdateActions.checkApplicationUpdates(
-                  installedVersion: applicationVersion
-                )
-                checkingApplicationUpdates = false
-              }
-            }
-            .disabled(checkingApplicationUpdates)
-            .accessibilityIdentifier("checkForUpdatesNowButton")
-            if checkingApplicationUpdates {
-              ProgressView("Checking published releases…")
-            }
-            if let applicationUpdateMessage {
-              Text(applicationUpdateMessage)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("applicationUpdateCheckResult")
-            }
-
-            Label("The installed version comes from this app bundle. Only published releases are compared; no application update is installed.", systemImage: "info.circle")
+            Text("Checking for or installing application updates is not available from this page yet.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Label("The installed version comes from this app bundle. It does not tell you whether newer software exists.", systemImage: "info.circle")
               .font(.footnote)
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
@@ -73,6 +54,25 @@ struct UpdatesSettingsView: View {
 
         GroupBox("Malware definition updates") {
           VStack(alignment: .leading, spacing: 10) {
+            Button("Check for Updates Now") {
+              checkingSignatureUpdates = true
+              signatureCheckMessage = nil
+              Task {
+                signatureCheckMessage = await ManualUpdateActions.checkSignatureUpdates()
+                checkingSignatureUpdates = false
+              }
+            }
+            .disabled(checkingSignatureUpdates)
+            .accessibilityIdentifier("checkForUpdatesNowButton")
+            if checkingSignatureUpdates {
+              ProgressView("Checking published signature revisions…")
+            }
+            if let signatureCheckMessage {
+              Text(signatureCheckMessage)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("signatureUpdateCheckResult")
+            }
             Button("Update Signatures Now") {
               updatingSignatures = true
               signatureUpdateMessage = nil
@@ -96,7 +96,7 @@ struct UpdatesSettingsView: View {
               .font(.footnote)
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
-            Text("ClamAV malware definitions are maintained by the existing scanner update workflow, independently of these application preferences. Manual updating is optional; the scanner still checks freshness before every open.")
+            Text("ClamAV malware definitions are maintained by the existing scanner update workflow, independently of application updates.  Manual updating is optional; the scanner still checks freshness before every open.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
             Label("Malware definitions describe threats recognized by the scanner. Their update schedule is separate from app updates, and this page cannot confirm when they were last refreshed.", systemImage: "info.circle")
@@ -122,60 +122,89 @@ struct UpdatesSettingsView: View {
 import Foundation
 import Darwin
 
-// Both operations require an explicit click. Never run from a view lifecycle callback or
-// the PDF scanning path. Neither a release result nor FreshClam's exit code
-// authorizes opening a document.
+// Both actions require a click and never participate in document scanning.
+// Checking reads only published revision numbers and local database headers;
+// updating delegates to the separately installed FreshClam script.
 enum ManualUpdateActions {
-  static let releaseURL = URL(string: "https://api.github.com/repos/PDF-magic/opener/releases/latest")!
-
-  private static func components(_ raw: String) -> [Int]? {
-    let version = raw.hasPrefix("v") ? String(raw.dropFirst()) : raw
-    let parts = version.split(separator: ".", omittingEmptySubsequences: false)
-    guard (1...3).contains(parts.count) else { return nil }
-    var numbers: [Int] = []
-    for part in parts {
-      guard !part.isEmpty, part.allSatisfy({ $0.isASCII && $0.isNumber }),
-            let number = Int(part), number <= 999_999 else { return nil }
-      numbers.append(number)
-    }
-    while numbers.count < 3 { numbers.append(0) }
-    return numbers
+  static func publishedRevisions(from output: String) -> (main: Int, daily: Int)? {
+    let records = output.split(whereSeparator: \.isNewline)
+    guard records.count == 1 else { return nil }
+    let record = String(records[0])
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+    let fields = record.split(separator: ":", omittingEmptySubsequences: false)
+    guard fields.count >= 3, fields[0].contains("."),
+          let main = Int(fields[1]), let daily = Int(fields[2]),
+          main > 0, daily > 0, main <= 999_999_999,
+          daily <= 999_999_999 else { return nil }
+    return (main, daily)
   }
 
-  static func releaseMessage(data: Data, installedVersion: String) -> String {
-    guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let tag = object["tag_name"] as? String,
-          let remote = components(tag) else {
-      return "Release information could not be verified."
-    }
-    guard let installed = components(installedVersion) else {
-      return "Published version \(tag) found, but the installed version cannot be compared."
-    }
-    if remote.lexicographicallyPrecedes(installed) || remote == installed {
-      return "No newer published application release was found (latest: \(tag))."
-    }
-    return "Application release \(tag) is available. Installation is not automatic."
+  static func databaseRevision(header: Data) -> Int? {
+    guard header.count >= 32,
+          let text = String(data: header.prefix(512), encoding: .ascii),
+          text.hasPrefix("ClamAV-VDB:") else { return nil }
+    let fields = text.split(separator: ":", omittingEmptySubsequences: false)
+    guard fields.count >= 4, let version = Int(fields[2]),
+          version > 0, version <= 999_999_999 else { return nil }
+    return version
   }
 
-  static func checkApplicationUpdates(installedVersion: String) async -> String {
-    var request = URLRequest(url: releaseURL)
-    request.timeoutInterval = 15
-    request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-    do {
-      let (data, response) = try await URLSession.shared.data(for: request)
-      guard let http = response as? HTTPURLResponse else {
-        return "Could not verify application releases."
+  // Read only bounded, regular, unsymlinked local CVD/CLD headers.
+  private static func installedRevision(_ name: String, in directory: URL) -> Int? {
+    for suffix in [".cld", ".cvd"] {
+      let path = directory.appendingPathComponent(name + suffix).path
+      let fd = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+      guard fd >= 0 else { continue }
+      defer { close(fd) }
+      var metadata = stat()
+      guard fstat(fd, &metadata) == 0,
+            (metadata.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG) else {
+        return nil
       }
-      if http.statusCode == 404 {
-        return "No published application release is available for comparison."
+      var bytes = [UInt8](repeating: 0, count: 512)
+      let count = bytes.withUnsafeMutableBytes {
+        Darwin.read(fd, $0.baseAddress, $0.count)
       }
-      guard http.statusCode == 200, data.count <= 65_536 else {
-        return "Could not verify application releases."
-      }
-      return releaseMessage(data: data, installedVersion: installedVersion)
-    } catch {
-      return "Could not check for application updates. Please try again later."
+      guard count > 0 else { return nil }
+      return databaseRevision(header: Data(bytes.prefix(Int(count))))
     }
+    return nil
+  }
+
+  static func checkSignatureUpdates() async -> String {
+    await Task.detached(priority: .userInitiated) {
+      // ClamAV publishes main and daily revisions in this DNS TXT record.
+      // Do not run FreshClam here: it downloads and modifies the database.
+      let process = Process()
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/dig")
+      process.arguments = ["+short", "+time=3", "+tries=1", "TXT", "current.cvd.clamav.net"]
+      let output = Pipe()
+      process.standardOutput = output
+      process.standardError = FileHandle.nullDevice
+      do {
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationReason == .exit, process.terminationStatus == 0,
+              data.count <= 512, let answer = String(data: data, encoding: .utf8),
+              let published = publishedRevisions(from: answer) else {
+          return "Could not verify published ClamAV signature revisions."
+        }
+        let directory = FileManager.default.homeDirectoryForCurrentUser
+          .appendingPathComponent("Library/Application Support/Studio/allow-and-open/signatures")
+        guard let main = installedRevision("main", in: directory),
+              let daily = installedRevision("daily", in: directory) else {
+          return "Installed signature database versions unavailable for comparison."
+        }
+        if published.main > main || published.daily > daily {
+          return "Newer ClamAV signatures are advertised. Choose Update Signatures Now to install them."
+        }
+        return "No newer signature revisions were advertised. Scanner freshness checks still apply."
+      } catch {
+        return "Could not check ClamAV signature updates."
+      }
+    }.value
   }
 
   static func updateSignatures() async -> String {

@@ -309,7 +309,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Test application-release comparisons for manual update check
+      - name: Test read-only ClamAV signature revision parsing
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
           "$RUNNER_TEMP/TestManualUpdateActions"

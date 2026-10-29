@@ -4,18 +4,24 @@ import SwiftUI
 @main
 struct ManualUpdateActionsTests {
   static func main() {
-    func verify(_ json: String, _ installed: String, _ expected: String) {
-      let result = ManualUpdateActions.releaseMessage(
-        data: Data(json.utf8), installedVersion: installed)
-      precondition(result.contains(expected), "Unexpected result: \(result)")
+    func check(_ text: String, _ main: Int, _ daily: Int) {
+      guard let revisions = ManualUpdateActions.publishedRevisions(from: text) else {
+        preconditionFailure("Valid published revisions rejected")
+      }
+      precondition(revisions.main == main && revisions.daily == daily)
     }
-    verify(#"{"tag_name":"v1.1.0"}"#, "1.0", "is available")
-    verify(#"{"tag_name":"1.0"}"#, "1.0.0", "No newer")
-    verify(#"{"tag_name":"v0.9.0"}"#, "1.0", "No newer")
-    verify(#"{"tag_name":"v1.1.0"}"#, "unknown", "cannot be compared")
-    verify(#"{"tag_name":"v1.0.0-beta"}"#, "1.0", "could not be verified")
-    verify(#"{"tag_name":"v999999999999.0"}"#, "1.0", "could not be verified")
-    verify(#"{"unexpected":true}"#, "1.0", "could not be verified")
-    print("Manual update release comparison tests passed")
+    check("\"1.5.4:63:28166:1700000000:0:63:49191:333\"\n", 63, 28166)
+    check("1.4.3:62:28000:1700000000", 62, 28000)
+    for invalid in ("", "\"oops\"", "\"1.5:0:28166\"", "\"1.5:63:-1\"",
+                    "\"1.5:63:28166\"\n\"1.5:63:28167\"") {
+      precondition(ManualUpdateActions.publishedRevisions(from: invalid) == nil)
+    }
+    func header(_ version: Int) -> Data {
+      Data(("ClamAV-VDB:build-time:\(version):100:25:abcdef:signature:builder:" +
+            String(repeating: " ", count: 440)).utf8)
+    }
+    precondition(ManualUpdateActions.databaseRevision(header: header(28166)) == 28166)
+    precondition(ManualUpdateActions.databaseRevision(header: Data("garbage".utf8)) == nil)
+    print("Read-only ClamAV signature revision fixture tests passed")
   }
 }

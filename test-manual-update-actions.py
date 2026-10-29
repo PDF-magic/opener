@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""opener-0381: manual update actions never alter scanner safety or settings."""
+"""opener-0381: signature update actions never alter scan safety."""
 from pathlib import Path
 import unittest
 
@@ -14,18 +14,23 @@ class ManualActionTests(unittest.TestCase):
     view = VIEW.read_text()
     self.assertEqual(view.count('Button("Check for Updates Now")'), 1)
     self.assertEqual(view.count('Button("Update Signatures Now")'), 1)
-    self.assertIn('.disabled(checkingApplicationUpdates)', view)
-    self.assertIn('.disabled(updatingSignatures)', view)
+    self.assertIn(".disabled(checkingSignatureUpdates)", view)
+    self.assertIn(".disabled(updatingSignatures)", view)
     self.assertNotIn(".onAppear", view)
     self.assertNotIn(".task(", view)
 
-  def test_checker_does_not_claim_failed_checks_current(self):
+  def test_read_only_check_uses_bounded_clamav_revision_lookup(self):
     view = VIEW.read_text()
-    self.assertIn("http.statusCode == 404", view)
-    self.assertIn("http.statusCode == 200", view)
-    self.assertIn("Release information could not be verified.", view)
-    self.assertIn("Could not check for application updates.", view)
-    self.assertIn("65_536", view)
+    for expected in ("current.cvd.clamav.net", '"/usr/bin/dig"',
+                     'publishedRevisions(from: answer)',
+                     'installedRevision("main", in: directory)',
+                     'installedRevision("daily", in: directory)',
+                     "O_NOFOLLOW", "data.count <= 512",
+                     "Newer ClamAV signatures are advertised.",
+                     "Could not verify published ClamAV signature revisions."):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, view)
+    self.assertNotIn("URLSession", view)
     self.assertNotIn("curl", view)
 
   def test_manual_signature_update_is_existing_bounded_command(self):
