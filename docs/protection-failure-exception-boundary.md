@@ -1,9 +1,9 @@
 # Keep scanner failures separate from feature exception requests (opener-0344)
 
 The PDF Magic Opener does **not** support user-approved exceptions that
-waive mandatory PDF protections. The separate opener-0342 policy task
-([PR #229](https://github.com/PDF-magic/opener/pull/229)) defines the
-unsupported-exception decision. This task does not add an allowlist, prompt
+waive mandatory PDF protections. Merged opener-0342 ([PR #229](https://github.com/PDF-magic/opener/pull/229))
+defines the immutable unsupported-exception decision and canonical
+fixed rejection message reused here. This task does not add an allowlist, prompt
 to override a blocked PDF, or enable any planned protection profile.
 
 ## Two distinct blocked outcomes
