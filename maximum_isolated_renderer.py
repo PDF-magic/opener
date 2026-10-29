@@ -35,7 +35,9 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (allow file-read*
     (literal (param "PYTHON"))
     (literal (param "WORKER"))
-    (subpath (param "WORKER_DIR"))
+    (literal (param "WORKER_SUPPORT"))
+    (literal (param "NETWORK_SUPPORT"))
+    (literal (param "RENDERER_SUPPORT"))
     (subpath (param "PYTHON_PREFIX"))
     (subpath (param "PYTHON_BASE_PREFIX"))
     (subpath "/System")
@@ -99,24 +101,32 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
     try:
         python = str(Path(sys.executable).resolve(strict=True))
         worker = str(Path(worker_path).resolve(strict=True))
-        source_root = str(Path(__file__).resolve(strict=True).parent)
+        source_root = Path(__file__).resolve(strict=True).parent
+        worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
+        network_support = (source_root / "maximum_network_isolation.py").resolve(strict=True)
+        renderer_support = Path(__file__).resolve(strict=True)
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
     except (OSError, RuntimeError, TypeError):
         raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
 
-    if (Path(worker).parent != Path(source_root) or
+    support_files = (worker_support, network_support, renderer_support)
+    if (Path(worker).parent != source_root or
+            any(path.parent != source_root for path in support_files) or
             not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
             not _trusted_regular_file(python, executable=True) or
             not _trusted_regular_file(worker) or
-            not _trusted_directory(source_root) or
+            not all(_trusted_regular_file(str(path)) for path in support_files) or
+            not _trusted_directory(str(source_root)) or
             not _trusted_directory(prefix, runtime=True) or
             not _trusted_directory(base_prefix, runtime=True)):
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     return {
         "python": python,
         "worker": worker,
-        "worker_dir": source_root,
+        "worker_support": str(worker_support),
+        "network_support": str(network_support),
+        "renderer_support": str(renderer_support),
         "python_prefix": prefix,
         "python_base_prefix": base_prefix,
     }
@@ -210,7 +220,9 @@ def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
     for name, key in (
         ("PYTHON", "python"),
         ("WORKER", "worker"),
-        ("WORKER_DIR", "worker_dir"),
+        ("WORKER_SUPPORT", "worker_support"),
+        ("NETWORK_SUPPORT", "network_support"),
+        ("RENDERER_SUPPORT", "renderer_support"),
         ("PYTHON_PREFIX", "python_prefix"),
         ("PYTHON_BASE_PREFIX", "python_base_prefix"),
     ):

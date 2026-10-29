@@ -56,7 +56,9 @@ def filesystem_sandbox_command(worker, *arguments):
     for name, key in (
         ("PYTHON", "python"),
         ("WORKER", "worker"),
-        ("WORKER_DIR", "worker_dir"),
+        ("WORKER_SUPPORT", "worker_support"),
+        ("NETWORK_SUPPORT", "network_support"),
+        ("RENDERER_SUPPORT", "renderer_support"),
         ("PYTHON_PREFIX", "python_prefix"),
         ("PYTHON_BASE_PREFIX", "python_base_prefix"),
     ):
@@ -146,7 +148,9 @@ class MaximumRendererTests(unittest.TestCase):
         context = {
             "python": str(Path(sys.executable).resolve()),
             "worker": str((ROOT / "maximum_render_worker.py").resolve()),
-            "worker_dir": str(ROOT.resolve()),
+            "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
+            "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
+            "renderer_support": str((ROOT / "maximum_isolated_renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
@@ -171,7 +175,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual(command[python_index:python_index + 3],
                          (context["python"], "-I", "-B"))
         self.assertEqual(command[-2:], (context["worker"], "0"))
-        self.assertEqual(command.count("-D"), 5)
+        self.assertEqual(command.count("-D"), 7)
         self.assertFalse(result.permits_open)
 
     @unittest.skipUnless(sys.platform == "linux", "Linux seccomp enforcement test")
@@ -227,7 +231,6 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual(str(error.exception), renderer.BLOCK_MESSAGE)
         run.assert_not_called()
 
-    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_child_starts_with_isolation_flags_and_private_bytes(self):
         real_run = subprocess.run
@@ -407,7 +410,10 @@ class MaximumRendererTests(unittest.TestCase):
         profile = renderer.RENDERER_FILESYSTEM_PROFILE
         self.assertIn("(deny default)", profile)
         self.assertIn('(literal (param "PYTHON"))', profile)
-        self.assertIn('(subpath (param "WORKER_DIR"))', profile)
+        self.assertIn('(literal (param "WORKER_SUPPORT"))', profile)
+        self.assertIn('(literal (param "NETWORK_SUPPORT"))', profile)
+        self.assertIn('(literal (param "RENDERER_SUPPORT"))', profile)
+        self.assertNotIn('(subpath (param "WORKER_DIR"))', profile)
         self.assertIn('(subpath (param "PYTHON_PREFIX"))', profile)
         self.assertIn("(deny network*)", profile)
         self.assertIn("(deny process-fork)", profile)

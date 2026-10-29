@@ -127,7 +127,9 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         context = {
             "python": str(Path(sys.executable).resolve()),
             "worker": str((ROOT / "maximum_render_worker.py").resolve()),
-            "worker_dir": str(ROOT.resolve()),
+            "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
+            "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
+            "renderer_support": str((ROOT / "maximum_isolated_renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }

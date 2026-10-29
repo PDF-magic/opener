@@ -34,10 +34,11 @@ discarded stderr.
 
 On macOS, the parent launches the worker through
 `/usr/bin/sandbox-exec` with a deny-by-default Seatbelt profile. The
-profile permits file contents only from the trusted renderer source directory,
-the validated Python runtime prefixes and required operating-system runtime
-locations. It grants no filesystem writes and does not permit reading
-arbitrary user documents, home directories or temporary files. It also denies
+profile permits file contents only from the renderer worker, three exact
+trusted support modules, validated Python runtime prefixes and required
+operating-system runtime locations. It grants no filesystem writes and does
+not permit reading arbitrary repository files, user documents, home
+directories or temporary files. It also denies
 network access and child-process creation. File metadata checks are permitted
 for path resolution but do not grant broad file-content access. The
 interpreter, sandbox executable, worker and runtime roots are validated
