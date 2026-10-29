@@ -250,6 +250,18 @@ Different documents can scan concurrently, with a maximum of **two active scans*
 
 Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Successful clean and cached scans also retain the original `com.apple.quarantine` extended attribute, leaving Gatekeeper and OS-level downloaded-file protections in place for PDFs and application bundles. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. Zero-byte files, including empty members of application bundles, are explicitly rejected before scanner execution or clean-cache reuse. An empty file is never treated as successfully scanned, even if ClamAV would skip it. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
 
+**Scanner file-size validation (opener-0399):** Before constructing the
+ClamAV command, a shared validator checks permitted per-file and aggregate
+size limits. Standalone PDFs retain their existing `0/0` (unlimited
+configured) options, subject to ClamAV's independent engine limits. Other
+files and app bundles retain the fixed 512 MiB per-file and 1024 MiB
+aggregate defaults. Potential non-PDF limits must be positive integer
+MiB values, at most those defaults, with aggregate at least per-file;
+zero, booleans, fractional values, negative values, and oversized
+proposals fail validation. This does **not** expose editable ClamAV
+settings: the active command validator still rejects changed scanner
+arguments, even narrower ones, and no saved preferences are modified.
+
 Each accepted native PDF open request also has an in-memory `ScanRequest.requestTimestamp` (`Date`) set when the open event is accepted. Repeated events for the same resolved file retain the original request timestamp. This field is not logged or persisted, and is distinct from the scan time used in the clean-file cache.
 
 For integrations that already know a download's originating URL, the Python scan request supports optional `source_url` metadata via `ScanRequest.from_path(path, source_url=...)` or `scan_and_open(path, scanner, source_url=...)`. Local Finder and native opens leave it unset. The URL is not fetched, submitted to ClamAV, logged, or persisted, and does not change the path, cache, or safety checks.

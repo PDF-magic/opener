@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from scanner_argument_validation import (
     InvalidScannerArguments, validate_scanner_arguments,
-    validate_scanner_version_arguments,
+    validate_scanner_version_arguments, validated_file_size_options,
 )
 from functools import wraps
 from dataclasses import dataclass, field
@@ -843,11 +843,9 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     is_pdf = path.is_file() and request.file_type == 'pdf'
     # Check the entire fixed argv before touching the clean cache, audit
     # storage, or an external scanner. Cached hits must not skip this gate.
-    if is_pdf:
-        # The engine still alerts on its internal file-size limit (~2 GB).
-        size_options = ('--max-filesize=0', '--max-scansize=0')
-    else:
-        size_options = ('--max-filesize=512M', '--max-scansize=1024M')
+    # Size options are validated centrally. PDFs retain no configured
+    # size ceiling, but ClamAV's internal engine limits still fail closed.
+    size_options = validated_file_size_options(is_pdf=is_pdf)
     command = [
         scanner, '--database=' + str(DATABASE), '--recursive',
         '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
