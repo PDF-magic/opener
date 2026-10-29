@@ -101,7 +101,9 @@ class ZeroLengthFileTests(unittest.TestCase):
             file.write_bytes(b"")
             return subprocess.CompletedProcess(command, 0, "file: OK", "")
         self.scanner.side_effect = change_file
-        with self.assertRaisesRegex(RuntimeError, "zero-length"):
+        # The existing identity gate can reject this race even before the
+        # zero-length fingerprint check, and must remain authoritative.
+        with self.assertRaisesRegex(RuntimeError, "zero-length|file changed"):
             gate.scan_and_open(file, "/scanner")
         self.scanner.assert_called_once()
         self.quarantine.assert_not_called()
