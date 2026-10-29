@@ -396,6 +396,11 @@ def scanner_path():
 
 
 def check_database():
+    # Neither the signature directory nor the successful-update marker may
+    # point outside the installed database. A symlinked marker could forge a
+    # recent update, even if the main/daily files themselves are regular.
+    if DATABASE.is_symlink() or not DATABASE.is_dir() or STAMP.is_symlink():
+        raise RuntimeError('Malware signatures are unavailable. Run update-malware-signatures.sh.')
     try:
         age = time.time() - float(STAMP.read_text().strip())
     except (OSError, ValueError):
@@ -1065,6 +1070,10 @@ def main(items):
         return 1
     for index, item in valid_items:
         try:
+            # An update or external change can invalidate the database
+            # between items in a batch. The first item's preflight must not
+            # authorize scanning or cached-clean handoff for later items.
+            check_database()
             record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             if isinstance(item, BrowserDownloadRequest):
                 if item.browser_download_identifier is None:
