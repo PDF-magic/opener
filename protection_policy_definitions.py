@@ -50,17 +50,23 @@ BASELINE_CONTROLS = (
 # The deployed four-control floor is required in ALL profiles. Extra checks
 # remain planned and non-executable; optional never means a bypass of the floor.
 # The Maximum tier has no known optional extras, so its optional set is empty.
+# Define Enhanced once. Every Enhanced requirement (including any new
+# planned check added here) must be inherited by Maximum. Maximum promotes
+# Enhanced optional controls to required rather than dropping them.
+_ENHANCED_REQUIRED_CONTROLS = frozenset((
+    *BASELINE_CONTROLS, PolicyControl.PDF_STRUCTURE_VALIDATION,
+))
+_ENHANCED_OPTIONAL_CONTROLS = frozenset({
+    PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS,
+})
+
 REQUIRED_CHECKS_BY_PROFILE: Mapping[ProtectionProfileID, frozenset[PolicyControl]] = (
     MappingProxyType({
         ProtectionProfileID.STANDARD: frozenset(BASELINE_CONTROLS),
-        ProtectionProfileID.ENHANCED: frozenset((
-            *BASELINE_CONTROLS, PolicyControl.PDF_STRUCTURE_VALIDATION,
-        )),
-        ProtectionProfileID.MAXIMUM: frozenset((
-            *BASELINE_CONTROLS,
-            PolicyControl.PDF_STRUCTURE_VALIDATION,
-            PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS,
-        )),
+        ProtectionProfileID.ENHANCED: _ENHANCED_REQUIRED_CONTROLS,
+        ProtectionProfileID.MAXIMUM: (
+            _ENHANCED_REQUIRED_CONTROLS | _ENHANCED_OPTIONAL_CONTROLS
+        ),
     })
 )
 OPTIONAL_CHECKS_BY_PROFILE: Mapping[ProtectionProfileID, frozenset[PolicyControl]] = (
@@ -68,9 +74,7 @@ OPTIONAL_CHECKS_BY_PROFILE: Mapping[ProtectionProfileID, frozenset[PolicyControl
         ProtectionProfileID.STANDARD: frozenset({
             PolicyControl.PDF_STRUCTURE_VALIDATION,
         }),
-        ProtectionProfileID.ENHANCED: frozenset({
-            PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS,
-        }),
+        ProtectionProfileID.ENHANCED: _ENHANCED_OPTIONAL_CONTROLS,
         ProtectionProfileID.MAXIMUM: frozenset(),
     })
 )
@@ -177,30 +181,57 @@ def _optional(*planned: PolicyControl) -> tuple[PolicyRequirement, ...]:
     )
 
 
+def _inherit_enhanced_requirements(
+    enhanced: StructuredProtectionPolicy,
+) -> tuple[PolicyRequirement, ...]:
+    """Promote every Enhanced check into a required Maximum check.
+
+    The source is a validated, inactive policy. All current requirements
+    retain their availability; optional checks become required but remain
+    planned. A missing check cannot be silently omitted from Maximum.
+    """
+    if type(enhanced) is not StructuredProtectionPolicy or (
+        enhanced.profile_id is not ProtectionProfileID.ENHANCED
+    ):
+        raise TypeError("Maximum must inherit a validated Enhanced policy")
+    return enhanced.requirements + tuple(
+        PolicyRequirement(item.control, item.availability)
+        for item in enhanced.optional_checks
+    )
+
+
 # Structured policy differentiation is strictly declarative: Enhanced and
 # Maximum carry plans for additional checks, never claims of live protection.
 # Future work must implement and verify these controls before profile selection.
+_STANDARD_POLICY = StructuredProtectionPolicy(
+    profile_id=ProtectionProfileID.STANDARD,
+    requirements=_required(),
+    optional_checks=_optional(PolicyControl.PDF_STRUCTURE_VALIDATION),
+)
+_ENHANCED_POLICY = StructuredProtectionPolicy(
+    profile_id=ProtectionProfileID.ENHANCED,
+    requirements=_required(PolicyControl.PDF_STRUCTURE_VALIDATION),
+    optional_checks=_optional(PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS),
+)
+_MAXIMUM_POLICY = StructuredProtectionPolicy(
+    profile_id=ProtectionProfileID.MAXIMUM,
+    requirements=_inherit_enhanced_requirements(_ENHANCED_POLICY),
+)
 PROTECTION_POLICIES: Mapping[ProtectionProfileID, StructuredProtectionPolicy] = (
     MappingProxyType({
-        ProtectionProfileID.STANDARD: StructuredProtectionPolicy(
-            profile_id=ProtectionProfileID.STANDARD,
-            requirements=_required(),
-            optional_checks=_optional(PolicyControl.PDF_STRUCTURE_VALIDATION),
-        ),
-        ProtectionProfileID.ENHANCED: StructuredProtectionPolicy(
-            profile_id=ProtectionProfileID.ENHANCED,
-            requirements=_required(PolicyControl.PDF_STRUCTURE_VALIDATION),
-            optional_checks=_optional(PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS),
-        ),
-        ProtectionProfileID.MAXIMUM: StructuredProtectionPolicy(
-            profile_id=ProtectionProfileID.MAXIMUM,
-            requirements=_required(
-                PolicyControl.PDF_STRUCTURE_VALIDATION,
-                PolicyControl.ISOLATED_BEHAVIOR_ANALYSIS,
-            ),
-        ),
+        ProtectionProfileID.STANDARD: _STANDARD_POLICY,
+        ProtectionProfileID.ENHANCED: _ENHANCED_POLICY,
+        ProtectionProfileID.MAXIMUM: _MAXIMUM_POLICY,
     })
 )
+
+# Inheritance includes the full validated Enhanced policy, not just the
+# baseline scanner floor. Reject any future drift or availability downgrade.
+_MAXIMUM_BY_CONTROL = {r.control: r for r in _MAXIMUM_POLICY.requirements}
+for _inherited in (*_ENHANCED_POLICY.requirements, *_ENHANCED_POLICY.optional_checks):
+    _actual = _MAXIMUM_BY_CONTROL.get(_inherited.control)
+    if _actual is None or _actual.availability is not _inherited.availability:
+        raise ValueError("Maximum must retain every Enhanced protection check")
 
 # Detect drift between the catalog task and the structured definition task.
 if set(PROTECTION_POLICIES) != set(PROTECTION_PROFILES):
