@@ -116,7 +116,7 @@ class MaximumRendererTests(unittest.TestCase):
             run.assert_not_called()
 
 
-    def test_macos_renderer_is_started_under_fixed_network_deny_profile(self):
+    def test_macos_renderer_is_started_under_fixed_network_and_process_deny_profile(self):
         document = pymupdf.open(stream=self.pdf, filetype="pdf")
         try:
             png = document[0].get_pixmap(
@@ -135,7 +135,7 @@ class MaximumRendererTests(unittest.TestCase):
             result = renderer.render_isolated_pdf_page(self.pdf, 0)
         command = tuple(run.call_args.args[0])
         self.assertEqual(command[:3], (
-            renderer.SANDBOX_EXEC, "-p", renderer.NETWORK_DENY_PROFILE,
+            renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_SANDBOX_PROFILE,
         ))
         self.assertEqual(command[3:6], (sys.executable, "-I", "-B"))
         self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
@@ -206,7 +206,7 @@ class MaximumRendererTests(unittest.TestCase):
         command, opts = calls[0]
         if sys.platform == "darwin":
             self.assertEqual(command[:3], (
-                renderer.SANDBOX_EXEC, "-p", renderer.NETWORK_DENY_PROFILE,
+                renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_SANDBOX_PROFILE,
             ))
             self.assertEqual(command[3:6], (sys.executable, "-I", "-B"))
         else:
