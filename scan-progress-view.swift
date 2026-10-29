@@ -156,6 +156,7 @@ struct EnhancedFindingsProgressSnapshot {
         "malformedStructure": "Malformed structure",
         "conflictingStructure": "Conflicting structure",
         "unresolvedReference": "Unresolved reference",
+        "knownMaliciousContent": "Known malicious content",
         "activeContent": "Active content",
         "suspiciousUrl": "Suspicious URL",
         "unexpectedEmbeddedFile": "Unexpected embedded file",
@@ -228,10 +229,12 @@ struct EnhancedFindingsProgressSnapshot {
                       let (expectedAction, resultLabel) = Self.actions[resultID] else {
                     return nil
                 }
-                // A producer cannot downgrade a blocking/critical severity
-                // or an incomplete-inspection finding.
+                // Confirmed malicious content, blocking/critical severity, and
+                // incomplete inspections cannot be downgraded by a producer.
                 let expectedResult: String
-                if code == "resourceLimit" || code == "inspectionFailure" {
+                if code == "knownMaliciousContent" {
+                    expectedResult = "blocking"
+                } else if code == "resourceLimit" || code == "inspectionFailure" {
                     expectedResult = "inspectionIncomplete"
                 } else if severity == "critical" || severity == "blocking" {
                     expectedResult = "blocking"

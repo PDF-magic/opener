@@ -94,7 +94,8 @@ def verify_sanitized_pdf_structure(
             ArrayObject, DictionaryObject, IndirectObject, StreamObject,
         )
         reader = PdfReader(BytesIO(pdf_bytes), strict=True)
-        if reader.is_encrypted or reader.xref_objStm or "/Prev" in reader.trailer:
+        if (reader.is_encrypted or reader.xref_objStm or "/Prev" in reader.trailer
+                or "/Info" in reader.trailer or "/ID" in reader.trailer):
             raise SanitizedPDFStructureError(BLOCK_MESSAGE)
         size = reader.trailer.raw_get("/Size")
         root_ref = reader.trailer.raw_get("/Root")
@@ -127,7 +128,8 @@ def verify_sanitized_pdf_structure(
 
         root = root_ref.get_object()
         if (not isinstance(root, DictionaryObject) or
-                root.get("/Type") != "/Catalog" or "/Pages" not in root):
+                root.get("/Type") != "/Catalog" or "/Pages" not in root or
+                "/Metadata" in root):
             raise SanitizedPDFStructureError(BLOCK_MESSAGE)
         pages_ref = root.raw_get("/Pages")
         if not isinstance(pages_ref, IndirectObject):
@@ -147,6 +149,8 @@ def verify_sanitized_pdf_structure(
             seen.add(key)
             node = ref.get_object()
             if not isinstance(node, DictionaryObject):
+                raise SanitizedPDFStructureError(BLOCK_MESSAGE)
+            if any(key in node for key in ("/Metadata", "/PieceInfo", "/LastModified")):
                 raise SanitizedPDFStructureError(BLOCK_MESSAGE)
             if parent is not None:
                 actual_parent = node.raw_get("/Parent") if "/Parent" in node else None

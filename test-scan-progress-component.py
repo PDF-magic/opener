@@ -209,6 +209,39 @@ precondition(panel.enhancedFindingsDetailsButton.title == "Show technical detail
 precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.protectionProfileLabel.stringValue == "Active protection profile: Built-in")
 precondition(panel.cancelButton.title == "Cancel")
+let knownMaliciousReport: [String: Any] = [
+    "schemaVersion": 2, "authorizesOpen": false, "requiresBlock": true,
+    "stageResults": [[
+        "stage": "executableContent", "outcome": "completed",
+        "findings": [[
+            "code": "knownMaliciousContent", "severity": "informational",
+            "objectNumber": 23, "pageNumber": NSNull(),
+            "result": [
+                "outcome": "blocking", "nextAction": "stopOpening",
+                "explanation": "Known malicious content was identified; opening is blocked.",
+            ],
+        ]],
+    ]],
+]
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: knownMaliciousReport))
+precondition(panel.enhancedFindingsLabel.stringValue.contains("Enhanced findings: 1"))
+precondition(panel.enhancedFindingsTextView.string.contains("Known malicious content"))
+precondition(panel.enhancedFindingsTextView.string.contains("Opening stopped"))
+var downgradedMaliciousReport = knownMaliciousReport
+var maliciousStages = downgradedMaliciousReport["stageResults"] as! [[String: Any]]
+var maliciousStage = maliciousStages[0]
+var maliciousFindings = maliciousStage["findings"] as! [[String: Any]]
+maliciousFindings[0]["result"] = [
+    "outcome": "recorded", "nextAction": "continueRequiredChecks",
+    "explanation": "No risk",
+]
+maliciousStage["findings"] = maliciousFindings
+maliciousStages[0] = maliciousStage
+downgradedMaliciousReport["stageResults"] = maliciousStages
+downgradedMaliciousReport["requiresBlock"] = false
+panel.updateEnhancedFindings(from: try JSONSerialization.data(withJSONObject: downgradedMaliciousReport))
+precondition(panel.enhancedFindingsLabel.stringValue == "Enhanced findings unavailable")
+precondition(!panel.enhancedFindingsTextView.string.contains("No risk"))
 var badReport = findingReport
 badReport["stageResults"] = [[
     "stage": "embeddedUrls", "outcome": "completed",

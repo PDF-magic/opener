@@ -1,0 +1,30 @@
+name: Maximum generated content marking
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  generated-content-origin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned sanitizer PDF inspection dependencies
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: Verify trusted generated-copy labeling and reject original relabeling
+        run: python3 test-maximum-generated-content-marking.py -v
+      - name: Preserve sanitization and active-content removal regressions
+        run: |
+          python3 test-maximum-sanitized-copy.py -v
+          python3 test-maximum-active-content-removal.py -v
+      - name: Preserve fresh generated-copy scan
+        run: python3 test-maximum-generated-rescan.py -v
+      - name: Preserve required safe-copy handoff
+        run: python3 test-maximum-safe-copy-handoff.py -v

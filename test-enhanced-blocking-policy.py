@@ -31,6 +31,7 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
             FindingCode.malformedStructure,
             FindingCode.conflictingStructure,
             FindingCode.unresolvedReference,
+            FindingCode.knownMaliciousContent,
             FindingCode.unsupportedFeature,
             FindingCode.resourceLimit,
             FindingCode.inspectionFailure,
@@ -73,6 +74,21 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
                 self.assertFalse(source.requires_block)
                 self.assertTrue(decision.requires_block)
                 self.assertTrue(decision.blocking_findings)
+
+    def test_known_malicious_content_is_denied_at_every_severity(self):
+        for severity in FindingSeverity:
+            with self.subTest(severity=severity):
+                finding = AnalysisFinding(
+                    FindingCode.knownMaliciousContent, severity,
+                    object_number=23, page_number=4,
+                )
+                decision = determine_blocking_findings(report(finding))
+                self.assertIs(disposition_for_finding(finding), BlockingDisposition.denyOpening)
+                self.assertIs(decision.findings[0].disposition, BlockingDisposition.denyOpening)
+                self.assertTrue(decision.requires_block)
+                self.assertTrue(decision.to_dict()["findings"][0]["requiresBlock"])
+                self.assertFalse(decision.authorizes_open)
+                self.assertEqual(decision.to_dict()["findings"][0]["code"], "knownMaliciousContent")
 
     def test_review_required_severity_promotes_routine_revision_to_review(self):
         decision = determine_blocking_findings(report(AnalysisFinding(

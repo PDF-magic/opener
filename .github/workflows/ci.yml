@@ -26,6 +26,8 @@ jobs:
         run: python3 test-pdf-embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
         run: python3 test-pdf-structure-parser.py -v
+      - name: Reject excessive PDF recursion depth and cyclic page trees
+        run: python3 test-pdf-recursion-depth.py -v
       - name: Enforce hard wall-clock timeout on optional PDF structure analysis
         run: python3 test-timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
@@ -70,6 +72,8 @@ jobs:
         run: python3 test-preserve-signature-database.py -v
       - name: Verify staged signatures before activation
         run: python3 test-validate-signature-database.py -v
+      - name: Test signature directory permission failures and rollback
+        run: python3 test-signature-directory-permissions.py -v
       - name: Verify ClamAV signature update failures are recorded safely
         run: python3 test-signature-update-failures.py -v
       - name: Detect incomplete ClamAV signature downloads
@@ -256,8 +260,12 @@ jobs:
         run: python3 test-scan-and-open.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: python3 test-installed-clamav-version.py -v
+      - name: Inspect scanner-advertised capabilities without scanning documents
+        run: python3 test-scanner-feature-check.py -v
       - name: Verify Standard signature database files exist before scanning
         run: python3 test-signature-database-existence.py -v
+      - name: Block each scan if mandatory signatures become unavailable
+        run: python3 test-mandatory-signature-gate.py -v
       - name: Verify cancellation and scanner process-group cleanup
         timeout-minutes: 2
         run: python3 test-cancellation.py -v
@@ -383,6 +391,8 @@ jobs:
         run: python3 test-scanner-defaults-summary.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: python3 test-validate-signature-database.py -v
+      - name: Test signature directory permissions on macOS
+        run: python3 test-signature-directory-permissions.py -v
       - name: Test read-only ClamAV signature revision parsing
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
@@ -475,6 +485,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
           "$RUNNER_TEMP/TestResetGeneralPreferences"
+      - name: Verify Restore Recommended Limits preserves scanner safety and customizations
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-recommended-scanner-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
+          "$RUNNER_TEMP/TestRecommendedScannerLimits"
       - name: Test versioned configuration serialization and compatibility
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
