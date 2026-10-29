@@ -17,7 +17,9 @@ spec.loader.exec_module(opener)
 
 class InstalledClamAVVersionTests(unittest.TestCase):
     def test_detects_version_at_an_installed_trusted_path_without_scanning(self):
-        with patch.object(
+        # Scanner discovery first verifies that candidates are regular files.
+        # Mock that separate precondition so this test exercises executability.
+        with patch.object(opener.Path, "is_file", return_value=True), patch.object(
             opener.os, "access", side_effect=lambda path, mode: path == "/usr/local/bin/clamscan"
         ) as access, patch.object(
             opener.subprocess, "check_output",
@@ -39,7 +41,9 @@ class InstalledClamAVVersionTests(unittest.TestCase):
         )
 
     def test_absent_scanner_reports_unknown_without_invoking_a_process(self):
-        with patch.object(opener.os, "access", return_value=False) as access, patch.object(
+        with patch.object(opener.Path, "is_file", return_value=True), patch.object(
+            opener.os, "access", return_value=False
+        ) as access, patch.object(
             opener.subprocess, "check_output"
         ) as query:
             self.assertIsNone(opener.detect_installed_clamav_version())

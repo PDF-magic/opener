@@ -125,6 +125,21 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
 
   var id: String { rawValue }
 
+  // This ordering compares planned preview descriptions, not the active
+  // scanner policy. Every named tier remains unavailable for enforcement.
+  var previewStrength: Int {
+    switch self {
+    case .standard: return 0
+    case .enhanced: return 1
+    case .maximum: return 2
+    }
+  }
+
+  func isLowerPreview(than current: PlannedProtectionTier?) -> Bool {
+    guard let current else { return false }
+    return previewStrength < current.previewStrength
+  }
+
   var title: String {
     switch self {
     case .standard: return "Standard"
@@ -226,6 +241,8 @@ private enum ExactEffectiveScanPolicy {
 struct ProtectionSettingsView: View {
   @State private var selectedPreview: PlannedProtectionTier?
   @State private var previewSaveStatus: String?
+  @State private var pendingLowerPreview: PlannedProtectionTier?
+  @State private var showLowerPreviewWarning = false
   @State private var showExactEffectivePolicy = false
   @State private var showExistingExceptions = false
   @State private var showProtectionResetConfirmation = false
@@ -297,14 +314,14 @@ struct ProtectionSettingsView: View {
 
             ForEach(PlannedProtectionTier.allCases) { tier in
               Button {
-                // Persist only the planned preview, never the active scanner policy.
-                guard let level = PreferredProtectionLevel(rawValue: tier.rawValue),
-                      PlannedProtectionLevelPreference.saveExplicitChoice(level) else {
-                  previewSaveStatus = "Could not save the preview choice. The previously saved level is unchanged."
-                  return
+                // A lower planned tier needs a warning before any preference write.
+                // The selected preview never changes the active scanner policy.
+                if tier.isLowerPreview(than: selectedPreview) {
+                  pendingLowerPreview = tier
+                  showLowerPreviewWarning = true
+                } else {
+                  saveProtectionPreview(tier)
                 }
-                selectedPreview = tier
-                previewSaveStatus = "\(tier.title) preview saved. Active protection remains Built-in."
               } label: {
                 HStack(alignment: .top, spacing: 12) {
                   Image(systemName: selectedPreview == tier
@@ -520,6 +537,18 @@ struct ProtectionSettingsView: View {
         selectedPreview = tier
       }
     }
+    .alert("Lower planned protection preview?", isPresented: $showLowerPreviewWarning) {
+      Button("Keep current preview", role: .cancel) {
+        pendingLowerPreview = nil
+      }
+      Button("Save lower preview") {
+        guard let pendingLowerPreview else { return }
+        self.pendingLowerPreview = nil
+        saveProtectionPreview(pendingLowerPreview)
+      }
+    } message: {
+      Text("Changing from \(selectedPreview?.title ?? "the current tier") to \(pendingLowerPreview?.title ?? "a lower tier") saves a preview with fewer planned checks. This does not reduce active Built-in ClamAV scanning, signature freshness, file integrity, quarantine, or fail-closed opening. Protection exceptions and scan bypasses are not supported.")
+    }
     .confirmationDialog(
       "Reset Protection Settings?",
       isPresented: $showProtectionResetConfirmation
@@ -529,8 +558,18 @@ struct ProtectionSettingsView: View {
       }
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text("Reset only the planned protection preview to Standard? Your active Built-in ClamAV scanner, PDF app, notifications and other preferences will not change.")
+      Text("Resetting Enhanced or Maximum to Standard selects a lower planned preview with fewer checks. This does not reduce active Built-in ClamAV scanning, file integrity, quarantine or fail-closed opening; no bypass is available. Your PDF app, notifications and other preferences will not change.")
     }
+  }
+
+  private func saveProtectionPreview(_ tier: PlannedProtectionTier) {
+    guard let level = PreferredProtectionLevel(rawValue: tier.rawValue),
+          PlannedProtectionLevelPreference.saveExplicitChoice(level) else {
+      previewSaveStatus = "Could not save the preview choice. The previously saved level is unchanged."
+      return
+    }
+    selectedPreview = tier
+    previewSaveStatus = "\(tier.title) preview saved. Active protection remains Built-in."
   }
 
   private func resetProtectionPreview() {
