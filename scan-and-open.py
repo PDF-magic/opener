@@ -353,10 +353,35 @@ def read_signature_database_version():
 
 
 
+# Match the paths supported by the installer and the existing scan gate. Do not
+# trust an arbitrary PATH entry or execute any candidate during discovery.
+CLAMAV_CANDIDATES = (
+    '/opt/homebrew/bin/clamscan',
+    '/usr/local/bin/clamscan',
+    '/usr/local/clamav/bin/clamscan',
+)
+
+
+def detect_clamav_installation() -> Optional[str]:
+    """Read-only detection of an installed, executable ClamAV scanner.
+
+    A directory with execute/search permission is not a scanner. This reports
+    binary availability, not signature freshness or a successful malware scan.
+    """
+    for candidate in CLAMAV_CANDIDATES:
+        try:
+            if Path(candidate).is_file() and os.access(candidate, os.X_OK):
+                return candidate
+        except OSError:
+            # Inaccessible installations must never be treated as available.
+            continue
+    return None
+
+
 def scanner_path():
-    for candidate in ('/opt/homebrew/bin/clamscan', '/usr/local/bin/clamscan', '/usr/local/clamav/bin/clamscan'):
-        if os.access(candidate, os.X_OK):
-            return candidate
+    scanner = detect_clamav_installation()
+    if scanner is not None:
+        return scanner
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
 
