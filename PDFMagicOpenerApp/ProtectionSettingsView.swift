@@ -204,6 +204,23 @@ struct ProtectionSettingsView: View {
           .fixedSize(horizontal: false, vertical: true)
           .accessibilityIdentifier("activeBuiltInProtection")
 
+        GroupBox("New installation recommendation") {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Enhanced: not yet recommended as a new-install default")
+              .font(.subheadline.weight(.semibold))
+              .fixedSize(horizontal: false, vertical: true)
+            Text("Enhanced is a candidate for the recommended default only if testing demonstrates that its full safety checks are implemented, fail closed, and provide acceptable measured performance.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Text("Evidence is not sufficient yet: Enhanced is not an active selectable policy, its additional checks are not fully integrated, and no end-to-end comparison establishes a safe default. New installations retain Built-in ClamAV scanning.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityIdentifier("enhancedNewInstallRecommendationStatus")
+
         GroupBox("Planned protection levels") {
           VStack(alignment: .leading, spacing: 12) {
             Text("Choose a card to preview its protections. All three are planned; choosing a card does not enable it, save a preference or change the scanner.")
