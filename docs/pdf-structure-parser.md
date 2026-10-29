@@ -34,3 +34,34 @@ is not a comprehensive malware or PDF-feature-security assessment. Input-size
 limits alone do not enforce CPU/memory bounds against adversarial PDFs; future
 integration must isolate parsing and enforce the separately planned resource
 and duration limits.
+
+## Structured parser output (opener-0413)
+
+A successful `parse_pdf_structure(pdf_bytes)` call returns the frozen
+`PDFStructure(pdf_version, page_count)` evidence object. Consumers that need
+stable, JSON-compatible data can call `PDFStructure.to_dict()`:
+
+```json
+{
+  "schemaVersion": 1,
+  "pdfVersion": "1.4",
+  "pageCount": 1,
+  "authorizesOpen": false
+}
+```
+
+This **version 1 contract** contains exactly the four keys shown above.
+`pdfVersion` is the recognized header version (PDF 1.0–1.7 or 2.0),
+`pageCount` is an integer in the inclusive range 1–1,024, and
+`authorizesOpen` is always false. Direct construction of evidence rejects
+unknown versions, non-integer page counts (including booleans), and out-of-range
+values. The returned dictionary is detached from the immutable evidence.
+
+**No parsed document contents, raw PDF strings, filenames, URLs, object streams,
+attachment names, or exception messages are included.** A rejected, oversized,
+encrypted, or malformed document raises the existing fixed-message
+`PDFStructureParseError`; it never produces a successful output record.
+This is *structural evidence only*: not a malware verdict, a complete PDF
+security assessment, or permission to open or cache a document. Additional
+inspectors can produce their separately defined findings without extending
+this minimal parser record or activating the planned Enhanced profile.
