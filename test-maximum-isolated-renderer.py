@@ -8,6 +8,7 @@ from pathlib import Path
 import struct
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -52,6 +53,7 @@ class MaximumRendererTests(unittest.TestCase):
     def setUpClass(cls):
         cls.pdf = sample_pdf()
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_real_page_rasterization_uses_separate_process(self):
         render = renderer.render_isolated_pdf_page(self.pdf, 0)
         self.assertNotEqual(render.worker_pid, os.getpid())
@@ -67,6 +69,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual((pix.width, pix.height), (200, 150))
         self.assertNotEqual(pix.pixel(25, 25), pix.pixel(190, 140))
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_two_pages_are_different_and_each_runs_in_separate_child(self):
         results = renderer.render_isolated_pdf_pages(self.pdf, (1, 0))
         self.assertEqual(tuple(x.page_index for x in results), (1, 0))
@@ -74,6 +77,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertNotEqual(results[0].png_bytes, results[1].png_bytes)
         self.assertTrue(all(x.permits_open is False for x in results))
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_large_page_is_downscaled_before_rasterization(self):
         render = renderer.render_isolated_pdf_page(sample_pdf(oversized_page=True), 0)
         self.assertLessEqual(render.width, renderer.MAX_RENDER_SIDE)
@@ -113,6 +117,7 @@ class MaximumRendererTests(unittest.TestCase):
                     renderer.render_isolated_pdf_pages(self.pdf, pages)
             run.assert_not_called()
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_child_starts_with_isolation_flags_and_private_bytes(self):
         real_run = subprocess.run
         calls = []
@@ -122,7 +127,12 @@ class MaximumRendererTests(unittest.TestCase):
         with patch.object(renderer.subprocess, "run", side_effect=observe):
             renderer.render_isolated_pdf_page(self.pdf, 0)
         command, opts = calls[0]
-        self.assertEqual(command[:3], (sys.executable, "-I", "-B"))
+        self.assertEqual(command[0], renderer.SANDBOX_EXEC)
+        self.assertEqual(command[1:3], ("-p", renderer.RENDERER_SANDBOX_PROFILE))
+        self.assertIn("PYTHON=" + str(Path(sys.executable).resolve()), command)
+        self.assertIn("WORKER_DIR=" + str(ROOT.resolve()), command)
+        self.assertIn("-I", command)
+        self.assertIn("-B", command)
         self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
         self.assertEqual(command[-1], "0")
         self.assertIs(opts["input"], self.pdf)
@@ -136,6 +146,7 @@ class MaximumRendererTests(unittest.TestCase):
             "PYTHONNOUSERSITE",
         })
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_bad_pdf_and_out_of_range_page_fail_closed(self):
         for data, page in ((b"%PDF-1.4\nPrivate content", 0), (self.pdf, 2),
                            (b"%PDF-1.4\n", 0)):
@@ -146,6 +157,7 @@ class MaximumRendererTests(unittest.TestCase):
             self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
             self.assertNotIn("Private", str(failure.exception))
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_password_protected_document_is_not_rendered(self):
         doc = pymupdf.open(stream=self.pdf, filetype="pdf")
         locked = doc.tobytes(
@@ -161,12 +173,12 @@ class MaximumRendererTests(unittest.TestCase):
         for error in (subprocess.TimeoutExpired("private", 1),
                       OSError("/private/filename.pdf"), RuntimeError("secret")):
             with self.subTest(error=type(error).__name__), patch.object(
-                renderer.subprocess, "run", side_effect=error
+                renderer, "_run_confined_worker", side_effect=error
             ), self.assertRaises(renderer.MaximumPDFRenderError) as failure:
                 renderer.render_isolated_pdf_page(self.pdf, 0)
             self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
         with patch.object(
-            renderer.subprocess, "run",
+            renderer, "_run_confined_worker",
             return_value=subprocess.CompletedProcess([], 137, b""),
         ), self.assertRaises(renderer.MaximumPDFRenderError):
             renderer.render_isolated_pdf_page(self.pdf, 0)
@@ -198,11 +210,12 @@ class MaximumRendererTests(unittest.TestCase):
         )
         for output in broken:
             with self.subTest(size=len(output)), patch.object(
-                renderer.subprocess, "run",
+                renderer, "_run_confined_worker",
                 return_value=subprocess.CompletedProcess([], 0, output),
             ), self.assertRaises(renderer.MaximumPDFRenderError):
                 renderer.render_isolated_pdf_page(self.pdf, 0)
 
+    @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_response_is_immutable_and_non_authorizing(self):
         r = renderer.render_isolated_pdf_page(self.pdf, 0)
         meta = r.to_metadata()
@@ -254,12 +267,63 @@ class MaximumRendererTests(unittest.TestCase):
                 self.assertEqual(page.page_index, 0)
                 self.assertTrue(page.png_bytes.startswith(renderer.PNG_SIGNATURE))
 
-    def test_ci_renders_real_pdf_on_linux_and_macos(self):
+    def test_filesystem_policy_is_deny_by_default_and_read_only(self):
+        profile = renderer.RENDERER_SANDBOX_PROFILE
+        self.assertIn("(deny default)", profile)
+        self.assertIn('(literal (param "PYTHON"))', profile)
+        self.assertIn('(subpath (param "WORKER_DIR"))', profile)
+        self.assertIn('(subpath (param "PYTHON_PREFIX"))', profile)
+        self.assertNotIn("(allow default)", profile)
+        self.assertNotIn("(allow file-write", profile)
+        self.assertNotIn("(allow network", profile)
+        self.assertNotIn("(allow process-fork", profile)
+        self.assertNotIn('(subpath "/Users")', profile)
+        self.assertNotIn('(subpath "/private/tmp")', profile)
+        self.assertNotIn('(subpath "/private/var")', profile)
+        content_profile = profile.replace(
+            '(allow file-read-metadata (subpath "/"))', ""
+        )
+        self.assertNotIn('(subpath "/")', content_profile)
+
+    def test_renderer_fails_closed_without_macos_sandbox(self):
+        with patch.object(renderer.sys, "platform", "linux"), \
+                patch.object(renderer.subprocess, "run") as run:
+            with self.assertRaises(MaximumPDFRenderError) as failure:
+                renderer.render_isolated_pdf_page(self.pdf, 0)
+            self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
+            run.assert_not_called()
+
+    def test_renderer_fails_closed_when_sandbox_binary_is_untrusted(self):
+        with patch.object(renderer.sys, "platform", "darwin"), \
+                patch.object(renderer, "_trusted_regular_file", return_value=False), \
+                patch.object(renderer.subprocess, "run") as run:
+            with self.assertRaises(MaximumPDFRenderError) as failure:
+                renderer.render_isolated_pdf_page(self.pdf, 0)
+            self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
+            run.assert_not_called()
+
+    @unittest.skipUnless(sys.platform == "darwin", "Requires actual macOS Seatbelt enforcement")
+    def test_real_sandbox_denies_private_file_reads_and_writes(self):
+        with tempfile.TemporaryDirectory(prefix="opener-render-private-") as directory:
+            private_root = Path(directory)
+            private = private_root / "private.pdf"
+            private.write_bytes(b"private marker")
+            write_target = private_root / "should-not-exist"
+            probe = ROOT / "maximum_render_filesystem_probe.py"
+            outcome = renderer._run_confined_worker(
+                probe, (str(private), str(write_target)), b"filesystem probe"
+            )
+            self.assertEqual(outcome.returncode, 0)
+            self.assertEqual(private.read_bytes(), b"private marker")
+            self.assertFalse(write_target.exists())
+
+    def test_ci_checks_rendering_and_filesystem_confinement(self):
         ci = (ROOT / ".github/workflows/maximum-isolated-renderer.yml").read_text()
         self.assertIn("ubuntu-latest", ci)
         self.assertIn("macos-latest", ci)
         self.assertIn("test-maximum-isolated-renderer.py -v", ci)
         self.assertIn("pymupdf==1.26.7", ci)
+        self.assertTrue((ROOT / "maximum_render_filesystem_probe.py").is_file())
 
 
 if __name__ == "__main__":

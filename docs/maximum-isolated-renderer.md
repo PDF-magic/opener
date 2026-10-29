@@ -24,15 +24,24 @@ disabled.
 
 The worker reuses the trusted Maximum isolated-analysis
 `_apply_limits()` entry point **before importing PyMuPDF**. That applies
-the existing CPU, memory, no-core and no-output-file limits. The macOS resident-memory watchdog stays armed during the complete render
-and is explicitly disarmed before interpreter shutdown, avoiding a late
-`SIGALRM` after valid PNG delivery. Parent-side
-process isolation also uses Python `-I -B`, no shell, a minimal environment,
-closed inherited file descriptors, a new process session, 30-second
-deadline, private stdin and discarded stderr. This separate process
-boundary does **not** by itself prove an OS-enforced network or filesystem
-sandbox; full Maximum production integration must enforce those separate
-policies, especially on macOS, before enabling the tier.
+the existing CPU, memory, no-core and no-output-file limits. The macOS
+resident-memory watchdog stays armed during the complete render and is
+explicitly disarmed before interpreter shutdown, avoiding a late `SIGALRM`
+after valid PNG delivery.
+
+On macOS, the renderer is launched through `/usr/bin/sandbox-exec` with a
+deny-by-default Seatbelt profile. File contents are readable only from the
+trusted renderer source directory, the selected Python runtime prefixes and
+required operating-system runtime locations. The policy grants no filesystem
+writes, and it does not permit reading arbitrary user documents, home
+directories or temporary files. The child receives only PDF bytes through
+stdin; it gets no PDF pathname, a minimal environment, closed inherited file
+descriptors, a new process session and a 30-second deadline. If the platform,
+sandbox executable or runtime paths cannot be validated, rendering fails
+closed rather than falling back to an unsandboxed child. Filesystem metadata
+checks are allowed for path resolution, but do not grant broad file-content
+access. This renderer boundary is separate from network and admission-policy
+controls, and does not enable the planned Maximum tier.
 
 Documents with more than 512 pages, password-protected PDFs, invalid
 pages or malformed data fail closed. The renderer rejects absurd page
@@ -46,10 +55,13 @@ single fixed, path-free exception and cannot expose PDF-controlled
 filenames, extracted text, raw renderer diagnostics or an opening verdict.
 
 `test-maximum-isolated-renderer.py` renders synthetic two-page PDFs in
-real isolated workers on **Linux and macOS**, tests per-page image
-differences, scaling, bounded batches, encrypted/invalid inputs,
-worker failures, protocol tampering, immutability and noninterference
-with the deployed scanner. The dedicated
+real isolated workers on **macOS**, and verifies fail-closed refusal without
+Seatbelt on Linux. It tests per-page image differences, scaling, bounded
+batches, encrypted/invalid inputs, worker failures, protocol tampering,
+immutability and noninterference with the deployed scanner. The dedicated
 `.github/workflows/maximum-isolated-renderer.yml` workflow installs
-`pymupdf==1.26.7` and runs the regression suite in both operating systems.
-Existing CI workflows and user preferences are preserved.
+`pymupdf==1.26.7` and runs the regression suite on Linux and macOS. The
+macOS job performs actual kernel-enforced private-file read/write denial
+probes and real rasterization; the Linux job verifies that rendering refuses
+to run without the required filesystem sandbox. Existing CI workflows and
+user preferences are preserved.

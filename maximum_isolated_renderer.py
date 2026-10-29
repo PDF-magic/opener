@@ -6,7 +6,9 @@ Maximum protection. The PDF never becomes a worker pathname (opener-0314).
 
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
+import stat
 import struct
 import subprocess
 import sys
@@ -23,10 +25,142 @@ MAGIC = b"MAXPNG01"
 _HEADER = struct.Struct(">8sII")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
+SANDBOX_EXEC = "/usr/bin/sandbox-exec"
+RENDERER_SANDBOX_PROFILE = """(version 1)
+(deny default)
+(allow process-exec (literal (param "PYTHON")))
+(allow sysctl-read)
+(allow file-read-metadata (subpath "/"))
+(allow file-read*
+    (literal (param "PYTHON"))
+    (literal (param "WORKER"))
+    (subpath (param "WORKER_DIR"))
+    (subpath (param "PYTHON_PREFIX"))
+    (subpath (param "PYTHON_BASE_PREFIX"))
+    (subpath "/System")
+    (subpath "/usr/bin")
+    (subpath "/usr/lib")
+    (subpath "/usr/share")
+    (subpath "/bin")
+    (subpath "/sbin")
+    (subpath "/Library/Developer/CommandLineTools")
+    (subpath "/Library/Frameworks")
+    (literal "/dev/null")
+    (literal "/dev/urandom"))
+"""
+MAX_RENDER_ARGUMENTS = 8
+MAX_RENDER_ARGUMENT_LENGTH = 4096
 
 
 class MaximumPDFRenderError(RuntimeError):
     """Fixed, path-free render failure, never a positive scan verdict."""
+
+
+
+def _trusted_regular_file(path: str, *, executable: bool = False) -> bool:
+    """Accept only a canonical, non-writable trusted file for the child."""
+    if (type(path) is not str or not path.startswith("/") or "\x00" in path or
+            os.path.normpath(path) != path or os.path.realpath(path) != path):
+        return False
+    try:
+        info = os.stat(path, follow_symlinks=False)
+        return (
+            stat.S_ISREG(info.st_mode) and
+            not info.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and
+            info.st_uid in (0, os.geteuid()) and
+            (not executable or os.access(path, os.X_OK))
+        )
+    except OSError:
+        return False
+
+
+def _trusted_directory(path: str, *, runtime: bool = False) -> bool:
+    """Reject symlinks, writable paths and overly broad runtime roots."""
+    minimum_components = 4 if runtime else 3
+    if (type(path) is not str or not path.startswith("/") or "\x00" in path or
+            os.path.normpath(path) != path or os.path.realpath(path) != path or
+            len(Path(path).parts) < minimum_components):
+        return False
+    try:
+        info = os.stat(path, follow_symlinks=False)
+        return (
+            stat.S_ISDIR(info.st_mode) and
+            not info.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and
+            info.st_uid in (0, os.geteuid())
+        )
+    except OSError:
+        return False
+
+
+def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
+    """Resolve and validate the only paths the renderer process may read."""
+    if sys.platform != "darwin":
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    try:
+        python = str(Path(sys.executable).resolve(strict=True))
+        worker = str(Path(worker_path).resolve(strict=True))
+        source_root = str(Path(__file__).resolve(strict=True).parent)
+        prefix = str(Path(sys.prefix).resolve(strict=True))
+        base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
+    except (OSError, RuntimeError, TypeError):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
+
+    if (Path(worker).parent != Path(source_root) or
+            not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
+            not _trusted_regular_file(python, executable=True) or
+            not _trusted_regular_file(worker) or
+            not _trusted_directory(source_root) or
+            not _trusted_directory(prefix, runtime=True) or
+            not _trusted_directory(base_prefix, runtime=True)):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    return {
+        "python": python,
+        "worker": worker,
+        "worker_dir": source_root,
+        "python_prefix": prefix,
+        "python_base_prefix": base_prefix,
+    }
+
+
+def _run_confined_worker(
+    worker_path: Path, arguments: tuple[str, ...], input_bytes: bytes,
+) -> subprocess.CompletedProcess:
+    """Run one trusted renderer helper with macOS filesystem confinement."""
+    if (type(arguments) is not tuple or
+            not 1 <= len(arguments) <= MAX_RENDER_ARGUMENTS or
+            any(type(arg) is not str or not arg or "\x00" in arg or
+                len(arg) > MAX_RENDER_ARGUMENT_LENGTH for arg in arguments) or
+            type(input_bytes) is not bytes or
+            not 0 < len(input_bytes) <= MAX_PDF_BYTES):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+
+    context = _renderer_sandbox_context(worker_path)
+    command = [SANDBOX_EXEC, "-p", RENDERER_SANDBOX_PROFILE]
+    for name, key in (
+        ("PYTHON", "python"),
+        ("WORKER", "worker"),
+        ("WORKER_DIR", "worker_dir"),
+        ("PYTHON_PREFIX", "python_prefix"),
+        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
+    ):
+        command.extend(("-D", name + "=" + context[key]))
+    command.extend((context["python"], "-I", "-B", context["worker"], *arguments))
+    try:
+        return subprocess.run(
+            command, input=input_bytes,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=WORKER_WALL_SECONDS, check=False, close_fds=True,
+            start_new_session=True, cwd="/",
+            env={
+                "PATH": "/usr/bin:/bin",
+                "HOME": "/var/empty",
+                "LANG": "C",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONNOUSERSITE": "1",
+            },
+        )
+    except (OSError, subprocess.SubprocessError):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
 
 
 @dataclass(frozen=True)
@@ -125,21 +259,8 @@ def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPa
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
 
     worker = Path(__file__).resolve().with_name("maximum_render_worker.py")
-    command = (sys.executable, "-I", "-B", str(worker), str(page_index))
     try:
-        complete = subprocess.run(
-            command, input=pdf_bytes,
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            timeout=WORKER_WALL_SECONDS, check=False, close_fds=True,
-            start_new_session=True, cwd="/",
-            env={
-                "PATH": "/usr/bin:/bin",
-                "HOME": "/nonexistent",
-                "LANG": "C",
-                "PYTHONDONTWRITEBYTECODE": "1",
-                "PYTHONNOUSERSITE": "1",
-            },
-        )
+        complete = _run_confined_worker(worker, (str(page_index),), pdf_bytes)
         if complete.returncode != 0:
             raise MaximumPDFRenderError(BLOCK_MESSAGE)
         return _decode_response(complete.stdout, page_index)
