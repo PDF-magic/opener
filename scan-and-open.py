@@ -546,6 +546,20 @@ def scan_engine_version(scanner):
     return match.group(1) if match else None
 
 
+def detect_installed_clamav_version():
+    """Read the currently installed engine version without running a file scan.
+
+    This advisory metadata is independent of cached scan-result provenance.
+    An unknown version must never be interpreted as a clean scan or bypass
+    the mandatory signature, integrity, and quarantine checks.
+    """
+    try:
+        scanner = scanner_path()
+    except (OSError, RuntimeError):
+        return None
+    return scan_engine_version(scanner)
+
+
 def record_scan_destination(destination):
     """Record the intended launch target separately from clean-scan verdicts."""
     try:
