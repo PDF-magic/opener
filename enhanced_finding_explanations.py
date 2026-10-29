@@ -110,6 +110,8 @@ class ExplainedFinding:
                 "outcome": self.result.value,
                 "explanation": self.explanation,
                 "nextAction": self.next_action.value,
+                # Severity determines handling, not malware confirmation.
+                "malwareAssessment": "notConfirmed",
             },
         }
 

@@ -18,5 +18,7 @@ jobs:
           python-version: "3.11"
       - name: Verify deterministic structured finding identifiers
         run: python3 test-enhanced-analysis-findings.py -v
-      - name: Preserve identifiers in explainable finding results
+      - name: Verify heuristic findings are not presented as confirmed malware
         run: python3 test-enhanced-finding-explanations.py -v
+      - name: Keep scanner detections distinct from heuristic findings
+        run: python3 test-detection-responses.py -v
