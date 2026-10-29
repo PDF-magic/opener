@@ -3,8 +3,8 @@
 `enhanced_finding_explanations.explain_analysis_findings(report)` decorates
 the immutable structured stage findings from [opener-0297](structured-enhanced-findings.md)
 with a **result for every finding**. Each finding retains its fixed code,
-severity and optional bounded object/page location, and receives a nested
-`result` object with:
+stable `findingId`, severity and optional bounded object/page location, and
+receives a nested `result` object with:
 
 - `outcome`: `recorded`, `reviewRequired`, `blocking`, or `inspectionIncomplete`
 - `explanation`: a fixed, human-readable reason tied to the finding code

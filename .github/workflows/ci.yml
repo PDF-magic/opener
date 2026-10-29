@@ -362,7 +362,7 @@ jobs:
 
       - name: Verify scan result contract
         run: python3 test-scan-results.py
-      - name: Verify structured Enhanced analysis findings and incomplete-stage safety
+      - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: python3 test-enhanced-analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
         run: python3 test-enhanced-finding-explanations.py -v
