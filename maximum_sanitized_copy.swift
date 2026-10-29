@@ -24,7 +24,12 @@ private func convert(_ data: Data) -> Data? {
 
     var usedPixels = 0
     for index in 1...document.numberOfPages {
-        guard let page = document.page(at: index), page.rotationAngle == 0 else {
+        guard let page = document.page(at: index) else {
+            output.closePDF()
+            return nil
+        }
+        let rotation = ((page.rotationAngle % 360) + 360) % 360
+        guard [0, 90, 180, 270].contains(rotation) else {
             output.closePDF()
             return nil
         }
