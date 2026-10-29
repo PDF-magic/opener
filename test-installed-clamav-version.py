@@ -17,7 +17,9 @@ spec.loader.exec_module(opener)
 
 class InstalledClamAVVersionTests(unittest.TestCase):
     def test_detects_version_at_an_installed_trusted_path_without_scanning(self):
-        with patch.object(
+        # Installed executable discovery now requires an existing regular file
+        # before querying its executable permission.
+        with patch.object(opener.Path, "is_file", return_value=True), patch.object(
             opener.os, "access", side_effect=lambda path, mode: path == "/usr/local/bin/clamscan"
         ) as access, patch.object(
             opener.subprocess, "check_output",
@@ -39,11 +41,23 @@ class InstalledClamAVVersionTests(unittest.TestCase):
         )
 
     def test_absent_scanner_reports_unknown_without_invoking_a_process(self):
-        with patch.object(opener.os, "access", return_value=False) as access, patch.object(
+        with patch.object(opener.Path, "is_file", return_value=True), patch.object(
+            opener.os, "access", return_value=False
+        ) as access, patch.object(
             opener.subprocess, "check_output"
         ) as query:
             self.assertIsNone(opener.detect_installed_clamav_version())
         self.assertEqual(access.call_count, 3)
+        query.assert_not_called()
+
+    def test_nonfile_candidates_do_not_probe_executable_permissions_or_version(self):
+        with patch.object(opener.Path, "is_file", return_value=False), patch.object(
+            opener.os, "access"
+        ) as access, patch.object(
+            opener.subprocess, "check_output"
+        ) as query:
+            self.assertIsNone(opener.detect_installed_clamav_version())
+        access.assert_not_called()
         query.assert_not_called()
 
     def test_unreadable_or_unrecognized_version_is_unknown(self):
