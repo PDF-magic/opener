@@ -406,10 +406,12 @@ class MaximumRendererTests(unittest.TestCase):
                 self.assertTrue(page.png_bytes.startswith(renderer.PNG_SIGNATURE))
 
     def test_ci_checks_renderer_filesystem_confinement(self):
-        ci = (ROOT / ".github/workflows/maximum-isolated-renderer.yml").read_text()
-        self.assertIn("ubuntu-latest", ci)
-        self.assertIn("macos-latest", ci)
-        self.assertIn("test-maximum-isolated-renderer.py -v", ci)
+        ci = (ROOT / ".github/workflows/consolidated-checks.yml").read_text()
+        portable = ci.split("  macos-native-tests:", 1)[0]
+        native = ci.split("  macos-native-tests:", 1)[1]
+        self.assertIn("runs-on: ubuntu-latest", portable)
+        self.assertIn("test-maximum-isolated-renderer.py -v", portable)
+        self.assertNotIn("test-maximum-isolated-renderer.py -v", native)
         self.assertIn("pymupdf==2.0", ci)
         self.assertTrue((ROOT / "maximum_render_filesystem_probe.py").is_file())
 

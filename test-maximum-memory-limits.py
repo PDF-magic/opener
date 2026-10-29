@@ -143,11 +143,13 @@ except BaseException as error:
         self.assertEqual(completed.returncode, 0, completed.stdout.decode("ascii"))
         self.assertIn(b"parser-ready", completed.stdout)
 
-    def test_ci_runs_real_child_checks_on_linux_and_macos(self):
-        ci = (ROOT / ".github/workflows/maximum-memory-limits.yml").read_text()
-        self.assertIn("ubuntu-latest", ci)
-        self.assertIn("macos-latest", ci)
-        self.assertIn("test-maximum-memory-limits.py -v", ci)
+    def test_ci_runs_portable_child_checks_on_ubuntu(self):
+        ci = (ROOT / ".github/workflows/consolidated-checks.yml").read_text()
+        portable = ci.split("  macos-native-tests:", 1)[0]
+        native = ci.split("  macos-native-tests:", 1)[1]
+        self.assertIn("runs-on: ubuntu-latest", portable)
+        self.assertIn("test-maximum-memory-limits.py -v", portable)
+        self.assertNotIn("test-maximum-memory-limits.py -v", native)
         self.assertIn("test-maximum-isolated-analysis.py -v", ci)
         self.assertIn("pypdf==5.9.0", ci)
 

@@ -106,13 +106,15 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.view)
 
-    def test_ci_includes_cross_platform_evidence_guard_and_native_build(self):
-        workflow = (ROOT / ".github/workflows/enhanced-new-install-default.yml").read_text(
+    def test_ci_runs_portable_evidence_guard_on_ubuntu_and_keeps_native_build(self):
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn("test-enhanced-new-install-default.py -v", workflow)
-        self.assertIn("ubuntu-latest", workflow)
-        self.assertIn("macos-latest", workflow)
+        portable = workflow.split("  macos-native-tests:", 1)[0]
+        native = workflow.split("  macos-native-tests:", 1)[1]
+        self.assertIn("test-enhanced-new-install-default.py -v", portable)
+        self.assertIn("ubuntu-latest", portable)
+        self.assertNotIn("test-enhanced-new-install-default.py -v", native)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("macos-build:", ci)
 
