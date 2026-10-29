@@ -50,7 +50,21 @@ class PDFHistoricalActiveTests(unittest.TestCase):
         with (patch.object(socket, "getaddrinfo") as dns,
               patch.object(os, "system") as shell,
               patch.object(subprocess, "run") as process):
-            record = inspect_pdf_revision_active_content(current)
+            import sys
+            failures = []
+            def trace(frame, event, argument):
+                if (event == "exception" and frame.f_code.co_name in
+                        ("inspect_pdf_incremental_revisions", "_read_xref")):
+                    failures.append((frame.f_code.co_name, frame.f_lineno,
+                                     type(argument[1]).__name__))
+                return trace
+            sys.settrace(trace)
+            try:
+                record = inspect_pdf_revision_active_content(current)
+            except Exception:
+                self.fail("Synthetic fixture trace: " + repr(failures[-12:]))
+            finally:
+                sys.settrace(None)
         self.assertEqual(record.revision_count, 3)
         self.assertEqual(record.historical_active_object_count, 1)
         self.assertEqual(record.hidden_active_object_count, 1)
