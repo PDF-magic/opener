@@ -52,7 +52,8 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
                         BlockingDisposition.denyOpening
                         if code in denial_codes or severity in (FindingSeverity.blocking, FindingSeverity.critical)
                         else BlockingDisposition.holdForReview
-                        if code in review_codes or severity is FindingSeverity.suspicious
+                        if code in review_codes or severity in (
+                            FindingSeverity.reviewRequired, FindingSeverity.suspicious)
                         else BlockingDisposition.observation
                     )
                     self.assertIs(disposition, expected)
@@ -72,6 +73,15 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
                 self.assertFalse(source.requires_block)
                 self.assertTrue(decision.requires_block)
                 self.assertTrue(decision.blocking_findings)
+
+    def test_review_required_severity_promotes_routine_revision_to_review(self):
+        decision = determine_blocking_findings(report(AnalysisFinding(
+            FindingCode.incrementalRevision, FindingSeverity.reviewRequired)))
+        self.assertTrue(decision.requires_block)
+        self.assertEqual(
+            decision.findings[0].disposition, BlockingDisposition.holdForReview)
+        self.assertEqual(decision.to_dict()["findings"][0]["severity"], "reviewRequired")
+        self.assertFalse(decision.authorizes_open)
 
     def test_ordinary_revision_is_only_an_observation_not_a_pass(self):
         decision = determine_blocking_findings(

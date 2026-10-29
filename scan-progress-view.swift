@@ -166,6 +166,7 @@ struct EnhancedFindingsProgressSnapshot {
     ]
     private static let severities = [
         "informational": "Informational",
+        "reviewRequired": "Review required",
         "suspicious": "Suspicious",
         "critical": "Critical",
         "blocking": "Blocking",
@@ -231,7 +232,7 @@ struct EnhancedFindingsProgressSnapshot {
                     expectedResult = "inspectionIncomplete"
                 } else if severity == "critical" || severity == "blocking" {
                     expectedResult = "blocking"
-                } else if severity == "suspicious" {
+                } else if severity == "reviewRequired" || severity == "suspicious" {
                     expectedResult = "reviewRequired"
                 } else {
                     expectedResult = "recorded"

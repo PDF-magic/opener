@@ -13,6 +13,13 @@ PDF object/page numbers, not document-controlled text, URLs, file paths,
 attachment names, raw bytes, or exception messages. Data records are immutable;
 `to_dict()` creates a separate JSON-serializable object in expected-stage order.
 
+`FindingSeverity` includes `informational`, `reviewRequired`, `suspicious`,
+`critical`, and `blocking`. The explicit `reviewRequired` severity records
+that human review is mandatory even when evidence is not separately classified
+as suspicious. Both `reviewRequired` and `suspicious` require review before an
+opening decision; `critical` and `blocking` stop opening. The code-specific
+blocking policy can require blocking regardless of severity.
+
 Each finding exposes a deterministic `finding_id` and serializes it as
 `findingId`, using the versioned signature
 `finding-v1:<code>:object=<number-or-none>:page=<number-or-none>`. The ID is
@@ -51,8 +58,8 @@ assert payload["authorizesOpen"] is False
 ```
 
 `requiresBlock` is a conservative **analysis signal** for any unfinished
-expected stage or suspicious, critical, or blocking finding. When every *reported* stage
-completes with no blocking findings, this signal may be false, but it is **not**
+expected stage or review-required, suspicious, critical, or blocking finding.
+When every *reported* stage completes with no blocking findings, this signal may be false, but it is **not**
 a clean verdict and never authorizes opening. The caller's trusted requirements
 must include all applicable inspection stages; remaining baseline checks and the
 existing verified scanner/handoff protections are independent and mandatory.
@@ -62,8 +69,8 @@ and the individual Enhanced inspection stages once they are reviewed and merged.
 Until then, Enhanced remains unavailable and the installed Built-in scan gate
 continues unchanged.
 
-The fixed `FindingSeverity` vocabulary includes `informational`, `suspicious`,
-`critical`, and `blocking`. An explicit `blocking` severity means the
-producer is signaling that opening must stop: the blocking policy maps it to
-`denyOpening`, and the explanation adapter reports a blocking result. This is
-evidence only and never authorizes opening.
+The fixed `FindingSeverity` vocabulary includes `informational`, `reviewRequired`,
+`suspicious`, `critical`, and `blocking`. An explicit `blocking` severity
+means the producer is signaling that opening must stop: the blocking policy
+maps it to `denyOpening`, and the explanation adapter reports a blocking
+result. This is evidence only and never authorizes opening.

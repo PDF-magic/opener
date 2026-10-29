@@ -28,7 +28,7 @@ class BlockingDisposition(str, Enum):
 
 # Fixed, independently reviewed policy for *every* finding code. The values
 # are minimum dispositions: a finding's blocking or critical severity always
-# upgrades to denyOpening, and suspicious severity cannot be merely observational.
+# upgrades to denyOpening, and review-required/suspicious severities cannot be observational.
 # A producer cannot downgrade structural failures or unresolved inspections
 # by marking them informational. No table value means "safe" or "allow".
 _MINIMUM_DISPOSITION = MappingProxyType({
@@ -58,7 +58,7 @@ def disposition_for_finding(finding: AnalysisFinding) -> BlockingDisposition:
     ):
         return BlockingDisposition.denyOpening
     if minimum is BlockingDisposition.holdForReview or (
-        finding.severity is FindingSeverity.suspicious
+        finding.severity in (FindingSeverity.reviewRequired, FindingSeverity.suspicious)
     ):
         return BlockingDisposition.holdForReview
     return BlockingDisposition.observation

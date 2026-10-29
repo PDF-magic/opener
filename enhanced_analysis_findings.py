@@ -50,7 +50,10 @@ class FindingCode(str, Enum):
 
 
 class FindingSeverity(str, Enum):
+    """Conservative classification of a finding, not an opening authorization."""
+
     informational = "informational"
+    reviewRequired = "reviewRequired"
     suspicious = "suspicious"
     critical = "critical"
     blocking = "blocking"
