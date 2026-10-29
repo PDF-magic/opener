@@ -55,13 +55,22 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     source = PAGE.read_text(encoding="utf-8")
     self.assertIn("does not change scanner behavior or reset saved choices", source)
     self.assertIn("Advanced scanner parameters are not editable here.", source)
+    # Only the Built-in defaults summary must be read-only. The separately
+    # confirmed optional-limit reset elsewhere on this page is permitted.
+    start = source.index("        // Reference values from the mandatory Built-in scan gate")
+    end = source.index('accessibilityIdentifier("advancedScanningDefaultsSection")', start)
+    defaults_section = source[start:end]
+    for forbidden in ("Toggle(", "Button(", "Picker(", "Slider("):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, defaults_section)
     for forbidden in (
-        "Toggle(", "Button(", "Picker(", "Slider(", "@AppStorage",
-        "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
+        "@AppStorage", "UserDefaults", "Process(", "FileHandle(", "NSWorkspace",
         "write(to:", "createFile(", "clamscan(", "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
+    self.assertIn('Button("Restore Recommended Limits")', source)
+    self.assertIn("showRestoreRecommendedLimitsConfirmation = true", source)
 
   def test_both_ci_jobs_verify_the_defaults_summary(self):
     source = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
