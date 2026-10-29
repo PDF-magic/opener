@@ -75,11 +75,16 @@ class PDFDocumentPermissions:
         }
 
 
-def _operations(bits):
+def _normalized_bits(bits):
+    """Accept PDF signed 32-bit and unsigned 32-bit parser representations."""
     if (not isinstance(bits, int) or isinstance(bits, bool) or
-        not -(1 << 31) <= bits < 1 << 31):
+        not -(1 << 31) <= bits < 1 << 32):
         raise PDFDocumentPermissionsError(BLOCK_MESSAGE)
-    mask = bits & 0xffffffff
+    return int(bits) if bits < (1 << 31) else int(bits - (1 << 32))
+
+
+def _operations(bits):
+    mask = _normalized_bits(bits) & 0xffffffff
     return tuple(sorted(name for name, index in _BITS if mask & (1 << index)))
 
 
@@ -134,7 +139,7 @@ def inspect_pdf_document_permissions(contents: bytes) -> PDFDocumentPermissions:
             flags = resolve(encrypt.raw_get("/P"))
             allowed = _operations(flags)
             # NumberObject is an int subclass; freeze to a trusted Python int.
-            return PDFDocumentPermissions(True, int(flags), allowed, False, (), None)
+            return PDFDocumentPermissions(True, _normalized_bits(flags), allowed, False, (), None)
 
         # Existing strict parser validates unencrypted page tree and stream lengths.
         parse_pdf_structure(contents)

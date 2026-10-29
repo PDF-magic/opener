@@ -102,6 +102,7 @@ class PDFPermissionTests(unittest.TestCase):
         record = inspect_pdf_document_permissions(serialized(writer))
         self.assertIn("print", record.allowed_operations)
         self.assertIn("copy", record.allowed_operations)
+        self.assertEqual(record.permission_bits, -4)
         self.assertFalse(record.signature_verified)
         self.assertFalse(record.authorizes_open)
 
@@ -133,7 +134,7 @@ class PDFPermissionTests(unittest.TestCase):
         self.assert_blocked(serialized(writer))
 
     def test_invalid_permission_bit_ranges_and_result_contract(self):
-        for bits in (True, -2**31 - 1, 2**31, "not a permission mask"):
+        for bits in (True, -2**31 - 1, 2**32, "not a permission mask"):
             with self.subTest(bits=bits), self.assertRaises(PDFDocumentPermissionsError):
                 _operations(bits)
         for args in (
