@@ -356,7 +356,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("ubuntu-latest", ci)
         self.assertIn("macos-latest", ci)
         self.assertIn("test-maximum-isolated-renderer.py -v", ci)
-        self.assertIn("pymupdf==1.26.7", ci)
+        self.assertIn("pymupdf==2.0", ci)
 
 
 if __name__ == "__main__":
