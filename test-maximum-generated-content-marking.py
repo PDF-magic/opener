@@ -24,6 +24,7 @@ class GeneratedCopyOriginTests(unittest.TestCase):
             "explanation": OFFER_EXPLANATION,
             "requiresFreshScan": True,
             "authorizesOpen": False,
+            "ocrRestored": False,
         })
         self.assertFalse(offer.permits_open)
         self.assertTrue(offer.needs_separate_scan)
