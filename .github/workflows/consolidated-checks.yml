@@ -234,6 +234,12 @@ jobs:
       - name: mac / maximum-filesystem-sandbox / Prove the kernel sandbox denies user file reads and writes
         run: python3 test-maximum-filesystem-sandbox.py -v
 
+      - name: mac / maximum-isolated-renderer / Install pinned PDF raster renderer
+        run: python3 -m pip install --no-deps --disable-pip-version-check "pymupdf==2.0"
+      - name: mac / maximum-isolated-renderer / Verify real isolated page rasterization, sandbox confinement and fail-closed limits
+        run: python3 test-maximum-isolated-renderer.py -v
+      - name: mac / maximum-sanitizer-memory-limits / Verify Darwin process-group memory diagnostics and fail-closed limits
+        run: python3 test-maximum-sanitizer-memory-limits.py -v
 
       - name: mac / maximum-generated-rescan / Install strict PDF validator
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'

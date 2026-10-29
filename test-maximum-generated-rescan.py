@@ -206,14 +206,21 @@ class NativeGeneratedPDFRescanTests(unittest.TestCase):
     def test_real_rasterized_pdf_must_reenter_clamav_before_launch(self):
         from io import BytesIO
         from pypdf import PdfWriter
-        from maximum_sanitized_copy import offer_sanitized_pdf_copy
+        from maximum_sanitized_copy import attempt_sanitized_pdf_copy
 
         writer = PdfWriter()
         writer.add_blank_page(width=180, height=240)
         stream = BytesIO()
         writer.write(stream)
-        offer = offer_sanitized_pdf_copy(stream.getvalue())
-        self.assertIsNotNone(offer)
+        attempt = attempt_sanitized_pdf_copy(stream.getvalue())
+        # Test-only diagnostic is a fixed enum, never raw worker output, paths,
+        # source bytes, or parser messages. Production remains fail-closed.
+        diagnostic = (
+            attempt.failure.kind.value if attempt.failure is not None
+            else "no_failure_report"
+        )
+        self.assertIsNotNone(attempt.offer, "safe sanitizer failure category: " + diagnostic)
+        offer = attempt.offer
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "output.pdf"
             path.write_bytes(offer.pdf_bytes)

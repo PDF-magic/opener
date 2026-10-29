@@ -5,6 +5,7 @@ Maximum protection. The PDF never becomes a worker pathname (opener-0314).
 """
 
 from dataclasses import dataclass
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -12,8 +13,6 @@ import stat
 import struct
 import subprocess
 import sys
-
-from maximum_network_isolation import RENDERER_SANDBOX_PROFILE, SANDBOX_EXEC
 
 MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
@@ -122,7 +121,6 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
     support_files = (worker_support, network_support, renderer_support)
     if (Path(worker).parent != source_root or
             any(path.parent != source_root for path in support_files) or
-            not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
             not _trusted_regular_file(python, executable=True) or
             not _trusted_regular_file(worker) or
             not all(_trusted_regular_file(str(path)) for path in support_files) or
@@ -139,6 +137,68 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         "python_prefix": prefix,
         "python_base_prefix": base_prefix,
     }
+
+
+def _sbpl_path_literal(path: str) -> str:
+    """Encode a canonical path as an SBPL string; unsupported paths fail closed."""
+    if (type(path) is not str or not path.startswith("/") or "\x00" in path or
+            '"' in path or "\\" in path or any(ord(character) < 32 for character in path) or
+            os.path.normpath(path) != path or os.path.realpath(path) != path):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    return '"' + path + '"'
+
+
+def apply_renderer_sandbox(context: dict[str, str]) -> None:
+    """Install the deny-by-default Seatbelt policy inside the trusted worker.
+
+    The profile is applied before the worker reads PDF bytes or imports PyMuPDF.
+    Any missing API, malformed path, or sandbox setup failure remains fail-closed.
+    """
+    expected_keys = {
+        "python", "worker", "worker_support", "network_support",
+        "renderer_support", "python_prefix", "python_base_prefix",
+    }
+    if sys.platform != "darwin" or type(context) is not dict or set(context) != expected_keys:
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+
+    profile = RENDERER_FILESYSTEM_PROFILE
+    for name, key in (
+        ("PYTHON", "python"),
+        ("WORKER", "worker"),
+        ("WORKER_SUPPORT", "worker_support"),
+        ("NETWORK_SUPPORT", "network_support"),
+        ("RENDERER_SUPPORT", "renderer_support"),
+        ("PYTHON_PREFIX", "python_prefix"),
+        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
+    ):
+        profile = profile.replace(f'(param "{name}")', _sbpl_path_literal(context[key]))
+    if '(param "' in profile:
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+
+    library = None
+    error_buffer = ctypes.c_char_p()
+    try:
+        library = ctypes.CDLL("/usr/lib/libsandbox.dylib", use_errno=True)
+        initialize = library.sandbox_init
+        initialize.argtypes = [ctypes.c_char_p, ctypes.c_uint64, ctypes.POINTER(ctypes.c_char_p)]
+        initialize.restype = ctypes.c_int
+        result = initialize(profile.encode("utf-8"), 0, ctypes.byref(error_buffer))
+        if result != 0:
+            raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    except MaximumPDFRenderError:
+        raise
+    except Exception:
+        raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
+    finally:
+        if library is not None and error_buffer.value:
+            try:
+                release_error = library.sandbox_free_error
+                release_error.argtypes = [ctypes.c_char_p]
+                release_error.restype = None
+                release_error(error_buffer)
+            except Exception:
+                # Error details are deliberately not surfaced to callers/tests.
+                pass
 
 
 @dataclass(frozen=True)
@@ -223,21 +283,9 @@ def _decode_response(stdout: bytes, expected_index: int) -> RenderedPDFPage:
 
 
 def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
-    """Build a deny-by-default macOS command; never launch without filesystem confinement."""
+    """Build the minimal worker command after validating every trusted path."""
     context = _renderer_sandbox_context(worker)
-    command = [SANDBOX_EXEC, "-p", RENDERER_FILESYSTEM_PROFILE]
-    for name, key in (
-        ("PYTHON", "python"),
-        ("WORKER", "worker"),
-        ("WORKER_SUPPORT", "worker_support"),
-        ("NETWORK_SUPPORT", "network_support"),
-        ("RENDERER_SUPPORT", "renderer_support"),
-        ("PYTHON_PREFIX", "python_prefix"),
-        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
-    ):
-        command.extend(("-D", name + "=" + context[key]))
-    command.extend((context["python"], "-I", "-B", context["worker"], str(page_index)))
-    return tuple(command)
+    return (context["python"], "-I", "-B", context["worker"], str(page_index))
 
 
 def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPage:

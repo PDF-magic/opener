@@ -216,12 +216,15 @@ raise SystemExit(3)
                 run_script("pass")
         launch.assert_not_called()
 
-    def test_ci_runs_memory_checks_on_linux_and_macos(self):
+    def test_ci_runs_memory_checks_on_ubuntu_and_macos(self):
         from pathlib import Path
-        workflow = (Path(__file__).parent / ".github/workflows/maximum-sanitized-copy.yml").read_text()
-        self.assertIn("ubuntu-latest", workflow)
-        self.assertIn("macos-latest", workflow)
-        self.assertGreaterEqual(workflow.count("test-maximum-sanitizer-memory-limits.py -v"), 2)
+        workflow = (Path(__file__).parent / ".github/workflows/consolidated-checks.yml").read_text()
+        portable = workflow.split("  macos-native-tests:", 1)[0]
+        native = workflow.split("  macos-native-tests:", 1)[1]
+        self.assertIn("runs-on: ubuntu-latest", portable)
+        self.assertIn("test-maximum-sanitizer-memory-limits.py -v", portable)
+        self.assertIn("runs-on: macos-latest", native)
+        self.assertIn("test-maximum-sanitizer-memory-limits.py -v", native)
 
 
 if __name__ == "__main__":
