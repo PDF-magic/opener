@@ -11,9 +11,10 @@ ROOT = Path(__file__).resolve().parent
 CANDIDATES = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 FAKE = """#!/bin/bash
 set -euo pipefail
-# The integrated updater writes downloads to the disposable staged datadir.
+# The installed wrapper now directs FreshClam to a disposable stage.
+# Write fixtures to that stage, not to the protected live database.
 for argument in "$@"; do
-  case "$argument" in --datadir=*) FAKE_DATA="$(printf '%s' "$argument" | cut -c 11-)" ;; esac
+  case "$argument" in --datadir=*) FAKE_DATA="${argument#--datadir=}" ;; esac
 done
 case "$FAKE_MODE" in
   temp) printf partial > "$FAKE_DATA/daily.cvd.tmp" ;;
@@ -48,8 +49,8 @@ class IncompleteDownloadTests(unittest.TestCase):
         original = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, original)
         self.script = self.root / "updater.sh"
-        # This fixture tests partial transfers; the standalone opener-0386
-        # regression exercises scan-loading verification in disposable stages.
+        # Synthetic update tests bypass only the separately tested ClamAV
+        # stage-load probe in their disposable updater copy.
         first = original.index("# BEGIN staged database verification (opener-0386)")
         last = original.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
         original = original[:first] + original[last:]
@@ -119,9 +120,10 @@ class IncompleteDownloadTests(unittest.TestCase):
         self.assertIn("'RunAtLoad': True", installer)
         source = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertLess(source.index('check_incomplete_downloads "$stage_dir"'),
-                        source.index('success_tmp='))
+                        source.index('last-successful-update'))
         self.assertIn('failure_reason="incomplete-download"', source)
         self.assertIn("trap cleanup EXIT", source)
+        self.assertIn("cleanup_progress", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 test-incomplete-signature-downloads.py -v", ci)
 

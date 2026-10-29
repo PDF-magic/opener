@@ -24,8 +24,8 @@ class UpdateFailureTests(unittest.TestCase):
     self.script = Path(temporary.name) / "updater.sh"
     original = (ROOT / "update-malware-signatures.sh").read_text()
     self.assertIn(PATHS, original)
-    # The failure-metadata tests use a fake FreshClam and bypass only the
-    # separate opener-0386 validation block in their disposable script copy.
+    # Synthetic update tests bypass only the separately tested ClamAV
+    # stage-load probe in their disposable updater copy.
     first = original.index("# BEGIN staged database verification (opener-0386)")
     last = original.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
     original = original[:first] + original[last:]

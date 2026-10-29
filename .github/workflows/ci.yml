@@ -38,7 +38,7 @@ jobs:
         run: python3 test-signature-freshness-window.py -v
       - name: Detect the last attempted and successful ClamAV signature update times
         run: python3 test-signature-update-times.py -v
-      - name: Preserve usable ClamAV signatures after failed updates
+      - name: Preserve usable ClamAV signatures across failed and overlapping updates
         run: python3 test-preserve-signature-database.py -v
       - name: Verify staged signatures before activation
         run: python3 test-validate-signature-database.py -v
@@ -46,10 +46,14 @@ jobs:
         run: python3 test-signature-update-failures.py -v
       - name: Detect incomplete ClamAV signature downloads
         run: python3 test-incomplete-signature-downloads.py -v
+      - name: Handle interrupted signature update network transfers
+        run: python3 test-signature-network-interruptions.py -v
       - name: Verify live signature-update progress and cleanup
         run: python3 test-signature-update-progress.py -v
       - name: Verify scanner-failure response policy and existing fail-closed gate
         run: python3 test-scanner-failure-policy.py -v
+      - name: Reject unapproved ClamAV arguments before scanner invocation
+        run: python3 test-scanner-arguments.py -v
       - name: Keep scanner failures distinct from rejected feature exceptions
         run: python3 test-protection-failure-exception-boundary.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
