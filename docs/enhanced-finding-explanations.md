@@ -25,6 +25,11 @@ or incomplete expected stage remains blocking. Results use only an exhaustive
 table of fixed, code-specific text and action identifiers. No document-supplied
 filenames, URLs, scripts, paths, attachment bytes or error text are interpolated.
 
+The fixed `knownMaliciousContent` code is a code-level blocking response even
+when the producer reports informational severity. It always returns `blocking`
+and `stopOpening`; the native progress display independently validates this
+minimum response and rejects downgraded or inconsistent results.
+
 Example (once the structured findings contract is available):
 
 ```python

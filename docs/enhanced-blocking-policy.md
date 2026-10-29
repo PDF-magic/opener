@@ -12,6 +12,7 @@ does not inspect bytes, execute actions, run a scanner, or authorize opening.
 | `malformedStructure` | `denyOpening` | Structure cannot be trusted |
 | `conflictingStructure` | `denyOpening` | Competing interpretations are unsafe |
 | `unresolvedReference` | `denyOpening` | Required object cannot be verified |
+| `knownMaliciousContent` | `denyOpening` | Trusted inspection confirms known malicious content |
 | `activeContent` | `holdForReview` | Capability must be inspected without execution |
 | `suspiciousUrl` | `holdForReview` | Destination cannot be trusted without review |
 | `unexpectedEmbeddedFile` | `holdForReview` | Embedded content needs independent inspection |
