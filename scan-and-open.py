@@ -41,6 +41,8 @@ PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
     'Check that it is installed or choose another PDF-capable application in target-app.txt.'
 )
 
+UNREADABLE_SCAN_INPUT_MESSAGE = 'The selected file is unreadable; opening was stopped.'
+
 # Only these fixed, path-free errors may appear in scan diagnostics.
 # Unexpected system or scanner exceptions may contain private source paths.
 SAFE_SCAN_FAILURES = frozenset((
@@ -48,6 +50,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_TARGET_UNAVAILABLE_MESSAGE,
     PDF_TARGET_VERIFICATION_MESSAGE,
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
+    UNREADABLE_SCAN_INPUT_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
     'Only regular files and application bundles can be scanned.',
@@ -217,6 +220,22 @@ def parse_scan_requests(args):
     return [BrowserDownloadRequest(path) for path in args]
 
 
+def require_readable_file(path):
+    """Fail closed when the selected regular file cannot actually be read.
+
+    Opening and reading one byte checks access under the current process identity,
+    rather than relying on permission bits or os.access(). This does not replace
+    full-byte hashing or the scanner's independent complete-scan verdict.
+    """
+    if not path.is_file():
+        return
+    try:
+        with path.open('rb') as stream:
+            stream.read(1)
+    except OSError as error:
+        raise RuntimeError(UNREADABLE_SCAN_INPUT_MESSAGE) from error
+
+
 def validate_scan_request(item):
     """Fail closed on invalid selections before hashing, scanning, or opening."""
     try:
@@ -230,6 +249,7 @@ def validate_scan_request(item):
     path = Path(requested).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
+    require_readable_file(path)
     return path
 
 
@@ -433,9 +453,14 @@ def fingerprint(path):
             if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
                 raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
             digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
-            with entry.open('rb') as stream:
-                for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-                    digest.update(chunk)
+            try:
+                with entry.open('rb') as stream:
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                        digest.update(chunk)
+            except OSError as error:
+                # Files may become unreadable after admission; never cache or
+                # open a partial hash, or print source paths from system errors.
+                raise RuntimeError(UNREADABLE_SCAN_INPUT_MESSAGE) from error
         elif entry.is_dir():
             digest.update(b'directory\0')
         else:
@@ -761,6 +786,7 @@ def supported_request_path(item):
     path = Path(raw_path).expanduser().resolve(strict=True)
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
+    require_readable_file(path)
     return path
 
 
