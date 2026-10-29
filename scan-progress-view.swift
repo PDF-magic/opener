@@ -300,16 +300,22 @@ final class ScanProgressPanel: NSPanel {
     // Hidden for the deployed Built-in scanner: Enhanced is not selectable.
     // These views display only validated, fixed-vocabulary inspection metadata.
     let enhancedFindingsLabel = NSTextField(labelWithString: "")
+    let enhancedFindingsDetailsButton = NSButton(
+        title: "Show technical details", target: nil, action: nil)
     let enhancedFindingsScrollView = NSScrollView(
-        frame: NSRect(x: 20, y: 462, width: 320, height: 139))
+        frame: NSRect(x: 20, y: 435, width: 320, height: 139))
     let enhancedFindingsTextView = NSTextView(frame: NSRect(x: 0, y: 0, width: 314, height: 139))
+    private var enhancedFindingsDetailsExpanded = false
     private static let originalHeight: CGFloat = 458
+    private static let collapsedFindingsHeight: CGFloat = 500
     private static let findingsHeight: CGFloat = 650
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
         super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 458),
                    styleMask: [.titled], backing: .buffered, defer: false)
+        enhancedFindingsDetailsButton.target = self
+        enhancedFindingsDetailsButton.action = #selector(toggleEnhancedFindingsDetails(_:))
         title = "PDF Magic Opener — Scanning"
         level = .floating
         hidesOnDeactivate = false
@@ -366,13 +372,21 @@ final class ScanProgressPanel: NSPanel {
         cancelButton.bezelStyle = .rounded
         cancelButton.frame = NSRect(x: 136, y: 8, width: 88, height: 28)
         contentView?.addSubview(cancelButton)
-        enhancedFindingsLabel.frame = NSRect(x: 20, y: 608, width: 320, height: 22)
+        enhancedFindingsLabel.frame = NSRect(x: 20, y: 462, width: 320, height: 22)
         enhancedFindingsLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         enhancedFindingsLabel.alignment = .center
         enhancedFindingsLabel.lineBreakMode = .byTruncatingTail
         enhancedFindingsLabel.setAccessibilityIdentifier("enhancedFindingsSummary")
         enhancedFindingsLabel.isHidden = true
         contentView?.addSubview(enhancedFindingsLabel)
+        enhancedFindingsDetailsButton.bezelStyle = .rounded
+        enhancedFindingsDetailsButton.frame = NSRect(x: 100, y: 432, width: 160, height: 24)
+        enhancedFindingsDetailsButton.setAccessibilityIdentifier("enhancedFindingsDetailsToggle")
+        enhancedFindingsDetailsButton.setAccessibilityLabel("Show technical details")
+        enhancedFindingsDetailsButton.setAccessibilityHelp(
+            "Show optional technical details for Enhanced PDF findings.")
+        enhancedFindingsDetailsButton.isHidden = true
+        contentView?.addSubview(enhancedFindingsDetailsButton)
         enhancedFindingsTextView.isEditable = false
         enhancedFindingsTextView.isSelectable = true
         enhancedFindingsTextView.isRichText = false
@@ -393,6 +407,33 @@ final class ScanProgressPanel: NSPanel {
         center()
     }
 
+    @objc private func toggleEnhancedFindingsDetails(_ sender: NSButton) {
+        guard !enhancedFindingsLabel.isHidden else { return }
+        setEnhancedFindingsDetailsExpanded(!enhancedFindingsDetailsExpanded)
+    }
+
+    // Technical evidence is opt-in for routine progress viewing. The summary
+    // remains visible while the detailed, selectable report is disclosed.
+    private func setEnhancedFindingsDetailsExpanded(_ expanded: Bool) {
+        enhancedFindingsDetailsExpanded = expanded
+        enhancedFindingsDetailsButton.title = expanded
+            ? "Hide technical details" : "Show technical details"
+        enhancedFindingsDetailsButton.setAccessibilityLabel(enhancedFindingsDetailsButton.title)
+        enhancedFindingsDetailsButton.setAccessibilityHelp(
+            expanded
+                ? "Hide optional technical details for Enhanced PDF findings."
+                : "Show optional technical details for Enhanced PDF findings.")
+        enhancedFindingsLabel.frame = NSRect(
+            x: 20, y: expanded ? 608 : 462, width: 320, height: 22)
+        enhancedFindingsDetailsButton.frame = NSRect(
+            x: 100, y: expanded ? 578 : 432, width: 160, height: 24)
+        enhancedFindingsScrollView.frame = NSRect(x: 20, y: 435, width: 320, height: 139)
+        enhancedFindingsScrollView.isHidden = !expanded
+        setContentSize(NSSize(
+            width: 360,
+            height: expanded ? Self.findingsHeight : Self.collapsedFindingsHeight))
+    }
+
     // Presentation only: callers must supply validated v2 analysis evidence
     // from a trusted, separate Enhanced producer. No parser/scanner policy
     // changes or automatic file opening can result from this method.
@@ -402,7 +443,8 @@ final class ScanProgressPanel: NSPanel {
             enhancedFindingsLabel.setAccessibilityLabel("")
             enhancedFindingsTextView.string = ""
             enhancedFindingsLabel.isHidden = true
-            enhancedFindingsScrollView.isHidden = true
+            enhancedFindingsDetailsButton.isHidden = true
+            setEnhancedFindingsDetailsExpanded(false)
             setContentSize(NSSize(width: 360, height: Self.originalHeight))
             return
         }
@@ -413,8 +455,8 @@ final class ScanProgressPanel: NSPanel {
         enhancedFindingsTextView.string = snapshot?.details
             ?? "Inspection report could not be verified. No opening decision follows."
         enhancedFindingsLabel.isHidden = false
-        enhancedFindingsScrollView.isHidden = false
-        setContentSize(NSSize(width: 360, height: Self.findingsHeight))
+        enhancedFindingsDetailsButton.isHidden = false
+        setEnhancedFindingsDetailsExpanded(false)
     }
 
     // An individual scan has no trustworthy percentage. For a batch, only

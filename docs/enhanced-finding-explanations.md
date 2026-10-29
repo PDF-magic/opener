@@ -69,3 +69,18 @@ lack this additive field are treated as unconfirmed, never as confirmed malware.
 The separate ClamAV scan-result contract uses `malwareDetected` for a scanner
 reported detection; its wording is not reused for heuristic findings. None of
 these reporting fields authorizes opening or changes the deployed scan gate.
+
+
+## Optional technical details in the native progress panel (opener-0482)
+
+The native scan-progress panel keeps its ordinary progress layout compact when a
+validated Enhanced findings report is available. The findings summary and a
+**Show technical details** disclosure remain visible; the detailed selectable
+report is collapsed until the user asks to view it. The control changes to
+**Hide technical details** while expanded and restores the compact layout when
+collapsed. An unavailable or invalid report still shows a safe summary and a
+fixed explanation only when requested—never PDF-controlled text or paths.
+
+This is presentation-only. The disclosure does not change finding severity,
+policy, scan state, cancellation, quarantine, the ClamAV gate, or whether a PDF
+may open. A summary with no reported findings is not a clean verdict.
