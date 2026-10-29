@@ -80,10 +80,17 @@ hint. Labels are derived from the existing page titles and preserve native
 sidebar selection, keyboard navigation, and current-page state.
 
 The **Updates** sidebar entry (opener-0182) provides a read-only page
-showing the installed application version and explaining application
-and ClamAV definition updates. It does not check for, download, or
-install updates, claim unverified update status, or modify any scan
-protections or saved preferences.
+showing the installed application version and explaining application and
+ClamAV definition updates. The malware-definition section (opener-0380)
+also shows the last attempted and last successful FreshClam update times,
+read from the existing local timestamps added in opener-0378. Unknown,
+invalid, future, symlinked or unavailable records display **Unavailable**;
+a newer attempt without a newer success is not presented as a confirmed
+successful update. Times are displayed in the user's local time zone.
+This is historical status only: it cannot prove signatures are fresh or
+complete and does not replace the installed 48-hour scanner freshness gate.
+Opening Settings does not run updates, modify saved preferences or change
+scanner protections.
 
 **Technical help text (opener-0194):** Inline, accessible informational notes
 clarify ClamAV malware scans, fail-closed behavior, locally available files,
