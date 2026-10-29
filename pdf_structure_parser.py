@@ -44,11 +44,6 @@ class PDFStructure:
         if type(self.page_count) is not int or not 1 <= self.page_count <= MAX_STRUCTURE_PAGES:
             raise ValueError("Invalid PDF structural page count")
 
-    @property
-    def authorizes_open(self) -> bool:
-        """Parsing is not a malware verdict or a substitute for ClamAV."""
-        return False
-
     def to_dict(self) -> dict[str, str | int | bool]:
         """Return a detached, stable and JSON-serializable output record."""
         return {

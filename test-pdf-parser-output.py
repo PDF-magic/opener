@@ -31,7 +31,6 @@ class PDFParserOutputTests(unittest.TestCase):
         evidence = parse_pdf_structure(output.getvalue())
         self.assertIs(type(evidence), PDFStructure)
         self.assertEqual(evidence.page_count, 2)
-        self.assertFalse(evidence.authorizes_open)
         record = evidence.to_dict()
         self.assertEqual(set(record), SCHEMA_KEYS)
         self.assertEqual(record["schemaVersion"], 1)
@@ -56,7 +55,6 @@ class PDFParserOutputTests(unittest.TestCase):
             "schemaVersion": 1, "pdfVersion": "2.0",
             "pageCount": 1, "authorizesOpen": False,
         })
-        self.assertFalse(evidence.authorizes_open)
 
     def test_constructor_rejects_untrusted_or_unbounded_metadata(self):
         for version in (None, b"1.7", "", "1.8", "3.0", "1.7\x00secret",
