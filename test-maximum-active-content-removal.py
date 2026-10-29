@@ -7,7 +7,7 @@ import zlib
 
 from PIL import Image
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import DictionaryObject, NameObject, NumberObject, StreamObject
+from pypdf.generic import ArrayObject, DictionaryObject, NameObject, NumberObject, StreamObject, TextStringObject
 
 import maximum_active_content_removal as removal
 
@@ -21,7 +21,7 @@ def executable_payload():
     return bytes(header) + b"PRIVATE-EXECUTABLE-PAYLOAD"
 
 
-def image_pdf(*, pages=1, actions=False, extra_image=False, size=(24, 30)):
+def image_pdf(*, pages=1, actions=False, form_actions=False, extra_image=False, size=(24, 30)):
     writer = PdfWriter()
     for number in range(pages):
         page = writer.add_blank_page(width=72 + number, height=90 + number)
@@ -56,6 +56,45 @@ def image_pdf(*, pages=1, actions=False, extra_image=False, size=(24, 30)):
             page[NameObject("/Annots")] = writer._add_object(DictionaryObject({
                 NameObject("/S"): NameObject("/Launch"),
             }))
+    if form_actions:
+        # A real AcroForm widget with direct and additional form actions.
+        # All targets and field names are intentionally private markers.
+        field_name = "PRIVATE-FORM-FIELD"
+        submit_action = writer._add_object(DictionaryObject({
+            NameObject("/S"): NameObject("/SubmitForm"),
+            NameObject("/F"): TextStringObject("https://private.invalid/submit"),
+            NameObject("/Fields"): ArrayObject([TextStringObject(field_name)]),
+        }))
+        reset_action = writer._add_object(DictionaryObject({
+            NameObject("/S"): NameObject("/ResetForm"),
+            NameObject("/Fields"): ArrayObject([TextStringObject(field_name)]),
+        }))
+        import_action = writer._add_object(DictionaryObject({
+            NameObject("/S"): NameObject("/ImportData"),
+            NameObject("/F"): TextStringObject("private-form.fdf"),
+        }))
+        widget = DictionaryObject({
+            NameObject("/Type"): NameObject("/Annot"),
+            NameObject("/Subtype"): NameObject("/Widget"),
+            NameObject("/FT"): NameObject("/Btn"),
+            NameObject("/T"): TextStringObject(field_name),
+            NameObject("/Rect"): ArrayObject([
+                NumberObject(0), NumberObject(0), NumberObject(20), NumberObject(20),
+            ]),
+            NameObject("/A"): submit_action,
+            NameObject("/AA"): DictionaryObject({
+                NameObject("/U"): reset_action,
+                NameObject("/D"): import_action,
+            }),
+        })
+        widget_ref = writer._add_object(widget)
+        writer.pages[0][NameObject("/Annots")] = ArrayObject([widget_ref])
+        writer._root_object[NameObject("/AcroForm")] = writer._add_object(
+            DictionaryObject({
+                NameObject("/Fields"): ArrayObject([widget_ref]),
+            })
+        )
+
     if actions:
         writer.add_js("app.alert('EVIL-NOT-TO-COPY')")
         writer.add_attachment("private-sensitive.txt", b"SENSITIVE-PAYLOAD-NEVER-COPY")
@@ -87,6 +126,45 @@ class ActiveRemovalTests(unittest.TestCase):
         self.assertNotIn(b"SENSITIVE-PAYLOAD-NEVER-COPY", result)
         pixel = Image.open(BytesIO(output.pages[0].images[0].data)).convert("RGB")
         self.assertEqual(pixel.getpixel((0, 0)), (12, 140, 235))
+
+    def test_interactive_form_actions_and_targets_are_stripped(self):
+        original = image_pdf(form_actions=True)
+        source = PdfReader(BytesIO(original), strict=True)
+        root = source.trailer["/Root"]
+        self.assertIn("/AcroForm", root)
+        form = root["/AcroForm"].get_object()
+        fields = form["/Fields"].get_object()
+        self.assertEqual(len(fields), 1)
+        widget = fields[0].get_object()
+        self.assertEqual(str(widget["/A"].get_object()["/S"]), "/SubmitForm")
+        additional = widget["/AA"].get_object()
+        self.assertEqual(str(additional["/U"].get_object()["/S"]), "/ResetForm")
+        self.assertEqual(str(additional["/D"].get_object()["/S"]), "/ImportData")
+        self.assertEqual(str(widget["/T"]), "PRIVATE-FORM-FIELD")
+        self.assertEqual(
+            str(widget["/A"].get_object()["/F"]),
+            "https://private.invalid/submit",
+        )
+        self.assertEqual(
+            str(additional["/D"].get_object()["/F"]),
+            "private-form.fdf",
+        )
+
+        result = removal.remove_active_pdf_functionality(original, 1)
+        self.assertIsInstance(result, bytes)
+        self.assertNotEqual(result, original)
+        output = PdfReader(BytesIO(result), strict=True)
+        self.assertEqual(set(output.trailer["/Root"]), {"/Type", "/Pages"})
+        page = output.pages[0]
+        self.assertEqual(set(page), {
+            "/Type", "/Parent", "/Resources", "/MediaBox", "/Contents",
+        })
+        for marker in (
+            b"/AcroForm", b"/SubmitForm", b"/ResetForm", b"/ImportData",
+            b"/AA", b"/Annots", b"PRIVATE-FORM-FIELD", b"private-form.fdf",
+            b"private.invalid/submit",
+        ):
+            self.assertNotIn(marker, result)
 
     def test_embedded_executables_and_other_files_are_stripped(self):
         original = image_pdf(actions=True)
