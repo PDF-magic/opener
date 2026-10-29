@@ -5,6 +5,7 @@ right-angle page rotations cross into a fresh PDF writer. No source PDF objects,
 attachments, metadata, or page content streams are cloned. This is NOT a
 substitute for the upstream isolated renderer or mandatory scanner gate.
 """
+from decimal import Decimal
 from io import BytesIO
 import math
 import zlib
@@ -68,9 +69,13 @@ def remove_active_pdf_functionality(
             if source_rotation is None:
                 source_rotation = 0
             if (isinstance(source_rotation, bool) or
-                    not isinstance(source_rotation, int) or source_rotation % 90):
+                    not isinstance(source_rotation, (int, float, Decimal))):
                 return None
-            rotation = int(source_rotation) % 360
+            numeric_rotation = float(source_rotation)
+            if (not math.isfinite(numeric_rotation) or
+                    not numeric_rotation.is_integer() or int(numeric_rotation) % 90):
+                return None
+            rotation = int(numeric_rotation) % 360
             if rotation not in (0, 90, 180, 270):
                 return None
             if expected_page_geometry is not None:

@@ -7,6 +7,7 @@ the installed scanner or user preferences.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
 from io import BytesIO
 import math
@@ -323,10 +324,14 @@ def _page_geometry(page):
         rotation = page.get_inherited("/Rotate")
         if rotation is None:
             rotation = 0
-        if (isinstance(rotation, bool) or not isinstance(rotation, int) or
-                rotation % 90 != 0):
+        if (isinstance(rotation, bool) or
+                not isinstance(rotation, (int, float, Decimal))):
             return None
-        rotation = int(rotation) % 360
+        numeric_rotation = float(rotation)
+        if (not math.isfinite(numeric_rotation) or
+                not numeric_rotation.is_integer() or int(numeric_rotation) % 90 != 0):
+            return None
+        rotation = int(numeric_rotation) % 360
         if (rotation not in (0, 90, 180, 270) or
                 not math.isfinite(width) or not math.isfinite(height) or
                 not 1 <= width <= 1440 or not 1 <= height <= 1440 or
