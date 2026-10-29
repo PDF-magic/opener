@@ -136,6 +136,85 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         # The converter is allowed to reject malformed input, never open it.
         self.assertEqual(converter.call_count, 1)
 
+    def test_staged_file_symlink_is_blocked_before_scanner(self):
+        protected = Path(self.temporary.name) / "protected.pdf"
+        protected.write_bytes(b"never scan or remove this target")
+        staged = []
+        original_stage = route._stage_private_copy
+
+        def swap(pdf_bytes):
+            path = original_stage(pdf_bytes)
+            staged.append(path)
+            path.unlink()
+            path.symlink_to(protected)
+            return path
+
+        with patch.object(route, "_stage_private_copy", side_effect=swap), \
+                patch.object(route, "offer_sanitized_pdf_copy", return_value=self._offer()), \
+                patch.object(route, "_passive_pages", return_value=True), \
+                patch.object(route, "_scan_staged_copy") as scan, \
+                self.assertRaises(route.MaximumSafeCopyError):
+            route.open_required_maximum_safe_copy(
+                self.source, disposition=route.MaximumCopyDisposition.REQUIRED)
+        scan.assert_not_called()
+        self.assertEqual(protected.read_bytes(), b"never scan or remove this target")
+        self.assertTrue(staged[0].is_symlink())
+        staged[0].unlink()
+        staged[0].parent.rmdir()
+        route._STAGED_LEASES.pop(staged[0], None)
+
+    def test_staged_directory_symlink_is_blocked_before_scanner(self):
+        protected = Path(self.temporary.name) / "protected-dir"
+        protected.mkdir()
+        sentinel = protected / "safe-copy.pdf"
+        sentinel.write_bytes(b"unrelated content")
+        staged = []
+        original_stage = route._stage_private_copy
+
+        def swap(pdf_bytes):
+            path = original_stage(pdf_bytes)
+            old_dir = path.parent.with_name(path.parent.name + "-old")
+            path.parent.rename(old_dir)
+            path.parent.symlink_to(protected, target_is_directory=True)
+            staged.append((path, old_dir))
+            return path
+
+        with patch.object(route, "_stage_private_copy", side_effect=swap), \
+                patch.object(route, "offer_sanitized_pdf_copy", return_value=self._offer()), \
+                patch.object(route, "_passive_pages", return_value=True), \
+                patch.object(route, "_scan_staged_copy") as scan, \
+                self.assertRaises(route.MaximumSafeCopyError):
+            route.open_required_maximum_safe_copy(
+                self.source, disposition=route.MaximumCopyDisposition.REQUIRED)
+        scan.assert_not_called()
+        self.assertEqual(sentinel.read_bytes(), b"unrelated content")
+        path, old_dir = staged[0]
+        path.parent.unlink()
+        old_dir.rename(path.parent)
+        route._discard_private_copy(path)
+        self.assertFalse(path.parent.exists())
+
+    def test_symlink_replacement_during_scan_blocks_success_and_cleanup(self):
+        protected = Path(self.temporary.name) / "protected.pdf"
+        protected.write_bytes(b"keep")
+        staged = []
+
+        def substitute(path, offer):
+            staged.append(Path(path))
+            Path(path).unlink()
+            Path(path).symlink_to(protected)
+            return SimpleNamespace(
+                status="clean", effective_policy_id=EFFECTIVE_POLICY_ID,
+                from_cache=False)
+
+        with self.assertRaises(route.MaximumSafeCopyError):
+            self._open(substitute)
+        self.assertEqual(protected.read_bytes(), b"keep")
+        self.assertTrue(staged[0].is_symlink())
+        staged[0].unlink()
+        staged[0].parent.rmdir()
+        route._STAGED_LEASES.pop(staged[0], None)
+
     def test_source_changed_during_conversion_never_launches(self):
         def modified(data):
             self.source.write_bytes(data + b"modified")

@@ -56,6 +56,42 @@ class MaximumTemporaryOutput:
         with _LOCK:
             return self not in _LEASES
 
+    def verify(self) -> None:
+        """Require the exact owned 0700 directory and 0600 regular PDF.
+
+        This must run before and after handing the pathname to the scanner.
+        The scanner still performs its own exact-byte and identity checks.
+        """
+        with _LOCK:
+            recorded = _LEASES.get(self)
+            if recorded is None:
+                raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+            directory, file_identity, directory_identity = recorded
+            if self.path != directory / _FILE_NAME:
+                raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+            try:
+                disk_directory = os.stat(directory, follow_symlinks=False)
+                if (_identity(disk_directory) != directory_identity or
+                        not _is_private_directory(disk_directory)):
+                    raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+                flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+                flags |= getattr(os, "O_CLOEXEC", 0)
+                directory_fd = os.open(directory, flags)
+                try:
+                    opened_directory = os.fstat(directory_fd)
+                    item = os.stat(_FILE_NAME, dir_fd=directory_fd,
+                                   follow_symlinks=False)
+                    if (_identity(opened_directory) != directory_identity or
+                            not _is_private_directory(opened_directory) or
+                            _file_identity(item) != file_identity or
+                            not _is_private_file(item) or
+                            item.st_nlink != 1):
+                        raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+                finally:
+                    os.close(directory_fd)
+            except (OSError, ValueError, MaximumTemporaryOutputError):
+                raise MaximumTemporaryOutputError(BLOCK_MESSAGE) from None
+
     def release(self) -> None:
         """Remove only the original owned file, then its now-empty directory."""
         with _LOCK:

@@ -9,3 +9,18 @@ A successful candidate is written to a **new private 0700 temporary directory** 
 This is an explicit future Maximum-only routing primitive. It refuses any invocation without the exact trusted \`MaximumCopyDisposition.REQUIRED\` value. It does **not** select Maximum from user-supplied labels, interpret the original PDF as clean, run or replace the other required Maximum inspections, or change any installed scanning code. A coordinating Maximum implementation must complete the mandatory source checks and make the binding policy decision before calling this function. Maximum remains non-selectable until those controls are integrated and verified. The output must be scanned separately; the sanitized-copy offer itself never grants an opening verdict.
 
 The Linux/macOS workflow tests mandatory separate routing, private output permissions, refusal of source symlinks or source mutations, non-retry of the original on scan/launch failure, fixed path-free diagnostics and unchanged Built-in scanner behavior. The installed scanner, preferences and other checklist implementations are untouched.
+
+## Temporary-output symlink safety (opener-0536)
+
+The route now stages via the existing `maximum_temporary_output` ownership
+lease rather than a second independent path-based staging/cleanup routine.
+The lease creates an exclusive `0600` file inside a private `0700`
+directory and uses `O_EXCL | O_NOFOLLOW`; it records the original file and
+directory identities. The handoff checks that lease immediately before and
+after calling the mandatory generated-copy scanner. Symlinked, hardlinked,
+replaced or reparented temporary outputs cannot be treated as successful
+handoffs. A failed handoff only cleans up the exact owned inode through the
+original lease; substituted links and unrelated files are never deleted.
+The returned path still remains until the viewer is finished, rather than
+being prematurely removed. Neither source selection, ClamAV, quarantine,
+cache, preferences nor the nonselectable Maximum profile changes.
