@@ -242,6 +242,12 @@ native helper. Cancel from the progress window is available when the toggle
 is enabled; while it is hidden, closing the opener or other process-level
 controls may interrupt a scan without approving any document.
 
+**Scanner parameter editability (opener-0397):** ClamAV command-line parameters
+are **not user-editable**. The fixed, validated scan gate remains authoritative;
+Advanced Scanning is informational. Supported saved preferences, including
+the selected PDF viewer, are unaffected. See the
+[scanner parameter decision](docs/scanner-parameters-decision.md).
+
 **ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `scanner_startup_benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regression tests only, not a production ClamAV benchmark.
 
 The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
