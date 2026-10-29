@@ -17,6 +17,7 @@ class MaximumRendererSelectionTests(unittest.TestCase):
     def test_reviewed_renderer_version_is_installed_and_exactly_pinned(self):
         self.assertEqual(version("PyMuPDF"), "2.0")
         self.assertIn("pymupdf==2.0", WORKFLOW)
+        self.assertIn("--no-deps", WORKFLOW)
         self.assertIn("python3 test-maximum-renderer-selection.py -v", WORKFLOW)
 
     def test_security_review_records_current_release_and_advisories(self):
