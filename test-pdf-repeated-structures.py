@@ -100,7 +100,11 @@ class PDFRepeatedStructureTests(unittest.TestCase):
 
     def test_stream_payloads_are_not_decoded_or_counted_as_structures(self):
         content = document(streams=40)
-        with patch.object(StreamObject, "get_data", side_effect=AssertionError("must not decode")):
+        # The shared parser now validates decoded-stream budgets first.
+        # Only the repetition inspector itself must avoid decoding payloads.
+        validated = stage.parse_pdf_structure(content)
+        with patch.object(stage, "parse_pdf_structure", return_value=validated), \
+             patch.object(StreamObject, "get_data", side_effect=AssertionError("must not decode")):
             result = inspect_pdf_repeated_structures(content)
         self.assertFalse(result.suspicious_repetition)
         self.assertEqual(result.repeated_structure_groups, 0)
