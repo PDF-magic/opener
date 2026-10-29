@@ -2,6 +2,10 @@
 """Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
+from scanner_argument_validation import (
+    InvalidScannerArguments, validate_scanner_arguments,
+    validate_scanner_version_arguments,
+)
 from functools import wraps
 from dataclasses import dataclass, field
 import fcntl
@@ -570,10 +574,12 @@ def remember_clean(digest, scanner_version=None, signature_database_version=None
 
 def scan_engine_version(scanner):
     """Return ClamAV's engine version, not its signature database revision."""
+    version_command = [scanner, '--version']
     try:
+        validate_scanner_version_arguments(version_command, scanner=scanner)
         output = subprocess.check_output(
-            [scanner, '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError, UnicodeError):
+            version_command, text=True, timeout=5, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError, UnicodeError, InvalidScannerArguments):
         return None
     match = re.match(
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
@@ -820,6 +826,24 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         request_kwargs['browser_download_identifier'] = browser_download_identifier
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
+    # Check the entire fixed argv before touching the clean cache, audit
+    # storage, or an external scanner. Cached hits must not skip this gate.
+    if is_pdf:
+        # The engine still alerts on its internal file-size limit (~2 GB).
+        size_options = ('--max-filesize=0', '--max-scansize=0')
+    else:
+        size_options = ('--max-filesize=512M', '--max-scansize=1024M')
+    command = [
+        scanner, '--database=' + str(DATABASE), '--recursive',
+        '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
+        '--alert-exceeds-max=yes', '--alert-encrypted=yes',
+        *size_options,
+        '--max-scantime=0', '--no-summary', '--', str(path)
+    ]
+    timeout = (policy_snapshot.pdf_timeout_seconds if is_pdf
+               else policy_snapshot.other_timeout_seconds)
+    validate_scanner_arguments(command, scanner=scanner,
+        database=DATABASE, document=path, is_pdf=is_pdf, timeout=timeout)
     if is_pdf:
         verify_local_file_available(path)
     destination = intended_destination(path)
@@ -856,19 +880,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
             # Only a completed clean result under this exact policy is reusable.
             if requires_scan():
                 signature_version_before = read_signature_database_version()
-                if is_pdf:
-                    # The engine still alerts on its internal file-size limit (~2 GB).
-                    size_options = ('--max-filesize=0', '--max-scansize=0')
-                else:
-                    size_options = ('--max-filesize=512M', '--max-scansize=1024M')
                 try:
-                    scan = run_scan_command([
-                        scanner, '--database=' + str(DATABASE), '--recursive',
-                        '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
-                        '--alert-exceeds-max=yes', '--alert-encrypted=yes',
-                        *size_options,
-                        '--max-scantime=0', '--no-summary', '--', str(path)
-                    ], timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf
+                    scan = run_scan_command(command, timeout=(policy_snapshot.pdf_timeout_seconds if is_pdf
                                 else policy_snapshot.other_timeout_seconds))
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')

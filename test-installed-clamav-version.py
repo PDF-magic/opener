@@ -19,7 +19,10 @@ class InstalledClamAVVersionTests(unittest.TestCase):
     def test_detects_version_at_an_installed_trusted_path_without_scanning(self):
         # Installed executable discovery now requires an existing regular file
         # before querying its executable permission.
-        with patch.object(opener.Path, "is_file", return_value=True), patch.object(
+        with patch.object(
+            opener.Path, "is_file", autospec=True,
+            side_effect=lambda path: str(path) == "/usr/local/bin/clamscan",
+        ) as is_file, patch.object(
             opener.os, "access", side_effect=lambda path, mode: path == "/usr/local/bin/clamscan"
         ) as access, patch.object(
             opener.subprocess, "check_output",
@@ -34,7 +37,8 @@ class InstalledClamAVVersionTests(unittest.TestCase):
             opener, "remember_clean", side_effect=AssertionError("No cache writes")
         ):
             self.assertEqual(opener.detect_installed_clamav_version(), "1.4.2")
-        self.assertEqual(access.call_count, 2)
+        self.assertEqual(is_file.call_count, 2)
+        self.assertEqual(access.call_count, 1)
         query.assert_called_once_with(
             ["/usr/local/bin/clamscan", "--version"],
             text=True, timeout=5, stderr=subprocess.DEVNULL,
