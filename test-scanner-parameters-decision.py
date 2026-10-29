@@ -88,7 +88,7 @@ class ScannerParameterDecisionTests(unittest.TestCase):
                 self.assertNotIn(term, page)
 
     def test_policy_and_ci_are_present(self):
-        doc = (ROOT / "docs" / "scanner-parameters-decision.md").read_text(
+        doc = (ROOT / "docs" / "scanner/parameters-decision.md").read_text(
             encoding="utf-8"
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
