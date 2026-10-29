@@ -353,9 +353,19 @@ def read_signature_database_version():
 
 
 
+# Keep established ClamAV install locations and their search order unchanged.
+SCANNER_CANDIDATES = (
+    '/opt/homebrew/bin/clamscan',
+    '/usr/local/bin/clamscan',
+    '/usr/local/clamav/bin/clamscan',
+)
+
+
 def scanner_path():
-    for candidate in ('/opt/homebrew/bin/clamscan', '/usr/local/bin/clamscan', '/usr/local/clamav/bin/clamscan'):
-        if os.access(candidate, os.X_OK):
+    for candidate in SCANNER_CANDIDATES:
+        # X_OK also succeeds on searchable directories; a scanner must be a file.
+        # is_file follows legitimate Homebrew executable symlinks.
+        if Path(candidate).is_file() and os.access(candidate, os.X_OK):
             return candidate
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
