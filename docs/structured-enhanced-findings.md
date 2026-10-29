@@ -68,3 +68,17 @@ This contract can be integrated with [the maintained PDF parser PR #179](https:/
 and the individual Enhanced inspection stages once they are reviewed and merged.
 Until then, Enhanced remains unavailable and the installed Built-in scan gate
 continues unchanged.
+
+
+## Complete PDF object references
+
+A finding may include `object_generation_number` alongside its existing
+`object_number`. When both are explicitly known, serialization adds
+`objectReference` as the machine-readable pair
+`{"objectNumber": 12, "generationNumber": 0}`. Generation numbers are bounded
+to the PDF range 0–65535; generation zero is valid but is never inferred when
+the producer has only an object number. In that partial case the existing
+`objectNumber` remains available and `objectReference` is omitted. Findings
+without a resolved object reference likewise omit the field. This is location
+metadata only: the reporting contract does not resolve PDF objects or claim
+that a referenced object is safe.
