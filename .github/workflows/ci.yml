@@ -22,6 +22,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Classify embedded PDF file types without executing attachments
+        run: python3 test-pdf-embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
         run: python3 test-pdf-structure-parser.py -v
       - name: Enforce hard wall-clock timeout on optional PDF structure analysis
@@ -106,8 +108,6 @@ jobs:
         run: python3 test-pdf-decompression-requirements.py -v
       - name: Detect unexpected executable signatures in embedded PDF streams
         run: python3 test-pdf-embedded-executable-content.py -v
-      - name: Classify embedded PDF file types without executing attachments
-        run: python3 test-pdf-embedded-file-types.py -v
       - name: Inspect external PDF launch actions without executing targets
         run: python3 test-pdf-external-launch-actions.py -v
       - name: Detect malformed PDF structures in the planned Enhanced stage
