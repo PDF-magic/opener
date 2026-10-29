@@ -35,6 +35,7 @@ _MINIMUM_DISPOSITION = MappingProxyType({
     FindingCode.malformedStructure: BlockingDisposition.denyOpening,
     FindingCode.conflictingStructure: BlockingDisposition.denyOpening,
     FindingCode.unresolvedReference: BlockingDisposition.denyOpening,
+    FindingCode.knownMaliciousContent: BlockingDisposition.denyOpening,
     FindingCode.activeContent: BlockingDisposition.holdForReview,
     FindingCode.suspiciousUrl: BlockingDisposition.holdForReview,
     FindingCode.unexpectedEmbeddedFile: BlockingDisposition.holdForReview,

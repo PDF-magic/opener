@@ -65,6 +65,27 @@ class FindingExplanationsTests(unittest.TestCase):
                 self.assertEqual(result.to_dict()["pageNumber"], 4)
                 self.assertEqual(result.to_dict()["result"]["outcome"], outcome.value)
 
+    def test_known_malicious_content_always_blocks_even_at_informational_severity(self):
+        for severity in FindingSeverity:
+            with self.subTest(severity=severity):
+                finding = AnalysisFinding(FindingCode.knownMaliciousContent, severity)
+                explained = ExplainedFinding(finding)
+                self.assertIs(explained.result, FindingResult.blocking)
+                self.assertIs(explained.next_action, FindingNextAction.stopOpening)
+                self.assertEqual(
+                    explained.explanation,
+                    "Known malicious content was identified; opening is blocked.",
+                )
+                self.assertNotIn("EICAR", explained.explanation)
+        report = explain_analysis_findings(report_for(AnalysisFinding(
+            FindingCode.knownMaliciousContent, FindingSeverity.informational,
+        )))
+        self.assertTrue(report.requires_block)
+        self.assertFalse(report.authorizes_open)
+        item = report.to_dict()["stageResults"][0]["findings"][0]
+        self.assertEqual(item["result"]["outcome"], "blocking")
+        self.assertEqual(item["result"]["nextAction"], "stopOpening")
+
     def test_inspection_failure_and_limit_cannot_be_downgraded_to_informational(self):
         for code in (FindingCode.inspectionFailure, FindingCode.resourceLimit):
             finding = AnalysisFinding(code, FindingSeverity.informational)

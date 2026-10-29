@@ -41,6 +41,7 @@ class FindingCode(str, Enum):
     malformedStructure = "malformedStructure"
     conflictingStructure = "conflictingStructure"
     unresolvedReference = "unresolvedReference"
+    knownMaliciousContent = "knownMaliciousContent"
     activeContent = "activeContent"
     suspiciousUrl = "suspiciousUrl"
     unexpectedEmbeddedFile = "unexpectedEmbeddedFile"
