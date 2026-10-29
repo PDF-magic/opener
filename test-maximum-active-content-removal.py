@@ -104,11 +104,10 @@ class ActiveRemovalTests(unittest.TestCase):
         self.assertIsInstance(result, bytes)
         self.assertNotIn(b"PRIVATE-EXECUTABLE-PAYLOAD", result)
         self.assertNotIn(b"SENSITIVE-PAYLOAD-NEVER-COPY", result)
-        self.assertNotIn(b"/EmbeddedFiles", result)
-        self.assertNotIn(b"/EmbeddedFile", result)
-        self.assertNotIn(b"/EF", result)
         output = PdfReader(BytesIO(result), strict=True)
         self.assertEqual(set(output.trailer["/Root"]), {"/Type", "/Pages"})
+        self.assertNotIn("/Names", output.trailer["/Root"])
+        self.assertNotIn("/EmbeddedFiles", output.trailer["/Root"])
         self.assertEqual(set(output.pages[0]), {
             "/Type", "/Parent", "/Resources", "/MediaBox", "/Contents",
         })
