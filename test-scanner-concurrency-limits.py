@@ -80,7 +80,12 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
         self.assertIn("validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)", gate)
         self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", gate)
         self.assertIn("private let maxConcurrentScans = 2", native)
-        self.assertNotIn("maxConcurrentScans", prefs)
+        # A legacy optional override may exist solely so the explicitly
+        # confirmed reset can remove it. It must not control the scan gate.
+        self.assertIn('static let concurrencyOverrideKey = "maxConcurrentScans"', prefs)
+        self.assertIn("defaults.removeObject(forKey: concurrencyOverrideKey)", prefs)
+        self.assertNotIn("maxConcurrentScans", gate)
+        self.assertNotIn("RecommendedScannerLimitsReset", gate)
         self.assertNotIn("maxConcurrentScans", validator)
         self.assertNotIn("scanner_concurrency_validation", validator)
         self.assertNotIn("scanner_concurrency_validation", native)
