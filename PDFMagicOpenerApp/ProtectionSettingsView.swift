@@ -185,9 +185,30 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
   }
 }
 
+// This is the complete, currently enforced policy contract returned by
+// effective_protection_policy.resolve_effective_policy(). Tests verify every
+// field against that authoritative resolver. It is intentionally separate from
+// user-selected previews and does not inspect or modify scanner state.
+private enum ExactEffectiveScanPolicy {
+  static let json = """
+    {
+      "profile_id": "built-in",
+      "required_checks": [
+        "clamav_scan_gate",
+        "signature_freshness",
+        "file_integrity",
+        "fail_closed_handoff"
+      ],
+      "optional_checks": [],
+      "failure_disposition": "deny"
+    }
+    """
+}
+
 struct ProtectionSettingsView: View {
   @State private var selectedPreview: PlannedProtectionTier?
   @State private var previewSaveStatus: String?
+  @State private var showExactEffectivePolicy = false
 
   var body: some View {
     ScrollView {
@@ -204,6 +225,32 @@ struct ProtectionSettingsView: View {
           .font(.headline)
           .fixedSize(horizontal: false, vertical: true)
           .accessibilityIdentifier("activeBuiltInProtection")
+
+        DisclosureGroup(isExpanded: $showExactEffectivePolicy) {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("The complete enforced policy contract for new scans, not a planned protection preview:")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text(ExactEffectiveScanPolicy.json)
+              .font(.system(.footnote, design: .monospaced))
+              .textSelection(.enabled)
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("exactEffectiveScanPolicyJSON")
+
+            Text("This policy description does not report a particular file's scan verdict, installed signature health, or request-specific runtime limits. Scanner-owned timeouts may be tightened per request. Viewing it does not change protection.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.top, 8)
+        } label: {
+          Text("View exact effective scan policy")
+            .font(.subheadline.weight(.semibold))
+        }
+        .accessibilityIdentifier("viewExactEffectiveScanPolicy")
+        .accessibilityHint("Expand to read the current enforced policy as JSON; this does not run a scan or change settings.")
 
         GroupBox("New installation recommendation") {
           VStack(alignment: .leading, spacing: 8) {
