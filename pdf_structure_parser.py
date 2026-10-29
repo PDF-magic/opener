@@ -37,8 +37,11 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
     """Parse an in-memory PDF with pypdf's strict object and page-tree reader.
 
     Accept bytes only: callers must read and validate a file through the
-    existing secure file-handling workflow. Avoid decoding content streams,
-    following attachments/links, or invoking user-specified applications.
+    existing secure file-handling workflow. The strict pypdf reader resolves
+    traditional cross-reference tables, PDF 1.5 cross-reference streams, and
+    compressed objects in object streams as needed to traverse the page tree.
+    Avoid decoding page content streams, following attachments/links, or
+    invoking user-specified applications.
     """
     if type(contents) is not bytes:
         raise PDFStructureParseError(_ERROR)
