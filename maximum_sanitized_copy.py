@@ -334,8 +334,7 @@ def _page_geometry(page):
         rotation = int(numeric_rotation) % 360
         if (rotation not in (0, 90, 180, 270) or
                 not math.isfinite(width) or not math.isfinite(height) or
-                not 1 <= width <= 1440 or not 1 <= height <= 1440 or
-                page.cropbox != page.mediabox):
+                not 1 <= width <= 1440 or not 1 <= height <= 1440):
             return None
         return (width, height, rotation)
     except Exception:
