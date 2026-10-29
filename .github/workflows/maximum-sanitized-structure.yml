@@ -25,5 +25,5 @@ jobs:
       - name: Build native raster converter on macOS
         if: runner.os == 'macOS'
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
-      - name: Verify sanitized output structure and final-offer gate
+      - name: Verify metadata-free sanitized output structure and final-offer gate
         run: python3 test-maximum-sanitized-structure.py -v
