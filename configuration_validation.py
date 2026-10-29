@@ -10,6 +10,20 @@ class UnsupportedSettingValue(ValueError):
   """A saved setting conflicts with its supported configuration contract."""
 
 
+# The installed Python and native scan gates both provide exactly two slots.
+# A future optional setting may select one or two, never allocate extra slots.
+# Merely validating the value does not activate a configurable scan queue.
+MAX_PERMITTED_CONCURRENT_SCANS = 2
+SCANNER_CONCURRENCY_KEY = "maxConcurrentScans"
+
+
+def validate_scanner_concurrency_limit(value):
+  """Reject invalid or unsafe requested scanner capacity without coercion."""
+  if type(value) is not int or not 1 <= value <= MAX_PERMITTED_CONCURRENT_SCANS:
+    raise UnsupportedSettingValue("Unsupported scanner concurrency limit")
+  return value
+
+
 def validate_configuration(settings, *, defaults, allowed_values=None):
   """Validate existing values and fill only missing supported settings.
 
@@ -23,8 +37,15 @@ def validate_configuration(settings, *, defaults, allowed_values=None):
   allowed_values = {} if allowed_values is None else allowed_values
   if not isinstance(allowed_values, dict) or not set(allowed_values).issubset(defaults):
     raise ValueError("Value restrictions must describe supported settings")
+  # Validate any declared default as well as explicit saved settings. Reserve
+  # this key even before the optional configuration UI is implemented so that
+  # unsupported values cannot pass through as unvalidated extension metadata.
+  if SCANNER_CONCURRENCY_KEY in defaults:
+    validate_scanner_concurrency_limit(defaults[SCANNER_CONCURRENCY_KEY])
   result = deepcopy(defaults)
   for key, value in settings.items():
+    if key == SCANNER_CONCURRENCY_KEY:
+      validate_scanner_concurrency_limit(value)
     if key in defaults:
       expected = defaults[key]
       if type(value) is not type(expected):
