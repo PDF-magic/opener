@@ -46,6 +46,11 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.fake.chmod(0o700)
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, script)
+        # These metadata tests use a fake updater; validation is covered
+        # independently by test-validate-signature-database.py.
+        first = original.index("# BEGIN staged database verification (opener-0386)")
+        last = original.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
+        original = original[:first] + original[last:]
         self.script = self.root / "update.sh"
         self.script.write_text(script.replace(CANDIDATES, str(self.fake)))
         (self.signatures / "main.cvd").write_bytes(b"usable main database\n")

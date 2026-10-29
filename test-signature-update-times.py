@@ -36,6 +36,11 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         original = (ROOT / "update-malware-signatures.sh").read_text()
         names = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
         self.assertIn(names, original)
+        # These metadata tests use a fake updater; validation is covered
+        # independently by test-validate-signature-database.py.
+        first = original.index("# BEGIN staged database verification (opener-0386)")
+        last = original.index("# END staged database verification (opener-0386)") + len("# END staged database verification (opener-0386)")
+        original = original[:first] + original[last:]
         self.script = self.root / "test-update.sh"
         self.script.write_text(original.replace(names, str(self.fake)))
         self.called = self.root / "called"
