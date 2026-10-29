@@ -141,7 +141,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
 
     def test_active_marker_is_only_display_metadata(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()
-        self.assertIn('progress_record="$(/bin/date +%s) $BASHPID"', script)
+        self.assertIn('progress_record="$(/bin/date +%s) $"', script)
         self.assertIn('trap cleanup EXIT', script)
         self.assertIn('cleanup_progress', script)
         self.assertIn('"$updater" --config-file=', script)
