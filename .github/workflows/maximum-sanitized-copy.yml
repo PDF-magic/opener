@@ -20,6 +20,8 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: Verify hard sanitizer execution deadline and process-tree cleanup
         run: python3 test-maximum-sanitizer-time-limits.py -v
+      - name: Verify sanitizer memory ceiling and fail-closed behavior
+        run: python3 test-maximum-sanitizer-memory-limits.py -v
       - name: Verify supported-only copy offers and fail-closed scanner isolation
         run: |
           python3 test-maximum-active-content-removal.py -v
@@ -41,6 +43,8 @@ jobs:
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: Verify hard sanitizer execution deadline and process-tree cleanup
         run: python3 test-maximum-sanitizer-time-limits.py -v
+      - name: Verify sanitizer memory ceiling and fail-closed behavior
+        run: python3 test-maximum-sanitizer-memory-limits.py -v
       - name: Verify real visual-only conversion and discarded PDF actions
         run: |
           python3 test-maximum-active-content-removal.py -v

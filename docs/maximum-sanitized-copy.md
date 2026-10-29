@@ -14,10 +14,17 @@ The actual conversion runs in a separately compiled native
 using Apple's CoreGraphics PDF renderer. It reads bytes on stdin and
 generates a PDF from only new raster images, not the source catalog,
 actions, annotations, scripts, embedded files, metadata, forms or links.
-Conversion is bounded to 16 MiB input, 16 pages, 2048-pixel longest
-page side, 24 million total pixels, 32 MiB output, and 45 elapsed
-seconds. Password-protected PDFs and rotated/cropped/out-of-range pages
-are unsupported rather than automatically simplified.
+Conversion is bounded to 16 MiB input, 16 pages, a 2048-pixel longest page
+side, 24 million total pixels, 32 MiB output, 45 elapsed seconds, and a fixed
+1 GiB process-group memory budget. Linux imposes a non-increasing hard
+`RLIMIT_AS` ceiling on each converter process before `exec` and monitors the
+aggregate process-group RSS. macOS polls aggregate process-group RSS every
+50 ms and kills the group if it exceeds the same ceiling. The macOS watchdog
+is fail-closed but not an atomic kernel-enforced cap, so a native allocation
+can briefly exceed the target before the next poll. Missing or unreadable
+memory measurements also stop conversion. Password-protected PDFs and
+rotated/cropped/out-of-range pages are unsupported rather than automatically
+simplified.
 
 An offer is **not** a claim that the source or output is malware-free.
 Rasterization loses searchable/selectable text, links, forms and other

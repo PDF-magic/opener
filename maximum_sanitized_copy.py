@@ -17,6 +17,7 @@ import sys
 from maximum_active_content_removal import remove_active_pdf_functionality
 from maximum_sanitizer_process import (
     SanitizerProcessExecutionError,
+    SanitizerProcessMemoryLimitError,
     SanitizerProcessOutputLimitExceeded,
     SanitizerProcessTimedOut,
     run_limited_converter,
@@ -67,6 +68,7 @@ class SanitizerFailureKind(str, Enum):
     UNAVAILABLE = "sanitizerUnavailable"
     CRASHED = "sanitizerCrashed"
     TIMED_OUT = "sanitizerTimedOut"
+    MEMORY_LIMIT_FAILED = "sanitizerMemoryLimitFailed"
     LAUNCH_FAILED = "sanitizerLaunchFailed"
     PROCESS_FAILED = "sanitizerProcessFailed"
     INVALID_OUTPUT = "sanitizerInvalidOutput"
@@ -86,6 +88,10 @@ _FAILURE_MESSAGES = {
     ),
     SanitizerFailureKind.TIMED_OUT: (
         "The PDF sanitizer timed out; conversion stopped. This is not a malware detection."
+    ),
+    SanitizerFailureKind.MEMORY_LIMIT_FAILED: (
+        "The PDF sanitizer exceeded or could not verify its memory limit; conversion stopped. "
+        "This is not a malware detection."
     ),
     SanitizerFailureKind.LAUNCH_FAILED: (
         "The PDF sanitizer could not start; conversion stopped. This is not a malware detection."
@@ -393,6 +399,8 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
             environment={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
                          "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
         )
+    except SanitizerProcessMemoryLimitError:
+        return _failed(SanitizerFailureKind.MEMORY_LIMIT_FAILED)
     except SanitizerProcessTimedOut:
         return _failed(SanitizerFailureKind.TIMED_OUT)
     except SanitizerProcessOutputLimitExceeded:
