@@ -12,9 +12,10 @@ receives a nested `result` object with:
 
 Normal informational observations are recorded but are not a clean verdict.
 Review-required and suspicious observations both require human review before any
-opening decision. Critical observations block; resource-limit and inspection-failure findings **always**
-report `inspectionIncomplete` and require blocking, even if a producer marks
-their severity informational. The explanation never claims that JavaScript
+opening decision. Explicit `blocking` and `critical` observations stop opening;
+resource-limit and inspection-failure findings **always** report
+`inspectionIncomplete` and require blocking, even if a producer marks their
+severity informational. The explanation never claims that JavaScript
 executed, a URL was contacted, or an embedded binary ran.
 
 The adapter serializes a **schemaVersion 2** copy of the parent v1 report,

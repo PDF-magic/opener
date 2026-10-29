@@ -72,7 +72,7 @@ def _result_for(finding: AnalysisFinding) -> FindingResult:
         raise TypeError("Expected a validated structured finding")
     if finding.code in _INCOMPLETE_CODES:
         return FindingResult.inspectionIncomplete
-    if finding.severity is FindingSeverity.critical:
+    if finding.severity in (FindingSeverity.blocking, FindingSeverity.critical):
         return FindingResult.blocking
     if finding.severity in (FindingSeverity.reviewRequired, FindingSeverity.suspicious):
         return FindingResult.reviewRequired
