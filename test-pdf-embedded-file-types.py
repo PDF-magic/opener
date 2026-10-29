@@ -200,7 +200,7 @@ class PDFEmbeddedFileTypeTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         source = (ROOT / "pdf_embedded_file_types.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        docs = (ROOT / "docs/pdf-embedded-file-types.md").read_text(encoding="utf-8")
+        docs = (ROOT / "docs/pdf/embedded-file-types.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_embedded_file_types", scanner)
         self.assertIn("python3 test-pdf-embedded-file-types.py -v", workflow)
         self.assertIn("/EmbeddedFiles", docs)

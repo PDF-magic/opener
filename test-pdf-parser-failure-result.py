@@ -120,7 +120,7 @@ class PDFStructuredFailureTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         parser = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        doc = (ROOT / "docs/pdf-structure-parser.md").read_text(encoding="utf-8")
+        doc = (ROOT / "docs/pdf/structure-parser.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertNotIn("pypdf", scanner)
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)

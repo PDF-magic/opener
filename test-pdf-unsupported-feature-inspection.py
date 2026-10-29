@@ -94,8 +94,10 @@ def feature_writer():
     page = writer.pages[0]
     page[NameObject("/Annots")] = ArrayObject()
     stream = DecodedStreamObject()
-    stream.set_data(b"PRIVATE page content")
-    stream[NameObject("/Filter")] = NameObject("/LZWDecode")
+    # A valid ASCIIHex-encoded stream still exercises unsupported-filter
+    # inventory without failing the shared parser's decoded-byte validation.
+    stream.set_data(b"50524956415445207061676520636f6e74656e74>")
+    stream[NameObject("/Filter")] = NameObject("/ASCIIHexDecode")
     page[NameObject("/Contents")] = writer._add_object(stream)
     return writer
 

@@ -61,7 +61,7 @@ clearance for every deployment.
 
 Sources: [PyMuPDF licensing](https://pymupdf.io/licensing),
 [PyMuPDF project metadata](https://pypi.org/project/pymupdf/2.0/), and the repository
-[AGPLv3 license](../LICENSE).
+[AGPLv3 license](../../LICENSE).
 
 ## Verification
 

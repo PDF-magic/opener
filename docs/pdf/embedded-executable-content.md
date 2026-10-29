@@ -19,8 +19,8 @@ extract to disk, launch, or network-fetch any embedded content.
 These signatures do **not** detect every possible executable, script, archive
 payload or obfuscated program. ZIP/JAR payload inspection, action-dictionary
 JavaScript inspection and ClamAV attachment scanning are separate stages:
-[embedded attachment inspection](enhanced-embedded-file-inspection.md),
-[external launch action inspection](pdf-external-launch-actions.md), and the
+[embedded attachment inspection](../enhanced/embedded-file-inspection.md),
+[external launch action inspection](external-launch-actions.md), and the
 concurrent JavaScript-action inspector PR #184. A signature-free result cannot
 allow opening or replace the installed ClamAV gate. This future Enhanced stage
 requires an isolated time/memory-bounded worker and an independently reviewed
