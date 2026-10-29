@@ -55,11 +55,11 @@ class SanitizedCopyOffer:
     page_count: int
     label: str = OFFER_LABEL
     explanation: str = OFFER_EXPLANATION
-    warning: str = CONVERSION_CHANGE_WARNING
     permits_open: bool = False
     needs_separate_scan: bool = True
     rasterized: bool = True
     content_origin: str = GENERATED_CONTENT_ORIGIN
+    warning: str = CONVERSION_CHANGE_WARNING
 
     def to_public_metadata(self):
         """Fixed presentation evidence; never include bytes or private paths."""
