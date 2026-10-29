@@ -60,6 +60,8 @@ SAFE_SCAN_FAILURES = frozenset((
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
     'The clean scan cache could not be verified; opening was stopped.',
+    'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.',
+    'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.',
     'The requested PDF is not available locally; opening was stopped.',
 ))
 
@@ -382,6 +384,9 @@ def detect_clamav_installation() -> Optional[str]:
 def scanner_path():
     scanner = detect_clamav_installation()
     if scanner is not None:
+        # A discoverable executable is not necessarily a supported engine.
+        # Fail before signature, cache, scan or handoff operations can run.
+        require_supported_scanner_version(scanner)
         return scanner
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
@@ -568,12 +573,29 @@ def scan_engine_version(scanner):
     try:
         output = subprocess.check_output(
             [scanner, '--version'], text=True, timeout=5, stderr=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     match = re.match(
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
         output.strip())
     return match.group(1) if match else None
+
+
+def require_supported_scanner_version(scanner):
+    """Reject unsupported and unverified ClamAV before a real scan can start.
+
+    ClamAV 1.4 LTS and 1.5 are supported feature branches. Unverified,
+    end-of-life, future and prerelease engines cannot authorize launching,
+    even with a previously cached clean result.
+    """
+    version = scan_engine_version(scanner)
+    if version is None or re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version) is None:
+        raise RuntimeError(
+            'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.')
+    if re.fullmatch(r'1\.(?:4|5)\.[0-9]+', version) is None:
+        raise RuntimeError(
+            'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.')
+    return version
 
 
 def detect_installed_clamav_version():
@@ -583,11 +605,13 @@ def detect_installed_clamav_version():
     An unknown version must never be interpreted as a clean scan or bypass
     the mandatory signature, integrity, and quarantine checks.
     """
+    # Read-only advisory detection must not invoke admission checks. In
+    # particular, unsupported installed versions may still be reported.
     try:
-        scanner = scanner_path()
+        scanner = detect_clamav_installation()
     except (OSError, RuntimeError):
         return None
-    return scan_engine_version(scanner)
+    return scan_engine_version(scanner) if scanner is not None else None
 
 
 def record_scan_destination(destination):
