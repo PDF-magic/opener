@@ -118,6 +118,40 @@ or an authorization to open. Separate increment-revision, graph and ambiguity
 inspections remain distinct; the installed Built-in ClamAV gate and all saved
 preferences are unchanged.
 
+## Structured parsing-failure results (opener-0430)
+
+Call `parse_pdf_structure_result(contents)` when a caller needs a
+**machine-readable failure rather than an exception**. A successful parse
+returns the same frozen `PDFStructure` evidence and existing
+`to_dict()` schema as `parse_pdf_structure`. A failed parse instead returns a
+frozen `PDFStructureParseFailure` with a trusted `PDFStructureFailureCode`:
+
+```json
+{
+  "schemaVersion": 1,
+  "status": "failure",
+  "failureCode": "invalidStructure",
+  "authorizesOpen": false
+}
+```
+
+The only failure codes are `invalidInput` (non-byte input),
+`invalidStructure` (malformed/truncated/unverifiable PDF),
+`sizeLimit` (beyond the existing 16 MiB bound), `encrypted` (unsupported
+encrypted PDF), and `dependencyUnavailable` (the pinned parser is missing).
+The result has no fields for a filename, source path, document content,
+parser exception, or untrusted PDF-controlled text. Invalid codes cannot be
+used to construct a failure record, and `to_dict()` produces a fresh,
+JSON-compatible dictionary. A failure **never** carries a partial
+`PDFStructure`, a success value, or an authorization to launch/cache a file.
+
+The original `parse_pdf_structure(contents)` entry point retains its
+existing `PDFStructureParseError` behavior and sanitized user-facing error
+messages for existing callers. The optional result-returning entry point
+merely converts those known failures into bounded diagnostic categories;
+it does **not** enable Enhanced protection, change scanner behavior, or
+replace mandatory ClamAV verification, quarantine, and verified handoff.
+
 
 ### Hard analysis deadline (opener-0434)
 
