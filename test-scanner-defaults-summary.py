@@ -3,6 +3,8 @@
 from pathlib import Path
 import unittest
 
+from scanner_argument_validation import validated_file_size_options
+
 ROOT = Path(__file__).resolve().parent
 PAGE = ROOT / "PDFMagicOpenerApp" / "AdvancedScanningSettingsView.swift"
 
@@ -38,7 +40,14 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
     ):
       with self.subTest(contract=contract):
         self.assertIn(contract, source)
-    self.assertIn('("--max-filesize=512M", "--max-scansize=1024M")', argv)
+    self.assertEqual(
+        validated_file_size_options(is_pdf=False),
+        ("--max-filesize=512M", "--max-scansize=1024M"),
+    )
+    self.assertEqual(
+        validated_file_size_options(is_pdf=True),
+        ("--max-filesize=0", "--max-scansize=0"),
+    )
     self.assertIn('"--alert-exceeds-max=yes"', argv)
     self.assertIn('"--alert-encrypted=yes"', argv)
 
