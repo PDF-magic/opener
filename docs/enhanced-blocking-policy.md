@@ -24,10 +24,10 @@ Both **`holdForReview` and `denyOpening` require blocking now**. A hold
 means additional review may eventually resolve the finding under a *separate,
 trusted execution policy*; it is not permission to ignore the risk, execute PDF
 content, or bypass ClamAV. Critical severity always upgrades a finding to
-`denyOpening`. Suspicious severity upgrades `observation` to
-`holdForReview`; severity can never lower a code's minimum disposition.
-Thus a critical revision blocks, a suspicious revision requires review, and
-an informational revision alone is merely recorded.
+`denyOpening`. Review-required and suspicious severities upgrade
+`observation` to `holdForReview`; severity can never lower a code's minimum
+disposition. Thus a critical revision blocks, a review-required or suspicious
+revision requires review, and an informational revision alone is merely recorded.
 
 All expected stages must be declared by trusted policy, not by the PDF.
 Missing or incomplete stages require blocking even with no findings. The
@@ -44,7 +44,7 @@ numbers, never document-controlled strings, URLs, paths or exception messages.
 A false `requiresBlock` is **not** a clean verdict: `authorizesOpen`
 is always false, including for an empty report or routine revision.
 
-The dedicated CI workflow tests all ten finding codes at all three severity
+The dedicated CI workflow tests all ten finding codes at all four severity
 levels, incomplete/missing stages, existing policy monotonicity, data
 immutability and privacy, and scanner isolation. Existing Built-in ClamAV,
 quarantine, cache, signature freshness, file-integrity checks, PDF handoff,
