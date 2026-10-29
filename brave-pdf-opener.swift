@@ -79,7 +79,9 @@ enum ScannerInitializationError {
         "ClamAV is unavailable. Run the Allow and Open installer again.",
         "Malware signatures are unavailable. Run update-malware-signatures.sh.",
         "Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.",
-        "The malware signature database is incomplete. Run update-malware-signatures.sh."
+        "The malware signature database is incomplete. Run update-malware-signatures.sh.",
+        "ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.",
+        "Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files."
     ]
 
     static func displayedMessage(for failure: String) -> String? {

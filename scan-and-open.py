@@ -59,6 +59,8 @@ SAFE_SCAN_FAILURES = frozenset((
     'The malware scan did not confirm a complete scan; opening was stopped.',
     'The file changed while checking it; opening was stopped. Try again.',
     'The clean scan cache could not be verified; opening was stopped.',
+    'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.',
+    'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.',
     'The requested PDF is not available locally; opening was stopped.',
 ))
 
@@ -356,6 +358,9 @@ def read_signature_database_version():
 def scanner_path():
     for candidate in ('/opt/homebrew/bin/clamscan', '/usr/local/bin/clamscan', '/usr/local/clamav/bin/clamscan'):
         if os.access(candidate, os.X_OK):
+            # Fail before any scanner, cache or launch path can run. A newer
+            # executable later on PATH must not mask an unsupported selection.
+            require_supported_scanner_version(candidate)
             return candidate
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
@@ -544,6 +549,23 @@ def scan_engine_version(scanner):
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
         output.strip())
     return match.group(1) if match else None
+
+
+def require_supported_scanner_version(scanner):
+    """Require a supported ClamAV engine branch before accepting a scanner.
+
+    ClamAV 1.4 LTS and 1.5 are the supported feature branches as of 2026.
+    Unknown output, EOL versions, future unreviewed releases and development
+    builds cannot authorize a scan or a previously cached clean handoff.
+    """
+    version = scan_engine_version(scanner)
+    if version is None:
+        raise RuntimeError(
+            'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.')
+    if re.fullmatch(r'1\.(?:4|5)\.[0-9]+', version) is None:
+        raise RuntimeError(
+            'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.')
+    return version
 
 
 def record_scan_destination(destination):
