@@ -205,9 +205,9 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         other.write_bytes(self.original)
         wrong_source = route.begin_source_scan_request(other)
         for request in (None, "request", forged, wrong_source):
-            with self.subTest(request=type(request).__name__), \\
-                    patch.object(route, "offer_sanitized_pdf_copy") as convert, \\
-                    patch.object(route, "_stage_private_copy") as stage, \\
+            with self.subTest(request=type(request).__name__), \
+                    patch.object(route, "offer_sanitized_pdf_copy") as convert, \
+                    patch.object(route, "_stage_private_copy") as stage, \
                     self.assertRaises(route.MaximumSafeCopyError):
                 route.open_required_maximum_safe_copy(
                     self.source, disposition=route.MaximumCopyDisposition.REQUIRED,
@@ -220,8 +220,8 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
     def test_changed_source_invalidates_its_request_before_conversion(self):
         request = route.begin_source_scan_request(self.source)
         self.source.write_bytes(self.original + b"modified after source request")
-        with patch.object(route, "offer_sanitized_pdf_copy") as convert, \\
-                patch.object(route, "_stage_private_copy") as stage, \\
+        with patch.object(route, "offer_sanitized_pdf_copy") as convert, \
+                patch.object(route, "_stage_private_copy") as stage, \
                 self.assertRaises(route.MaximumSafeCopyError):
             route.open_required_maximum_safe_copy(
                 self.source, disposition=route.MaximumCopyDisposition.REQUIRED,
