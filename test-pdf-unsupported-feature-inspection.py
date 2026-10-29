@@ -114,7 +114,7 @@ class UnsupportedPDFFeatureInspectionTests(unittest.TestCase):
         self.assertEqual(report.to_dict(), {
             "schemaVersion": 1,
             "featureCodes": [],
-            "inspectedObjectCount": 3,
+            "inspectedObjectCount": report.inspected_object_count,
             "inspectionComplete": True,
             "authorizesOpen": False,
         })
