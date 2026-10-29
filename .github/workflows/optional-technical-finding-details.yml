@@ -1,0 +1,26 @@
+name: Optional technical finding details
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "scan-progress-view.swift"
+      - "test-scan-progress-component.py"
+      - ".github/workflows/optional-technical-finding-details.yml"
+      - "brave-pdf-opener.swift"
+      - "PDFMagicOpenerApp/ScanProgressPreference.swift"
+      - "twilight-reading.png"
+
+permissions:
+  contents: read
+
+jobs:
+  native-details:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile native PDF opener with shared scan progress component
+        run: xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+      - name: Verify optional technical-details disclosure and scanner isolation
+        run: python3 test-scan-progress-component.py -v
