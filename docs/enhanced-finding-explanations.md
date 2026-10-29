@@ -9,6 +9,7 @@ receives a nested `result` object with:
 - `outcome`: `recorded`, `reviewRequired`, `blocking`, or `inspectionIncomplete`
 - `explanation`: a fixed, human-readable reason tied to the finding code
 - `nextAction`: fixed safe handling guidance, never execution of PDF content
+- `malwareAssessment`: always `notConfirmed` for Enhanced analysis findings
 
 Normal informational observations are recorded but are not a clean verdict.
 Review-required and suspicious observations both require human review before any
@@ -52,3 +53,19 @@ ClamAV gate, alter quarantine or caches, or modify user settings. It depends on
 the reporting contract in [PR #190](https://github.com/PDF-magic/opener/pull/190),
 so the PR may be stacked temporarily until that contract lands. Producer
 integration and safety-policy activation are separate checklist tasks.
+
+## Heuristic evidence is not a confirmed malware detection
+
+Every Enhanced finding carries `result.malwareAssessment = "notConfirmed"`,
+regardless of its severity or handling outcome. A `blocking` result means the
+policy stops opening; it does **not** mean malware was confirmed. Heuristic
+signals such as suspicious URLs, active-content capabilities, and unexpected
+embedded files can justify review or blocking without proving that a payload
+executed or that the document is malware.
+
+The native scan-progress panel labels these findings **“Malware not confirmed”**
+and rejects any unknown malware-assessment value. Older schema-v2 reports that
+lack this additive field are treated as unconfirmed, never as confirmed malware.
+The separate ClamAV scan-result contract uses `malwareDetected` for a scanner
+reported detection; its wording is not reused for heuristic findings. None of
+these reporting fields authorizes opening or changes the deployed scan gate.
