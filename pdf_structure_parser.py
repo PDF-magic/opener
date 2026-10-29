@@ -113,15 +113,15 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted:
             raise PDFStructureParseError(_ENCRYPTED)
-        # Check original bytes, not a library-recovered stream payload.
-        from pdf_stream_lengths import validate_pdf_stream_lengths
-        validate_pdf_stream_lengths(contents, reader)
-        # Check the complete indirect-object index before graph traversal.
-        # Include compressed objects indexed in object streams.
+        # Check the complete indirect-object index before stream validation
+        # and graph traversal; object streams have their own index entries.
         total_objects = sum(len(entries) for entries in reader.xref.values())
         total_objects += len(reader.xref_objStm)
         if total_objects > MAX_STRUCTURE_OBJECTS:
             raise PDFStructureParseError(_SIZE)
+        # Check original bytes, not a library-recovered stream payload.
+        from pdf_stream_lengths import validate_pdf_stream_lengths
+        validate_pdf_stream_lengths(contents, reader)
         root = reader.trailer["/Root"]
         if root.get("/Type") != "/Catalog":
             raise PDFStructureParseError(_ERROR)
