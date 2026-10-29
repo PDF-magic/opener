@@ -29,6 +29,7 @@ class AdditionalInspectionPolicyTests(unittest.TestCase):
             FindingCode.malformedStructure: ("validateStructure", "inspectObjectRelationships"),
             FindingCode.conflictingStructure: ("inspectObjectRelationships", "inspectRevisionHistory"),
             FindingCode.unresolvedReference: ("inspectObjectRelationships",),
+            FindingCode.knownMaliciousContent: (),
             FindingCode.activeContent: ("inspectActiveActions",),
             FindingCode.suspiciousUrl: ("inspectEmbeddedUrls",),
             FindingCode.unexpectedEmbeddedFile: ("inspectEmbeddedFiles",
@@ -44,8 +45,20 @@ class AdditionalInspectionPolicyTests(unittest.TestCase):
                 finding = AnalysisFinding(code, FindingSeverity.suspicious)
                 entry = FindingInspectionRequirement(AnalysisStage.pdfStructure, finding)
                 self.assertEqual(tuple(x.value for x in entry.required_inspections), checks)
-                self.assertTrue(entry.requires_additional_inspection)
+                self.assertEqual(entry.requires_additional_inspection, bool(checks))
                 self.assertTrue(plan_additional_inspections(report(finding)).requires_block)
+
+    def test_known_malicious_content_is_terminal_and_still_blocks(self):
+        for severity in FindingSeverity:
+            with self.subTest(severity=severity):
+                plan = plan_additional_inspections(report(AnalysisFinding(
+                    FindingCode.knownMaliciousContent, severity,
+                )))
+                self.assertEqual(plan.required_inspections, ())
+                self.assertFalse(plan.requires_additional_inspection)
+                self.assertTrue(plan.requires_block)
+                self.assertFalse(plan.authorizes_open)
+                self.assertTrue(plan.to_dict()["requiresBlock"])
 
     def test_informational_incremental_revision_does_not_automatically_trigger(self):
         normal = AnalysisFinding(FindingCode.incrementalRevision,
