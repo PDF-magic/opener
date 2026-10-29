@@ -70,6 +70,24 @@ struct UpdatesSettingsView: View {
               .font(.headline)
               .fixedSize(horizontal: false, vertical: true)
               .accessibilityIdentifier("signatureUpdateSummary")
+            if let failure = signatureStatus.lastFailure {
+              VStack(alignment: .leading, spacing: 6) {
+                Label("Signature update failure recorded", systemImage: "exclamationmark.triangle")
+                  .font(.headline)
+                Text(signatureStatus.failureExplanation ?? "An earlier signature update failed.")
+                  .fixedSize(horizontal: false, vertical: true)
+                timestampRow("Last failed update", failure)
+                if !signatureStatus.hasUnresolvedFailure {
+                  Text("A successful update was recorded after this failure.")
+                    .foregroundStyle(.secondary)
+                }
+                Text("This failure record contains no FreshClam logs or private file paths.")
+                  .font(.footnote)
+                  .foregroundStyle(.secondary)
+              }
+              .accessibilityElement(children: .combine)
+              .accessibilityIdentifier("signatureUpdateFailure")
+            }
             timestampRow("Last attempted update", signatureStatus.lastAttempt)
               .accessibilityIdentifier("signatureUpdateLastAttempt")
             timestampRow("Last successful update", signatureStatus.lastSuccess)

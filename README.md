@@ -306,6 +306,8 @@ The installer downloads ClamAV's official signatures and installs a user LaunchA
 
 The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
 
+**Signature-update failures (opener-0384):** The existing automatic or manual updater records an additional, atomic `signatures/last-failed-update` marker only when its run exits unsuccessfully. The marker contains the failure time and one fixed, path-free category (`freshclam-error` or `updater-unavailable`); it never exposes FreshClam stderr, document contents or installed paths. Preferences → Updates shows the last recorded failure and its sanitized explanation, distinguishes an unresolved failure from a subsequent recorded success, and treats missing or corrupt markers as unknown. The last-successful marker still advances only after FreshClam succeeds, and the 48-hour scan gate remains authoritative; a failure warning never approves a scan or changes the update interval.
+
 ```sh
 bash update-malware-signatures.sh
 ```
