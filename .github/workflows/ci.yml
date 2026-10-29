@@ -24,6 +24,10 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Verify strict PDF structure parsing with the maintained library
         run: python3 test-pdf-structure-parser.py -v
+      - name: Verify the evaluated parser, BSD license and consistent version pin
+        run: python3 test-pdf-parser-evaluation.py -v
+      - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
+        run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Inspect indirect PDF object links and page-tree consistency
         run: python3 test-pdf-object-relationships.py -v
       - name: Inspect automatic PDF action hooks without executing them
@@ -50,6 +54,8 @@ jobs:
         run: python3 test-signature-network-interruptions.py -v
       - name: Recover the signature update agent after a simulated system restart
         run: python3 test-signature-agent-restart.py -v
+      - name: Keep scanned document contents out of ClamAV update traffic
+        run: python3 test-signature-update-privacy.py -v
       - name: Verify live signature-update progress and cleanup
         run: python3 test-signature-update-progress.py -v
       - name: Verify scanner-failure response policy and existing fail-closed gate
@@ -72,7 +78,7 @@ jobs:
         run: python3 test-structured-protection-policy.py -v
       - name: Inspect embedded PDF attachments under the planned Enhanced policy
         run: |
-          python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+          python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
           python3 test-enhanced-embedded-files.py -v
       - name: Detect excessive PDF decompression requirements safely
         run: python3 test-pdf-decompression-requirements.py -v
