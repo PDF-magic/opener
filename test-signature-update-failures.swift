@@ -34,6 +34,12 @@ struct SignatureUpdateFailureTests {
     precondition(info.hasUnresolvedFailure)
     precondition(info.failureExplanation?.contains("unavailable") == true)
 
+    try write(failure, "1700000013 incomplete-download\n")
+    info = SignatureUpdateStatus.read(from: root, now: now)
+    precondition(info.hasUnresolvedFailure)
+    precondition(info.failureReason == "incomplete-download")
+    precondition(info.failureExplanation?.contains("Incomplete") == true)
+
     for malformed in [
       "", "1700000012 raw private/path", "1700000012 unknown",
       "1700000101 freshclam-error", "NaN freshclam-error",
