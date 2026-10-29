@@ -15,6 +15,7 @@ _FAILURE = "PDF stream length could not be verified; opening was stopped."
 _OBJECT_HEADER = re.compile(rb"([0-9]+)[ \t\r\n]+([0-9]+)[ \t\r\n]+obj\b")
 _STREAM_START = re.compile(rb"[ \t\r\n]*stream(?:\r\n|\n|\r)")
 _STREAM_END = re.compile(rb"(?:\r\n|\n|\r)endstream(?=[\s%]|\Z)")
+_DIRECT_STREAM_END = re.compile(rb"endstream(?=[\s%]|\Z)")
 _FINAL_XREF = re.compile(rb"startxref[ \t\r\n]+([0-9]+)[ \t\r\n]+%%EOF[ \t\r\n]*\Z")
 
 
@@ -157,7 +158,7 @@ def validate_pdf_stream_lengths(contents: bytes, reader) -> int:
         contained_eol = (
           boundary > data_start
           and contents[boundary - 1] in b"\r\n"
-          and re.match(rb"endstream(?=[\s%]|\Z)", contents, boundary) is not None
+          and _DIRECT_STREAM_END.match(contents, boundary) is not None
         )
         if not contained_eol:
           raise PDFStreamLengthError(_FAILURE)
