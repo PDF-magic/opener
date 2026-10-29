@@ -61,7 +61,7 @@ class InstalledClamAVVersionTests(unittest.TestCase):
         query.assert_not_called()
 
     def test_unreadable_or_unrecognized_version_is_unknown(self):
-        with patch.object(opener, "scanner_path", return_value="/trusted/clamscan"), patch.object(
+        with patch.object(opener, "detect_clamav_installation", return_value="/trusted/clamscan"), patch.object(
             opener.subprocess, "check_output"
         ) as query:
             query.return_value = "Not ClamAV"
@@ -72,7 +72,7 @@ class InstalledClamAVVersionTests(unittest.TestCase):
             self.assertIsNone(opener.detect_installed_clamav_version())
 
     def test_installed_version_is_not_a_cached_scan_version(self):
-        with patch.object(opener, "scanner_path", return_value="/trusted/clamscan"), patch.object(
+        with patch.object(opener, "detect_clamav_installation", return_value="/trusted/clamscan"), patch.object(
             opener.subprocess, "check_output",
             side_effect=["ClamAV 1.4.2/28765", "ClamAV 1.5.0/28766"],
         ) as query, patch.object(
@@ -84,7 +84,7 @@ class InstalledClamAVVersionTests(unittest.TestCase):
 
     def test_discovery_failure_never_reports_an_installed_version(self):
         with patch.object(
-            opener, "scanner_path", side_effect=RuntimeError("ClamAV unavailable")
+            opener, "detect_clamav_installation", side_effect=RuntimeError("ClamAV unavailable")
         ), patch.object(opener, "scan_engine_version") as query:
             self.assertIsNone(opener.detect_installed_clamav_version())
         query.assert_not_called()

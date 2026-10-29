@@ -381,14 +381,12 @@ def detect_clamav_installation() -> Optional[str]:
     return None
 
 
-def scanner_path(*, require_supported_version=False):
+def scanner_path():
     scanner = detect_clamav_installation()
     if scanner is not None:
-        # Keep read-only installation/version discovery nonblocking. Installed
-        # scan entry points explicitly require a compatible engine before any
-        # signature lookup, cache reuse, scan or file-opening side effects.
-        if require_supported_version:
-            require_supported_scanner_version(scanner)
+        # A discoverable executable is not necessarily a supported engine.
+        # Fail before signature, cache, scan or handoff operations can run.
+        require_supported_scanner_version(scanner)
         return scanner
     raise RuntimeError('ClamAV is unavailable. Run the Allow and Open installer again.')
 
@@ -607,11 +605,13 @@ def detect_installed_clamav_version():
     An unknown version must never be interpreted as a clean scan or bypass
     the mandatory signature, integrity, and quarantine checks.
     """
+    # Read-only advisory detection must not invoke admission checks. In
+    # particular, unsupported installed versions may still be reported.
     try:
-        scanner = scanner_path()
+        scanner = detect_clamav_installation()
     except (OSError, RuntimeError):
         return None
-    return scan_engine_version(scanner)
+    return scan_engine_version(scanner) if scanner is not None else None
 
 
 def record_scan_destination(destination):
@@ -979,7 +979,7 @@ def scan_and_open_generated_copy(item, offer):
     # The existing normal scanner may trust a content-addressed cache. A
     # generated output must be freshly scanned regardless of earlier scans,
     # including those of an identical file or of its original source.
-    scanner = scanner_path(require_supported_version=True)
+    scanner = scanner_path()
     policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
     with scan_slot():
         check_database()
@@ -1034,7 +1034,7 @@ def main(items):
         return 1
 
     try:
-        scanner = scanner_path(require_supported_version=True)
+        scanner = scanner_path()
         check_database()
     except (OSError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
