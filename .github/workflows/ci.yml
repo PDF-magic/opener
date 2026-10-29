@@ -319,6 +319,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify staged ClamAV signature databases before activation on macOS
+        run: python3 test-validate-signature-database.py -v
       - name: Test read-only ClamAV signature revision parsing
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
