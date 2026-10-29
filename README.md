@@ -4,6 +4,8 @@ Safe & reliable document launcher for macOS.
 
 Scan PDFs locally with ClamAV before opening them in a configurable application (Brave by default), with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
 
+For technical reference material, see the [organized documentation index](docs/README.md).
+
 ## SwiftUI application target (opener-0163)
 
 The repository includes a standalone macOS SwiftUI application target in
@@ -231,7 +233,7 @@ bash install-allow-and-open.sh
 
 Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default).
 For the Finder double-click verification procedure and its automated Launch Services
-regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf-drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
+regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf/drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
 **Show Successful Scan Notifications (opener-0201):** General offers an
 **opt-in**, default-off setting shared with the installed native PDF opener.
@@ -263,11 +265,11 @@ Advanced Scanning has no scanner-parameter editor; its confirmed Restore
 Recommended Limits action can only clear a recognized optional metadata
 override, not change the installed scan gate. Supported saved preferences, including
 the selected PDF viewer, are unaffected. See the
-[scanner parameter decision](docs/scanner-parameters-decision.md).
+[scanner parameter decision](docs/scanner/parameters-decision.md).
 
 **PDF parser selection (opener-0406):** The optional Enhanced structure stage
 retains strictly parsed, pinned `pypdf==6.21.3`. See the
-[PDF library evaluation](docs/pdf-parser-evaluation.md) for PDF versions,
+[PDF library evaluation](docs/pdf/parser-evaluation.md) for PDF versions,
 malformed-file handling, memory comparisons and licensing; the Built-in
 scanner remains unchanged.
 

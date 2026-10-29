@@ -88,7 +88,7 @@ class ScannerParameterDecisionTests(unittest.TestCase):
                 self.assertNotIn(term, page)
 
     def test_policy_and_ci_are_present(self):
-        doc = (ROOT / "docs" / "scanner-parameters-decision.md").read_text(
+        doc = (ROOT / "docs" / "scanner/parameters-decision.md").read_text(
             encoding="utf-8"
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -99,7 +99,7 @@ class ScannerParameterDecisionTests(unittest.TestCase):
             "When to reconsider",
         ):
             self.assertIn(term, doc)
-        self.assertIn("docs/scanner-parameters-decision.md", readme)
+        self.assertIn("docs/scanner/parameters-decision.md", readme)
         self.assertIn("python3 test-scanner-parameters-decision.py -v", ci)
         self.assertIn("python3 test-scanner-arguments.py -v", ci)
 
