@@ -119,6 +119,9 @@ class FindingExplanationsTests(unittest.TestCase):
         self.assertEqual(original.to_dict()["schemaVersion"], 1)
         self.assertEqual([x["objectNumber"] for x in output["stageResults"][0]["findings"]],
                          [8, 9])
+        self.assertEqual([x["findingId"] for x in output["stageResults"][0]["findings"]],
+                         ["finding-v1:suspiciousUrl:object=8:page=none",
+                          "finding-v1:suspiciousUrl:object=9:page=none"])
         self.assertEqual([x["result"]["outcome"] for x in output["stageResults"][0]["findings"]],
                          ["reviewRequired", "blocking"])
         output["stageResults"][0]["findings"].clear()

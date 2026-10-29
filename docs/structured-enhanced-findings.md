@@ -13,6 +13,18 @@ PDF object/page numbers, not document-controlled text, URLs, file paths,
 attachment names, raw bytes, or exception messages. Data records are immutable;
 `to_dict()` creates a separate JSON-serializable object in expected-stage order.
 
+Each finding exposes a deterministic `finding_id` and serializes it as
+`findingId`, using the versioned signature
+`finding-v1:<code>:object=<number-or-none>:page=<number-or-none>`. The ID is
+stable across runs and report ordering, and does not change if policy changes
+the finding's severity. It identifies the known finding code and available
+location—not a document, a unique event, or a globally unique occurrence.
+Identical code/location signatures intentionally share an ID; producers should
+include validated locations when the evidence has them. The ID never includes
+document-provided text, paths, URLs, stream contents, or random/process-local
+values. The additive field preserves schema version 1 and is ignored by older
+consumers that only need the existing fields.
+
 Example for a **future** inspection producer:
 
 ```python
