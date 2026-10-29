@@ -198,7 +198,7 @@ class PDFXFAFormTests(unittest.TestCase):
         source = (ROOT / "pdf_xfa_forms.py").read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        docs = (ROOT / "docs/pdf-xfa-forms.md").read_text(encoding="utf-8")
+        docs = (ROOT / "docs/pdf/xfa-forms.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_xfa_forms", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("python3 test-pdf-xfa-forms.py -v", ci)

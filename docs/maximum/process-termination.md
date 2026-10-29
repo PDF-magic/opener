@@ -1,6 +1,6 @@
 # Terminate Maximum workers that exceed process limits (opener-0312)
 
-The opt-in Maximum worker from [opener-0306](maximum-isolated-analysis.md)
+The opt-in Maximum worker from [opener-0306](isolated-analysis.md)
 now uses `maximum_process_termination.run_limited_worker()` instead of
 `subprocess.run()`. Only the trusted caller constructs an inspector command
 and environment; the PDF only supplies bounded bytes via the child stdin.

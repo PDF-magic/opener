@@ -239,7 +239,7 @@ class PDFDeclaredMetadataTests(unittest.TestCase):
         source = (ROOT / "pdf_declared_metadata.py").read_text()
         scanner = (ROOT / "scan-and-open.py").read_text()
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        docs = (ROOT / "docs/pdf-declared-metadata.md").read_text()
+        docs = (ROOT / "docs/pdf/declared-metadata.md").read_text()
         self.assertNotIn("pdf_declared_metadata", scanner)
         self.assertIn("python3 test-pdf-declared-metadata.py -v", ci)
         self.assertIn("/Info", docs)

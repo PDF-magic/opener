@@ -2,7 +2,7 @@
 
 `enhanced_inconclusive_results.assess_inconclusive_opening(report)` is a
 **passive, fail-closed policy decision** over the validated
-[structured findings contract](structured-enhanced-findings.md).
+[structured findings contract](../structured-enhanced-findings.md).
 It does not inspect documents, run a scanner, change a saved preference,
 remove quarantine, or authorize opening.
 
@@ -17,8 +17,8 @@ reasons. Suspicious or critical incremental revisions also block, but a
 routine *informational* revision is not automatically inconclusive.
 
 This rule preserves **all** prior `requires_block` decisions from the
-[structured report](structured-enhanced-findings.md) and
-[explanations](enhanced-finding-explanations.md); it cannot downgrade them.
+[structured report](../structured-enhanced-findings.md) and
+[explanations](finding-explanations.md); it cannot downgrade them.
 The policy explicitly distinguishes `blocksForInconclusive` from the
 aggregate `requiresBlock`. The output decision is either `block` or
 `noDecision`, **never** `allow` or `clean`. Even when no inconclusive

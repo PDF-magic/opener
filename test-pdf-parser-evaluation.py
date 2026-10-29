@@ -51,7 +51,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
     self.assertGreater(report["peak_rss_mib"], 0)
 
   def test_selection_research_and_ci_use_only_this_pin(self):
-    policy = (ROOT / "docs/pdf-parser-evaluation.md").read_text()
+    policy = (ROOT / "docs/pdf/parser-evaluation.md").read_text()
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     parser = (ROOT / "pdf_structure_parser.py").read_text()
     scanner = (ROOT / "scan-and-open.py").read_text()

@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Check documentation naming and links
+        run: python3 scripts/check-docs-layout.py
       - name: Verify safe versioned configuration loading
         run: python3 -m unittest discover -p 'test-configuration-loading.py' -v
       - name: Check shell syntax
