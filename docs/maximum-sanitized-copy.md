@@ -24,6 +24,20 @@ and validated right-angle rotation (0, 90, 180, or 270 degrees) preserved.
 The rebuilt PDF is checked against the source page geometry before it can be
 offered, so a missing, reordered, resized, or wrongly rotated page fails closed.
 
+Every successful converted-copy offer carries a fixed, explicit
+`conversionWarning` in `SanitizedCopyOffer.to_public_metadata()`, in the
+successful `SanitizationDecision.to_dict()` result, and in the post-scan
+`MaximumSafeCopyHandoff.to_public_metadata()` result. It identifies
+conversion as a **meaningful document change** and explains the image-only
+output, lost functionality and possible visual differences. It does not use
+source-PDF strings or private file paths and cannot be suppressed through an
+offer constructor. A future Maximum UI must prominently show the warning
+alongside the save offer before a user decides to rely on the generated copy.
+Failed or blocked conversions retain their existing diagnostics and do not
+claim that a copy was generated. Maximum remains unavailable in the installed
+Built-in-only application; this contract does not represent a presently
+deployed conversion UI.
+
 An offer is **not** a claim that the source or output is malware-free.
 Rasterization loses searchable/selectable text, links, forms and other
 features; unusual page content may render differently. **Flattening can

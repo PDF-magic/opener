@@ -35,11 +35,20 @@ OFFER_EXPLANATION = (
     "This is newly generated content, not the untouched original PDF. "
     "Pages are flattened into images; searchable text, links, forms, "
     "attachments and other interactive features are not preserved. "
+    "OCR restoration is not included. "
     "Flattening can invalidate digital signatures; the generated copy "
     "must not be treated as a signed original. "
     "This is not a malware-clean verdict; scan the generated copy separately."
 )
 
+
+CONVERSION_CHANGE_WARNING = (
+    "Warning: Converting this PDF meaningfully changes the document. "
+    "The generated copy contains flattened page images rather than the original "
+    "PDF content. Searchable text, forms, links, annotations, and document metadata "
+    "are removed, and some visual details may render differently. "
+    "Review the generated copy before relying on it."
+)
 
 @dataclass(frozen=True)
 class SanitizedCopyOffer:
@@ -52,7 +61,10 @@ class SanitizedCopyOffer:
     permits_open: bool = False
     needs_separate_scan: bool = True
     rasterized: bool = True
+    # OCR is reserved for a separate future opt-in feature, not this safe-copy offer.
+    ocr_restored: bool = False
     content_origin: str = GENERATED_CONTENT_ORIGIN
+    warning: str = CONVERSION_CHANGE_WARNING
 
     def to_public_metadata(self):
         """Fixed presentation evidence; never include bytes or private paths."""
@@ -61,8 +73,10 @@ class SanitizedCopyOffer:
             "isUntouchedOriginal": False,
             "label": OFFER_LABEL,
             "explanation": OFFER_EXPLANATION,
+            "conversionWarning": CONVERSION_CHANGE_WARNING,
             "requiresFreshScan": True,
             "authorizesOpen": False,
+            "ocrRestored": False,
         }
 
     def __post_init__(self):
@@ -72,9 +86,11 @@ class SanitizedCopyOffer:
                 not 1 <= self.page_count <= MAX_PAGES or
                 self.label != OFFER_LABEL or
                 self.explanation != OFFER_EXPLANATION or
+                self.warning != CONVERSION_CHANGE_WARNING or
                 self.permits_open is not False or
                 self.needs_separate_scan is not True or
                 self.rasterized is not True or
+                self.ocr_restored is not False or
                 type(self.content_origin) is not str or
                 self.content_origin != GENERATED_CONTENT_ORIGIN):
             raise ValueError("Sanitized copies never grant scan or open approval")
@@ -234,6 +250,8 @@ class SanitizationDecision:
             "allowCleanCache": False,
             "preserveQuarantine": True,
             "requiresSeparateScan": True,
+            **({"conversionWarning": CONVERSION_CHANGE_WARNING}
+               if self.offer is not None else {}),
         }
 
 
