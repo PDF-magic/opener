@@ -32,6 +32,7 @@ CONFIG_FILES = frozenset({
 MACOS_TESTS = frozenset({
     "test-scan-progress-component.py",
     "test-maximum-filesystem-sandbox.py",
+    "test-maximum-child-process-restriction.py",
     "test-maximum-isolated-renderer.py",
     "test-maximum-isolated-analysis.py",
     "test-maximum-process-termination.py",
