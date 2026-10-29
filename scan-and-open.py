@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
+from scanner_concurrency_validation import validate_scanner_concurrency_limit
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from scanner_argument_validation import (
     InvalidScannerArguments, validate_scanner_arguments,
-    validate_scanner_version_arguments,
+    validate_scanner_version_arguments, validated_file_size_options,
 )
 from functools import wraps
 from dataclasses import dataclass, field
@@ -158,6 +159,7 @@ def scan_slot():
     Advisory locks are held on open file descriptors, so an interrupted process
     automatically releases its slot. No file names, paths, or scan results are logged.
     """
+    validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)
     slot_dir = CACHE_DB.parent / 'scan-slots'
     slot_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     if (slot_dir.is_symlink() or not slot_dir.is_dir()
@@ -416,6 +418,11 @@ def scanner_path():
 
 
 def check_database():
+    # Neither the signature directory nor the successful-update marker may
+    # point outside the installed database. A symlinked marker could forge a
+    # recent update, even if the main/daily files themselves are regular.
+    if DATABASE.is_symlink() or not DATABASE.is_dir() or STAMP.is_symlink():
+        raise RuntimeError('Malware signatures are unavailable. Run update-malware-signatures.sh.')
     try:
         age = time.time() - float(STAMP.read_text().strip())
     except (OSError, ValueError):
@@ -869,11 +876,9 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     is_pdf = path.is_file() and request.file_type == 'pdf'
     # Check the entire fixed argv before touching the clean cache, audit
     # storage, or an external scanner. Cached hits must not skip this gate.
-    if is_pdf:
-        # The engine still alerts on its internal file-size limit (~2 GB).
-        size_options = ('--max-filesize=0', '--max-scansize=0')
-    else:
-        size_options = ('--max-filesize=512M', '--max-scansize=1024M')
+    # Size options are validated centrally. PDFs retain no configured
+    # size ceiling, but ClamAV's internal engine limits still fail closed.
+    size_options = validated_file_size_options(is_pdf=is_pdf)
     command = [
         scanner, '--database=' + str(DATABASE), '--recursive',
         '--follow-file-symlinks=2', '--follow-dir-symlinks=2',
@@ -1106,6 +1111,10 @@ def main(items):
         return 1
     for index, item in valid_items:
         try:
+            # An update or external change can invalidate the database
+            # between items in a batch. The first item's preflight must not
+            # authorize scanning or cached-clean handoff for later items.
+            check_database()
             record_scan_request(os.environ.get(REQUESTING_APPLICATION_ENV, 'Command Line'))
             if isinstance(item, BrowserDownloadRequest):
                 if item.browser_download_identifier is None:

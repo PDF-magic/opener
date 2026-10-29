@@ -1,0 +1,24 @@
+name: Embedded PDF filename inspection
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-filename-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Inspect embedded filenames as inert metadata
+        run: python3 test-pdf-embedded-filenames.py -v
+      - name: Confirm existing embedded payload scan regressions
+        run: python3 test-enhanced-embedded-files.py -v

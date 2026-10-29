@@ -428,6 +428,50 @@ enum PDFMagicPolicySettingsUpgrade {
   }
 }
 
+
+// Only recognized optional scanner-limit override metadata is in scope.
+// The installed scanner never reads this key; it continues enforcing the
+// fixed two-slot gate and its other mandatory safety checks. Future editable
+// limits must be separately integrated and explicitly added to this allowlist.
+enum RecommendedScannerLimitsReset {
+  static let concurrencyOverrideKey = "maxConcurrentScans"
+
+  enum Outcome: Equatable {
+    case restored
+    case alreadyRecommended
+    case unavailable
+  }
+
+  static func restore(
+    defaults: UserDefaults? = UserDefaults(suiteName: ScanProgressPreference.suiteName)
+  ) -> Outcome {
+    guard let defaults else { return .unavailable }
+    _ = defaults.synchronize()
+    // An unsupported/future schema or scanner profile must not be rewritten.
+    guard ActiveConfigurationSchemaVersion.read(defaults: defaults) ==
+            PDFMagicConfigurationSchema.currentVersion,
+          SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn else {
+      return .unavailable
+    }
+
+    // Absent overrides inherit the installed recommended limit. Never create
+    // a new persisted setting merely to make the reset appear successful.
+    let previous = defaults.object(forKey: concurrencyOverrideKey)
+    guard let previous else { return .alreadyRecommended }
+    defaults.removeObject(forKey: concurrencyOverrideKey)
+    if defaults.synchronize(),
+       defaults.object(forKey: concurrencyOverrideKey) == nil,
+       SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn {
+      return .restored
+    }
+
+    // A failed write must not erase the user's previous explicit choice.
+    defaults.set(previous, forKey: concurrencyOverrideKey)
+    _ = defaults.synchronize()
+    return .unavailable
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.

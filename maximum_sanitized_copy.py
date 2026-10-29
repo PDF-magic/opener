@@ -7,28 +7,46 @@ the installed scanner or user preferences.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
 from io import BytesIO
+import math
 import os
 from pathlib import Path
 import stat
-import subprocess
 import sys
 
 from maximum_active_content_removal import remove_active_pdf_functionality
+from maximum_sanitizer_process import (
+    SanitizerProcessExecutionError,
+    SanitizerProcessOutputLimitExceeded,
+    SanitizerProcessTimedOut,
+    run_limited_converter,
+)
 from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_PAGES = 16
 CONVERSION_TIMEOUT_SECONDS = 45
-OFFER_LABEL = "Save rasterized PDF copy"
+GENERATED_CONTENT_ORIGIN = "generatedContent"
+OFFER_LABEL = "Save generated sanitized PDF copy"
 OFFER_EXPLANATION = (
+    "This is newly generated content, not the untouched original PDF. "
     "Pages are flattened into images; searchable text, links, forms, "
     "attachments and other interactive features are not preserved. "
+    "OCR restoration is not included. "
     "This is not a malware-clean verdict; scan the generated copy separately."
 )
 
+
+CONVERSION_CHANGE_WARNING = (
+    "Warning: Converting this PDF meaningfully changes the document. "
+    "The generated copy contains flattened page images rather than the original "
+    "PDF content. Searchable text, forms, links, annotations, and document metadata "
+    "are removed, and some visual details may render differently. "
+    "Review the generated copy before relying on it."
+)
 
 @dataclass(frozen=True)
 class SanitizedCopyOffer:
@@ -41,6 +59,23 @@ class SanitizedCopyOffer:
     permits_open: bool = False
     needs_separate_scan: bool = True
     rasterized: bool = True
+    # OCR is reserved for a separate future opt-in feature, not this safe-copy offer.
+    ocr_restored: bool = False
+    content_origin: str = GENERATED_CONTENT_ORIGIN
+    warning: str = CONVERSION_CHANGE_WARNING
+
+    def to_public_metadata(self):
+        """Fixed presentation evidence; never include bytes or private paths."""
+        return {
+            "contentOrigin": GENERATED_CONTENT_ORIGIN,
+            "isUntouchedOriginal": False,
+            "label": OFFER_LABEL,
+            "explanation": OFFER_EXPLANATION,
+            "conversionWarning": CONVERSION_CHANGE_WARNING,
+            "requiresFreshScan": True,
+            "authorizesOpen": False,
+            "ocrRestored": False,
+        }
 
     def __post_init__(self):
         if (type(self.pdf_bytes) is not bytes or
@@ -49,9 +84,13 @@ class SanitizedCopyOffer:
                 not 1 <= self.page_count <= MAX_PAGES or
                 self.label != OFFER_LABEL or
                 self.explanation != OFFER_EXPLANATION or
+                self.warning != CONVERSION_CHANGE_WARNING or
                 self.permits_open is not False or
                 self.needs_separate_scan is not True or
-                self.rasterized is not True):
+                self.rasterized is not True or
+                self.ocr_restored is not False or
+                type(self.content_origin) is not str or
+                self.content_origin != GENERATED_CONTENT_ORIGIN):
             raise ValueError("Sanitized copies never grant scan or open approval")
 
 
@@ -209,6 +248,8 @@ class SanitizationDecision:
             "allowCleanCache": False,
             "preserveQuarantine": True,
             "requiresSeparateScan": True,
+            **({"conversionWarning": CONVERSION_CHANGE_WARNING}
+               if self.offer is not None else {}),
         }
 
 
@@ -309,7 +350,35 @@ def _trusted_converter() -> Path | None:
         return None
 
 
-def _passive_pages(pdf_bytes: bytes, count: int) -> bool:
+def _page_geometry(page):
+    """Return validated, normalized page dimensions and right-angle rotation."""
+    try:
+        width = float(page.mediabox.width)
+        height = float(page.mediabox.height)
+        rotation = page.get_inherited("/Rotate")
+        if rotation is None:
+            rotation = 0
+        if (isinstance(rotation, bool) or
+                not isinstance(rotation, (int, float, Decimal))):
+            return None
+        numeric_rotation = float(rotation)
+        if (not math.isfinite(numeric_rotation) or
+                not numeric_rotation.is_integer() or int(numeric_rotation) % 90 != 0):
+            return None
+        rotation = int(numeric_rotation) % 360
+        if (rotation not in (0, 90, 180, 270) or
+                not math.isfinite(width) or not math.isfinite(height) or
+                not 1 <= width <= 1440 or not 1 <= height <= 1440):
+            return None
+        return (width, height, rotation)
+    except Exception:
+        return None
+
+
+def _passive_pages(
+    pdf_bytes: bytes, count: int,
+    expected_page_geometry: tuple[tuple[float, float, int], ...] | None = None,
+) -> bool:
     """Check generated output has only new pages/images, not PDF actions.
 
     This is validation, not a guarantee that a PDF reader has no bugs.
@@ -317,12 +386,28 @@ def _passive_pages(pdf_bytes: bytes, count: int) -> bool:
     try:
         from pypdf import PdfReader
         reader = PdfReader(BytesIO(pdf_bytes), strict=True)
-        if reader.is_encrypted or len(reader.pages) != count:
+        if (reader.is_encrypted or len(reader.pages) != count or
+                (expected_page_geometry is not None and (
+                    type(expected_page_geometry) is not tuple or
+                    len(expected_page_geometry) != count
+                ))):
             return False
         root = reader.trailer["/Root"]
         if set(root) - {"/Type", "/Pages"}:
             return False
-        for page in reader.pages:
+        for index, page in enumerate(reader.pages):
+            geometry = _page_geometry(page)
+            if geometry is None:
+                return False
+            if expected_page_geometry is not None:
+                expected = expected_page_geometry[index]
+                if (type(expected) is not tuple or len(expected) != 3 or
+                        any(type(value) not in (int, float) for value in expected[:2]) or
+                        type(expected[2]) is not int or
+                        abs(geometry[0] - expected[0]) > 0.01 or
+                        abs(geometry[1] - expected[1]) > 0.01 or
+                        geometry[2] != expected[2]):
+                    return False
             if any(item in page for item in (
                 "/Annots", "/AA", "/OpenAction", "/Names", "/AcroForm",
                 "/EmbeddedFiles", "/RichMedia", "/Metadata",
@@ -375,27 +460,27 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
             # Unsupported dynamic features and unknown filters must never
             # reach a converter that could silently drop their content.
             return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
-        count = len(original.pages)
+        page_geometry = tuple(_page_geometry(page) for page in original.pages)
+        if not page_geometry or any(item is None for item in page_geometry):
+            return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
+        count = len(page_geometry)
     except Exception:
         return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
 
     try:
-        converted = subprocess.run(
-            [str(converter)],
-            input=source_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=CONVERSION_TIMEOUT_SECONDS,
-            close_fds=True,
-            start_new_session=True,
-            check=False,
-            cwd="/",
-            env={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
-                 "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
+        converted = run_limited_converter(
+            (str(converter),),
+            source_bytes,
+            timeout_seconds=CONVERSION_TIMEOUT_SECONDS,
+            max_output_bytes=MAX_OUTPUT_BYTES,
+            environment={"PATH": "/usr/bin:/bin", "HOME": "/var/empty",
+                         "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1"},
         )
-    except subprocess.TimeoutExpired:
+    except SanitizerProcessTimedOut:
         return _failed(SanitizerFailureKind.TIMED_OUT)
-    except (OSError, subprocess.SubprocessError):
+    except SanitizerProcessOutputLimitExceeded:
+        return _failed(SanitizerFailureKind.INVALID_OUTPUT)
+    except (OSError, SanitizerProcessExecutionError):
         return _failed(SanitizerFailureKind.LAUNCH_FAILED)
     except Exception:
         return _failed(SanitizerFailureKind.LAUNCH_FAILED)
@@ -416,11 +501,13 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
     try:
         # The opt-in converter's output is never itself offered. Keep only
         # decoded raster pixels through a new PDF construction.
-        cleaned = remove_active_pdf_functionality(converted.stdout, count)
+        cleaned = remove_active_pdf_functionality(
+            converted.stdout, count, page_geometry,
+        )
         if (type(cleaned) is not bytes or
                 not 0 < len(cleaned) <= MAX_OUTPUT_BYTES or
                 cleaned == source_bytes or
-                not _passive_pages(cleaned, count)):
+                not _passive_pages(cleaned, count, page_geometry)):
             # Never offer the original, a non-PDF or an incomplete rebuild.
             return _failed(SanitizerFailureKind.INVALID_OUTPUT)
         # Preserve opener-0319's independent verification of final output.

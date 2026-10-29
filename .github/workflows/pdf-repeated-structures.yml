@@ -1,0 +1,26 @@
+name: Repeated PDF structure inspection
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  repeated-structure-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned optional PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Detect suspiciously repeated PDF structures
+        run: python3 test-pdf-repeated-structures.py -v
+      - name: Preserve indirect object relationship regression coverage
+        run: python3 test-pdf-object-relationships.py -v
+      - name: Preserve strict structure parser regression coverage
+        run: python3 test-pdf-structure-parser.py -v

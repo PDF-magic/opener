@@ -32,6 +32,23 @@ struct SignatureUpdateStatus {
     return lastSuccess == nil || failure >= lastSuccess!
   }
 
+  // Match scan-and-open.py's inclusive 48-hour freshness window.
+  // This is historical update metadata only: scanning independently enforces
+  // the freshness, completeness, and malware-verdict gates.
+  static let maximumSignatureAge: TimeInterval = 48 * 60 * 60
+
+  func freshnessWarning(now: Date = Date()) -> String? {
+    guard let lastSuccess else {
+      return "Signature freshness cannot be verified: no valid successful-update time is available. The scanner still enforces its own freshness checks."
+    }
+    let age = now.timeIntervalSince(lastSuccess)
+    guard age.isFinite, age >= 0 else {
+      return "Signature freshness cannot be verified: the recorded update time is invalid for the current clock. The scanner still enforces its own freshness checks."
+    }
+    guard age > Self.maximumSignatureAge else { return nil }
+    return "Signature update overdue: the last successful check is more than 48 hours old. Update signatures before opening files. Scanner freshness checks remain enforced."
+  }
+
   var message: String {
     if hasUnresolvedFailure { return "Signature update failure recorded; a later success is not confirmed" }
     switch (lastAttempt, lastSuccess) {

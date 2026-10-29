@@ -477,6 +477,33 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         self.assertEqual(failure.exception.scan_result.detection_names, ('Win.Test.Sample',))
         quarantine.assert_not_called()
 
+    def test_structural_success_cannot_override_clamav_detection(self):
+        from pdf_structure_parser import parse_pdf_structure
+        from reference_pdf_collection import REFERENCE_PDFS
+
+        # A genuine successful structure parse is evidence only, never a clean
+        # ClamAV verdict or permission to open the document.
+        self.file.write_bytes(REFERENCE_PDFS[0].content)
+        structure = parse_pdf_structure(self.file.read_bytes())
+        self.assertEqual(structure.page_count, 1)
+        self.assertIs(structure.to_dict()["authorizesOpen"], False)
+
+        detected = subprocess.CompletedProcess(
+            [], 1, f"{self.file}: Eicar-Test-Signature FOUND", ""
+        )
+        with patch.object(opener.subprocess, "run", return_value=detected) as scan, \
+                patch.object(opener, "remove_quarantine") as quarantine, \
+                patch.object(opener, "launch_clean_file") as launch:
+            with self.assertRaisesRegex(RuntimeError, "Malware"):
+                opener.scan_and_open(str(self.file), "/scanner")
+
+        self.assertEqual(scan.call_count, 1)
+        quarantine.assert_not_called()
+        launch.assert_not_called()
+        self.assertFalse(opener.cached_clean(opener.cache_key(
+            opener.fingerprint(self.file), True
+        )))
+
     def test_detection_preserves_file_and_quarantine_without_opening(self):
         self.assert_blocked(subprocess.CompletedProcess([], 1, 'test: Eicar-Signature FOUND', ''))
 

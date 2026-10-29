@@ -1,0 +1,38 @@
+name: Known malicious content policy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify known malicious content is always blocked
+        run: python3 test-enhanced-blocking-policy.py -v
+      - name: Verify safe, code-level blocking explanations
+        run: python3 test-enhanced-finding-explanations.py -v
+      - name: Preserve structured finding validation
+        run: python3 test-enhanced-analysis-findings.py -v
+      - name: Verify terminal findings do not require irrelevant follow-up inspections
+        run: python3 test-enhanced-additional-inspections.py -v
+      - name: Preserve inconclusive-evidence policy classifications
+        run: python3 test-enhanced-inconclusive-results.py -v
+
+  native-display:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify the native progress display rejects downgraded malicious findings
+        run: python3 test-scan-progress-component.py -v

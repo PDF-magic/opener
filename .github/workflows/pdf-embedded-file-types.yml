@@ -1,0 +1,26 @@
+name: Embedded PDF file-type inspection
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-file-type-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned Enhanced PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Inspect embedded file signatures and declared types
+        run: python3 test-pdf-embedded-file-types.py -v
+      - name: Preserve existing attachment extraction and scan tests
+        run: python3 test-enhanced-embedded-files.py -v
+      - name: Preserve executable-signature detection tests
+        run: python3 test-pdf-embedded-executable-content.py -v

@@ -74,6 +74,19 @@ destination covering local ClamAV malware checks, file readiness, and
 scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
+**Scanner feature check (opener-0357):** The opt-in, read-only
+`scanner_feature_check.py` utility inspects only the selected ClamAV
+binary's `--help` declarations. Run
+`python3 scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
+the trusted installed `clamscan` path). It reports whether PDF,
+archive, document, and executable-type scanning switches are advertised
+and whether the options used by the existing Built-in scan gate appear.
+Missing, timed-out, malformed, or failed help probes report **unknown**,
+not a clean scan or an unsupported engine. Advertised options do not
+prove a feature is enabled, working, or safe; the installed scanner must
+still complete the existing full scan before any file can open.
+This diagnostic never changes scanner options or saved preferences.
+
 **VoiceOver navigation (opener-0190):** The preferences sidebar has a spoken
 group label and each page entry announces its section name and a navigation
 hint. Labels are derived from the existing page titles and preserve native
@@ -89,6 +102,8 @@ a newer attempt without a newer success is not presented as a confirmed
 successful update. Times are displayed in the user's local time zone.
 This is historical status only: it cannot prove signatures are fresh or
 complete and does not replace the installed 48-hour scanner freshness gate.
+
+**Stale-signature warning (opener-0392):** Preferences → Updates shows an explicit warning when the recorded last successful signature check is **older than 48 hours**, using the same inclusive boundary as the scan gate. A missing, malformed, future, or unreadable successful-update timestamp instead produces a separate **freshness cannot be verified** warning, never a claim that definitions are current. The warning re-evaluates the installed timestamp about once per minute while the pane remains open, including when the automatic update agent runs. No background update is triggered by viewing the warning; signature database validity, malware scanning, quarantine, and the scanner's fail-closed 48-hour freshness policy remain authoritative.
 Opening Settings does not run updates, modify saved preferences or change
 scanner protections.
 
@@ -242,6 +257,20 @@ native helper. Cancel from the progress window is available when the toggle
 is enabled; while it is hidden, closing the opener or other process-level
 controls may interrupt a scan without approving any document.
 
+**Scanner parameter editability (opener-0397):** ClamAV command-line parameters
+are **not user-editable**. The fixed, validated scan gate remains authoritative;
+Advanced Scanning has no scanner-parameter editor; its confirmed Restore
+Recommended Limits action can only clear a recognized optional metadata
+override, not change the installed scan gate. Supported saved preferences, including
+the selected PDF viewer, are unaffected. See the
+[scanner parameter decision](docs/scanner-parameters-decision.md).
+
+**PDF parser selection (opener-0406):** The optional Enhanced structure stage
+retains strictly parsed, pinned `pypdf==6.21.3`. See the
+[PDF library evaluation](docs/pdf-parser-evaluation.md) for PDF versions,
+malformed-file handling, memory comparisons and licensing; the Built-in
+scanner remains unchanged.
+
 **ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `scanner_startup_benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regression tests only, not a production ClamAV benchmark.
 
 The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
@@ -249,6 +278,18 @@ The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift`
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
 Detection, scan errors, timeouts, encrypted inputs, exceeded scan limits, or signatures not checked within 48 hours stop opening and preserve quarantine. Successful clean and cached scans also retain the original `com.apple.quarantine` extended attribute, leaving Gatekeeper and OS-level downloaded-file protections in place for PDFs and application bundles. Files are checked for changes during scanning. App bundles are scanned recursively; links outside a bundle stop opening. Standalone PDFs have no opener-configured file or extracted-data size limit and allow up to 30 minutes for scanning. ClamAV's own approximately 2 GB per-file engine limit still blocks opening if exceeded; unlimited configured PDF scanning may require substantial CPU, memory, and temporary disk. Other files and app-bundle contents retain the 512 MB per-file and 1 GB total scan limits and a three-minute timeout. Zero-byte files, including empty members of application bundles, are explicitly rejected before scanner execution or clean-cache reuse. An empty file is never treated as successfully scanned, even if ClamAV would skip it. A clean scan means no threat was detected, not guaranteed safety. Files are never uploaded.
+
+**Scanner file-size validation (opener-0399):** Before constructing the
+ClamAV command, a shared validator checks permitted per-file and aggregate
+size limits. Standalone PDFs retain their existing `0/0` (unlimited
+configured) options, subject to ClamAV's independent engine limits. Other
+files and app bundles retain the fixed 512 MiB per-file and 1024 MiB
+aggregate defaults. Potential non-PDF limits must be positive integer
+MiB values, at most those defaults, with aggregate at least per-file;
+zero, booleans, fractional values, negative values, and oversized
+proposals fail validation. This does **not** expose editable ClamAV
+settings: the active command validator still rejects changed scanner
+arguments, even narrower ones, and no saved preferences are modified.
 
 Each accepted native PDF open request also has an in-memory `ScanRequest.requestTimestamp` (`Date`) set when the open event is accepted. Repeated events for the same resolved file retain the original request timestamp. This field is not logged or persisted, and is distinct from the scan time used in the clean-file cache.
 
@@ -871,3 +912,5 @@ For compatibility with existing installations, runtime scripts and signatures re
 Licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 **Manual signature-update controls (opener-0381):** The Updates preferences pane includes **Check for Updates Now** for a user-initiated, read-only comparison of the ClamAV-published DNS TXT main/daily signature revisions against bounded local database headers. Missing DNS information or unreadable local metadata reports that the comparison is unavailable, never that the signatures are current. **Update Signatures Now** explicitly runs the already installed FreshClam updater using its existing configuration and timestamp records; it does not change the four-hour schedule or saved preferences. Both controls act only after a click, display a result, and never authorize document opening, override scan failures, remove quarantine, or disable the existing 48-hour database freshness gate.
+
+**Per-file mandatory signature gate (opener-0393):** The existing 48-hour successful-update requirement and nonempty regular `main`/`daily` ClamAV definition requirements remain mandatory for every file in a batch, not only when the batch starts. If signature files or the successful-update marker become invalid between files, subsequent scans and cached-clean handoffs are refused. Symlinked signature directories and successful-update markers are rejected rather than trusted. An update attempt, a saved preference, or an earlier clean result cannot override these mandatory checks.
