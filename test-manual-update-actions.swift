@@ -12,8 +12,8 @@ struct ManualUpdateActionsTests {
     }
     check("\"1.5.4:63:28166:1700000000:0:63:49191:333\"\n", 63, 28166)
     check("1.4.3:62:28000:1700000000", 62, 28000)
-    for invalid in ("", "\"oops\"", "\"1.5:0:28166\"", "\"1.5:63:-1\"",
-                    "\"1.5:63:28166\"\n\"1.5:63:28167\"") {
+    for invalid in ["", "\"oops\"", "\"1.5:0:28166\"", "\"1.5:63:-1\"",
+                    "\"1.5:63:28166\"\n\"1.5:63:28167\""] {
       precondition(ManualUpdateActions.publishedRevisions(from: invalid) == nil)
     }
     func header(_ version: Int) -> Data {
