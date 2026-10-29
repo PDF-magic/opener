@@ -87,3 +87,33 @@ This is *structural evidence only*: not a malware verdict, a complete PDF
 security assessment, or permission to open or cache a document. Additional
 inspectors can produce their separately defined findings without extending
 this minimal parser record or activating the planned Enhanced profile.
+
+
+### Stream-length validation (opener-0424)
+
+Before accepting a structure result, the optional parser now verifies every
+indexed, uncompressed stream object's declared `/Length` against its exact
+byte position in the source PDF. This includes otherwise unreferenced streams,
+direct and indirect length integers, and the final PDF 1.5 cross-reference
+stream. Object-stream containers are checked; their compressed dictionary
+members are not themselves PDF stream objects.
+
+The bounded preflight preserves embedded `endstream` text inside legitimate
+payloads by locating the boundary at the declared byte offset rather than
+searching for the next occurrence of that string.
+It accepts either a delimiter line ending after those bytes or a final
+line ending already included within the declared stream payload; those two
+valid encodings are not always distinguishable from a one-byte difference. An off-by-one length,
+noninteger or negative length, missing stream terminator, or unresolvable
+indirect length raises a fixed, content-free failure. Only metadata is read;
+page content streams are not decompressed or executed by this check.
+
+`test-pdf-stream-lengths.py` covers direct, indirect, zero-length and
+unreferenced streams, misleading embedded markers, malformed lengths and
+previously added xref/object-stream fixtures. The existing `scanner-tests`
+CI job runs these tests using the repository's pinned pypdf dependency.
+
+This is **optional Enhanced inspection**, not a universal PDF repair detector
+or an authorization to open. Separate increment-revision, graph and ambiguity
+inspections remain distinct; the installed Built-in ClamAV gate and all saved
+preferences are unchanged.
