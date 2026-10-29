@@ -99,11 +99,11 @@ raise SystemExit(3)
         try:
             deadline = time.monotonic() + 3
             status = None
-            while status is None and time.monotonic() < deadline:
-                status = sanitizer._process_exit_status_without_reaping(process)
-                if status is None:
+            while not exited and time.monotonic() < deadline:
+                exited = sanitizer._process_has_exited_without_reaping(process)
+                if not exited:
                     time.sleep(0.01)
-            self.assertEqual(status, 0)
+            self.assertTrue(exited)
             self.assertIsNone(process.returncode)
         finally:
             process.wait(timeout=3)
@@ -160,12 +160,29 @@ raise SystemExit(3)
                     101, allow_empty=True, timeout_seconds=1,
                 )
 
-    def test_missing_nonreaping_wait_support_fails_before_launch(self):
-        with patch.object(sanitizer.os, "waitid", None):
-            with patch.object(sanitizer.subprocess, "Popen") as launch:
-                with self.assertRaises(sanitizer.SanitizerProcessMemoryLimitError):
-                    run_script("pass")
-        launch.assert_not_called()
+    def test_macos_exit_detection_does_not_reap_a_running_process(self):
+        process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
+        completed = subprocess.CompletedProcess(("ps",), 0, b"S+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"):
+            with patch.object(sanitizer.subprocess, "run", return_value=completed) as probe:
+                self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
+        self.assertEqual(
+            probe.call_args.args[0], ("/bin/ps", "-o", "stat=", "-p", "101"),
+        )
+
+    def test_macos_exit_detection_recognizes_zombie_without_reaping(self):
+        process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
+        completed = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"):
+            with patch.object(sanitizer.subprocess, "run", return_value=completed):
+                self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+
+    def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):
+        process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
+        with patch.object(sanitizer.sys, "platform", "darwin"):
+            with patch.object(sanitizer.subprocess, "run", side_effect=OSError("private")):
+                with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                    sanitizer._process_has_exited_without_reaping(process)
 
     def test_memory_overage_kills_the_process_group_and_returns_no_output(self):
         killed = []

@@ -46,13 +46,6 @@ class SanitizerProcessMemoryLimitError(SanitizerProcessExecutionError):
 
 def _memory_limited_command(command: tuple[str, ...]) -> tuple[str, ...]:
     """Apply a Linux address-space limit or require the macOS RSS watchdog."""
-    if not callable(getattr(os, "waitid", None)) or not all(
-        hasattr(os, name) for name in (
-            "P_PID", "WEXITED", "WNOHANG", "WNOWAIT",
-            "CLD_EXITED", "CLD_KILLED", "CLD_DUMPED",
-        )
-    ):
-        raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
     if sys.platform == "linux":
         try:
             source = Path(__file__).resolve(strict=True)
@@ -227,22 +220,61 @@ def _process_group_memory_bytes(
     raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
 
 
-def _process_exit_status_without_reaping(process) -> int | None:
-    """Observe exit status without releasing the PID before process-group cleanup."""
+def _process_has_exited_without_reaping(process) -> bool:
+    """Detect child exit while retaining its PID until process-group cleanup."""
     if process.returncode is not None:
-        return process.returncode
-    try:
-        result = os.waitid(
-            os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT,
-        )
-    except (AttributeError, ChildProcessError, OSError, ValueError):
-        raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
-    if result is None or result.si_pid == 0:
-        return None
-    if result.si_code == os.CLD_EXITED:
-        return result.si_status
-    if result.si_code in (os.CLD_KILLED, os.CLD_DUMPED):
-        return -result.si_status
+        return True
+    if sys.platform == "linux":
+        if (
+            callable(getattr(os, "waitid", None))
+            and all(hasattr(os, name) for name in ("P_PID", "WEXITED", "WNOHANG", "WNOWAIT"))
+        ):
+            try:
+                result = os.waitid(
+                    os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT,
+                )
+            except (AttributeError, ChildProcessError, OSError, ValueError):
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+            return result is not None and result.si_pid != 0
+        try:
+            with open(f"/proc/{process.pid}/stat", "rb") as stream:
+                record = stream.read()
+            closing = record.rfind(b")")
+            if closing < 0:
+                raise ValueError
+            fields = record[closing + 2:].split()
+            if not fields:
+                raise ValueError
+            state = fields[0]
+            if state in (b"Z", b"X", b"x"):
+                return True
+            if state not in (b"R", b"S", b"D", b"T", b"t", b"W", b"K", b"P", b"I"):
+                raise ValueError
+            return False
+        except (OSError, ValueError, IndexError):
+            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+    if sys.platform == "darwin":
+        try:
+            completed = subprocess.run(
+                ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                cwd="/",
+                env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+                timeout=0.25,
+                check=True,
+            )
+            states = [
+                line.strip() for line in completed.stdout.decode("ascii").splitlines()
+                if line.strip()
+            ]
+            if len(states) != 1 or not states[0][0].isalpha():
+                raise ValueError
+            return states[0][0].upper() == "Z"
+        except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
 
@@ -351,7 +383,7 @@ def run_limited_converter(
             os.set_blocking(process.stdout.fileno(), False)
             events.register(process.stdin, selectors.EVENT_WRITE)
             events.register(process.stdout, selectors.EVENT_READ)
-            while events.get_map() or _process_exit_status_without_reaping(process) is None:
+            while events.get_map() or not _process_has_exited_without_reaping(process):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
@@ -363,7 +395,7 @@ def run_limited_converter(
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
-                allow_empty = _process_exit_status_without_reaping(process) is not None
+                allow_empty = _process_has_exited_without_reaping(process)
                 try:
                     resident_bytes = _process_group_memory_bytes(
                         process.pid,
@@ -378,7 +410,7 @@ def run_limited_converter(
                     # that exit; any surviving descendants remain in the group.
                     if (
                         not allow_empty
-                        and _process_exit_status_without_reaping(process) is not None
+                        and _process_has_exited_without_reaping(process)
                     ):
                         remaining = deadline - time.monotonic()
                         if remaining <= 0:
@@ -427,9 +459,18 @@ def run_limited_converter(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
-        return_code = _process_exit_status_without_reaping(process)
-        if return_code is None:
+        if not _process_has_exited_without_reaping(process):
             raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE)
+        # Stop descendants before reaping the group leader, so its PID cannot
+        # be reused for an unrelated process group during cleanup.
+        _stop_process_group(process)
+        try:
+            return_code = process.wait(timeout=REAP_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            raise SanitizerProcessTimedOut(TIMEOUT_MESSAGE) from None
+        _close_pipe(process.stdin)
+        _close_pipe(process.stdout)
+        process = None
         if (sys.platform == "linux" and
                 return_code == MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE):
             raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
