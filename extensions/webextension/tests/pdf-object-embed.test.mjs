@@ -95,15 +95,18 @@ test("returns immutable evidence only, without URLs, contents or opening authori
   }
 });
 
-test("remains passive, permission-free and independently covered by required CI", async () => {
+test("remains passive, permission-free and covered by existing required CI discovery", async () => {
   const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-  const [source, ci, manifestText, background] = await Promise.all([
+  const [source, ci, packageText, manifestText, background] = await Promise.all([
     read("../src/pdf-object-embed.js"),
     read("../../../.github/workflows/ci.yml"),
+    read("../package.json"),
     read("../manifest.json"),
     read("../src/background.js")
   ]);
-  assert.match(ci, /node --test tests\/pdf-object-embed\.test\.mjs/);
+  assert.match(ci, /\bnpm test\b/);
+  const pkg = JSON.parse(packageText);
+  assert.match(pkg.scripts.test, /tests\/\*\.test\.mjs/);
   const manifest = JSON.parse(manifestText);
   assert.deepEqual(manifest.permissions, []);
   assert.deepEqual(manifest.host_permissions, []);

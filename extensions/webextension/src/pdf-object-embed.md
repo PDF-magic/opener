@@ -27,5 +27,7 @@ bytes; no classification can authorize scanning, bypass the ClamAV signature
 and file-integrity gates, or change the user's destination-app preferences.
 
 The dependency-free Node test suite includes `tests/pdf-object-embed.test.mjs`.
-The required `scanner-tests` job also invokes it independently as a dedicated
-CI step. No new runtime permissions or scanner integration are introduced.
+The required `scanner-tests` job already runs `npm test`, whose existing
+`tests/*.test.mjs` discovery executes these regression tests without adding
+another overlapping CI workflow edit. No new runtime permissions or scanner
+integration are introduced.
