@@ -70,7 +70,8 @@ class PDFParserEvaluationTests(unittest.TestCase):
     self.assertIn("python3 test-pdf-structure-parser.py -v", ci)
     self.assertIn("python3 pdf_parser_memory_benchmark.py --parser pypdf", ci)
     self.assertNotIn("pypdf==5.9.0", ci)
-    self.assertEqual(ci.count("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt"), 2)
+    # One shared dependency install per Linux/native/policy/Maximum test job.
+    self.assertEqual(ci.count("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt"), 5)
 
 
 if __name__ == "__main__":

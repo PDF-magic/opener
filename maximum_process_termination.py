@@ -5,16 +5,13 @@ not a new inspector, user-selectable command, or file-opening verdict.
 """
 import errno
 import os
+import sys
 import selectors
 import signal
 import subprocess
-import sys
 import time
 
-from maximum_sanitizer_process import (
-    _darwin_group_has_only_zombies,
-    _process_has_exited_without_reaping,
-)
+from maximum_sanitizer_process import _process_has_exited_without_reaping
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 4096
@@ -24,30 +21,63 @@ BLOCK_MESSAGE = "Isolated PDF analysis exceeded process limits; opening was stop
 
 
 class MaximumProcessTerminationError(RuntimeError):
-    """A bounded worker was interrupted or could not be securely supervised."""
+    """Always fixed, path-free error; optional safe category for tests only."""
+
+    _CATEGORIES = frozenset((
+        "unknown", "timeout", "worker-exit", "output-limit",
+        "transport", "cleanup",
+    ))
+
+    def __init__(self, message=BLOCK_MESSAGE, *, category="unknown"):
+        super().__init__(BLOCK_MESSAGE)
+        self.category = category if category in self._CATEGORIES else "unknown"
+
+
+def _macos_group_is_zombie_only(pgid):
+    """Prove the unreaped group leader and all group members are zombies."""
+    if sys.platform != "darwin" or type(pgid) is not int or pgid <= 0:
+        return False
+    try:
+        result = subprocess.run(
+            ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, close_fds=True, cwd="/",
+            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+            timeout=2, check=True,
+        )
+        found_leader = False
+        for line in result.stdout.decode("ascii").splitlines():
+            fields = line.split()
+            if (len(fields) != 3 or not fields[0].isdecimal()
+                    or not fields[1].isdecimal() or not fields[2][0].isalpha()):
+                return False
+            pid, group, state = int(fields[0]), int(fields[1]), fields[2]
+            if group != pgid:
+                continue
+            if state[0].upper() != "Z":
+                return False
+            if pid == pgid:
+                found_leader = True
+        return found_leader
+    except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+        return False
 
 
 def _stop_group(process):
-    """Kill the entire dedicated POSIX session, not only the original child."""
+    """Stop the isolated process group without ignoring live descendants."""
     try:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
-        # ESRCH is expected if the worker exited without any descendants.
         if process.poll() is None:
             process.kill()
     except OSError as error:
-        # macOS may reject signalling an all-zombie group with EPERM. This
-        # exception is safe only after validating that the owned leader has
-        # exited and that no live descendants survive in its process group.
-        if (sys.platform == "darwin" and error.errno == errno.EPERM and
-                _process_has_exited_without_reaping(process) and
-                _darwin_group_has_only_zombies(process.pid)):
+        if error.errno == errno.EPERM and _macos_group_is_zombie_only(process.pid):
             return
         try:
             process.kill()
         except ProcessLookupError:
             pass
-        raise MaximumProcessTerminationError(BLOCK_MESSAGE) from None
+        raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="cleanup") from None
 
 
 def _reap(process):
@@ -107,18 +137,21 @@ def run_limited_worker(
             while events.get_map():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+                    raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="timeout")
                 for key, _ in events.select(timeout=min(remaining, 0.5)):
                     if key.fileobj is process.stdout:
                         # Only consume one byte beyond remaining cumulative
                         # capacity: earlier chunks already occupy the budget.
                         remaining_capacity = MAX_OUTPUT_BYTES - len(output)
-                        chunk = os.read(process.stdout.fileno(), remaining_capacity + 1)
+                        try:
+                            chunk = os.read(process.stdout.fileno(), remaining_capacity + 1)
+                        except BlockingIOError:
+                            continue
                         if not chunk:
                             events.unregister(process.stdout)
                             process.stdout.close()
                         elif len(output) + len(chunk) > MAX_OUTPUT_BYTES:
-                            raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+                            raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="output-limit")
                         else:
                             output.extend(chunk)
                     else:
@@ -128,6 +161,8 @@ def run_limited_worker(
                                 memoryview(contents)[position:position + 65536],
                             )
                             position += written
+                        except BlockingIOError:
+                            continue
                         except BrokenPipeError:
                             position = len(contents)
                         if position == len(contents):
@@ -136,21 +171,32 @@ def run_limited_worker(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
-        # Do not reap before stopping descendants: keeping the exited leader
-        # as a zombie retains ownership of its process-group identifier.
-        while not _process_has_exited_without_reaping(process):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise MaximumProcessTerminationError(BLOCK_MESSAGE)
-            time.sleep(min(remaining, 0.025))
-        _stop_group(process)
-        exit_code = process.wait(timeout=REAP_SECONDS)
-        if exit_code != 0:
-            raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+        try:
+            # Retain the exited group leader until every descendant is killed.
+            # Otherwise reaping can allow PID reuse before group cleanup.
+            while not _process_has_exited_without_reaping(process):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise MaximumProcessTerminationError(
+                        BLOCK_MESSAGE, category="timeout",
+                    )
+                time.sleep(min(remaining, 0.025))
+            _stop_group(process)
+            return_code = process.wait(timeout=REAP_SECONDS)
+        except subprocess.TimeoutExpired:
+            raise MaximumProcessTerminationError(
+                BLOCK_MESSAGE, category="timeout",
+            ) from None
+        if return_code != 0:
+            raise MaximumProcessTerminationError(
+                BLOCK_MESSAGE, category="worker-exit",
+            )
         process = None
         return bytes(output)
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
-        raise MaximumProcessTerminationError(BLOCK_MESSAGE) from None
+    except MaximumProcessTerminationError:
+        raise
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="transport") from None
     finally:
         if process is not None:
             try:

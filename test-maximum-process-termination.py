@@ -161,36 +161,49 @@ class MaximumProcessTerminationTests(unittest.TestCase):
             with self.assertRaises(guard.MaximumProcessTerminationError):
                 run_script("import sys; sys.stdin.buffer.read(); print('ok')")
 
-    def test_darwin_group_cleanup_requires_verified_zombies(self):
-        # EPERM is only benign when the owned leader is exited and every
-        # remaining member is proven to be a zombie. Live/unknown fail closed.
-        from unittest.mock import Mock
-        leader = Mock(pid=31337)
-        for leader_exited, zombies, accepted in (
-            (True, True, True), (True, False, False),
-            (False, True, False), (False, False, False),
-        ):
-            leader.kill.reset_mock()
-            with (
-                self.subTest(leader_exited=leader_exited, zombies=zombies),
-                patch.object(guard.sys, "platform", "darwin"),
+    def test_test_diagnostics_have_only_fixed_non_payload_categories(self):
+        from maximum_process_termination import MaximumProcessTerminationError
+        secret = "Private PDF text and local /Users/name"
+        opaque = MaximumProcessTerminationError(secret, category=secret)
+        self.assertEqual(str(opaque), guard.BLOCK_MESSAGE)
+        self.assertEqual(opaque.category, "unknown")
+        with self.assertRaises(MaximumProcessTerminationError) as result:
+            run_script("import sys; sys.exit(7)")
+        self.assertEqual(result.exception.category, "worker-exit")
+        self.assertNotIn("Users", str(result.exception))
+
+    def test_macos_eperm_requires_verified_zombie_leader(self):
+        process = type("FakeWorker", (), {
+            "pid": 101, "returncode": None, "kill": lambda self: None,
+        })()
+        verified = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 Z+\n102 101 Z\n202 202 S+\n"
+        )
+        invalid = (
+            b"",
+            b"202 202 Z\n",
+            b"102 101 Z\n",
+            b"101 202 Z\n102 101 Z\n",
+            b"101 101 S\n",
+            b"101 101 Z\n102 101 S\n",
+            b"not-a-process-record\n",
+        )
+        with patch.object(guard.sys, "platform", "darwin"), \
                 patch.object(guard.os, "killpg",
-                             side_effect=PermissionError(errno.EPERM, "denied")),
-                patch.object(guard, "_process_has_exited_without_reaping",
-                             return_value=leader_exited),
-                patch.object(guard, "_darwin_group_has_only_zombies",
-                             return_value=zombies) as check,
-            ):
-                if accepted:
-                    guard._stop_group(leader)
-                    leader.kill.assert_not_called()
-                    check.assert_called_once_with(31337)
-                else:
+                             side_effect=PermissionError(errno.EPERM, "private")):
+            with patch.object(guard.subprocess, "run", return_value=verified) as probe:
+                guard._stop_group(process)
+                self.assertEqual(
+                    probe.call_args.args[0],
+                    ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+                )
+            for table in invalid:
+                with self.subTest(table=table), \
+                        patch.object(guard.subprocess, "run", return_value=(
+                            subprocess.CompletedProcess(("ps",), 0, table)
+                        )):
                     with self.assertRaises(guard.MaximumProcessTerminationError):
-                        guard._stop_group(leader)
-                    leader.kill.assert_called_once()
-                    if not leader_exited:
-                        check.assert_not_called()
+                        guard._stop_group(process)
 
     def test_only_opt_in_maximum_uses_new_supervisor(self):
         from pathlib import Path

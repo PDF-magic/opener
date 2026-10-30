@@ -78,8 +78,8 @@ if __name__ == "__main__":
         # stdout/stderr; the parent always reports a fixed blocked outcome.
         exit_code = 2
     finally:
-        # Keep the resident-memory guard active for the entire inspection,
-        # then disarm it before interpreter teardown on macOS.
+        # Keep the memory watchdog active until inspection finishes, then
+        # disarm it before interpreter teardown can receive a late SIGALRM.
         if sys.platform == "darwin":
             try:
                 import signal

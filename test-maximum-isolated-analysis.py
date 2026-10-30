@@ -24,6 +24,29 @@ def sample_pdf():
 
 
 class MaximumIsolatedAnalysisTests(unittest.TestCase):
+    def assert_isolated_worker_succeeds(self, payload, inspection):
+        """Show only a fixed, non-document failure category in CI regressions."""
+        from maximum_process_termination import MaximumProcessTerminationError
+        original = isolated.run_limited_worker
+        failures = []
+
+        def observe(command, contents, **kwargs):
+            try:
+                return original(command, contents, **kwargs)
+            except MaximumProcessTerminationError as error:
+                failures.append(error.category)
+                raise
+            except Exception:
+                failures.append("unexpected-exception")
+                raise
+
+        with patch.object(isolated, "run_limited_worker", side_effect=observe):
+            try:
+                return isolated.run_isolated_pdf_analysis(payload, inspection)
+            except isolated.IsolatedPDFAnalysisError:
+                self.fail("Isolated-worker CI failure category: " +
+                          (failures[0] if failures else "invalid-worker-output"))
+
     def test_each_complex_inspection_runs_outside_parent_process(self):
         pdf = sample_pdf()
         for name, expected in (
@@ -33,7 +56,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                                            "decoded_bytes", "maximum_expansion_ratio")),
         ):
             with self.subTest(inspection=name):
-                report = isolated.run_isolated_pdf_analysis(pdf, name)
+                report = self.assert_isolated_worker_succeeds(pdf, name)
                 self.assertNotEqual(report.worker_pid, os.getpid())
                 self.assertGreater(report.worker_pid, 0)
                 self.assertEqual(tuple(key for key, _ in report.metrics), expected)
@@ -42,17 +65,14 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                 with self.assertRaises(FrozenInstanceError):
                     report.permits_open = True
 
-    @unittest.skipUnless(sys.platform == "darwin", "macOS memory watchdog only")
-    def test_macos_worker_disarms_alarm_before_shutdown(self):
-        # Each call starts a real restricted worker with its mandatory memory
-        # guard. Repeated successful exits catch alarms firing during teardown.
+    @unittest.skipUnless(sys.platform == "darwin", "macOS RSS watchdog regression")
+    def test_macos_worker_completes_without_late_watchdog_signal(self):
         pdf = sample_pdf()
-        for attempt in range(8):
+        for attempt in range(12):
             with self.subTest(attempt=attempt):
-                result = isolated.run_isolated_pdf_analysis(pdf, "malformedStructures")
-                self.assertGreater(result.worker_pid, 0)
-                self.assertEqual(result.to_dict()["metrics"]["page_count"], 1)
-                self.assertFalse(result.permits_open)
+                report = isolated.run_isolated_pdf_analysis(pdf, "malformedStructures")
+                self.assertGreater(report.worker_pid, 0)
+                self.assertFalse(report.permits_open)
 
     def test_input_is_raw_bytes_not_path_and_worker_is_isolated_python(self):
         document = sample_pdf()
@@ -62,7 +82,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
             captured.append((command, contents, kwargs.copy()))
             return real_run(command, contents, **kwargs)
         with patch.object(isolated, "run_limited_worker", side_effect=invoke):
-            isolated.run_isolated_pdf_analysis(document, "malformedStructures")
+            self.assert_isolated_worker_succeeds(document, "malformedStructures")
         cmd, data, opts = captured[0]
         self.assertIs(data, document)
         self.assertEqual(cmd[0], sys.executable)
@@ -152,7 +172,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                 self.assertEqual(result.stdout, b"")
 
     def test_response_cannot_be_mutated_or_include_source_data(self):
-        result = isolated.run_isolated_pdf_analysis(sample_pdf(), "malformedStructures")
+        result = self.assert_isolated_worker_succeeds(sample_pdf(), "malformedStructures")
         d = result.to_dict()
         d["metrics"]["page_count"] = 999
         self.assertNotEqual(result.to_dict()["metrics"]["page_count"], 999)

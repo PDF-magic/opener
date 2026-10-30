@@ -29,9 +29,12 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
 RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
-(allow process-exec (literal (param "PYTHON")))
+(allow process-exec
+    (literal (param "PYTHON"))
+    (literal (param "PYTHON_APP")))
 (allow file-map-executable
     (literal (param "PYTHON"))
+    (literal (param "PYTHON_APP"))
     (subpath (param "PYTHON_PREFIX"))
     (subpath (param "PYTHON_BASE_PREFIX"))
     (subpath "/System")
@@ -40,10 +43,9 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (allow sysctl-read)
 (allow file-read-metadata (subpath "/"))
 (allow file-read*
-    ; Allow Python/dyld to read the single root inode for startup without
-    ; permitting recursive access to its private descendants.
     (literal "/")
     (literal (param "PYTHON"))
+    (literal (param "PYTHON_APP"))
     (literal (param "WORKER"))
     (literal (param "WORKER_SUPPORT"))
     (literal (param "NETWORK_SUPPORT"))
@@ -106,31 +108,12 @@ def _trusted_directory(path: str, *, runtime: bool = False) -> bool:
         return False
 
 
-def _sandbox_python_executable() -> str:
-    """Avoid the Python.org macOS framework shim that tries to spawn again.
-
-    The framework's command-line shim starts the real Python.app executable
-    with posix_spawn. A deny-process-fork sandbox must execute that exact
-    trusted interpreter directly instead of loosening the process policy.
-    Any other installation continues through its original interpreter.
-    """
-    version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    framework_binary = (
-        f"/Library/Frameworks/Python.framework/Versions/{version}/"
-        "Resources/Python.app/Contents/MacOS/Python"
-    )
-    base_executable = getattr(sys, "_base_executable", None)
-    if type(base_executable) is str and base_executable == framework_binary:
-        return framework_binary
-    return sys.executable
-
-
 def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
     """Resolve and validate the only paths the renderer process may read."""
     if sys.platform != "darwin":
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     try:
-        python = str(Path(_sandbox_python_executable()).resolve(strict=True))
+        python = str(Path(sys.executable).resolve(strict=True))
         worker = str(Path(worker_path).resolve(strict=True))
         source_root = Path(__file__).resolve(strict=True).parent
         worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
@@ -138,6 +121,9 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         renderer_support = Path(__file__).resolve(strict=True)
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
+        # CPython framework launchers re-exec this exact, bundled Python.app binary.
+        app_path = Path(base_prefix) / "Resources/Python.app/Contents/MacOS/Python"
+        python_app = str(app_path.resolve(strict=True)) if app_path.exists() else python
     except (OSError, RuntimeError, TypeError):
         raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
 
@@ -146,6 +132,9 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
             any(path.parent != source_root for path in support_files) or
             not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
             not _trusted_regular_file(python, executable=True) or
+            not _trusted_regular_file(python_app, executable=True) or
+            (python_app != python and
+             not Path(python_app).is_relative_to(Path(base_prefix))) or
             not _trusted_regular_file(worker) or
             not all(_trusted_regular_file(str(path)) for path in support_files) or
             not _trusted_directory(str(source_root)) or
@@ -154,6 +143,7 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     return {
         "python": python,
+        "python_app": python_app,
         "worker": worker,
         "worker_support": str(worker_support),
         "network_support": str(network_support),
@@ -250,6 +240,7 @@ def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
     command = [SANDBOX_EXEC, "-p", RENDERER_FILESYSTEM_PROFILE]
     for name, key in (
         ("PYTHON", "python"),
+        ("PYTHON_APP", "python_app"),
         ("WORKER", "worker"),
         ("WORKER_SUPPORT", "worker_support"),
         ("NETWORK_SUPPORT", "network_support"),

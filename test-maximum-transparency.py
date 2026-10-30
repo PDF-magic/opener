@@ -234,7 +234,7 @@ class TransparencyFixtureTests(unittest.TestCase):
 
     def test_only_optional_converter_is_tested_not_scanner_or_user_settings(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/maximum-sanitized-copy.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("maximum-transparency", scanner)

@@ -135,8 +135,7 @@ except BaseException as error:
     print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))
     raise SystemExit(2)
 finally:
-    # This bootstrap probe has no PDF work left to monitor at interpreter exit.
-    # The production worker keeps the watchdog active while processing input.
+    # Test-only probe has no untrusted work remaining during interpreter exit.
     if sys.platform == 'darwin':
         import signal
         signal.setitimer(signal.ITIMER_REAL, 0)
@@ -159,12 +158,13 @@ finally:
         self.assertIn("except BaseException:", worker)
 
     def test_ci_runs_real_child_checks_on_linux_and_macos(self):
-        ci = (ROOT / ".github/workflows/maximum-memory-limits.yml").read_text()
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("ubuntu-latest", ci)
         self.assertIn("macos-latest", ci)
         self.assertIn("test-maximum-memory-limits.py -v", ci)
         self.assertIn("test-maximum-isolated-analysis.py -v", ci)
-        self.assertIn("pypdf==5.9.0", ci)
+        self.assertIn("requirements-enhanced-pdf.txt", ci)
+        self.assertIn("macos-maximum-isolation:", ci)
 
 
 if __name__ == "__main__":

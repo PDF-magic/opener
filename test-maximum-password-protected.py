@@ -134,7 +134,7 @@ class PasswordProtectedDocumentFidelityTests(unittest.TestCase):
     def test_installed_scan_gate_preferences_and_mac_ci_remain_independent(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         profiles = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/maximum-sanitized-copy.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("test-maximum-password-protected", scanner)
