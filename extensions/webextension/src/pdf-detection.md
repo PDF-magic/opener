@@ -36,3 +36,25 @@ separate checklist tasks.
 The existing `npm test` script discovers `tests/pdf-detection.test.mjs`, and
 the required `scanner-tests` GitHub Actions workflow already runs the shared
 WebExtensions build and test scripts. No new CI workflow is required.
+
+## Unsupported blob URLs (opener-0748)
+
+Browser-owned `blob:` object URLs are explicitly reported with the frozen,
+URL-free result `{ isPdfCandidate: false, evidence: "unsupported-blob-url",
+authorizesOpen: false }`. This is distinct from the ordinary `none` result:
+the scheme is recognized, but the opaque object URL is not an address the
+extension can reliably resolve, retrieve or scan on its own. A `.pdf` suffix
+inside a blob URL, browser-supplied PDF MIME or a suggested PDF filename does
+not make the underlying object data accessible or malware-safe. These hints
+must not cause an unsupported blob URL to be treated as an actionable PDF
+candidate. If a browser separately provides a real downloaded file, its
+independently authenticated local scan path remains a different integration
+task; this classifier never accesses blob bytes.
+
+The detection is passive and does not query the page, fetch object URLs,
+create or revoke object URLs, install browser listeners, request permissions,
+send native messages, open PDFs, or change user settings or scanner policy.
+The existing `tests/pdf-detection.test.mjs` suite covers regular/opaque/
+malformed and mixed-case blob schemes, contradictory PDF hints, immutable
+path-free outputs, and preserved HTTP(S)/filename detection. That suite
+already runs via `npm test` in required GitHub `scanner-tests` CI.
