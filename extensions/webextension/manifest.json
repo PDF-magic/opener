@@ -4,5 +4,11 @@
   "version": "0.1.0",
   "description": "Inactive shared WebExtensions project; no scanning or PDF opening is implemented.",
   "permissions": [],
-  "host_permissions": []
+  "host_permissions": [],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 }
