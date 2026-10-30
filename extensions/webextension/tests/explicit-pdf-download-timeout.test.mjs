@@ -158,7 +158,8 @@ test("an early timer wakeup is rearmed without shortening the deadline", async (
   const f = fixture();
   const session = f.action().watch(request(), 37, 30_000);
   assert.ok(session);
-  const token = f.clocks.timers.values().next().value;
+  const [timerId, token] = f.clocks.timers.entries().next().value;
+  f.clocks.timers.delete(timerId); // one-shot timers disappear when fired
   token.fn(); // browser timer fired early; real wall clock did not advance
   assert.equal(session.state().status, "monitoring");
   assert.equal(f.clocks.timers.size, 1);
