@@ -132,14 +132,31 @@ enum ScanOtherSupportedFilesPreference {
     guard let defaults else { return false }
     _ = defaults.synchronize()
     let previous = defaults.object(forKey: key)
+    func restorePrevious() {
+      if let previous { defaults.set(previous, forKey: key) }
+      else { defaults.removeObject(forKey: key) }
+      _ = defaults.synchronize()
+    }
+
+    // UserDefaults can compare numeric 1/0 and Boolean true/false as equal,
+    // leaving an existing malformed integer on disk after set(Bool).
+    // Only an explicit save may normalize this key; flush its removal first.
+    let previousWasBoolean = (previous as? NSNumber).map {
+      CFGetTypeID($0) == CFBooleanGetTypeID()
+    } ?? false
+    if previous != nil && !previousWasBoolean {
+      defaults.removeObject(forKey: key)
+      guard defaults.synchronize() else {
+        restorePrevious()
+        return false
+      }
+    }
     defaults.set(enabled, forKey: key)
     if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
       return true
     }
     // Never discard an earlier explicit choice on a failed save.
-    if let previous { defaults.set(previous, forKey: key) }
-    else { defaults.removeObject(forKey: key) }
-    _ = defaults.synchronize()
+    restorePrevious()
     return false
   }
 }
