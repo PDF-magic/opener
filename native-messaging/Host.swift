@@ -27,12 +27,30 @@ private struct NativeRequestRateLimiter {
 // A standalone, transport-only WebExtensions native messaging process.
 // It must never scan, open, or authorize a document.
 private enum HostError: Error {
+  case invalidFrame
   case invalidMessage
+  case timedOut
+  case silentRejection
 }
 
 @main
 struct PDFMagicNativeMessagingHost {
   private static let maximumFrameBytes = 16 * 1024
+  private enum Diagnostic: String {
+    case invalidFrame = "invalid-frame"
+    case invalidMessage = "invalid-message"
+    case internalError = "internal-error"
+  }
+
+  // Standard output is exclusively for length-prefixed protocol frames.
+  // Only fixed codes may reach stderr: never serialize a thrown error,
+  // untrusted request, file path, scanner state or user preference.
+  private static func report(_ diagnostic: Diagnostic) {
+    FileHandle.standardError.write(Data(
+      ("pdf-magic-native-host: " + diagnostic.rawValue + "\n").utf8
+    ))
+  }
+
   // A silent peer cannot hold the process forever. Both frame completion
   // and response writing use fixed, cumulative monotonic deadlines.
   private static let idleTimeoutSeconds: TimeInterval = 10
@@ -41,9 +59,6 @@ struct PDFMagicNativeMessagingHost {
   // One overall limit per request, including idle, frame, dispatch and reply.
   // Individual transport deadlines remain more restrictive where applicable.
   private static let requestTimeoutSeconds: TimeInterval = 15
-  private static let expectedFields: Set<String> = [
-    "version", "kind", "topic", "requestId", "payload"
-  ]
 
   // Keep a separate allowlist for native message operations. A new switch
   // handler is unusable until its topic passes an explicit security review.
@@ -51,6 +66,9 @@ struct PDFMagicNativeMessagingHost {
   private static let approvedTopics: Set<String> = [
     "host.handshake", "host.health", "host.ping",
     "scan.cancel", "scan.request", "scan.result", "scan.status"
+  ]
+  private static let expectedFields: Set<String> = [
+    "version", "kind", "topic", "requestId", "payload"
   ]
 
   // Browser nativeMessaging starts one host process per port; process-local
@@ -136,7 +154,7 @@ struct PDFMagicNativeMessagingHost {
   ) throws {
     while true {
       let remaining = deadline - ProcessInfo.processInfo.systemUptime
-      guard remaining > 0 else { throw HostError.invalidMessage }
+      guard remaining > 0 else { throw HostError.timedOut }
       var entry = pollfd(fd: descriptor, events: events, revents: 0)
       let milliseconds = Int32(min(ceil(remaining * 1000), Double(Int32.max)))
       let ready = poll(&entry, 1, milliseconds)
@@ -146,6 +164,7 @@ struct PDFMagicNativeMessagingHost {
       // Allow read() to distinguish it from a truncated header or body.
       if ready > 0 && events == Int16(POLLIN) &&
           (entry.revents & Int16(POLLHUP)) != 0 { return }
+      if ready == 0 { throw HostError.timedOut }
       throw HostError.invalidMessage
     }
   }
@@ -161,10 +180,10 @@ struct PDFMagicNativeMessagingHost {
         read(STDIN_FILENO, $0.baseAddress, $0.count)
       }
       if length < 0 && (errno == EINTR || errno == EAGAIN) { continue }
-      guard length >= 0 else { throw HostError.invalidMessage }
+      guard length >= 0 else { throw HostError.invalidFrame }
       if length == 0 {
         if allowCleanEOF && result.isEmpty { return nil }
-        throw HostError.invalidMessage
+        throw HostError.invalidFrame
       }
       result.append(contentsOf: buffer[..<length])
     }
@@ -185,13 +204,13 @@ struct PDFMagicNativeMessagingHost {
     )
     guard let headerTail = try readExactly(
       3, allowCleanEOF: false, deadline: deadline
-    ) else { throw HostError.invalidMessage }
+    ) else { throw HostError.invalidFrame }
     var header = firstByte
     header.append(headerTail)
     let size = header.enumerated().reduce(UInt32(0)) { result, element in
       result | (UInt32(element.element) << (8 * element.offset))
     }
-    guard size > 0 && size <= maximumFrameBytes else { throw HostError.invalidMessage }
+    guard size > 0 && size <= maximumFrameBytes else { throw HostError.invalidFrame }
     return try readExactly(Int(size), allowCleanEOF: false, deadline: deadline)
   }
 
@@ -204,7 +223,7 @@ struct PDFMagicNativeMessagingHost {
   }
 
   private static func response(for data: Data, handshakeComplete: inout Bool) throws -> Data {
-    guard let message = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+    guard let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
           Set(message.keys) == expectedFields,
           let version = message["version"] as? NSNumber,
           CFGetTypeID(version) != CFBooleanGetTypeID(),
@@ -408,7 +427,7 @@ struct PDFMagicNativeMessagingHost {
         exit(1)
       }
       // Admit before reading any caller input or emitting any protocol bytes.
-      let slot = try acquireConnectionSlot()
+      guard let slot = try? acquireConnectionSlot() else { exit(1) }
       defer { close(slot) }
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
@@ -418,7 +437,7 @@ struct PDFMagicNativeMessagingHost {
           requestTimeoutSeconds
         guard let request = try readFrame(requestDeadline: requestDeadline) else { break }
         guard rateLimiter.allow(now: ProcessInfo.processInfo.systemUptime) else {
-          throw HostError.invalidMessage
+          throw HostError.silentRejection
         }
         let reply = try response(for: request, handshakeComplete: &handshakeComplete)
         // Expiration is fatal even if a future handler performs slow work.
@@ -427,8 +446,21 @@ struct PDFMagicNativeMessagingHost {
         }
         try writeFrame(reply, requestDeadline: requestDeadline)
       }
+    } catch HostError.silentRejection {
+      exit(1)
+    } catch HostError.timedOut {
+      // Preserve the fixed timeout contract: disconnect without diagnostic
+      // output or a protocol response on stalled and backpressured peers.
+      exit(1)
+    } catch HostError.invalidFrame {
+      report(.invalidFrame)
+      exit(1)
+    } catch HostError.invalidMessage {
+      report(.invalidMessage)
+      exit(1)
     } catch {
-      // No stderr or stdout diagnostics: native paths and user data must not leak.
+      // Never expose exception text, native paths or untrusted input.
+      report(.internalError)
       exit(1)
     }
   }
