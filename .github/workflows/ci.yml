@@ -1,13 +1,23 @@
 name: CI
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+  merge_group:
   push:
     branches: [main]
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      cleanup_queued_runs:
+        description: "Cancel obsolete queued Actions runs instead of running the full suite"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Keep main-push validation independent and non-cancelling.
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 permissions:
   contents: read
@@ -15,6 +25,7 @@ permissions:
 jobs:
 
   detect-scope:
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Validate dependency map for native CI
     runs-on: ubuntu-latest
     outputs:
@@ -29,11 +40,18 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-        run: python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+        run: |
+          # Main pushes validate the complete native suite, independent of paths.
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "run_macos=true" >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+          fi
       - name: Verify dependency-map behavior
         run: python3 test-ci-test-scope.py -v
 
   scanner-tests:
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -769,3 +787,56 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
           "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
+
+  cancel-stale-runs:
+    # Queue cleanup is an explicit maintenance action, not a side effect of
+    # merging. Never indiscriminately cancel queued validation on main.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.cleanup_queued_runs == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Cancel queued runs superseded by the consolidated CI workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CURRENT_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ci_workflow_id="$(gh api "repos/$REPO/actions/workflows/ci.yml" --jq '.id')"
+          open_pr_shas="$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[].head.sha')"
+          cancelled=0
+          declare -A preserved_ids=()
+          while true; do
+            queued_runs="$(gh api --paginate "repos/$REPO/actions/runs?status=queued&per_page=100" --jq '.workflow_runs[] | [.id, .workflow_id, .head_branch, .head_sha, .event] | @tsv')"
+            [[ -z "$queued_runs" ]] && break
+            batch_cancelled=0
+            while IFS=$'\t' read -r run_id workflow_id branch_name sha event; do
+              [[ -z "$run_id" ]] && continue
+              # Never cancel main validation or the current workflow run.
+              if [[ "$branch_name" == "main" || "$sha" == "$CURRENT_SHA" ]]; then
+                continue
+              fi
+              if [[ "$event" == "pull_request" ]] && grep -Fxq "$sha" <<< "$open_pr_shas"; then
+                preserved_ids["$run_id"]=1
+                continue
+              fi
+              if gh api --method POST "repos/$REPO/actions/runs/$run_id/cancel" >/dev/null; then
+                cancelled=$((cancelled + 1))
+                batch_cancelled=$((batch_cancelled + 1))
+                if (( cancelled % 25 == 0 )); then
+                  echo "Cancelled $cancelled obsolete queued runs so far."
+                fi
+              else
+                echo "Could not cancel queued run $run_id; it may have started or already been cancelled." >&2
+              fi
+            done <<< "$queued_runs"
+            if (( batch_cancelled == 0 )); then
+              break
+            fi
+          done
+          echo "Cancelled $cancelled obsolete queued runs; preserved ${#preserved_ids[@]} queued runs for current open PR heads."
