@@ -12,6 +12,9 @@ const notDataUrl = {
   isUnsupportedDataUrl: false, reason: "none", authorizesOpen: false
 };
 const noCandidate = { isPdfCandidate: false, evidence: "none", authorizesOpen: false };
+const unsupportedPdf = {
+  isPdfCandidate: false, evidence: "unsupported-data-url", authorizesOpen: false
+};
 
 test("recognizes unsupported PDF, generic and malformed data URL forms without inspecting payloads", () => {
   for (const url of [
@@ -61,7 +64,9 @@ test("an unsupported data URL cannot become a candidate from MIME or filename hi
       { url, mimeType: "application/x-pdf", filename: "report.pdf" },
       { url, mimeType: "application/octet-stream", filename: "report.pdf" },
       { url, filename: "report.pdf" }
-    ]) assert.deepEqual(detectPdfCandidate(metadata), noCandidate);
+    ]) assert.deepEqual(
+      detectPdfCandidate(metadata), url.length > 8192 ? noCandidate : unsupportedPdf
+    );
   }
   assert.deepEqual(detectPdfCandidate({ url: "https://example.test/report.pdf", mimeType: "application/pdf" }),
     { isPdfCandidate: true, evidence: "mime-type", authorizesOpen: false });

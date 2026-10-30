@@ -9,7 +9,13 @@ const MAX_FILENAME_LENGTH = 512;
 const none = Object.freeze({
   isPdfCandidate: false, evidence: "none", authorizesOpen: false
 });
+const unsupportedBlobUrl = Object.freeze({
+  isPdfCandidate: false, evidence: "unsupported-blob-url", authorizesOpen: false
+});
 
+const unsupportedDataCandidate = Object.freeze({
+  isPdfCandidate: false, evidence: "unsupported-data-url", authorizesOpen: false
+});
 const unsupportedDataUrl = Object.freeze({
   isUnsupportedDataUrl: true, reason: "data-url-unsupported", authorizesOpen: false
 });
@@ -71,9 +77,22 @@ function pdfUrlPath(rawUrl) {
   }
 }
 
+function isBlobUrl(rawUrl) {
+  if (typeof rawUrl !== "string" || rawUrl.length > MAX_URL_LENGTH) return false;
+  try {
+    // This inspects only the scheme: the nested origin/path of an opaque
+    // object URL cannot establish PDF bytes or provide a fetchable file.
+    return new URL(rawUrl).protocol === "blob:";
+  } catch {
+    return /^blob:/i.test(rawUrl);
+  }
+}
+
 /**
  * Check browser-provided metadata only. A candidate is NOT a verified PDF,
  * proof of safe content or permission to open, scan, download or route it.
+ * Blob URLs are explicitly unsupported even alongside PDF MIME/filename hints:
+ * those hints cannot make an opaque object URL an accessible, scanned PDF.
  *
  * @param {{url?: string, mimeType?: string, filename?: string}} metadata
  * @returns {{isPdfCandidate: boolean, evidence: string, authorizesOpen: false}}
@@ -82,9 +101,14 @@ export function detectPdfCandidate(metadata) {
   const fields = safeMetadata(metadata);
   if (!fields) return none;
 
-  // An inline data: URL cannot be handled through the verified local-file
-  // scanner path, even if its accompanying MIME or filename claims PDF.
-  if (recognizeUnsupportedDataUrl(fields.url).isUnsupportedDataUrl) return none;
+  // Never let PDF MIME or filename hints make an inline data: URL actionable.
+  if (recognizeUnsupportedDataUrl(fields.url).isUnsupportedDataUrl) {
+    return unsupportedDataCandidate;
+  }
+
+  // Apply this before all hints, including MIME and filename, so callers can
+  // distinguish unsupported browser-owned blob URLs from ordinary non-PDFs.
+  if (isBlobUrl(fields.url)) return unsupportedBlobUrl;
 
   const mime = fields.mimeType === undefined ? "" :
     fields.mimeType.split(";", 1)[0].trim().toLowerCase();
