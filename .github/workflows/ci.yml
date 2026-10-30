@@ -371,6 +371,9 @@ jobs:
       - name: Verify PDFs served from extensionless URLs using trusted response MIME
         working-directory: extensions/webextension
         run: node --test tests/pdf-extensionless.test.mjs
+      - name: Verify passive JavaScript PDF.js viewer candidates
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-js-viewer.test.mjs
       - name: Verify versioned native JSON message contract
         run: PYTHONPATH=. python3 tests/native/message-format.py -v
       - name: Upload validated Chrome extension package
