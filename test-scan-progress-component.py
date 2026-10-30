@@ -17,17 +17,39 @@ class ScanProgressComponentTests(unittest.TestCase):
         self.assertNotIn('· Malware not confirmed")', source)
 
     def test_maximum_failure_labels_match_canonical_reports(self):
-        import maximum_sanitized_copy as sanitizer
+        # Parse the authoritative Python definitions without importing optional
+        # PDF raster dependencies that are not installed for native UI tests.
+        import ast
+
+        module = ast.parse(COMPONENT.with_name("maximum_sanitized_copy.py").read_text())
+        kinds = next(
+            node for node in module.body
+            if isinstance(node, ast.ClassDef) and node.name == "SanitizerFailureKind"
+        )
+        values = {
+            assignment.targets[0].id: ast.literal_eval(assignment.value)
+            for assignment in kinds.body
+            if isinstance(assignment, ast.Assign)
+            and isinstance(assignment.targets[0], ast.Name)
+        }
+        report = next(
+            node.value for node in module.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "_FAILURE_MESSAGES"
+                    for target in node.targets)
+        )
+        messages = {
+            values[key.attr]: ast.literal_eval(value)
+            for key, value in zip(report.keys, report.values)
+        }
+        self.assertEqual(len(messages), 8)
         source = COMPONENT.read_text()
-        for kind in sanitizer.SanitizerFailureKind:
-            with self.subTest(kind=kind.value):
-                self.assertIn(
-                    f'"{kind.value}": "{sanitizer._FAILURE_MESSAGES[kind]}"', source
-                )
-                result = sanitizer._failed(kind).failure.to_dict()
-                self.assertEqual(result["status"], "sanitizerFailure")
-                self.assertEqual(result["scanVerdict"], "notAssessed")
-                self.assertIs(result["permitsOpen"], False)
+        for kind, message in messages.items():
+            with self.subTest(kind=kind):
+                self.assertIn(f'"{kind}": "{message}"', source)
+        self.assertIn('payload["status"] as? String == "sanitizerFailure"', source)
+        self.assertIn('payload["scanVerdict"] as? String == "notAssessed"', source)
+        self.assertIn('payload["permitsOpen"] as? Bool == false', source)
 
     def test_existing_native_progress_panel_can_be_used_without_pdf_opener(self):
         source = COMPONENT.read_text()
