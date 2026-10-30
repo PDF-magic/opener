@@ -42,7 +42,23 @@ host="$home/bin/pdf-magic-native-host"
 printf '#!/bin/sh\nexit 0\n' > "$host"
 chown "$user:$user" "$host"
 chmod 0700 "$host"
-registrar="$repo_root/native-messaging/firefox/register.mjs"
+# The runner's checkout is commonly private to the runner account. Stage only
+# four known registration inputs inside this disposable user's home; never
+# relax permissions on the checkout or grant the test user its other files.
+project="$home/project"
+for folder in "$project" "$project/native-messaging" \
+  "$project/native-messaging/firefox" "$project/extensions" \
+  "$project/extensions/webextension" "$project/extensions/webextension/firefox"; do
+  install -d -o "$user" -g "$user" -m 0700 "$folder"
+done
+for relative in native-messaging/firefox/register.mjs \
+  native-messaging/firefox/host-manifest.template.json \
+  native-messaging/host-identity.json \
+  extensions/webextension/firefox/gecko.json; do
+  install -o "$user" -g "$user" -m 0644 "$repo_root/$relative" "$project/$relative"
+  cmp -s "$repo_root/$relative" "$project/$relative"
+done
+registrar="$project/native-messaging/firefox/register.mjs"
 registration="$home/.mozilla/native-messaging-hosts/org.pdfmagic.opener.json"
 
 # No opt-in means no manifest or even a Firefox configuration directory.
