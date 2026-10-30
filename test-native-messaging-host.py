@@ -2,6 +2,7 @@
 """Exercise the actual compiled, unregistered native messaging host process."""
 import json
 import os
+import select
 from pathlib import Path
 import shutil
 import struct
@@ -134,9 +135,17 @@ class NativeMessagingHostTests(unittest.TestCase):
     if not compiler:
       cls.directory.cleanup()
       raise unittest.SkipTest("Swift compiler is required")
+    # Typecheck the production path, then run the same host with an isolated,
+    # compile-time-only home override. No test writes to the CI user's home.
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
+                    "-typecheck", str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE)],
+                   capture_output=True, text=True, check=True, timeout=120)
+    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
+                    "-D", "NATIVE_HOST_CONNECTION_TESTING",
                     str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE), "-o", str(cls.binary)],
                    capture_output=True, text=True, check=True, timeout=120)
+    cls.prior_test_home = os.environ.get("PDF_MAGIC_NATIVE_TEST_HOME")
+    os.environ["PDF_MAGIC_NATIVE_TEST_HOME"] = cls.directory.name
     cls.caller_binary = Path(cls.directory.name) / "native-caller-origin-tests"
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     str(CALLER_SOURCE), str(CALLER_TEST), "-o", str(cls.caller_binary)],
@@ -148,6 +157,11 @@ class NativeMessagingHostTests(unittest.TestCase):
 
   @classmethod
   def tearDownClass(cls):
+    if hasattr(cls, "prior_test_home"):
+      if cls.prior_test_home is None:
+        os.environ.pop("PDF_MAGIC_NATIVE_TEST_HOME", None)
+      else:
+        os.environ["PDF_MAGIC_NATIVE_TEST_HOME"] = cls.prior_test_home
     if hasattr(cls, "directory"):
       cls.directory.cleanup()
 
@@ -155,6 +169,99 @@ class NativeMessagingHostTests(unittest.TestCase):
     return subprocess.run([str(self.binary), *args], input=data,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           timeout=6, check=False)
+
+  def read_live_response(self, process):
+    def take(length):
+      result = bytearray()
+      while len(result) < length:
+        ready, _, _ = select.select([process.stdout], [], [], 5)
+        self.assertTrue(ready, "Native host did not respond while holding a slot")
+        chunk = os.read(process.stdout.fileno(), length - len(result))
+        self.assertTrue(chunk, "Native host exited before completing its reply")
+        result.extend(chunk)
+      return bytes(result)
+    size = struct.unpack("<I", take(4))[0]
+    self.assertGreater(size, 0)
+    self.assertLessEqual(size, 16384)
+    return json.loads(take(size))
+
+  def test_per_user_connection_limit_rejects_fifth_and_reclaims_closed_or_crashed_slots(self):
+    processes = []
+    try:
+      for index in range(4):
+        process = subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        processes.append(process)
+        process.stdin.write(frame(ping(f"active_{index}")))
+        process.stdin.flush()
+        self.assertEqual(self.read_live_response(process)["requestId"],
+                         f"active_{index}")
+        self.assertIsNone(process.poll(), "Admitted port must remain connected")
+
+      # Every host has independent state, so limit must be process-shared.
+      denied = self.run_host(frame(ping("denied")))
+      self.assertNotEqual(denied.returncode, 0)
+      self.assertEqual(denied.stdout, b"")
+      self.assertEqual(denied.stderr, b"")
+      self.assertTrue(all(process.poll() is None for process in processes))
+
+      # Normal EOF immediately frees a slot; no manual cleanup or retry timer.
+      processes[0].stdin.close()
+      self.assertEqual(processes[0].wait(timeout=5), 0)
+      replacement = subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      processes.append(replacement)
+      replacement.stdin.write(frame(ping("after_close")))
+      replacement.stdin.flush()
+      self.assertEqual(self.read_live_response(replacement)["requestId"], "after_close")
+
+      # Even an ungraceful process death must not strand a connection slot.
+      processes[1].kill()
+      processes[1].wait(timeout=5)
+      resumed = self.run_host(frame(ping("after_crash")))
+      self.assertEqual(resumed.returncode, 0)
+      self.assertEqual(responses(resumed.stdout)[0]["requestId"], "after_crash")
+      self.assertEqual(resumed.stderr, b"")
+    finally:
+      for process in processes:
+        if process.poll() is None:
+          process.kill()
+        process.wait(timeout=5)
+        if process.stdin:
+          process.stdin.close()
+        if process.stdout:
+          process.stdout.close()
+        if process.stderr:
+          process.stderr.close()
+
+  def test_connection_admission_refuses_symlinked_or_insecure_slot_directories(self):
+    with tempfile.TemporaryDirectory(prefix="pdfmagic-slot-attacks-") as root:
+      home = Path(root) / "account"
+      home.mkdir(mode=0o700)
+      locks = home / ".pdf-magic-native-connections"
+      elsewhere = Path(root) / "elsewhere"
+      elsewhere.mkdir()
+      locks.symlink_to(elsewhere, target_is_directory=True)
+      env = {**os.environ, "PDF_MAGIC_NATIVE_TEST_HOME": str(home)}
+      rejected = subprocess.run([str(self.binary)], input=frame(ping()),
+                                env=env, capture_output=True, timeout=6)
+      self.assertNotEqual(rejected.returncode, 0)
+      self.assertEqual((rejected.stdout, rejected.stderr), (b"", b""))
+      self.assertEqual(list(elsewhere.iterdir()), [])
+
+      locks.unlink()
+      locks.mkdir(mode=0o700)
+      locks.chmod(0o777)
+      rejected = subprocess.run([str(self.binary)], input=frame(ping()),
+                                env=env, capture_output=True, timeout=6)
+      self.assertNotEqual(rejected.returncode, 0)
+      self.assertEqual((rejected.stdout, rejected.stderr), (b"", b""))
+      locks.chmod(0o700)
+      admitted = subprocess.run([str(self.binary)], input=frame(ping()),
+                                env=env, capture_output=True, timeout=6)
+      self.assertEqual(admitted.returncode, 0)
+      self.assertEqual(responses(admitted.stdout)[0]["requestId"], "test_1")
+      self.assertEqual(admitted.stderr, b"")
 
   def test_compiled_host_is_executable(self):
     self.assertTrue(os.access(self.binary, os.X_OK))

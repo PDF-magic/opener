@@ -1,6 +1,7 @@
 import {
   isApprovedNativeExtensionIdentity, snapshotApprovedExtensionIds
 } from "./native-extension-identity.js";
+import { credentialFreeNativeMessage } from "./native-credential-boundary.js";
 
 // Dormant native-transport recovery for a future explicitly approved integration.
 // Importing this module never connects, requests permissions, scans or opens files.
@@ -150,6 +151,11 @@ export function createNativeReconnectController({
         return;
       }
       const requestId = `hello_${nonce}`;
+      const outbound = credentialFreeNativeMessage({
+        version: 1, kind: "request", topic: "host.handshake", requestId,
+        payload: { clientNonce: nonce }
+      });
+      if (!outbound) { halt("unavailable"); return; }
       let confirmed = false;
       const isCurrent = () => active && port === currentPort &&
         generation === currentGeneration;
@@ -175,10 +181,8 @@ export function createNativeReconnectController({
       handshakeTimer = schedule(() => {
         if (isCurrent() && !confirmed) retry();
       }, HANDSHAKE_TIMEOUT_MS);
-      currentPort.postMessage({
-        version: 1, kind: "request", topic: "host.handshake", requestId,
-        payload: { clientNonce: nonce }
-      });
+      // Never forward caller-owned browser metadata to the native host.
+      currentPort.postMessage(outbound);
     } catch {
       if (active && generation === currentGeneration) retry();
     }
