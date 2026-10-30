@@ -21,6 +21,7 @@ MANIFEST_FILENAME = HOST_NAME + ".json"
 BROWSER_LOCATIONS = {
     "chrome": "Google/Chrome",
     "chromium": "Chromium",
+    "chrome-for-testing": "Google/ChromeForTesting",
     "brave": "BraveSoftware/Brave-Browser",
     "edge": "Microsoft Edge",
     "vivaldi": "Vivaldi",

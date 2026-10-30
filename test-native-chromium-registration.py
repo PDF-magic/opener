@@ -37,11 +37,11 @@ class ChromiumHostRegistrationTests(unittest.TestCase):
     def save_manifest(self):
         self.manifest.write_text(json.dumps(self.data), encoding="utf-8")
 
-    def test_registers_all_seven_supported_browsers_using_correct_user_locations(self):
+    def test_registers_all_eight_supported_browsers_using_correct_user_locations(self):
         paths = registration.register_chromium_hosts(self.home)
-        self.assertEqual(set(paths), {"chrome", "chromium", "brave", "edge", "vivaldi", "opera", "arc"})
+        self.assertEqual(set(paths), {"chrome", "chromium", "chrome-for-testing", "brave", "edge", "vivaldi", "opera", "arc"})
         self.assertEqual(paths["opera"], paths["chrome"])
-        self.assertEqual(len(set(paths.values())), 6)
+        self.assertEqual(len(set(paths.values())), 7)
         for browser, relative in registration.BROWSER_LOCATIONS.items():
             expected = self.home / "Library/Application Support" / relative / "NativeMessagingHosts" / "org.pdfmagic.opener.json"
             self.assertEqual(paths[browser], expected)
