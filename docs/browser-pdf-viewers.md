@@ -5,6 +5,11 @@ selected macOS application**. It does not render PDFs, supply a common PDF
 viewer, or replace the chosen browser's settings. Reading, filling forms,
 annotating, printing, and saving are controlled by the destination application.
 
+For **download-opening enforcement and per-browser API limits** (as distinct
+from PDF viewer features), see the [controlled opening support matrix](download-opening-browser-support.md).
+This documents user-gesture-gated browser APIs versus verified native handoff;
+no browser integration is currently active.
+
 ## Compare browsers and viewer families
 
 | Browser | macOS bundle identifier | PDF viewer and practical differences |
