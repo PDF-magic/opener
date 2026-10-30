@@ -205,6 +205,21 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                 sanitizer._stop_process_group(process)
             check.assert_not_called()
 
+    def test_macos_three_transient_status_failures_can_recover(self):
+        # Verified exit requires an explicit zombie, not a transient ps error.
+        process = type("Process", (), {"pid": 101, "returncode": None})()
+        records = (
+            subprocess.CalledProcessError(1, "/bin/ps"),
+            subprocess.TimeoutExpired("/bin/ps", 0.5),
+            subprocess.CalledProcessError(1, "/bin/ps"),
+            subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
+        )
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), \
+                patch.object(sanitizer.subprocess, "run", side_effect=records) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+        self.assertEqual(probe.call_count, 4)
+
     def test_macos_transient_status_probe_requires_verified_zombie(self):
         process = type("Process", (), {"pid": 101, "returncode": None})()
         records = (
