@@ -288,6 +288,7 @@ jobs:
         working-directory: extensions/webextension
         run: |
           npm run build
+          node scripts/build-firefox.mjs
           npm test
       - name: Verify sandboxed Safari Web Extension target configuration
         run: python3 test-safari-extension-target.py -v
