@@ -97,12 +97,11 @@ class SafariExtensionTargetTests(unittest.TestCase):
       'INFOPLIST_FILE = extensions/safari/Info.plist;',
       'PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;',
       'path = extensions/webextension/manifest.json;',
-      'files = (D56700000000000000000003, D56700000000000000000014,);',
+      'files = (D56700000000000000000003, D56700000000000000000014, D57500000000000000000001, D57600000000000000000001, D57600000000000000000003,);',
       'fileRef = D56700000000000000000015;',
       'path = extensions/webextension/src/background.js;',
       'fileRef = D57500000000000000000002;',
       'path = extensions/webextension/icons;',
-      'D57500000000000000000001, D57600000000000000000001, D57600000000000000000003,);',
       'path = extensions/webextension/src/popup.html;',
       'path = extensions/webextension/src/popup.css;',
     ):
