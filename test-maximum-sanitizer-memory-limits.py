@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """opener-0491: bound memory use in the optional Maximum sanitizer process."""
+import errno
 import os
 import resource
 import signal
