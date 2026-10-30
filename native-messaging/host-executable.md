@@ -313,3 +313,23 @@ All invalid inputs fail closed. These changes do not grant any extension
 permission, authenticate a scanner, change ClamAV/quarantine policy, or modify
 PDF opening and user-selected destinations. Real PDF path admission is an
 independent prerequisite of any future privileged scan coordinator.
+
+### Executable-launch boundary (opener-0657)
+
+The native messaging host enforces an explicit fixed `approvedTopics` allowlist
+before its per-topic payload checks. Unknown requests to execute programs,
+launch shells, run processes, open applications or handle unreviewed command
+topics fail closed. Approved topics retain their exact payload validation;
+caller-supplied executable paths, process IDs, argv and shell scripts are not
+accepted. The host does not expose process-launch APIs to native messages.
+
+This is not browser authentication. A valid handshake never enables scanning.
+Existing ClamAV signature freshness, verified scan evidence, integrity,
+quarantine, opening authorization and user-configured PDF application settings
+remain separately enforced and unchanged.
+
+The existing macOS CI compiled-host suite `python3 test-native-messaging-host.py -v`
+exercises executable selection across unknown topics and approved payloads
+using a real executable canary, confirms rejection without launching it, and
+checks a fresh connection still returns truthful scan unavailability. It also
+guards `Host.swift` against common process and application-launch APIs.
