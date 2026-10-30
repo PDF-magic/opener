@@ -17,11 +17,41 @@ supported protocol and correlate the connection, send one version-1 request:
 {"version":1,"kind":"request","topic":"host.handshake","requestId":"hello_1","payload":{"clientNonce":"Client_Challenge_123456789"}}
 ```
 
-The host acknowledges with the same `requestId` and `clientNonce`:
+The host acknowledges with the same `requestId` and `clientNonce`.
+Its example below reflects an environment without a registered SwiftUI app,
+where `applicationVersion` must be `null`, and with the current Built-in
+protection policy:
+
 
 ```json
-{"version":1,"kind":"response","topic":"host.handshake","requestId":"hello_1","payload":{"status":"transport-only","protocolVersion":1,"clientNonce":"Client_Challenge_123456789","scanAvailable":false}}
+{"version":1,"kind":"response","topic":"host.handshake","requestId":"hello_1","payload":{"status":"transport-only","protocolVersion":1,"clientNonce":"Client_Challenge_123456789","applicationVersion":null,"activeProtectionProfile":"built-in","scanAvailable":false}}
 ```
+
+### Read-only installed status (opener-0625)
+
+Every successful `host.handshake` response includes three informational fields:
+
+- `applicationVersion`: the installed **PDF Magic Opener SwiftUI application**
+  `CFBundleShortVersionString`, obtained from the locally registered application
+  matching bundle ID `local.studio.pdfmagicopener.swiftui`. This is **not** the
+  host executable version, Safari extension version, or a build-time guess.
+  It is `null` if the app cannot be resolved or its metadata fails validation.
+- `protocolVersion`: integer `1`, the actual native message protocol
+  supported by this host.
+- `activeProtectionProfile`: `"built-in"` only when the existing
+  `local.studio.pdf-magic-opener` shared preference has no explicit selection
+  or contains the sole supported `selectedProtectionProfile: "built-in"`.
+  Unknown or planned Standard/Enhanced/Maximum selections, malformed saved
+  values, or inaccessible preferences are reported as `null`, **never**
+  silently advertised as enforced alternative profiles.
+
+These fields are read-only metadata, not proof that a scan passed, that ClamAV
+is healthy, that a host/browser is authenticated, or that opening a PDF is
+permitted. The native host does not change user preferences, install or invoke
+scanners, register a browser native messaging origin, or read document contents.
+The installed scanner continues to enforce its independent fail-closed policy.
+Regression coverage includes compiled-host responses and standalone Swift tests
+with isolated app-bundle fixtures.
 
 The `clientNonce` must contain **16–64 ASCII letters, digits, underscores, or
 hyphens**. The host rejects a malformed nonce, unknown fields, incompatible

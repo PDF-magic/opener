@@ -77,12 +77,11 @@ struct PDFMagicNativeMessagingHost {
             isValidRequestId(clientNonce) else {
         throw HostError.invalidMessage
       }
-      payload = [
-        "status": "transport-only",
-        "protocolVersion": 1,
-        "clientNonce": clientNonce,
-        "scanAvailable": false
-      ]
+      // Resolve locally installed metadata, not caller-supplied claims.
+      // Unknown app versions and unsupported saved policy values stay null.
+      var status = NativeHostStatus.current()
+      status["clientNonce"] = clientNonce
+      payload = status
     default:
       throw HostError.invalidMessage
     }

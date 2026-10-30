@@ -11,6 +11,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "native-messaging" / "Host.swift"
+STATUS_SOURCE = ROOT / "native-messaging" / "HostStatus.swift"
+STATUS_TEST = ROOT / "test-native-host-status.swift"
 
 
 def frame(message):
@@ -58,7 +60,11 @@ class NativeMessagingHostTests(unittest.TestCase):
       cls.directory.cleanup()
       raise unittest.SkipTest("Swift compiler is required")
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    str(SOURCE), "-o", str(cls.binary)],
+                    str(SOURCE), str(STATUS_SOURCE), "-o", str(cls.binary)],
+                   capture_output=True, text=True, check=True, timeout=120)
+    cls.status_binary = Path(cls.directory.name) / "native-host-status-tests"
+    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
+                    str(STATUS_SOURCE), str(STATUS_TEST), "-o", str(cls.status_binary)],
                    capture_output=True, text=True, check=True, timeout=120)
 
   @classmethod
@@ -94,19 +100,48 @@ class NativeMessagingHostTests(unittest.TestCase):
     self.assertEqual([message["requestId"] for message in responses(result.stdout)],
                      ["first", "second"])
 
+  def assert_handshake_response(self, reply, request_id="hello_1",
+                                client_nonce="Client_Challenge_123456789"):
+    self.assertEqual(reply["version"], 1)
+    self.assertEqual(reply["kind"], "response")
+    self.assertEqual(reply["topic"], "host.handshake")
+    self.assertEqual(reply["requestId"], request_id)
+    payload = reply["payload"]
+    self.assertEqual(set(payload), {
+      "status", "protocolVersion", "clientNonce", "scanAvailable",
+      "applicationVersion", "activeProtectionProfile"
+    })
+    self.assertEqual(payload["status"], "transport-only")
+    self.assertEqual(payload["protocolVersion"], 1)
+    self.assertEqual(payload["clientNonce"], client_nonce)
+    self.assertIs(payload["scanAvailable"], False)
+    self.assertIn(payload["activeProtectionProfile"], ("built-in", None))
+    if payload["applicationVersion"] is not None:
+      self.assertRegex(payload["applicationVersion"], r"^[A-Za-z0-9.+-]{1,64}$")
+
+  def test_read_only_status_snapshot_resolver(self):
+    completed = subprocess.run([str(self.status_binary)], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, timeout=10, check=False)
+    self.assertEqual(completed.returncode, 0, completed.stderr.decode("utf-8"))
+    self.assertEqual(completed.stdout, b"")
+    self.assertEqual(completed.stderr, b"")
+
   def test_handshake_acknowledges_version_and_echoes_client_challenge(self):
     result = self.run_host(frame(handshake()))
     self.assertEqual(result.returncode, 0)
     self.assertEqual(result.stderr, b"")
-    self.assertEqual(responses(result.stdout), [handshake_response()])
-    self.assertFalse(responses(result.stdout)[0]["payload"]["scanAvailable"])
+    replies = responses(result.stdout)
+    self.assertEqual(len(replies), 1)
+    self.assert_handshake_response(replies[0])
 
   def test_handshake_is_one_time_and_connection_local(self):
     first = handshake()
     second = handshake("hello_2", "Another_Challenge_123456789")
     duplicate = self.run_host(frame(first) + frame(second))
     self.assertNotEqual(duplicate.returncode, 0)
-    self.assertEqual(responses(duplicate.stdout), [handshake_response()])
+    replies = responses(duplicate.stdout)
+    self.assertEqual(len(replies), 1)
+    self.assert_handshake_response(replies[0])
     self.assertEqual(duplicate.stderr, b"")
 
     # A fresh native host process has independent handshake state.
@@ -126,7 +161,7 @@ class NativeMessagingHostTests(unittest.TestCase):
                      ["host.ping", "host.handshake", "host.ping"])
     self.assertEqual([r["requestId"] for r in replies],
                      ["before", "hello_1", "after"])
-    self.assertEqual(replies[1], handshake_response())
+    self.assert_handshake_response(replies[1])
     self.assertEqual(replies[0]["payload"], replies[2]["payload"])
 
   def test_rejects_malformed_handshakes_without_reply(self):
@@ -159,7 +194,9 @@ class NativeMessagingHostTests(unittest.TestCase):
         "path": str(sentinel), "command": "touch " + str(sentinel)})
       result = self.run_host(frame(handshake()) + frame(attack))
       self.assertNotEqual(result.returncode, 0)
-      self.assertEqual(responses(result.stdout), [handshake_response()])
+      replies = responses(result.stdout)
+      self.assertEqual(len(replies), 1)
+      self.assert_handshake_response(replies[0])
       self.assertEqual(result.stderr, b"")
       self.assertFalse(sentinel.exists())
 
