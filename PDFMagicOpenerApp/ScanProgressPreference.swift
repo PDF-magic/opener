@@ -707,6 +707,62 @@ enum BrowserDownloadMonitoringPreference {
   }
 }
 
+// Browser download scan-result *presentation* only. A missing or malformed
+// value preserves visible summaries. This must never change native scanning,
+// browser permissions, malware warnings, failures, or the opening decision.
+enum DownloadScanResultPresentation {
+  case optionalSummary
+  case securityWarning
+}
+
+enum DownloadScanResultsPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "showScanResults"
+
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return true }
+    _ = defaults.synchronize()
+    guard let stored = defaults.object(forKey: key) else { return true }
+    // An unexpected storage type must not silently suppress results.
+    guard let value = stored as? NSNumber,
+          CFGetTypeID(value) == CFBooleanGetTypeID() else { return true }
+    return value.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize() && isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    if let previous { defaults.set(previous, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+
+  // Only optional clean/informational summaries are suppressible. A caller
+  // MUST independently classify and continue to present security warnings.
+  // Neither this function nor the preference produces scanner authorization.
+  static func shouldPresent(
+    _ category: DownloadScanResultPresentation,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    switch category {
+    case .optionalSummary: return isEnabled(defaults: defaults)
+    case .securityWarning: return true
+    }
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.

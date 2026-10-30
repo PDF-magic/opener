@@ -91,11 +91,12 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
             "Scan Other Supported Files",
         }
         for required in ("Show Only Warnings", "Notify on Failed Scan", "Scan Other Supported Files",
-                         "Enable Browser Download Monitoring"):
+                         "Enable Browser Download Monitoring", "Show Scan Results"):
           self.assertIn(required, toggle_names)
         self.assertEqual(len(toggle_names), len(set(toggle_names)))
         self.assertFalse(set(toggle_names) - allowed)
         self.assertIn('ScanOtherSupportedFilesPreference.save(enabled)', source)
+        self.assertIn("DownloadScanResultsPreference.save(enabled)", source)
         self.assertIn("BrowserDownloadMonitoringPreference.save(enabled)", source)
         self.assertNotIn("permissions.request", source)
       if filename == "AdvancedScanningSettingsView.swift":
