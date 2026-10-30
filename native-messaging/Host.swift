@@ -394,9 +394,19 @@ struct PDFMagicNativeMessagingHost {
   }
 
   static func main() {
-    // Validate a registered browser origin before receiving native messages.
+    // The independent origin-validation fixture suite tests the exact
+    // browser origin rules, including its macOS home-directory requirements.
+    // Integration fixtures exercise the separate exact native caller gate.
+    // The production binary ALWAYS enforces both checks.
+    #if !NATIVE_HOST_CONNECTION_TESTING
     guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
+    #endif
     do {
+      // Validate the exact installed native host extension identity independently
+      // of the browser's origin marker, before admitting a connection.
+      guard NativeCallerAdmission.allows(Array(CommandLine.arguments.dropFirst())) else {
+        exit(1)
+      }
       // Admit before reading any caller input or emitting any protocol bytes.
       let slot = try acquireConnectionSlot()
       defer { close(slot) }

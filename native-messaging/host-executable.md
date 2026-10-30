@@ -5,10 +5,33 @@
 ```sh
 xcrun swiftc -O -parse-as-library -warnings-as-errors \
   native-messaging/Host.swift native-messaging/HostStatus.swift \
-  native-messaging/CallerOrigin.swift -o /path/to/pdf-magic-native-host
+  native-messaging/CallerOrigin.swift native-messaging/NativeCallerAdmission.swift \
+  -o /path/to/pdf-magic-native-host
 ```
 
 The output is a real process executable, not a browser extension or PDF handler. It speaks browser native messaging transport: a 32-bit little-endian byte length followed by UTF-8 JSON on standard input, and the same framing on standard output. Frames are bounded to 16 KiB, matching the shared WebExtensions message envelope.
+
+### Native caller rejection (opener-0654)
+
+Before processing any input frame, the standalone host checks that browser
+launch arguments identify an **exactly registered** caller. Chromium on
+macOS supplies one origin `chrome-extension://<a-p-id>/`; Firefox supplies
+the registered native host manifest's absolute path and the Gecko add-on ID.
+Only supported per-user native messaging manifest locations are considered.
+An installed manifest must name `org.pdfmagic.opener`, use `stdio`, match
+the running host executable exactly, and list the caller's exact ID without
+wildcards, duplicates, cross-browser keys, or unexpected fields. Missing or
+symlinked manifests, malformed/unknown launch arguments and unregistered IDs
+terminate with no native protocol output.
+
+This is an additional **admission check, not proof of process identity**:
+a local process with the user's access can spoof command-line arguments and
+registration data. Browser registration and the separately reviewed
+browser-side ID check remain necessary; privileged scanner coordination
+requires stronger authenticated integration. No native scanner or PDF-opening
+authority is granted by a recognized launch. The production executable
+does not provide an anonymous diagnostic mode; isolated regression tests use
+a temporary Firefox registration to exercise the same actual host binary.
 
 ### Connection handshake (opener-0624)
 
