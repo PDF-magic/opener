@@ -43,6 +43,13 @@ OFFER_EXPLANATION = (
 )
 
 
+SANITIZATION_COMPLETE_LABEL = (
+    "Sanitization complete. The generated PDF still requires a separate scan before opening."
+)
+SANITIZATION_NOT_COMPLETE_LABEL = (
+    "Sanitization not completed. No generated sanitized copy is available."
+)
+
 CONVERSION_CHANGE_WARNING = (
     "Warning: Converting this PDF meaningfully changes the document. "
     "The generated copy contains flattened page images rather than the original "
@@ -75,6 +82,9 @@ class SanitizedCopyOffer:
             "label": OFFER_LABEL,
             "explanation": OFFER_EXPLANATION,
             "conversionWarning": CONVERSION_CHANGE_WARNING,
+            "sanitizationComplete": True,
+            "sanitizationStatus": "complete",
+            "sanitizationStatusLabel": SANITIZATION_COMPLETE_LABEL,
             "requiresFreshScan": True,
             "authorizesOpen": False,
             "ocrRestored": False,
@@ -160,6 +170,9 @@ class SanitizerFailureReport:
     def to_dict(self) -> dict:
         return {
             "status": "sanitizerFailure",
+            "sanitizationComplete": False,
+            "sanitizationStatus": "notCompleted",
+            "sanitizationStatusLabel": SANITIZATION_NOT_COMPLETE_LABEL,
             "kind": self.kind.value,
             "message": self.message,
             "scanVerdict": "notAssessed",
@@ -250,6 +263,14 @@ class SanitizationDecision:
             "reason": (self.blocked_reason.value if self.blocked_reason is not None
                        else None),
             "offerAvailable": self.offer is not None,
+            "sanitizationComplete": self.offer is not None,
+            "sanitizationStatus": (
+                "complete" if self.offer is not None else "notCompleted"
+            ),
+            "sanitizationStatusLabel": (
+                SANITIZATION_COMPLETE_LABEL if self.offer is not None
+                else SANITIZATION_NOT_COMPLETE_LABEL
+            ),
             "pageCount": self.offer.page_count if self.offer is not None else None,
             "permitsOpen": False,
             "allowFallback": False,

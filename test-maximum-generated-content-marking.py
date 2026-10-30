@@ -24,6 +24,11 @@ class GeneratedCopyOriginTests(unittest.TestCase):
             "label": OFFER_LABEL,
             "explanation": OFFER_EXPLANATION,
             "conversionWarning": CONVERSION_CHANGE_WARNING,
+            "sanitizationComplete": True,
+            "sanitizationStatus": "complete",
+            "sanitizationStatusLabel": (
+                "Sanitization complete. The generated PDF still requires a separate scan before opening."
+            ),
             "requiresFreshScan": True,
             "authorizesOpen": False,
             "ocrRestored": False,
