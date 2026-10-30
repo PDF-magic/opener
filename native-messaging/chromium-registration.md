@@ -35,8 +35,7 @@ retains Chrome/Opera's already-approved file, then installs exact copies to
 the other **six** unique browser directories. Browser versions, profiles or
 policies with different lookup behavior require separate verification.
 
-**Before the opt-in commands are run, no browser native messaging host is
-registered or enabled by this project.** Registration is not automatic and
+**By default, no browser native messaging host is registered or enabled by this project.** Registration is not automatic and
 does not grant the browser extension `nativeMessaging` permission. The native
 host still cannot perform or authorize scans. ClamAV signature freshness,
 file integrity, quarantine and verified opening remain independent required
