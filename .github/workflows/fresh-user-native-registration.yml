@@ -1,0 +1,26 @@
+name: Fresh-user native messaging registration
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  firefox-fresh-linux-user:
+    name: Register Firefox host under a new Linux OS account
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate fresh-account test script
+        run: bash -n scripts/test-fresh-user-native-registration.sh
+      - name: Test opt-in native host registration as a new OS user
+        run: sudo -n bash scripts/test-fresh-user-native-registration.sh
