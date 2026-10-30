@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """opener-0490: hard deadlines and process-tree cleanup for PDF sanitization."""
+import errno
 import os
 import signal
 import subprocess
@@ -90,6 +91,70 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"ok")
         self.assertEqual(len(killed), 1)
         self.assertNotEqual(killed[0][0], os.getpgrp())
+
+    def test_macos_eperm_accepts_only_an_exited_zombie_group(self):
+        process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
+        table = subprocess.CompletedProcess(
+            ("/bin/ps",), 0, b"101 101 Z+\n102 101 Z\n103 103 S\n"
+        )
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.os, "killpg",
+                             side_effect=PermissionError(errno.EPERM, "zombie group")), \
+                patch.object(sanitizer, "_process_has_exited_without_reaping",
+                             return_value=True) as exited, \
+                patch.object(sanitizer.subprocess, "run", return_value=table) as probe:
+            sanitizer._stop_process_group(process)
+        exited.assert_called_once_with(process)
+        self.assertEqual(
+            probe.call_args.args[0], ("/bin/ps", "-A", "-o", "pid=,pgid=,stat=")
+        )
+
+    def test_macos_eperm_with_live_descendant_fails_closed(self):
+        process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
+        table = subprocess.CompletedProcess(
+            ("/bin/ps",), 0, b"101 101 Z\n102 101 S\n"
+        )
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.os, "killpg",
+                             side_effect=PermissionError(errno.EPERM, "live group")), \
+                patch.object(sanitizer, "_process_has_exited_without_reaping",
+                             return_value=True), \
+                patch.object(sanitizer.subprocess, "run", return_value=table):
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._stop_process_group(process)
+
+    def test_macos_eperm_with_unverified_or_running_leader_fails_closed(self):
+        process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
+        table = subprocess.CompletedProcess(("/bin/ps",), 0, b"101 101 Z\n")
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.os, "killpg",
+                             side_effect=PermissionError(errno.EPERM, "unknown")):
+            with patch.object(sanitizer, "_process_has_exited_without_reaping",
+                              return_value=False), \
+                    patch.object(sanitizer.subprocess, "run") as probe:
+                with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                    sanitizer._stop_process_group(process)
+                probe.assert_not_called()
+            with patch.object(sanitizer, "_process_has_exited_without_reaping",
+                              return_value=True), \
+                    patch.object(sanitizer.subprocess, "run",
+                                 side_effect=subprocess.TimeoutExpired("ps", 0.5)):
+                with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                    sanitizer._stop_process_group(process)
+            with patch.object(sanitizer, "_process_has_exited_without_reaping",
+                              return_value=True), \
+                    patch.object(sanitizer.subprocess, "run", return_value=table):
+                sanitizer._stop_process_group(process)
+
+    def test_non_eperm_cleanup_error_never_uses_zombie_exception(self):
+        process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.os, "killpg",
+                             side_effect=OSError(errno.EINVAL, "invalid group")), \
+                patch.object(sanitizer, "_darwin_group_has_only_zombies") as check:
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._stop_process_group(process)
+            check.assert_not_called()
 
     def test_output_limit_is_enforced_while_reading(self):
         source = "import sys; sys.stdin.buffer.read(); sys.stdout.buffer.write(b'X'*129)"
