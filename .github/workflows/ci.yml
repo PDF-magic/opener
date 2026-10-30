@@ -601,7 +601,7 @@ jobs:
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
-      - name: Verify built Safari extension is embedded and permission-free
+      - name: Verify built Safari extension containing-app native permission
         run: |
           python3 test-safari-extension-target.py -v
           python3 test-safari-extension-permissions.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
