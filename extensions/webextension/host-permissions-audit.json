@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "currentHostAccess": {
+    "requiredOrigins": [],
+    "optionalOrigins": [],
+    "contentScriptMatches": []
+  },
+  "featuresNotRequiringHostOrigins": [
+    "staticToolbarAndPopup",
+    "extensionUpdateEventObservation",
+    "browserDownloadEventObservation",
+    "callerSuppliedPdfMetadataClassification",
+    "extensionInternalMessaging",
+    "localNativeScannerMessaging",
+    "localNativePreferencesLink"
+  ],
+  "futureSiteAccessReview": {
+    "contentScriptInjection": "reviewExactSitesAndUserConsent",
+    "crossOriginPdfRetrieval": "reviewExactOriginsAndUserConsent"
+  }
+}
