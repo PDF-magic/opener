@@ -1,67 +1,56 @@
-# Chromium-family native messaging registration inventory (opener-0642)
+# Register the native host for Chromium-family browsers (opener-0643)
 
-**Identification only — no browser native messaging host is registered or enabled.**
-The canonical host name remains `org.pdfmagic.opener` from
-[`host-identity.json`](host-identity.json). The machine-readable
-[`chromium-registration-targets.json`](chromium-registration-targets.json)
-records candidate *macOS per-user* lookup directories and the level of
-evidence for each. These are not installer inputs or verified local installations.
+This opt-in macOS command extends the **existing Chrome registration from
+opener-0639** to other supported Chromium-family browser host locations.
+First follow [the approved Chrome registration procedure](chrome-registration.md),
+using actual installed extension ID(s) and an already-built native host.
+Do not guess extension IDs. Once the Chrome host manifest exists, run:
 
-## Browser-specific registration and lookup
+    python3 native-messaging/register-chromium-hosts.py
 
-| Browser | Registration handling | macOS per-user candidate `NativeMessagingHosts` directory |
-| --- | --- | --- |
-| Google Chrome | Its own documented location (baseline) | `~/Library/Application Support/Google/Chrome/NativeMessagingHosts` |
-| Chromium | Separate from Google Chrome | `~/Library/Application Support/Chromium/NativeMessagingHosts` |
-| Google Chrome for Testing | Separate beginning with Chrome 146; older releases shared Chrome locations | `~/Library/Application Support/Google/ChromeForTesting/NativeMessagingHosts` |
-| Microsoft Edge | Distinct Edge location; do not assume Chrome's host is discoverable | `~/Library/Application Support/Microsoft Edge/NativeMessagingHosts` |
-| Brave | Track Brave-specific registration; check current Brave lookup and Chrome fallback on an installed copy | `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts` |
-| Vivaldi | Track Vivaldi-specific registration; verify its current native host lookup | `~/Library/Application Support/Vivaldi/NativeMessagingHosts` |
-| Arc | Track Arc-specific registration; verify its current lookup and Chrome fallback | `~/Library/Application Support/Arc/User Data/NativeMessagingHosts` |
-| Opera | Opera's published instructions currently specify the **Chrome directory**, not a distinct Opera directory; validate on Opera independently | `~/Library/Application Support/Google/Chrome/NativeMessagingHosts` |
+The command validates Chrome's registered `org.pdfmagic.opener` manifest,
+stdio transport, absolute executable path and exact, distinct
+`chrome-extension://` `allowed_origins` (never wildcards). Without a
+verified Chrome registration, it fails before any other browser is modified.
+It **does not create a competing Chrome manifest or approve extension IDs**.
 
-**Evidence levels:** Chrome, Chromium, Chrome for Testing, Edge and Opera
-locations are explicitly documented by their browser publishers. Brave,
-Vivaldi and Arc directories appear in external native-messaging integrations;
-they are *candidates requiring browser-specific verification*, not a promise
-that a given version searches those paths. Chrome for Testing's separate
-location begins with version 146. The lookup paths, fallback order, release
-channels and extension IDs can change with browser releases.
+## Registration locations
 
-- [Chrome / Chromium / Chrome for Testing native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
-- [Microsoft Edge native messaging, including channel-specific directories and Windows fallback order](https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/native-messaging)
-- [Opera native messaging](https://help.opera.com/en/extensions/message-passing/)
-- [KeePassXC Browser third-party host location troubleshooting](https://github.com/keepassxreboot/keepassxc-browser/wiki/Troubleshooting-guide)
-- [Bitwarden desktop third-party browser host registration](https://github.com/bitwarden/clients/blob/main/apps/desktop/src/main/native-messaging.main.ts)
+The following eight targets match the canonical
+[Chromium host inventory](chromium-registration-targets.json). All paths are
+per-user macOS locations; the manifest filename is `org.pdfmagic.opener.json`.
 
-## Future registration prerequisites (not implemented here)
+- Google Chrome: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts`
+- Chromium: `~/Library/Application Support/Chromium/NativeMessagingHosts`
+- Google Chrome for Testing: `~/Library/Application Support/Google/ChromeForTesting/NativeMessagingHosts`
+- Microsoft Edge: `~/Library/Application Support/Microsoft Edge/NativeMessagingHosts`
+- Brave: `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts`
+- Vivaldi: `~/Library/Application Support/Vivaldi/NativeMessagingHosts`
+- Arc: `~/Library/Application Support/Arc/User Data/NativeMessagingHosts`
+- Opera: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts`
 
-1. Before attempting installation, detect the **actual installed browser and
-   channel** and validate that browser's *current* lookup mechanism. Never
-   infer successful registration from a Chromium-compatible extension ZIP,
-   a browser API namespace, or the existence of a Chrome directory. In
-   particular, a Chrome fallback must be verified rather than assumed.
-2. Use the same canonical host name but a reviewed browser-visible
-   `org.pdfmagic.opener.json` at **each verified required location**.
-   On macOS the executable `path` must be absolute; `type` must be
-   `stdio`; `allowed_origins` must enumerate **exact, separately verified**
-   `chrome-extension://<extension-id>/` identities (including distinct
-   store IDs where applicable). Never use wildcards or derive allowlists from
-   browser brand names. Do not install any host for a missing/unsupported
-   browser or widen access to make a discovery test pass.
-3. Treat browser registration and extension permission as separate gates.
-   The current shared extension deliberately has no `nativeMessaging`
-   permission and a disabled Scan PDF action; no browser-to-native scan
-   coordinator is authenticated. Registry entries and user-level directories
-   on Windows/Linux are also **out of scope** for this macOS inventory.
-   Firefox and Safari have their own separate registration mechanisms.
-4. Before enabling native actions, review browser origin authentication,
-   host executable integrity, user consent, connection lifecycle and
-   scanner dispatch. Native scanner ClamAV freshness, complete scans, file
-   integrity, quarantine, verified PDF opening and all saved destination
-   preferences remain mandatory; native messaging cannot bypass them.
+Opera uses Chrome's publisher-documented native host lookup directory.
+Chrome for Testing has its own directory on Chrome 146 and later. The command
+retains Chrome/Opera's already-approved file, then installs exact copies to
+the other **six** unique browser directories. Browser versions, profiles or
+policies with different lookup behavior require separate verification.
 
-The dedicated `chromium-native-registration.test.mjs` tests run in the
-existing WebExtensions `npm test` / required `scanner-tests` CI job.
-This inventory neither writes registration manifests nor changes any browser
-profile, executable, scanner, permission, preference or CI workflow.
+**By default, no browser native messaging host is registered or enabled by this project.** Registration is not automatic and
+does not grant the browser extension `nativeMessaging` permission. The native
+host still cannot perform or authorize scans. ClamAV signature freshness,
+file integrity, quarantine and verified opening remain independent required
+gates, and the user's selected PDF destination remains unchanged.
+
+No `sudo`, system-wide write, Firefox or Safari registration is used.
+An identical destination is a no-op; any conflicting existing manifest or
+symlinked path is rejected before writes, preserving user customizations.
+
+Run the portable, isolated regression tests:
+
+    python3 test-native-chromium-registration.py -v
+
+Source references:
+- https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging
+- https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/native-messaging
+- https://help.opera.com/en/extensions/message-passing/
+- https://github.com/keepassxreboot/keepassxc-browser/wiki/Troubleshooting-guide

@@ -6,6 +6,7 @@ import select
 from pathlib import Path
 import shutil
 import struct
+import sys
 import subprocess
 import tempfile
 import time
@@ -14,6 +15,9 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "native-messaging" / "Host.swift"
 STATUS_SOURCE = ROOT / "native-messaging" / "HostStatus.swift"
+CALLER_SOURCE = ROOT / "native-messaging" / "CallerOrigin.swift"
+ADMISSION_SOURCE = ROOT / "native-messaging" / "NativeCallerAdmission.swift"
+CALLER_TEST = ROOT / "test-caller-origin.swift"
 STATUS_TEST = ROOT / "test-native-host-status.swift"
 
 
@@ -128,29 +132,64 @@ class NativeMessagingHostTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.directory = tempfile.TemporaryDirectory(prefix="pdfmagic-native-host-")
-    cls.binary = Path(cls.directory.name) / "pdf-magic-native-host"
+    cls.root = Path(cls.directory.name).resolve()
+    cls.binary = cls.root / "pdf-magic-native-host"
     compiler = shutil.which("swiftc")
     if not compiler:
       cls.directory.cleanup()
       raise unittest.SkipTest("Swift compiler is required")
     # Typecheck the production path, then run the same host with an isolated,
     # compile-time-only home override. No test writes to the CI user's home.
-    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    "-typecheck", str(SOURCE), str(STATUS_SOURCE)],
-                   capture_output=True, text=True, check=True, timeout=120)
-    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    "-D", "NATIVE_HOST_CONNECTION_TESTING",
-                    str(SOURCE), str(STATUS_SOURCE), "-o", str(cls.binary)],
-                   capture_output=True, text=True, check=True, timeout=120)
+    def checked_compile(arguments):
+      completed = subprocess.run(arguments, capture_output=True, text=True,
+                                 check=False, timeout=120)
+      if completed.returncode != 0:
+        raise AssertionError("Swift native-host compilation failed:\n" +
+                             completed.stderr[-8000:])
+
+    checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
+                     "-typecheck", str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE), str(ADMISSION_SOURCE)])
+    checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
+                     "-D", "NATIVE_HOST_CONNECTION_TESTING",
+                     str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE), str(ADMISSION_SOURCE), "-o", str(cls.binary)])
     cls.prior_test_home = os.environ.get("PDF_MAGIC_NATIVE_TEST_HOME")
     os.environ["PDF_MAGIC_NATIVE_TEST_HOME"] = cls.directory.name
+    cls.caller_binary = Path(cls.directory.name) / "native-caller-origin-tests"
+    checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
+                     str(CALLER_SOURCE), str(CALLER_TEST), "-o", str(cls.caller_binary)])
     cls.status_binary = Path(cls.directory.name) / "native-host-status-tests"
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     str(STATUS_SOURCE), str(STATUS_TEST), "-o", str(cls.status_binary)],
                    capture_output=True, text=True, check=True, timeout=120)
 
+    # Use only an isolated, temporary browser registration for host tests.
+    cls.prior_home = os.environ.get("HOME")
+    cls.home = cls.root / "home"
+    cls.home.mkdir()
+    registration = (".mozilla/native-messaging-hosts" if sys.platform == "linux"
+                    else "Library/Application Support/Mozilla/NativeMessagingHosts")
+    folder = cls.home / registration
+    folder.mkdir(parents=True)
+    cls.manifest = folder / "org.pdfmagic.opener.json"
+    cls.extension_id = "pdf-magic-opener@example.invalid"
+    cls.approved_manifest = {
+      "name": "org.pdfmagic.opener",
+      "description": "Isolated native-host caller rejection fixture",
+      "path": str(cls.binary),
+      "type": "stdio",
+      "allowed_extensions": [cls.extension_id]
+    }
+    cls.manifest.write_text(json.dumps(cls.approved_manifest), encoding="utf-8")
+    os.environ["HOME"] = str(cls.home)
+    cls.env = dict(os.environ)
+
   @classmethod
   def tearDownClass(cls):
+    if hasattr(cls, "prior_home"):
+      if cls.prior_home is None:
+        os.environ.pop("HOME", None)
+      else:
+        os.environ["HOME"] = cls.prior_home
     if hasattr(cls, "prior_test_home"):
       if cls.prior_test_home is None:
         os.environ.pop("PDF_MAGIC_NATIVE_TEST_HOME", None)
@@ -160,7 +199,8 @@ class NativeMessagingHostTests(unittest.TestCase):
       cls.directory.cleanup()
 
   def run_host(self, data, *args):
-    return subprocess.run([str(self.binary), *args], input=data,
+    return subprocess.run([str(self.binary), str(self.manifest), self.extension_id, *args], input=data,
+                          env=self.env,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           timeout=6, check=False)
 
@@ -194,7 +234,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     processes = []
     try:
       for index in range(4):
-        process = subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+        process = subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         processes.append(process)
         process.stdin.write(frame(ping(f"active_{index}")))
@@ -213,7 +253,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       # Normal EOF immediately frees a slot; no manual cleanup or retry timer.
       processes[0].stdin.close()
       self.assertEqual(processes[0].wait(timeout=5), 0)
-      replacement = subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+      replacement = subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       processes.append(replacement)
       replacement.stdin.write(frame(ping("after_close")))
@@ -248,7 +288,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       elsewhere.mkdir()
       locks.symlink_to(elsewhere, target_is_directory=True)
       env = {**os.environ, "PDF_MAGIC_NATIVE_TEST_HOME": str(home)}
-      rejected = subprocess.run([str(self.binary)], input=frame(ping()),
+      rejected = subprocess.run([str(self.binary), str(self.manifest), self.extension_id], input=frame(ping()),
                                 env=env, capture_output=True, timeout=6)
       self.assertNotEqual(rejected.returncode, 0)
       self.assertEqual((rejected.stdout, rejected.stderr), (b"", b""))
@@ -257,12 +297,12 @@ class NativeMessagingHostTests(unittest.TestCase):
       locks.unlink()
       locks.mkdir(mode=0o700)
       locks.chmod(0o777)
-      rejected = subprocess.run([str(self.binary)], input=frame(ping()),
+      rejected = subprocess.run([str(self.binary), str(self.manifest), self.extension_id], input=frame(ping()),
                                 env=env, capture_output=True, timeout=6)
       self.assertNotEqual(rejected.returncode, 0)
       self.assertEqual((rejected.stdout, rejected.stderr), (b"", b""))
       locks.chmod(0o700)
-      admitted = subprocess.run([str(self.binary)], input=frame(ping()),
+      admitted = subprocess.run([str(self.binary), str(self.manifest), self.extension_id], input=frame(ping()),
                                 env=env, capture_output=True, timeout=6)
       self.assertEqual(admitted.returncode, 0)
       self.assertEqual(responses(admitted.stdout)[0]["requestId"], "test_1")
@@ -296,7 +336,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     # Exercise the compiled host with the *same* process and handshake.
     # A temporary output file avoids unrelated stdout pipe backpressure.
     with tempfile.TemporaryFile() as output:
-      with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+      with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                             stdout=output, stderr=subprocess.PIPE) as process:
         first = [handshake()] + [ping(f"early_{i}") for i in range(63)]
         process.stdin.write(b"".join(frame(message) for message in first))
@@ -964,7 +1004,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     stalled = [b"\x01", struct.pack("<I", 50) + b"{}"]
     for index, fragment in enumerate(stalled):
       with self.subTest(fragment=index):
-        with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+        with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
           process.stdin.write(frame(ping("before")) + fragment)
           process.stdin.flush()
@@ -978,7 +1018,7 @@ class NativeMessagingHostTests(unittest.TestCase):
 
   def test_idle_native_connection_expires_without_protocol_output(self):
     # A browser that never sends a request must not retain an idle host forever.
-    with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+    with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
       started = time.monotonic()
       self.assertNotEqual(process.wait(timeout=13), 0)
@@ -988,7 +1028,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       process.stdin.close()
 
   def test_slow_but_complete_frame_and_clean_eof_remain_valid(self):
-    with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+    with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
       request = frame(ping("chunked"))
       for part in (request[:1], request[1:3], request[3:7], request[7:]):
@@ -1009,12 +1049,49 @@ class NativeMessagingHostTests(unittest.TestCase):
     with tempfile.TemporaryFile() as requests:
       requests.write(message * 4096)
       requests.seek(0)
-      with subprocess.Popen([str(self.binary)], stdin=requests,
+      with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=requests,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         self.assertNotEqual(process.wait(timeout=8), 0)
         output = process.stdout.read()
         self.assertGreater(len(output), 4)
         self.assertEqual(process.stderr.read(), b"")
+
+  def test_end_to_end_native_request_deadline(self):
+    # A request can spend less than each individual 10s/5s/5s phase
+    # timeout yet exceed the shared 15s budget when its stdout is blocked.
+    # Prefill the pipe, rather than sending fake commands or altering limits.
+    read_fd, write_fd = os.pipe()
+    try:
+      os.set_blocking(write_fd, False)
+      while True:
+        try:
+          os.write(write_fd, b"x" * 4096)
+        except BlockingIOError:
+          break
+      with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
+                            stdout=write_fd, stderr=subprocess.PIPE) as process:
+        os.close(write_fd)
+        write_fd = None
+        started = time.monotonic()
+        time.sleep(8.5)
+        self.assertIsNone(process.poll(), "idle phase expired before 10s")
+        request = frame(ping("request_deadline"))
+        process.stdin.write(request[:1])
+        process.stdin.flush()
+        time.sleep(3.5)
+        self.assertIsNone(process.poll(), "frame expired before 5s")
+        process.stdin.write(request[1:])
+        process.stdin.flush()
+        self.assertNotEqual(process.wait(timeout=6), 0)
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed, 13.0)
+        self.assertLess(elapsed, 16.5, "request exceeded the total 15s budget")
+        self.assertEqual(process.stderr.read(), b"")
+        process.stdin.close()
+    finally:
+      if write_fd is not None:
+        os.close(write_fd)
+      os.close(read_fd)
 
   def test_diagnostics_are_isolated_from_framed_protocol_output(self):
     private_path = "/private/Sensitive-Document-12345.pdf"
@@ -1138,11 +1215,23 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assert_diagnostics(result)
 
-  def test_browser_supplied_origin_does_not_enable_a_scan(self):
-    result = self.run_host(frame(ping()), "chrome-extension://exampleid/")
-    self.assertEqual(result.returncode, 0)
-    reply, = responses(result.stdout)
-    self.assertFalse(reply["payload"]["scanAvailable"])
+  def test_browser_supplied_origin_must_be_verified_before_any_reply(self):
+    for raw_origin in ("chrome-extension://exampleid/",
+                       "chrome-extension://abcdefghijklmnopabcdefghijklmnop/",
+                       "https://unapproved.invalid", "*"):
+      with self.subTest(raw_origin=raw_origin):
+        result = self.run_host(frame(ping()), raw_origin)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+
+  def test_caller_origin_manifest_validation_fixtures(self):
+    completed = subprocess.run([str(self.caller_binary)],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               timeout=10, check=False)
+    self.assertEqual(completed.returncode, 0, completed.stderr.decode("utf-8"))
+    self.assertIn(b"fixture checks passed", completed.stdout)
+    self.assertEqual(completed.stderr, b"")
 
   def test_messages_cannot_launch_an_executable(self):
     # Exercise the compiled binary, not a mocked JSON validator. An attacker
@@ -1211,6 +1300,67 @@ class NativeMessagingHostTests(unittest.TestCase):
     ):
       with self.subTest(forbidden=forbidden):
         self.assertIsNone(re.search(forbidden, source))
+
+  def reject_unrecognized(self, args, data=None):
+    result = subprocess.run([str(self.binary), *args],
+                            input=frame(ping()) if data is None else data,
+                            env=self.env, capture_output=True, timeout=6)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertEqual(result.stdout, b"")
+    self.assertEqual(result.stderr, b"")
+
+  def test_missing_unknown_and_injected_callers_fail_before_reading(self):
+    for args in (
+      [], [str(self.manifest)], [self.extension_id],
+      [str(self.manifest), "other@example.org"],
+      [str(self.manifest), self.extension_id + "-spoof"],
+      [str(self.manifest), self.extension_id, "extra"],
+      [str(self.manifest) + ".json", self.extension_id],
+      ["chrome-extension://" + "a" * 32 + "/"],
+      ["chrome-extension://*/*"],
+    ):
+      with self.subTest(args=args):
+        self.reject_unrecognized(args)
+    self.reject_unrecognized([], frame(handshake()) + frame(scan_request()))
+    self.assertEqual(self.run_host(frame(ping())).returncode, 0)
+
+  def test_invalid_registration_denies_even_matching_gecko_caller(self):
+    saved = self.manifest.read_bytes()
+    try:
+      for modification in (
+        {"name": "another.host"},
+        {"type": "not-stdio"},
+        {"path": str(self.root / "different-host")},
+        {"allowed_extensions": ["other@example.org"]},
+        {"allowed_extensions": [self.extension_id, "*"]},
+        {"allowed_extensions": [self.extension_id, self.extension_id]},
+        {"allowed_extensions": []},
+        {"allowed_origins": ["chrome-extension://" + "a" * 32 + "/"]},
+      ):
+        with self.subTest(modification=modification):
+          candidate = dict(self.approved_manifest, **modification)
+          self.manifest.write_text(json.dumps(candidate), encoding="utf-8")
+          self.reject_unrecognized([str(self.manifest), self.extension_id])
+      self.manifest.write_bytes(b"not-json")
+      self.reject_unrecognized([str(self.manifest), self.extension_id])
+      self.manifest.write_bytes(b" " * 17000)
+      self.reject_unrecognized([str(self.manifest), self.extension_id])
+    finally:
+      self.manifest.write_bytes(saved)
+    self.assertEqual(self.run_host(frame(ping())).returncode, 0)
+
+  def test_symlinked_registration_does_not_authorize_native_messages(self):
+    original = self.manifest.read_bytes()
+    outside = self.root / "registration-copy.json"
+    outside.write_bytes(original)
+    self.manifest.unlink()
+    self.manifest.symlink_to(outside)
+    try:
+      self.reject_unrecognized([str(self.manifest), self.extension_id])
+      self.assertEqual(outside.read_bytes(), original)
+    finally:
+      self.manifest.unlink()
+      self.manifest.write_bytes(original)
 
   def test_no_file_or_process_actions_from_untrusted_input(self):
     with tempfile.TemporaryDirectory(prefix="native-host-no-action-") as d:

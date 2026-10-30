@@ -36,17 +36,6 @@ private enum HostError: Error {
 @main
 struct PDFMagicNativeMessagingHost {
   private static let maximumFrameBytes = 16 * 1024
-  // CoreFoundation and Glibc both export these mode constants on Linux.
-  // Qualify the platform source to keep strict Swift builds unambiguous.
-  #if canImport(Darwin)
-  private static let fileTypeMask = mode_t(Darwin.S_IFMT)
-  private static let directoryType = mode_t(Darwin.S_IFDIR)
-  private static let regularFileType = mode_t(Darwin.S_IFREG)
-  #else
-  private static let fileTypeMask = mode_t(Glibc.S_IFMT)
-  private static let directoryType = mode_t(Glibc.S_IFDIR)
-  private static let regularFileType = mode_t(Glibc.S_IFREG)
-  #endif
   private enum Diagnostic: String {
     case invalidFrame = "invalid-frame"
     case invalidMessage = "invalid-message"
@@ -67,6 +56,9 @@ struct PDFMagicNativeMessagingHost {
   private static let idleTimeoutSeconds: TimeInterval = 10
   private static let frameTimeoutSeconds: TimeInterval = 5
   private static let responseTimeoutSeconds: TimeInterval = 5
+  // One overall limit per request, including idle, frame, dispatch and reply.
+  // Individual transport deadlines remain more restrictive where applicable.
+  private static let requestTimeoutSeconds: TimeInterval = 15
 
   // Keep a separate allowlist for native message operations. A new switch
   // handler is unusable until its topic passes an explicit security review.
@@ -84,6 +76,17 @@ struct PDFMagicNativeMessagingHost {
   // Four advisory file-lock slots limit concurrent hosts for the *real* OS user.
   private static let maximumConcurrentConnections = 4
   private static let lockDirectoryName = ".pdf-magic-native-connections"
+  // CoreFoundation and POSIX both export S_IF* on Linux Swift. Select the
+  // platform-specific constants explicitly without altering lock admission.
+  #if canImport(Darwin)
+  private static let fileTypeMask = mode_t(Darwin.S_IFMT)
+  private static let directoryFileType = mode_t(Darwin.S_IFDIR)
+  private static let regularFileType = mode_t(Darwin.S_IFREG)
+  #else
+  private static let fileTypeMask = mode_t(Glibc.S_IFMT)
+  private static let directoryFileType = mode_t(Glibc.S_IFDIR)
+  private static let regularFileType = mode_t(Glibc.S_IFREG)
+  #endif
 
   private static func acquireConnectionSlot() throws -> Int32 {
     guard let account = getpwuid(getuid()) else { throw HostError.invalidMessage }
@@ -101,7 +104,7 @@ struct PDFMagicNativeMessagingHost {
     defer { close(homeFD) }
     var info = stat()
     guard fstat(homeFD, &info) == 0,
-          (info.st_mode & fileTypeMask) == directoryType,
+          (info.st_mode & fileTypeMask) == directoryFileType,
           info.st_uid == getuid() else { throw HostError.invalidMessage }
 
     // The lock directory and slots are user-owned and not accessible by
@@ -113,7 +116,7 @@ struct PDFMagicNativeMessagingHost {
     guard directoryFD >= 0 else { throw HostError.invalidMessage }
     defer { close(directoryFD) }
     guard fstat(directoryFD, &info) == 0,
-          (info.st_mode & fileTypeMask) == directoryType,
+          (info.st_mode & fileTypeMask) == directoryFileType,
           info.st_uid == getuid(),
           (info.st_mode & mode_t(0o077)) == 0 else {
       throw HostError.invalidMessage
@@ -187,14 +190,18 @@ struct PDFMagicNativeMessagingHost {
     return result
   }
 
-  private static func readFrame() throws -> Data? {
+  private static func readFrame(requestDeadline: TimeInterval) throws -> Data? {
     // Idle waiting is separate from the entire active frame deadline.
     // Dripping bytes cannot reset the deadline for the length or body.
     guard let firstByte = try readExactly(
       1, allowCleanEOF: true,
-      deadline: ProcessInfo.processInfo.systemUptime + idleTimeoutSeconds
+      deadline: min(
+        requestDeadline, ProcessInfo.processInfo.systemUptime + idleTimeoutSeconds
+      )
     ) else { return nil }
-    let deadline = ProcessInfo.processInfo.systemUptime + frameTimeoutSeconds
+    let deadline = min(
+      requestDeadline, ProcessInfo.processInfo.systemUptime + frameTimeoutSeconds
+    )
     guard let headerTail = try readExactly(
       3, allowCleanEOF: false, deadline: deadline
     ) else { throw HostError.invalidFrame }
@@ -376,7 +383,9 @@ struct PDFMagicNativeMessagingHost {
     return encoded
   }
 
-  private static func writeFrame(_ data: Data) throws {
+  private static func writeFrame(
+    _ data: Data, requestDeadline: TimeInterval
+  ) throws {
     let size = UInt32(data.count)
     var frame = Data([
       UInt8(truncatingIfNeeded: size),
@@ -385,7 +394,9 @@ struct PDFMagicNativeMessagingHost {
       UInt8(truncatingIfNeeded: size >> 24)
     ])
     frame.append(data)
-    let deadline = ProcessInfo.processInfo.systemUptime + responseTimeoutSeconds
+    let deadline = min(
+      requestDeadline, ProcessInfo.processInfo.systemUptime + responseTimeoutSeconds
+    )
     var offset = 0
     while offset < frame.count {
       try waitForIO(STDOUT_FILENO, events: Int16(POLLOUT), deadline: deadline)
@@ -402,18 +413,38 @@ struct PDFMagicNativeMessagingHost {
   }
 
   static func main() {
+    // The independent origin-validation fixture suite tests the exact
+    // browser origin rules, including its macOS home-directory requirements.
+    // Integration fixtures exercise the separate exact native caller gate.
+    // The production binary ALWAYS enforces both checks.
+    #if !NATIVE_HOST_CONNECTION_TESTING
+    guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
+    #endif
     do {
+      // Validate the exact installed native host extension identity independently
+      // of the browser's origin marker, before admitting a connection.
+      guard NativeCallerAdmission.allows(Array(CommandLine.arguments.dropFirst())) else {
+        exit(1)
+      }
       // Admit before reading any caller input or emitting any protocol bytes.
       guard let slot = try? acquireConnectionSlot() else { exit(1) }
       defer { close(slot) }
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
       var rateLimiter = NativeRequestRateLimiter()
-      while let request = try readFrame() {
+      while true {
+        let requestDeadline = ProcessInfo.processInfo.systemUptime +
+          requestTimeoutSeconds
+        guard let request = try readFrame(requestDeadline: requestDeadline) else { break }
         guard rateLimiter.allow(now: ProcessInfo.processInfo.systemUptime) else {
           throw HostError.silentRejection
         }
-        try writeFrame(response(for: request, handshakeComplete: &handshakeComplete))
+        let reply = try response(for: request, handshakeComplete: &handshakeComplete)
+        // Expiration is fatal even if a future handler performs slow work.
+        guard ProcessInfo.processInfo.systemUptime < requestDeadline else {
+          throw HostError.invalidMessage
+        }
+        try writeFrame(reply, requestDeadline: requestDeadline)
       }
     } catch HostError.silentRejection {
       exit(1)
