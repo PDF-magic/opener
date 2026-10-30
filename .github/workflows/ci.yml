@@ -1053,7 +1053,7 @@ jobs:
                   )
                   print("isolated_limits_passed=" + str(
                       completed.returncode == 0 and
-                      completed.stdout == b"limits-ready\\n").lower())
+                      completed.stdout == b"limits-ready\n").lower())
                   print("isolated_limits_exit_code=" + str(completed.returncode))
               except (OSError, subprocess.SubprocessError):
                   print("isolated_limits_probe=failed")
