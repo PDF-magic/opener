@@ -1,0 +1,69 @@
+name: Maximum macOS security regressions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Six formerly separate macOS jobs share one runner. Each regression remains
+# a separately named step; failure does not suppress later independent tests.
+jobs:
+  maximum-macos-security:
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        id: checkout
+        uses: actions/checkout@v4
+
+      # Keep this test on the runner's original Python, as before consolidation.
+      - name: Prove kernel sandbox denies user file reads and writes
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        run: python3 test-maximum-filesystem-sandbox.py -v
+
+      - name: Set up pinned Python
+        id: python
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install shared pinned PDF validation dependencies
+        id: dependencies
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+
+      - name: Verify operating-system child-process restrictions
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: python3 test-maximum-child-process-restriction.py -v
+
+      - name: Verify real isolated PDF subprocess boundaries
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: python3 test-maximum-isolated-analysis.py -v
+
+      - name: Terminate isolated worker groups on policy limits
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: python3 test-maximum-process-termination.py -v
+
+      - name: Verify unpredictable Maximum temporary filenames and safe release
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: python3 test-maximum-temporary-output.py -v
+
+      - name: Compile the native CoreGraphics sanitized conversion worker
+        id: converter
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+
+      - name: Verify converted PDF re-enters mandatory scan before browser handoff
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.converter.outcome == 'success' }}
+        run: python3 test-maximum-generated-rescan.py -v
+
+      - name: Reject temporary PDF symlink, hardlink and directory substitutions
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.converter.outcome == 'success' }}
+        run: python3 test-maximum-temporary-output.py -v
+
+      - name: Verify random filenames, source-request association and separately scanned handoff
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.converter.outcome == 'success' }}
+        run: python3 test-maximum-safe-copy-handoff.py -v
