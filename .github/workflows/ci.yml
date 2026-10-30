@@ -365,12 +365,24 @@ jobs:
       - name: Verify passive top-frame PDF navigation detection contract
         working-directory: extensions/webextension
         run: node --test tests/pdf-navigation.test.mjs
+      - name: Verify passive privileged PDF viewer page recognition
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-privileged-viewer.test.mjs
       - name: Verify passive PDF navigation response MIME detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-response-mime.test.mjs
+      - name: Verify passive attachment disposition response detection
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-response-attachment.test.mjs
       - name: Verify PDFs served from extensionless URLs using trusted response MIME
         working-directory: extensions/webextension
         run: node --test tests/pdf-extensionless.test.mjs
+      - name: Verify passive JavaScript PDF.js viewer candidates
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-js-viewer.test.mjs
+      - name: Verify passive inline Content-Disposition response detection
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-inline-disposition.test.mjs
       - name: Verify PDF content loaded from supported blob URLs
         working-directory: extensions/webextension
         run: node --test tests/pdf-blob.test.mjs
