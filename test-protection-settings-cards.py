@@ -87,6 +87,34 @@ class ProtectionCardsTests(unittest.TestCase):
     stored = (ROOT / "test-selected-protection-profile.swift").read_text(encoding="utf-8")
     self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn", stored)
 
+  def test_maximum_save_action_is_gated_and_never_activates_unavailable_policy(self):
+    # The preview offers a real SwiftUI Button with an injectable trusted
+    # handler, but the installed Settings page cannot invent a verified PDF.
+    self.assertIn("struct MaximumSanitizedPDFSaveControl: View {", self.source)
+    control = self.source.split("struct MaximumSanitizedPDFSaveControl: View {", 1)[1].split(
+        "\nstruct ProtectionSettingsView: View {", 1)[0]
+    for marker in (
+        "let verifiedOfferAvailable: Bool",
+        "let onSaveRequested: (() -> Void)?",
+        'Button("Save Sanitized PDF")',
+        "guard verifiedOfferAvailable, let onSaveRequested else { return }",
+        "onSaveRequested()",
+        ".disabled(!verifiedOfferAvailable || onSaveRequested == nil)",
+        'accessibilityIdentifier("maximumSaveSanitizedPDFAction")',
+        'accessibilityIdentifier("maximumSaveSanitizedPDFAvailability")',
+        "fresh malware scan", "does not open the file",
+    ):
+      with self.subTest(marker=marker):
+        self.assertIn(marker, control)
+    self.assertIn("if selectedPreview == .maximum {\n                  MaximumSanitizedPDFSaveControl(", self.source)
+    self.assertIn("verifiedOfferAvailable: false,", self.source)
+    self.assertIn("onSaveRequested: nil", self.source)
+    self.assertEqual(self.source.count("MaximumSanitizedPDFSaveControl("), 1)
+    # No direct file or policy changes in a settings preview.
+    self.assertNotIn("Process(", control)
+    self.assertNotIn("FileManager", control)
+    self.assertNotIn("UserDefaults", control)
+
   def test_existing_preferences_and_native_target_remain_wired(self):
     nav = NAVIGATION.read_text(encoding="utf-8")
     project = PROJECT.read_text(encoding="utf-8")
