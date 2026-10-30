@@ -4,12 +4,27 @@ import Foundation
 // A standalone, transport-only WebExtensions native messaging process.
 // It must never scan, open, or authorize a document.
 private enum HostError: Error {
+  case invalidFrame
   case invalidMessage
 }
 
 @main
 struct PDFMagicNativeMessagingHost {
   private static let maximumFrameBytes = 16 * 1024
+  private enum Diagnostic: String {
+    case invalidFrame = "invalid-frame"
+    case invalidMessage = "invalid-message"
+    case internalError = "internal-error"
+  }
+
+  // Standard output is exclusively for length-prefixed protocol frames.
+  // Only these fixed codes may reach stderr: never serialize a thrown error,
+  // untrusted request, file path, scanner state or user preference.
+  private static func report(_ diagnostic: Diagnostic) {
+    FileHandle.standardError.write(Data(
+      ("pdf-magic-native-host: " + diagnostic.rawValue + "\n").utf8
+    ))
+  }
   private static let expectedFields: Set<String> = [
     "version", "kind", "topic", "requestId", "payload"
   ]
@@ -20,7 +35,7 @@ struct PDFMagicNativeMessagingHost {
       let chunk = FileHandle.standardInput.readData(ofLength: count - result.count)
       if chunk.isEmpty {
         if allowCleanEOF && result.isEmpty { return nil }
-        throw HostError.invalidMessage
+        throw HostError.invalidFrame
       }
       result.append(chunk)
     }
@@ -32,7 +47,7 @@ struct PDFMagicNativeMessagingHost {
     let size = header.enumerated().reduce(UInt32(0)) { result, element in
       result | (UInt32(element.element) << (8 * element.offset))
     }
-    guard size > 0 && size <= maximumFrameBytes else { throw HostError.invalidMessage }
+    guard size > 0 && size <= maximumFrameBytes else { throw HostError.invalidFrame }
     return try readExactly(Int(size), allowCleanEOF: false)
   }
 
@@ -45,7 +60,7 @@ struct PDFMagicNativeMessagingHost {
   }
 
   private static func response(for data: Data, handshakeComplete: inout Bool) throws -> Data {
-    guard let message = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+    guard let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
           Set(message.keys) == expectedFields,
           let version = message["version"] as? NSNumber,
           CFGetTypeID(version) != CFBooleanGetTypeID(),
@@ -209,8 +224,16 @@ struct PDFMagicNativeMessagingHost {
       while let request = try readFrame() {
         try writeFrame(response(for: request, handshakeComplete: &handshakeComplete))
       }
+    } catch HostError.invalidFrame {
+      report(.invalidFrame)
+      exit(1)
+    } catch HostError.invalidMessage {
+      report(.invalidMessage)
+      exit(1)
     } catch {
-      // No stderr or stdout diagnostics: native paths and user data must not leak.
+      // The failure detail is intentionally never printed: it may contain
+      // untrusted native-message data or local filesystem information.
+      report(.internalError)
       exit(1)
     }
   }

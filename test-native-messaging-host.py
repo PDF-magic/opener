@@ -137,17 +137,28 @@ class NativeMessagingHostTests(unittest.TestCase):
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           timeout=6, check=False)
 
+  def assert_diagnostics(self, completed):
+    # Success is silent. Rejected inputs only emit fixed, path-free codes on
+    # stderr; stdout must always contain exclusively native protocol frames.
+    if completed.returncode == 0:
+      self.assertEqual(completed.stderr, b"")
+    else:
+      self.assertIn(completed.stderr, (
+        b"pdf-magic-native-host: invalid-frame\n",
+        b"pdf-magic-native-host: invalid-message\n"
+      ))
+
   def test_compiled_host_is_executable(self):
     self.assertTrue(os.access(self.binary, os.X_OK))
     completed = self.run_host(b"")
     self.assertEqual(completed.returncode, 0)
     self.assertEqual(completed.stdout, b"")
-    self.assertEqual(completed.stderr, b"")
+    self.assert_diagnostics(completed)
 
   def test_liveness_is_explicitly_transport_only(self):
     result = self.run_host(frame(ping()))
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     self.assertEqual(responses(result.stdout), [{
       "version": 1, "kind": "response", "topic": "host.ping",
       "requestId": "test_1", "payload": {
@@ -184,12 +195,12 @@ class NativeMessagingHostTests(unittest.TestCase):
                                stderr=subprocess.PIPE, timeout=10, check=False)
     self.assertEqual(completed.returncode, 0, completed.stderr.decode("utf-8"))
     self.assertEqual(completed.stdout, b"")
-    self.assertEqual(completed.stderr, b"")
+    self.assert_diagnostics(completed)
 
   def test_handshake_acknowledges_version_and_echoes_client_challenge(self):
     result = self.run_host(frame(handshake()))
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     replies = responses(result.stdout)
     self.assertEqual(len(replies), 1)
     self.assert_handshake_response(replies[0])
@@ -202,7 +213,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     replies = responses(duplicate.stdout)
     self.assertEqual(len(replies), 1)
     self.assert_handshake_response(replies[0])
-    self.assertEqual(duplicate.stderr, b"")
+    self.assert_diagnostics(duplicate)
 
     # A fresh native host process has independent handshake state.
     for request in (first, second):
@@ -215,7 +226,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     result = self.run_host(frame(ping("before")) + frame(handshake()) +
                            frame(ping("after")))
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     replies = responses(result.stdout)
     self.assertEqual([r["topic"] for r in replies],
                      ["host.ping", "host.handshake", "host.ping"])
@@ -245,7 +256,7 @@ class NativeMessagingHostTests(unittest.TestCase):
         result = self.run_host(frame(message))
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
 
   def test_handshake_never_authorizes_native_pdf_actions(self):
     with tempfile.TemporaryDirectory(prefix="native-handshake-no-action-") as d:
@@ -257,26 +268,26 @@ class NativeMessagingHostTests(unittest.TestCase):
       replies = responses(result.stdout)
       self.assertEqual(len(replies), 1)
       self.assert_handshake_response(replies[0])
-      self.assertEqual(result.stderr, b"")
+      self.assert_diagnostics(result)
       self.assertFalse(sentinel.exists())
 
   def test_scan_request_requires_completed_handshake(self):
     result = self.run_host(frame(scan_request()))
     self.assertNotEqual(result.returncode, 0)
     self.assertEqual(result.stdout, b"")
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
 
     # A successful ping is not a handshake or an authorization.
     result = self.run_host(frame(ping("ping_1")) + frame(scan_request()))
     self.assertNotEqual(result.returncode, 0)
     self.assertEqual(responses(result.stdout)[0]["topic"], "host.ping")
     self.assertEqual(len(responses(result.stdout)), 1)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
 
   def test_scan_request_returns_correlated_explicit_unavailability(self):
     result = self.run_host(frame(handshake()) + frame(scan_request()))
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     replies = responses(result.stdout)
     self.assertEqual(len(replies), 2)
     self.assert_handshake_response(replies[0])
@@ -292,7 +303,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       frame(scan_request("manual_2"))
     )
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     replies = responses(result.stdout)
     self.assertEqual(len(replies), 4)
     self.assert_handshake_response(replies[0])
@@ -326,7 +337,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(request=request):
         result = self.run_host(frame(handshake()) + frame(request))
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
         replies = responses(result.stdout)
         self.assertEqual(len(replies), 1)
         self.assert_handshake_response(replies[0])
@@ -340,7 +351,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       })
       result = self.run_host(frame(handshake()) + frame(bad))
       self.assertNotEqual(result.returncode, 0)
-      self.assertEqual(result.stderr, b"")
+      self.assert_diagnostics(result)
       self.assertNotIn(str(private_file).encode(), result.stdout)
       self.assertNotIn(private_file.read_bytes(), result.stdout)
       self.assertEqual(private_file.read_bytes(),
@@ -358,7 +369,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(prefix=bool(prefix)):
         result = self.run_host(prefix + frame(scan_status()))
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
         expected = [] if not prefix else [{
           "version": 1, "kind": "response", "topic": "host.ping",
           "requestId": "live_1", "payload": {
@@ -371,7 +382,7 @@ class NativeMessagingHostTests(unittest.TestCase):
                            frame(scan_request("scan_1")) +
                            frame(scan_status("check_1", "scan_1")))
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     replies = responses(result.stdout)
     self.assertEqual(len(replies), 3)
     self.assert_handshake_response(replies[0])
@@ -394,7 +405,7 @@ class NativeMessagingHostTests(unittest.TestCase):
                 scan_status("third", "unknown")]
     result = self.run_host(b"".join(frame(m) for m in messages))
     self.assertEqual(result.returncode, 0)
-    self.assertEqual(result.stderr, b"")
+    self.assert_diagnostics(result)
     replies = responses(result.stdout)
     self.assertEqual(len(replies), len(messages))
     self.assert_handshake_response(replies[0])
@@ -440,7 +451,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(request=request):
         result = self.run_host(frame(handshake()) + frame(request))
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
         replies = responses(result.stdout)
         self.assertEqual(len(replies), 1)
         self.assert_handshake_response(replies[0])
@@ -453,14 +464,14 @@ class NativeMessagingHostTests(unittest.TestCase):
       invalid = dict(scan_status(), payload={"scanRequestId": str(sentinel)})
       refused = self.run_host(frame(handshake()) + frame(invalid))
       self.assertNotEqual(refused.returncode, 0)
-      self.assertEqual(refused.stderr, b"")
+      self.assert_diagnostics(refused)
       self.assertNotIn(str(sentinel).encode(), refused.stdout)
       self.assertNotIn(original, refused.stdout)
       self.assertEqual(sentinel.read_bytes(), original)
 
       accepted = self.run_host(frame(handshake()) + frame(scan_status()))
       self.assertEqual(accepted.returncode, 0)
-      self.assertEqual(accepted.stderr, b"")
+      self.assert_diagnostics(accepted)
       self.assertEqual(responses(accepted.stdout)[1], unavailable_status_reply())
       self.assertEqual(sentinel.read_bytes(), original)
 
@@ -469,7 +480,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(ping=bool(prefix)):
         run = self.run_host(prefix + frame(scan_result()))
         self.assertNotEqual(run.returncode, 0)
-        self.assertEqual(run.stderr, b"")
+        self.assert_diagnostics(run)
         replies = responses(run.stdout)
         self.assertEqual(len(replies), 1 if prefix else 0)
         if replies:
@@ -484,7 +495,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       frame(scan_result("result_1", "scan_1"))
     )
     self.assertEqual(run.returncode, 0)
-    self.assertEqual(run.stderr, b"")
+    self.assert_diagnostics(run)
     replies = responses(run.stdout)
     self.assertEqual(len(replies), 4)
     self.assert_handshake_response(replies[0])
@@ -506,7 +517,7 @@ class NativeMessagingHostTests(unittest.TestCase):
                 ping("still_alive"), scan_result("unknown_2", "missing")]
     run = self.run_host(b"".join(frame(m) for m in requests))
     self.assertEqual(run.returncode, 0)
-    self.assertEqual(run.stderr, b"")
+    self.assert_diagnostics(run)
     replies = responses(run.stdout)
     self.assertEqual(len(replies), len(requests))
     self.assert_handshake_response(replies[0])
@@ -519,7 +530,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     fresh = self.run_host(frame(handshake()) +
                           frame(scan_result("fresh_1", "manual_1")))
     self.assertEqual(fresh.returncode, 0)
-    self.assertEqual(fresh.stderr, b"")
+    self.assert_diagnostics(fresh)
     self.assertEqual(responses(fresh.stdout)[1],
                      unavailable_result_reply("fresh_1", "manual_1"))
 
@@ -553,7 +564,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(message=message):
         run = self.run_host(frame(handshake()) + frame(message))
         self.assertNotEqual(run.returncode, 0)
-        self.assertEqual(run.stderr, b"")
+        self.assert_diagnostics(run)
         replies = responses(run.stdout)
         self.assertEqual(len(replies), 1)
         self.assert_handshake_response(replies[0])
@@ -567,14 +578,14 @@ class NativeMessagingHostTests(unittest.TestCase):
                                                  "path": str(private_file)})
       refused = self.run_host(frame(handshake()) + frame(malformed))
       self.assertNotEqual(refused.returncode, 0)
-      self.assertEqual(refused.stderr, b"")
+      self.assert_diagnostics(refused)
       self.assertNotIn(str(private_file).encode(), refused.stdout)
       self.assertNotIn(original, refused.stdout)
       self.assertEqual(private_file.read_bytes(), original)
 
       run = self.run_host(frame(handshake()) + frame(scan_result()))
       self.assertEqual(run.returncode, 0)
-      self.assertEqual(run.stderr, b"")
+      self.assert_diagnostics(run)
       self.assertEqual(responses(run.stdout)[1], unavailable_result_reply())
       self.assertEqual(private_file.read_bytes(), original)
 
@@ -583,7 +594,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(probe=bool(prefix)):
         run = self.run_host(prefix + frame(scan_cancel()))
         self.assertNotEqual(run.returncode, 0)
-        self.assertEqual(run.stderr, b"")
+        self.assert_diagnostics(run)
         replies = responses(run.stdout)
         self.assertEqual(len(replies), 1 if prefix else 0)
         if replies:
@@ -597,7 +608,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       frame(scan_cancel("cancel_1", "scan_1"))
     )
     self.assertEqual(run.returncode, 0)
-    self.assertEqual(run.stderr, b"")
+    self.assert_diagnostics(run)
     replies = responses(run.stdout)
     self.assertEqual(len(replies), 3)
     self.assert_handshake_response(replies[0])
@@ -621,7 +632,7 @@ class NativeMessagingHostTests(unittest.TestCase):
                 scan_result("result_1", "manual_1"), ping("still_alive")]
     run = self.run_host(b"".join(frame(m) for m in messages))
     self.assertEqual(run.returncode, 0)
-    self.assertEqual(run.stderr, b"")
+    self.assert_diagnostics(run)
     replies = responses(run.stdout)
     self.assertEqual(len(replies), len(messages))
     self.assert_handshake_response(replies[0])
@@ -636,7 +647,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     fresh = self.run_host(frame(handshake()) +
                           frame(scan_cancel("fresh_1", "manual_1")))
     self.assertEqual(fresh.returncode, 0)
-    self.assertEqual(fresh.stderr, b"")
+    self.assert_diagnostics(fresh)
     self.assertEqual(responses(fresh.stdout)[1],
                      unavailable_cancel_reply("fresh_1", "manual_1"))
 
@@ -671,7 +682,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       with self.subTest(message=message):
         run = self.run_host(frame(handshake()) + frame(message))
         self.assertNotEqual(run.returncode, 0)
-        self.assertEqual(run.stderr, b"")
+        self.assert_diagnostics(run)
         replies = responses(run.stdout)
         self.assertEqual(len(replies), 1)
         self.assert_handshake_response(replies[0])
@@ -687,16 +698,48 @@ class NativeMessagingHostTests(unittest.TestCase):
       })
       refused = self.run_host(frame(handshake()) + frame(invalid))
       self.assertNotEqual(refused.returncode, 0)
-      self.assertEqual(refused.stderr, b"")
+      self.assert_diagnostics(refused)
       self.assertNotIn(str(private_file).encode(), refused.stdout)
       self.assertNotIn(original, refused.stdout)
       self.assertEqual(private_file.read_bytes(), original)
 
       accepted = self.run_host(frame(handshake()) + frame(scan_cancel()))
       self.assertEqual(accepted.returncode, 0)
-      self.assertEqual(accepted.stderr, b"")
+      self.assert_diagnostics(accepted)
       self.assertEqual(responses(accepted.stdout)[1], unavailable_cancel_reply())
       self.assertEqual(private_file.read_bytes(), original)
+
+  def test_diagnostics_are_isolated_from_framed_protocol_output(self):
+    private_path = "/private/Sensitive-Document-12345.pdf"
+    invalid = dict(ping("bad"), payload={
+      "path": private_path, "diagnostic": "DO_NOT_ECHO_THIS_VALUE"
+    })
+    result = self.run_host(frame(ping("valid")) + frame(invalid))
+    self.assertNotEqual(result.returncode, 0)
+    self.assertEqual(responses(result.stdout), [{
+      "version": 1, "kind": "response", "topic": "host.ping",
+      "requestId": "valid", "payload": {
+        "scanAvailable": False, "status": "transport-only"
+      }
+    }])
+    self.assertEqual(result.stderr, b"pdf-magic-native-host: invalid-message\n")
+    for secret in (private_path.encode(), b"DO_NOT_ECHO_THIS_VALUE", b"bad"):
+      self.assertNotIn(secret, result.stdout + result.stderr)
+
+  def test_error_channel_differentiates_invalid_frames_from_messages(self):
+    cases = [
+      (b"\\x01", b"pdf-magic-native-host: invalid-frame\n"),
+      (struct.pack("<I", 16385), b"pdf-magic-native-host: invalid-frame\n"),
+      (struct.pack("<I", 8) + b"{}", b"pdf-magic-native-host: invalid-frame\n"),
+      (struct.pack("<I", 8) + b"not json", b"pdf-magic-native-host: invalid-message\n"),
+      (frame(dict(ping(), version=2)), b"pdf-magic-native-host: invalid-message\n")
+    ]
+    for data, diagnostic in cases:
+      with self.subTest(diagnostic=diagnostic, data=data):
+        result = self.run_host(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, diagnostic)
 
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",
@@ -706,7 +749,7 @@ class NativeMessagingHostTests(unittest.TestCase):
         result = self.run_host(data)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
 
   def test_rejects_non_json_and_invalid_encoding(self):
     for raw in (b"{", b"not json", b"\xff", b"[]", b"null"):
@@ -743,7 +786,7 @@ class NativeMessagingHostTests(unittest.TestCase):
         result = self.run_host(frame(dict(ping(), version=invalid)))
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
 
     # Preserve the exact JSON tokens: Python otherwise normalizes exponent forms.
     encoded = json.dumps(ping(), separators=(",", ":")).encode("utf-8")
@@ -754,7 +797,7 @@ class NativeMessagingHostTests(unittest.TestCase):
         result = self.run_host(struct.pack("<I", len(body)) + body)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
-        self.assertEqual(result.stderr, b"")
+        self.assert_diagnostics(result)
 
   def test_browser_supplied_origin_does_not_enable_a_scan(self):
     result = self.run_host(frame(ping()), "chrome-extension://exampleid/")

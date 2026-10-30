@@ -55,8 +55,8 @@ with isolated app-bundle fixtures.
 
 The `clientNonce` must contain **16–64 ASCII letters, digits, underscores, or
 hyphens**. The host rejects a malformed nonce, unknown fields, incompatible
-version, or **second handshake on the same process**, without an error response
-or diagnostics. Reconnecting creates a new process with fresh handshake state.
+version, or **second handshake on the same process**, without an error response on stdout. The host sends a fixed, sanitized
+failure code on stderr, never echoing the rejected message. Reconnecting creates a new process with fresh handshake state.
 The confirmation means *transport readiness only*; the challenge echo and
 request ID are **not authentication, a session credential, or authorization**.
 No caller identity, host authenticity, scanner state, or trust is established.
@@ -243,3 +243,27 @@ message or user-data diagnostics. Stdout contains only framed protocol bytes.
 **Security boundary:** This executable is deliberately **not installed or registered as a browser native messaging host**. PR opener-0614 separately defines the stable host identifier; do not duplicate its identity file or documentation. Browser host manifests, allowed extension identity validation, installation, consent, packaging, native adapters, and scanner coordination are separate checklist tasks. No browser permission or existing browser script is changed here. An arbitrary process can invoke the unregistered binary: ping is *not* authentication, a scanner status, a safe-file verdict or authorization to open any PDF. Browser-supplied origin arguments cannot authorize requests. The host does not access document bytes, paths, scanner processes, quarantine settings, user configurations or launch preferences.
 
 `python3 test-native-messaging-host.py -v` compiles and exercises the actual host process with real framed input and rejection cases. The existing macOS CI build job runs this suite. Deployment must independently authorize the caller and enforce existing ClamAV freshness, document integrity, quarantine and user-selected application gates before enabling privileged operations.
+
+### Diagnostic isolation (opener-0637)
+
+The native host reserves **stdout exclusively for 4-byte length-prefixed JSON
+response frames**. No log lines, exception descriptions, paths, file contents,
+request IDs or human-readable diagnostics are ever sent through stdout.
+Successful requests, including the handshake and unavailable scan responses,
+produce no diagnostics.
+
+Invalid frame lengths and incomplete frames cause process exit 1 with
+`pdf-magic-native-host: invalid-frame` on **stderr**. Invalid JSON,
+unsupported requests, malformed fields or repeated handshakes similarly
+fail closed with `pdf-magic-native-host: invalid-message` on stderr.
+An unexpected internal failure emits only `pdf-magic-native-host: internal-error`.
+These are fixed, non-sensitive codes; the exception text and request bytes are
+never printed. No diagnostic is a scanner verdict or permission to open a PDF.
+The stderr stream is a separate error channel, not a native messaging protocol
+response and not a persistent log file. No additional scanner access, user
+preferences, or extension permissions are introduced.
+
+The compiled-host regression suite `python3 test-native-messaging-host.py -v`
+checks exact stdout framing, silence on success, stderr-only failure codes,
+and redaction of caller-supplied path-like strings. The existing macOS CI host
+test runs this suite on PRs touching the Swift native host.
