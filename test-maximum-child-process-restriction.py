@@ -126,6 +126,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
     def test_macos_renderer_command_uses_combined_restriction_profile(self):
         context = {
             "python": str(Path(sys.executable).resolve()),
+            "python_app": str(Path(sys.executable).resolve()),
             "worker": str((ROOT / "maximum_render_worker.py").resolve()),
             "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
             "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
