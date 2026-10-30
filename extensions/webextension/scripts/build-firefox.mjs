@@ -51,9 +51,9 @@ if (!workerStat.isFile() || workerStat.isSymbolicLink() ||
 }
 const workerSource = await readFile(workerPath, "utf8");
 if (workerSource !==
-    "// Inactive shared WebExtensions background entry point.\\n" +
-    "// Do not listen for messages, inspect PDFs or request native access here.\\n" +
-    "void 0;\\n") {
+    "// Inactive shared WebExtensions background entry point.\n" +
+    "// Do not listen for messages, inspect PDFs or request native access here.\n" +
+    "void 0;\n") {
   throw new Error("Firefox background entry point must remain inert");
 }
 
