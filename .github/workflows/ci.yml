@@ -295,7 +295,7 @@ jobs:
       - name: Verify Notifications settings navigation and safe informational page
         run: PYTHONPATH=. python3 tests/notifications/settings-page.py -v
       - name: Verify dedicated General settings page
-        run: PYTHONPATH=. python3 tests/general/general-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/general/settings-page.py -v
       - name: Verify persistent configuration storage location and user customizations
         run: PYTHONPATH=. python3 tests/configuration/location.py -v
       - name: Verify upgrade preserves the installed PDF browser choice
@@ -313,11 +313,11 @@ jobs:
       - name: Verify verified default PDF browser selector
         run: PYTHONPATH=. python3 tests/default/pdf-browser-selector.py -v
       - name: Verify default PDF handler indicator is read-only
-        run: PYTHONPATH=. python3 tests/general/general-pdf-handler-indicator.py -v
+        run: PYTHONPATH=. python3 tests/general/pdf-handler-indicator.py -v
       - name: Verify explicit General default PDF association action
-        run: PYTHONPATH=. python3 tests/general/general-default-pdf-action.py -v
+        run: PYTHONPATH=. python3 tests/general/default-pdf-action.py -v
       - name: Verify opt-in Restore Previous Default action
-        run: PYTHONPATH=. python3 tests/general/general-restore-previous-default.py -v
+        run: PYTHONPATH=. python3 tests/general/restore-previous-default.py -v
       - name: Verify Built-in scanner defaults appear before advanced explanations
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
