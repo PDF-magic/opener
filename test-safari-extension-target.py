@@ -38,6 +38,7 @@ def verify_built_app(app: Path) -> None:
   assert bundled.is_file(), f"Missing shared web extension manifest: {bundled}"
   assert bundled.read_bytes() == SHARED.read_bytes(), "Safari manifest diverges from shared source"
   manifest = json.loads(bundled.read_text(encoding="utf-8"))
+  assert manifest["incognito"] == "not_allowed"
   assert manifest["permissions"] == [] and manifest["host_permissions"] == []
   assert manifest["optional_permissions"] == ["downloads"]
   assert "optional_host_permissions" not in manifest
@@ -125,6 +126,7 @@ class SafariExtensionTargetTests(unittest.TestCase):
   def test_shared_manifest_is_permission_free(self):
     manifest = json.loads(SHARED.read_text(encoding="utf-8"))
     self.assertEqual(manifest["manifest_version"], 3)
+    self.assertEqual(manifest["incognito"], "not_allowed")
     self.assertEqual(manifest["name"], "PDF Magic Opener")
     self.assertEqual(manifest["permissions"], [])
     self.assertEqual(manifest["host_permissions"], [])

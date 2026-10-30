@@ -41,6 +41,8 @@ test("Firefox build includes the shared MV3 identity without new privileges", as
   assert.equal(inputWorker.toString("utf8").trimEnd().endsWith("void 0;"), true);
   assert.deepEqual(firefoxSettings, await load("firefox/gecko.json"));
   assert.equal(built.manifest_version, 3);
+  assert.equal(source.incognito, "not_allowed");
+  assert.equal(built.incognito, "not_allowed");
   assert.deepEqual(built.permissions, []);
   assert.deepEqual(built.host_permissions, []);
   assert.deepEqual(built.optional_permissions, ["downloads"]);

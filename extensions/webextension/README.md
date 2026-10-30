@@ -69,3 +69,25 @@ request on installation, extension startup, toolbar open or import; the
 background script remains inert, and the existing disabled configuration
 baseline is unchanged. This permission never enables native messaging,
 PDF scanning, content access or automatic opening.
+
+## Private/incognito browsing is excluded (opener-0593)
+
+The shared Chromium, Firefox and Safari manifests explicitly declare
+`"incognito": "not_allowed"` rather than relying on browser-specific default
+settings. This prevents enabling the extension in Chromium incognito and
+Firefox private windows where the manifest policy is supported. The Chromium
+and Firefox packaging scripts reject missing or weaker values; CI checks the
+source, both built variants and the exact Safari resource bundle. None of the
+extension's inactive PDF scan/open capabilities becomes available in a private
+window by this change.
+
+Safari has its own user-managed **Allow in Private Browsing** controls and may
+interpret manifest restrictions differently depending on browser version. The
+installed Safari extension remains inert and has no page access or PDF scanner
+bridge. This task does not attempt to override Safari's user settings or
+claim that a manifest setting substitutes for an independently reviewed
+private-window runtime guard if Safari integration is later activated.
+
+Changing this exclusion, including a user opt-in/private-window feature, needs
+separate privacy review and explicit browser-specific testing. No browser
+permissions, host origins, user settings or native scanner rules are changed.

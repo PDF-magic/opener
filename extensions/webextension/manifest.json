@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "PDF Magic Opener",
   "version": "0.1.0",
+  "incognito": "not_allowed",
   "description": "PDF Magic Opener browser integration scaffold. Not active; cannot scan, sanitize, or open PDF files.",
   "permissions": [],
   "host_permissions": [],
