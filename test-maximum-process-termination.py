@@ -173,10 +173,10 @@ class MaximumProcessTerminationTests(unittest.TestCase):
         self.assertNotIn("Users", str(result.exception))
 
     def test_macos_eperm_never_ignores_live_worker_descendants(self):
-        process = type("FakeWorker", (), {"pid": 101, "returncode": 0})()
-        zombie = subprocess.CompletedProcess(("ps",), 0, b"101 Z+\\n202 S+\\n", None)
-        living = subprocess.CompletedProcess(("ps",), 0, b"101 S+\\n", None)
-        with patch.object(guard.sys, "platform", "darwin"), \\
+        process = type("FakeWorker", (), {"pid": 101, "returncode": 0, "kill": lambda self: None})()
+        zombie = subprocess.CompletedProcess(("ps",), 0, b"101 Z+\n202 S+\n", None)
+        living = subprocess.CompletedProcess(("ps",), 0, b"101 S+\n", None)
+        with patch.object(guard.sys, "platform", "darwin"), \
                 patch.object(guard.os, "killpg",
                              side_effect=PermissionError(errno.EPERM, "private")):
             with patch.object(guard.subprocess, "run", return_value=zombie):
