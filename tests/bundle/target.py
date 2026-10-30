@@ -14,7 +14,7 @@ class BundleTargetTests(unittest.TestCase):
             self.skipTest("NSWorkspace requires macOS")
         # The existing macOS CI bundle-test step runs this integration test,
         # avoiding a second shared workflow edit during concurrent PR merges.
-        cold_start = (Path(__file__).resolve().parents[2]s[2] / "tests/browser/cold-start.py")
+        cold_start = (Path(__file__).resolve().parents[2] / "tests/browser/cold-start.py")
         result = subprocess.run(
             [sys.executable, str(cold_start), "-v"],
             capture_output=True, text=True, timeout=150,
@@ -54,7 +54,7 @@ class BundleTargetTests(unittest.TestCase):
             make_app("PDFOpener", "local.studio.brave-pdf-opener")
             pdf = root / "local document.PDF"
             pdf.write_bytes(b"%PDF-1.4\\n")
-            source = (Path(__file__).resolve().parents[2]s[2] / "launch-scanned-file.swift").read_text()
+            source = (Path(__file__).resolve().parents[2] / "launch-scanned-file.swift").read_text()
             prelude, marker, _ = source.partition(
                 "guard launch(Array(CommandLine.arguments.dropFirst())) else {"
             )

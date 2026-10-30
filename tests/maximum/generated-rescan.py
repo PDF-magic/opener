@@ -14,7 +14,7 @@ from maximum_sanitized_copy import SanitizedCopyOffer
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "maximum_generated_rescan_test_gate", (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py")
+    "maximum_generated_rescan_test_gate", (Path(__file__).resolve().parents[2] / "scan-and-open.py")
 )
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)

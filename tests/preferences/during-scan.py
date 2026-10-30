@@ -12,7 +12,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 sys.dont_write_bytecode = True
-source = (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py")
+source = (Path(__file__).resolve().parents[2] / "scan-and-open.py")
 spec = importlib.util.spec_from_file_location("scan_and_open", source)
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)

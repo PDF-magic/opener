@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-spec = importlib.util.spec_from_file_location('scan_origin', (Path(__file__).resolve().parents[2]s[2] / 'record-scan-origin.py'))
+spec = importlib.util.spec_from_file_location('scan_origin', (Path(__file__).resolve().parents[2] / 'record-scan-origin.py'))
 origin = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(origin)
 

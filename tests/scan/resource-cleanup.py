@@ -4,13 +4,13 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-source = (Path(__file__).resolve().parents[2]s[2] / "brave-pdf-opener.swift").read_text()
+source = (Path(__file__).resolve().parents[2] / "brave-pdf-opener.swift").read_text()
 marker = "@main\nstruct PDFMagicOpenerEntry {"
 assert marker in source, "Cannot isolate native helper from app entry point"
 assert "let failure = withScanErrorPipe" in source, "Native scans must use cleanup wrapper"
 
 swift = ("import Darwin\n" + source.split(marker)[0] + "\n"
-         + (Path(__file__).resolve().parents[2]s[2] / "scan-progress-view.swift").read_text()
+         + (Path(__file__).resolve().parents[2] / "scan-progress-view.swift").read_text()
          + "\n" + (Path(__file__).resolve().parents[2] / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text().replace("import Foundation\n", "")
          + """
 enum SimulatedFailure: Error {

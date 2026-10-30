@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "zero_length_scan_gate", (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py")
+    "zero_length_scan_gate", (Path(__file__).resolve().parents[2] / "scan-and-open.py")
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)

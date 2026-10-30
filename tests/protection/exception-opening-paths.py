@@ -20,7 +20,7 @@ from scanner_failure_policy import ScannerFailureKind
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "opener353_gate", (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py")
+    "opener353_gate", (Path(__file__).resolve().parents[2] / "scan-and-open.py")
 )
 gate = importlib.util.module_from_spec(spec)
 assert spec.loader is not None

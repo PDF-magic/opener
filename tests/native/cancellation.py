@@ -5,14 +5,14 @@ import os
 import subprocess
 import tempfile
 
-source = (Path(__file__).resolve().parents[2]s[2] / "brave-pdf-opener.swift").read_text()
+source = (Path(__file__).resolve().parents[2] / "brave-pdf-opener.swift").read_text()
 classes = source.split("@main\nstruct PDFMagicOpenerEntry {")[0]
-classes += "\n" + (Path(__file__).resolve().parents[2]s[2] / "scan-progress-view.swift").read_text()
+classes += "\n" + (Path(__file__).resolve().parents[2] / "scan-progress-view.swift").read_text()
 classes += "\n" + (Path(__file__).resolve().parents[2] / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text().replace("import Foundation\n", "")
 with tempfile.TemporaryDirectory(prefix="opener-native-cancel-") as directory:
     root = Path(directory)
     (root / "twilight-reading.png").write_bytes(
-        (Path(__file__).resolve().parents[2]s[2] / "twilight-reading.png").read_bytes())
+        (Path(__file__).resolve().parents[2] / "twilight-reading.png").read_bytes())
     gate = root / "gate.sh"
     started = root / "started"
     documents = [root / f"selected-{index}.pdf" for index in range(3)]

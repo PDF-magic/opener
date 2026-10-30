@@ -98,7 +98,7 @@ class BrowserColdStartTests(unittest.TestCase):
         if sys.platform != "darwin":
             self.skipTest("NSWorkspace browser cold start requires macOS")
 
-        source = (Path(__file__).resolve().parents[2]s[2] / "launch-scanned-file.swift").read_text()
+        source = (Path(__file__).resolve().parents[2] / "launch-scanned-file.swift").read_text()
         before, marker, _ = source.partition(
             "guard launch(Array(CommandLine.arguments.dropFirst())) else {"
         )

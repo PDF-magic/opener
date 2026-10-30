@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-swift = (Path(__file__).resolve().parents[2]s[2] / "launch-scanned-file.swift").read_text()
+swift = (Path(__file__).resolve().parents[2] / "launch-scanned-file.swift").read_text()
 start = swift.index("func downloadStatusAllowsOpen(")
 end = swift.index("func launch(", start)
 policy = swift[start:end]

@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "browser_download_id", (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py"))
+    "browser_download_id", (Path(__file__).resolve().parents[2] / "scan-and-open.py"))
 opener = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = opener
 spec.loader.exec_module(opener)
