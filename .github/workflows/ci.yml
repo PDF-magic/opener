@@ -365,6 +365,9 @@ jobs:
       - name: Reject unsupported data URLs before PDF candidate selection
         working-directory: extensions/webextension
         run: node --test tests/pdf-data-url.test.mjs
+      - name: Verify supported PDF link context-menu action stays fail-closed
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-link-context-menu.test.mjs
       - name: Verify passive top-frame PDF navigation detection contract
         working-directory: extensions/webextension
         run: node --test tests/pdf-navigation.test.mjs
