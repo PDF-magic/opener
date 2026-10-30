@@ -82,7 +82,7 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
       if filename == "BrowsersSettingsView.swift":
-        toggles = re.findall(r'Toggle\\("([^"]+)"', source)
+        toggles = re.findall(r'Toggle\("([^"]+)"', source)
         allowed = {
             "Show Only Warnings",
             "Show Scan Results",
