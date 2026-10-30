@@ -14,15 +14,14 @@ a Safari extension bundle identifier, or an OS executable path. Changing the
 native host name later is a compatibility-breaking protocol change and
 requires an explicit migration and review rather than silent renaming.
 
-**Not yet registered or enabled:** This file defines an identifier only. It
-is not a native messaging manifest, installation instruction, executable,
-authorization decision, host lookup or browser permission grant. No browser
-extension currently connects to this host; no `nativeMessaging` permission
-is added to the inactive WebExtensions manifests. A future separately
-reviewed integration must register platform/browser-specific host manifests,
-bind a trusted browser-extension identity through their allowed origin or
-extension allowlists, verify local registration and authenticate the
-connection. The name alone proves nothing about the host's authenticity.
+**Not registered automatically or enabled:** The opt-in [Chrome registration](chrome-registration.md)
+can generate a Chrome-compatible host manifest using a real, explicitly approved
+extension ID and absolute executable path, and install it into the per-user
+macOS Chrome location. It neither changes the inactive extension's manifest nor
+grants `nativeMessaging` permission. Browser integration, authenticated caller
+identity, trusted scanner coordination, and all other browser registrations
+remain separate tasks. The name or registration alone proves nothing about
+the host's authenticity.
 
 Native scanner signature freshness, file integrity, quarantine, verified
 opening and the user's configured PDF destination remain authoritative and

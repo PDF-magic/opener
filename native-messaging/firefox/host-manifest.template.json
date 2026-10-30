@@ -1,0 +1,9 @@
+{
+  "name": "org.pdfmagic.opener",
+  "description": "PDF Magic Opener Firefox native messaging host (development only)",
+  "path": "__PDF_MAGIC_NATIVE_HOST_ABSOLUTE_PATH__",
+  "type": "stdio",
+  "allowed_extensions": [
+    "pdf-magic-opener@example.invalid"
+  ]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Opt-in, per-user macOS native host registration for supported Chromium browsers.
 
-Requires the separately approved Chrome native-host manifest. Never creates
+Reuses the separately approved Chrome registration from opener-0639. Never creates
 extension origins, grants browser permissions, or touches PDF scanner state.
 """
 
@@ -74,19 +74,22 @@ def _check_directory_chain(home, directory):
             raise RegistrationError("registration directory is not a real directory: " + str(path))
 
 
-def register_chromium_hosts(manifest_path, home=None):
-    """Install identical manifests into every supported macOS user host location.
+def register_chromium_hosts(home=None):
+    """Extend the existing Chrome registration to other supported macOS browsers.
 
-    Preflight *all* locations first; do not replace user-customized manifests.
+    Preflight *all* destinations first; do not replace user-customized manifests.
     Same-content registrations are left untouched. No system-wide writes.
     """
-    contents = validated_manifest(manifest_path)
     home = Path(home) if home is not None else Path.home()
+    chrome_source = home / "Library" / "Application Support" / BROWSER_LOCATIONS["chrome"] / "NativeMessagingHosts" / MANIFEST_FILENAME
+    _check_directory_chain(home, chrome_source.parent)
+    contents = validated_manifest(chrome_source)
     locations = {
         browser: home / "Library" / "Application Support" / relative / "NativeMessagingHosts" / MANIFEST_FILENAME
         for browser, relative in BROWSER_LOCATIONS.items()
     }
-    targets = sorted(set(locations.values()))
+    # Chrome and Opera are already covered by the prerequisite Chrome registration.
+    targets = sorted(set(locations.values()) - {chrome_source})
     for target in targets:
         _check_directory_chain(home, target.parent)
         if target.is_symlink() or (target.exists() and not target.is_file()):
@@ -119,13 +122,11 @@ def register_chromium_hosts(manifest_path, home=None):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", type=Path, required=True,
-                        help="Absolute path to the separately approved Chromium native host manifest")
     args = parser.parse_args(argv)
     if sys.platform != "darwin":
         parser.error("actual registration is supported on macOS only")
     try:
-        paths = register_chromium_hosts(args.manifest)
+        paths = register_chromium_hosts()
     except (OSError, RegistrationError) as exc:
         parser.error(str(exc))
     for browser, path in paths.items():
