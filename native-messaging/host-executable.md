@@ -291,3 +291,23 @@ message or user-data diagnostics. Stdout contains only framed protocol bytes.
 **Security boundary:** This executable is deliberately **not installed or registered as a browser native messaging host**. PR opener-0614 separately defines the stable host identifier; do not duplicate its identity file or documentation. Browser host manifests, allowed extension identity validation, installation, consent, packaging, native adapters, and scanner coordination are separate checklist tasks. No browser permission or existing browser script is changed here. An arbitrary process can invoke the unregistered binary: ping is *not* authentication, a scanner status, a safe-file verdict or authorization to open any PDF. Browser-supplied origin arguments cannot authorize requests. The host does not access document bytes, paths, scanner processes, quarantine settings, user configurations or launch preferences.
 
 `python3 test-native-messaging-host.py -v` compiles and exercises the actual host process with real framed input and rejection cases. The existing macOS CI build job runs this suite. Deployment must independently authorize the caller and enforce existing ClamAV freshness, document integrity, quarantine and user-selected application gates before enabling privileged operations.
+
+### Executable-launch boundary (opener-0657)
+
+The native messaging host enforces an explicit fixed `approvedTopics` allowlist
+before its per-topic payload checks. Unknown requests to execute programs,
+launch shells, run processes, open applications or handle unreviewed command
+topics fail closed. Approved topics retain their exact payload validation;
+caller-supplied executable paths, process IDs, argv and shell scripts are not
+accepted. The host does not expose process-launch APIs to native messages.
+
+This is not browser authentication. A valid handshake never enables scanning.
+Existing ClamAV signature freshness, verified scan evidence, integrity,
+quarantine, opening authorization and user-configured PDF application settings
+remain separately enforced and unchanged.
+
+The existing macOS CI compiled-host suite `python3 test-native-messaging-host.py -v`
+exercises executable selection across unknown topics and approved payloads
+using a real executable canary, confirms rejection without launching it, and
+checks a fresh connection still returns truthful scan unavailability. It also
+guards `Host.swift` against common process and application-launch APIs.
