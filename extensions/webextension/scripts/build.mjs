@@ -69,9 +69,9 @@ if (!workerInfo.isFile() || workerInfo.isSymbolicLink() ||
 }
 const backgroundSource = await readFile(workerPath, "utf8");
 if (backgroundSource !==
-    "// Inactive shared WebExtensions background entry point.\\n" +
-    "// Do not listen for messages, inspect PDFs or request native access here.\\n" +
-    "export {};\\n") {
+    "// Inactive shared WebExtensions background entry point.\n" +
+    "// Do not listen for messages, inspect PDFs or request native access here.\n" +
+    "export {};\n") {
   throw new Error("Background entry point must remain inert");
 }
 

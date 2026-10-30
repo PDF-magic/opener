@@ -106,9 +106,9 @@ test("the shared Manifest V3 declares a packaged no-op background module", async
   const packagedWorker = await readFile(join(root, "dist", "background.js"), "utf8");
   assert.equal(packagedWorker, workerSource);
   assert.equal(workerSource,
-    "// Inactive shared WebExtensions background entry point.\\n" +
-    "// Do not listen for messages, inspect PDFs or request native access here.\\n" +
-    "export {};\\n"
+    "// Inactive shared WebExtensions background entry point.\n" +
+    "// Do not listen for messages, inspect PDFs or request native access here.\n" +
+    "export {};\n"
   );
 
   // Importing the packaged module has no side effects, registrations,
