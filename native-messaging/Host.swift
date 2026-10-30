@@ -279,6 +279,10 @@ struct PDFMagicNativeMessagingHost {
   }
 
   static func main() {
+    // Browser-origin arguments must match an approved, installed host manifest.
+    // The argument can be spoofed by a local process, so this is an admission
+    // check only; it must not authorize privileged actions or scanning.
+    guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
     do {
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false

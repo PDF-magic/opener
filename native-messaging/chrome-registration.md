@@ -19,6 +19,7 @@ controlled by the user, for example:
 mkdir -p "$HOME/Library/Application Support/Studio/allow-and-open"
 xcrun swiftc -O -parse-as-library -warnings-as-errors \
   native-messaging/Host.swift native-messaging/HostStatus.swift \
+  native-messaging/CallerOrigin.swift \
   -o "$HOME/Library/Application Support/Studio/allow-and-open/pdf-magic-native-host"
 ```
 
