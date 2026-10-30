@@ -2,7 +2,7 @@ import { detectPdfCandidate } from "./pdf-detection.js";
 
 // PDF.js's conventional viewer route is a useful, but unverified, hint that
 // a website's JavaScript viewer is displaying a PDF referenced by ?file=.
-// This passive classifier never inspects page state or fetches the document.
+// This passive classifier never inspects page state or fetches PDF bytes.
 const NONE = Object.freeze({
   isPdfCandidate: false, evidence: "none", authorizesOpen: false
 });
