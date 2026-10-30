@@ -365,6 +365,9 @@ jobs:
       - name: Reject unsupported data URLs before PDF candidate selection
         working-directory: extensions/webextension
         run: node --test tests/pdf-data-url.test.mjs
+      - name: Enforce explicit PDF download byte-size cap
+        working-directory: extensions/webextension
+        run: node --test tests/explicit-pdf-download-size.test.mjs
       - name: Verify opt-in explicit PDF acquisition through browser downloads
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-download-acquisition.test.mjs
