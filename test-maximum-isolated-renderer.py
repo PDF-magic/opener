@@ -423,6 +423,8 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn('(literal (param "RENDERER_SUPPORT"))', profile)
         self.assertNotIn('(subpath (param "WORKER_DIR"))', profile)
         self.assertIn('(subpath (param "PYTHON_PREFIX"))', profile)
+        # Allow root inode startup without broad private-directory reads.
+        self.assertIn('(literal "/")', profile)
         self.assertIn("(deny network*)", profile)
         self.assertIn("(deny process-fork)", profile)
         self.assertNotIn("(allow default)", profile)

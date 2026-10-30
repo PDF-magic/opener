@@ -40,6 +40,9 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (allow sysctl-read)
 (allow file-read-metadata (subpath "/"))
 (allow file-read*
+    ; Allow Python/dyld to read the single root inode for startup without
+    ; permitting recursive access to its private descendants.
+    (literal "/")
     (literal (param "PYTHON"))
     (literal (param "WORKER"))
     (literal (param "WORKER_SUPPORT"))
