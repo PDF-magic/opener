@@ -45,6 +45,26 @@ try {
   };
   context = await chromium.launchPersistentContext(profile, launchOptions);
 
+  // Vivaldi may require Developer Mode before accepting local unpacked
+  // extensions. Change it only in the temporary test profile.
+  const manager = await context.newPage();
+  await manager.goto("vivaldi://extensions", { waitUntil: "domcontentloaded" });
+  const developerMode = manager.locator("#devMode");
+  console.log("Vivaldi extension manager:", manager.url(),
+    "developer mode toggle:", await developerMode.count(),
+    "extension workers:", context.serviceWorkers().length);
+  if (await developerMode.count() !== 1) {
+    throw new Error("Vivaldi's extension Developer Mode toggle is unavailable");
+  }
+  const wasEnabled = await developerMode.evaluate((element) =>
+    element.checked === true || element.hasAttribute("checked") ||
+    element.getAttribute("aria-pressed") === "true");
+  if (!wasEnabled) {
+    await developerMode.click();
+    await context.close();
+    context = await chromium.launchPersistentContext(profile, launchOptions);
+  }
+
   const worker = context.serviceWorkers().find((entry) =>
     entry.url().startsWith("chrome-extension://")) ??
     await context.waitForEvent("serviceworker", {
