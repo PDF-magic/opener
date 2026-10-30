@@ -134,6 +134,12 @@ try:
 except BaseException as error:
     print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))
     raise SystemExit(2)
+finally:
+    # This bootstrap probe has no PDF work left to monitor at interpreter exit.
+    # The production worker keeps the watchdog active while processing input.
+    if sys.platform == 'darwin':
+        import signal
+        signal.setitimer(signal.ITIMER_REAL, 0)
 """
         completed = subprocess.run(
             [sys.executable, "-I", "-B", "-c", script, str(ROOT)],
