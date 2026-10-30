@@ -49,6 +49,9 @@ struct PDFMagicNativeMessagingHost {
           Set(message.keys) == expectedFields,
           let version = message["version"] as? NSNumber,
           CFGetTypeID(version) != CFBooleanGetTypeID(),
+          // JSON version 1 must be an integer, not 1.0 or 1e0 rounded to 1.
+          ["c", "C", "s", "S", "i", "I", "l", "L", "q", "Q"].contains(
+            String(cString: version.objCType)),
           version.intValue == 1 && version.doubleValue == 1,
           let kind = message["kind"] as? String, kind == "request",
           let topic = message["topic"] as? String, topic == "host.ping",
