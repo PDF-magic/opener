@@ -85,11 +85,12 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         toggle_names = re.findall(r'Toggle\("([^"]+)"', source)
         allowed = {
             "Show Only Warnings",
+            "Notify on Failed Scan",
             "Show Scan Results",
             "Enable Browser Download Monitoring",
             "Scan Other Supported Files",
         }
-        for required in ("Show Only Warnings", "Scan Other Supported Files",
+        for required in ("Show Only Warnings", "Notify on Failed Scan", "Scan Other Supported Files",
                          "Enable Browser Download Monitoring"):
           self.assertIn(required, toggle_names)
         self.assertEqual(len(toggle_names), len(set(toggle_names)))
