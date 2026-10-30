@@ -19,6 +19,7 @@ def validate_supplied_path(value, *, executable=False, directory=False):
   """Validate every ancestor before publishing a browser-executable path."""
   raw = os.fspath(value)
   if (not isinstance(raw, str) or not raw.startswith("/") or
+      os.path.normpath(raw) != raw or
       len(raw.encode("utf-8")) > 4096 or
       any(ord(ch) < 32 or ord(ch) == 127 for ch in raw) or
       any(part in (".", "..") for part in raw.split("/"))):

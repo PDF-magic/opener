@@ -2,10 +2,11 @@
 // This does not grant any browser-supplied PDF path permission or scan access.
 import { constants } from "node:fs";
 import { access, lstat } from "node:fs/promises";
-import { isAbsolute, join, parse, sep } from "node:path";
+import { isAbsolute, join, normalize, parse, sep } from "node:path";
 
 export function validateAbsolutePath(value) {
   if (typeof value !== "string" || !isAbsolute(value) ||
+      normalize(value) !== value || value.endsWith(sep) ||
       Buffer.byteLength(value, "utf8") > 4096 ||
       /[\x00-\x1f\x7f]/.test(value) ||
       value.split(sep).some(part => part === "." || part === "..")) {

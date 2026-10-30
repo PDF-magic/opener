@@ -23,6 +23,29 @@ CHROME_ID = re.compile(r"[a-p]{32}\Z", re.ASCII)
 FIREFOX_DEVELOPMENT_ID = "pdf-magic-opener@example.invalid"
 
 
+def validate_original_host_path(value):
+  """Check exact spelling and existing ancestors even after host uninstall."""
+  raw = os.fspath(value)
+  if (not isinstance(raw, str) or not raw.startswith("/") or
+      len(raw.encode("utf-8")) > 4096 or
+      os.path.normpath(raw) != raw or
+      any(ord(char) < 32 or ord(char) == 127 for char in raw) or
+      any(part in (".", "..") for part in raw.split("/"))):
+    raise ValueError("Unsafe supplied original host path")
+  current = Path("/")
+  for component in (part for part in raw.split("/") if part):
+    current /= component
+    try:
+      mode = current.lstat().st_mode
+    except FileNotFoundError:
+      break
+    except OSError as exc:
+      raise ValueError("Supplied host path is inaccessible") from exc
+    if stat.S_ISLNK(mode):
+      raise ValueError("Symlink in supplied original host path")
+  return Path(raw)
+
+
 def _expected_manifest(browser, host_path, extension_ids, development):
   if HOST_NAME != "org.pdfmagic.opener":
     raise ValueError("Unreviewed native host identity")
@@ -81,7 +104,7 @@ def unregister(host_path, *, browsers, home=None, platform=None,
   Returns removed manifest paths. Never creates directories or deletes a
   modified, substituted, or symlinked manifest. Missing registrations are no-ops.
   """
-  host = Path(host_path)
+  host = validate_original_host_path(host_path)
   home = Path.home() if home is None else Path(home)
   platform = sys.platform if platform is None else platform
   requested = list(browsers)
