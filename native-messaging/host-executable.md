@@ -313,3 +313,45 @@ message or user-data diagnostics. Stdout contains only framed protocol bytes.
 **Security boundary:** This executable is deliberately **not installed or registered as a browser native messaging host**. PR opener-0614 separately defines the stable host identifier; do not duplicate its identity file or documentation. Browser host manifests, allowed extension identity validation, installation, consent, packaging, native adapters, and scanner coordination are separate checklist tasks. No browser permission or existing browser script is changed here. An arbitrary process can invoke the unregistered binary: ping is *not* authentication, a scanner status, a safe-file verdict or authorization to open any PDF. Browser-supplied origin arguments cannot authorize requests. The host does not access document bytes, paths, scanner processes, quarantine settings, user configurations or launch preferences.
 
 `python3 test-native-messaging-host.py -v` compiles and exercises the actual host process with real framed input and rejection cases. The existing macOS CI build job runs this suite. Deployment must independently authorize the caller and enforce existing ClamAV freshness, document integrity, quarantine and user-selected application gates before enabling privileged operations.
+
+### Validate all supplied native registration paths (opener-0655)
+
+The current native messaging host **does not accept any browser-supplied PDF
+file path**. Only a trusted local coordinator with independent file-selection
+proof could add that capability. Existing `scan.request`, status, result and
+cancel contracts continue to reject file paths and never scan or open PDFs.
+
+The executable paths accepted by the current Chrome and Firefox per-user
+registrars and the read-only host discovery verifier are validated as absolute,
+canonical local paths with bounded UTF-8 length, no control characters or
+traversal components, no symlinked executable or ancestor directory, and an
+existing regular executable with OS execute permission. Home and registration
+directory paths are likewise checked before use. The uninstall helper validates
+the original exact executable path (including any existing ancestors) without
+requiring the executable to survive uninstall; it still refuses customized
+manifests and preserves unrelated user registrations.
+
+All invalid inputs fail closed. These changes do not grant any extension
+permission, authenticate a scanner, change ClamAV/quarantine policy, or modify
+PDF opening and user-selected destinations. Real PDF path admission is an
+independent prerequisite of any future privileged scan coordinator.
+
+### Executable-launch boundary (opener-0657)
+
+The native messaging host enforces an explicit fixed `approvedTopics` allowlist
+before its per-topic payload checks. Unknown requests to execute programs,
+launch shells, run processes, open applications or handle unreviewed command
+topics fail closed. Approved topics retain their exact payload validation;
+caller-supplied executable paths, process IDs, argv and shell scripts are not
+accepted. The host does not expose process-launch APIs to native messages.
+
+This is not browser authentication. A valid handshake never enables scanning.
+Existing ClamAV signature freshness, verified scan evidence, integrity,
+quarantine, opening authorization and user-configured PDF application settings
+remain separately enforced and unchanged.
+
+The existing macOS CI compiled-host suite `python3 test-native-messaging-host.py -v`
+exercises executable selection across unknown topics and approved payloads
+using a real executable canary, confirms rejection without launching it, and
+checks a fresh connection still returns truthful scan unavailability. It also
+guards `Host.swift` against common process and application-launch APIs.

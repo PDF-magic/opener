@@ -4,7 +4,8 @@
 import { constants } from "node:fs";
 import { access, lstat, link, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, platform as currentPlatform } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
+import { validateAbsolutePath, validateExistingPath } from "../path-safety.mjs";
 import { fileURLToPath } from "node:url";
 
 const directory = fileURLToPath(new URL("./", import.meta.url));
@@ -17,7 +18,7 @@ async function json(path) {
 }
 
 export function firefoxRegistrationPath({ home = homedir(), platform = currentPlatform() } = {}) {
-  if (!isAbsolute(home)) throw new Error("Home directory must be absolute");
+  validateAbsolutePath(home);
   if (platform === "darwin") {
     return join(home, "Library", "Application Support", "Mozilla", "NativeMessagingHosts");
   }
@@ -26,14 +27,7 @@ export function firefoxRegistrationPath({ home = homedir(), platform = currentPl
 }
 
 export async function firefoxHostManifest(hostPath) {
-  if (typeof hostPath !== "string" || !isAbsolute(hostPath)) {
-    throw new Error("Native host executable path must be absolute");
-  }
-  const host = await lstat(hostPath);
-  if (!host.isFile() || host.isSymbolicLink() || !(host.mode & 0o111)) {
-    throw new Error("Native host must be an executable regular file, not a symlink");
-  }
-  await access(hostPath, constants.X_OK);
+  await validateExistingPath(hostPath, { executable: true });
 
   const [identity, gecko, template] = await Promise.all([
     json(join(root, "host-identity.json")),
@@ -60,13 +54,25 @@ export async function registerFirefoxHost({ hostPath, development = false, home,
     throw new Error("Current Firefox add-on ID is development-only; pass --development explicitly");
   }
   const manifest = await firefoxHostManifest(hostPath);
-  const folder = firefoxRegistrationPath({ home, platform });
+  const baseHome = home ?? homedir();
+  const folder = firefoxRegistrationPath({ home: baseHome, platform });
+  await validateExistingPath(baseHome, { directory: true });
+  // Check each pre-existing directory, rather than only the final folder.
+  let cursor = baseHome;
+  for (const part of relative(baseHome, folder).split(sep).filter(Boolean)) {
+    cursor = join(cursor, part);
+    try {
+      const metadata = await lstat(cursor);
+      if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
+        throw new Error("Unsafe Firefox registration directory: not a real directory");
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
   const destination = join(folder, manifest.name + ".json");
   await mkdir(folder, { recursive: true, mode: 0o700 });
-  const folderInfo = await lstat(folder);
-  if (!folderInfo.isDirectory() || folderInfo.isSymbolicLink()) {
-    throw new Error("Refusing Firefox registration directory that is not a real directory");
-  }
+  await validateExistingPath(folder, { directory: true });
   const serialized = JSON.stringify(manifest, null, 2) + "\n";
   try {
     const existing = await lstat(destination);

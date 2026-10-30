@@ -60,6 +60,29 @@ class ChromeHostRegistrationTests(unittest.TestCase):
     with self.assertRaises(ValueError):
       registration.build_manifest(self.binary, [VALID_ID])
 
+  def test_rejects_traversal_control_characters_and_symlinked_host_ancestors(self):
+    parent = self.root / "real-host-folder"
+    parent.mkdir()
+    executable = parent / "host"
+    executable.write_bytes(self.binary.read_bytes())
+    executable.chmod(0o700)
+    alias = self.root / "alias-host-folder"
+    alias.symlink_to(parent, target_is_directory=True)
+    for path in (alias / "host", self.root / ".." / "host",
+                 self.root / "host\ninjection", self.root / "bad\x00host"):
+      with self.subTest(path=str(path)):
+        with self.assertRaises(ValueError):
+          registration.build_manifest(path, [VALID_ID])
+    self.assertEqual(registration.build_manifest(executable, [VALID_ID])["path"],
+                     str(executable))
+
+  def test_rejects_symlinked_home_before_creating_registration(self):
+    linked = self.root / "linked-home"
+    linked.symlink_to(self.home, target_is_directory=True)
+    with self.assertRaises(ValueError):
+      registration.register(self.binary, [VALID_ID], linked)
+    self.assertEqual(list(self.home.iterdir()), [])
+
   def test_registers_in_mac_chrome_location_with_private_permissions(self):
     target, created = registration.register(self.binary, [VALID_ID], self.home)
     self.assertTrue(created)

@@ -1028,6 +1028,74 @@ class NativeMessagingHostTests(unittest.TestCase):
       self.manifest.unlink()
       self.manifest.write_bytes(original)
 
+  def test_messages_cannot_launch_an_executable(self):
+    # Exercise the compiled binary, not a mocked JSON validator. An attacker
+    # controls messages, but cannot select a program or its arguments.
+    with tempfile.TemporaryDirectory(prefix="native-no-exec-") as directory:
+      launcher = Path(directory) / "attacker-command"
+      marker = Path(directory) / "launched"
+      launcher.write_text("#!/bin/sh\nprintf executed > '" + str(marker) + "'\n",
+                          encoding="utf-8")
+      launcher.chmod(0o700)
+      command = str(launcher)
+      attempts = [
+        dict(ping("exec_1"), topic="host.exec",
+             payload={"executable": command, "args": [str(marker)]}),
+        dict(ping("exec_2"), topic="process.launch",
+             payload={"command": command}),
+        dict(ping("exec_3"), topic="shell.run",
+             payload={"shell": "/bin/sh", "script": command}),
+        dict(ping("exec_4"), topic="scan.execute",
+             payload={"binary": command}),
+        dict(ping("exec_5"), topic="pdf.open",
+             payload={"application": command}),
+        dict(ping("exec_6"), topic="host.run",
+             payload={"path": command}),
+        dict(ping("exec_7"), topic="host.ping",
+             payload={"command": command}),
+        dict(health("exec_8"), payload={"executable": command}),
+        dict(scan_request("exec_9"), payload={
+          "intent": "user-selected-pdf", "executable": command}),
+        dict(scan_status("exec_10"), payload={
+          "scanRequestId": "scan_1", "command": command}),
+        dict(scan_result("exec_11"), payload={
+          "scanRequestId": "scan_1", "argv": [command]}),
+        dict(scan_cancel("exec_12"), payload={
+          "scanRequestId": "scan_1", "pid": os.getpid(), "signal": "SIGTERM",
+          "executable": command}),
+        dict(ping("exec_13"), topic="host.handshake", payload={
+          "clientNonce": "Client_Challenge_123456789", "command": command}),
+      ]
+      for message in attempts:
+        with self.subTest(topic=message["topic"], request=message["requestId"]):
+          run = self.run_host(frame(handshake()) + frame(message))
+          self.assertNotEqual(run.returncode, 0)
+          self.assertEqual(run.stderr, b"")
+          received = responses(run.stdout)
+          self.assertEqual(len(received), 1)
+          self.assert_handshake_response(received[0])
+          self.assertFalse(marker.exists())
+
+      # A failed command attempt cannot poison another native process.
+      recovery = self.run_host(frame(handshake()) + frame(scan_request()))
+      self.assertEqual(recovery.returncode, 0)
+      self.assertEqual(recovery.stderr, b"")
+      self.assertEqual(responses(recovery.stdout)[1], unavailable_scan_reply())
+      self.assertFalse(marker.exists())
+
+  def test_native_host_forbids_process_launch_apis(self):
+    # Guard the transport-only source against accidental execution primitives.
+    import re
+    source = SOURCE.read_text(encoding="utf-8")
+    for forbidden in (
+      r"\bProcess\s*\(", r"\bNSTask\b", r"\bposix_spawn(?:p)?\s*\(",
+      r"\bexec(?:l|le|lp|v|ve|vp|vpe)?\s*\(", r"\bsystem\s*\(",
+      r"\bpopen\s*\(", r"\bfork\s*\(", r"\bNSWorkspace\b",
+      r"\bdlopen\s*\("
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertIsNone(re.search(forbidden, source))
+
   def test_no_file_or_process_actions_from_untrusted_input(self):
     with tempfile.TemporaryDirectory(prefix="native-host-no-action-") as d:
       sentinel = Path(d) / "would-be-created"
