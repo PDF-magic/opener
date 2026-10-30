@@ -171,7 +171,7 @@ class ImageReadabilityMetricTests(unittest.TestCase):
 
     def test_is_a_fidelity_test_not_a_scanner_or_opening_control(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/maximum-sanitized-copy.yml").read_text(
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("maximum-image-readability", scanner)
