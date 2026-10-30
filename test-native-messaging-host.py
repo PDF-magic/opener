@@ -121,6 +121,25 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 
+  def test_protocol_version_must_be_integer_one(self):
+    for invalid in (0, -1, 2, 3, 1.0, True, False, "1", None):
+      with self.subTest(version=invalid):
+        result = self.run_host(frame(dict(ping(), version=invalid)))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+
+    # Preserve the exact JSON tokens: Python otherwise normalizes exponent forms.
+    encoded = json.dumps(ping(), separators=(",", ":")).encode("utf-8")
+    self.assertIn(b'"version":1', encoded)
+    for literal in (b"1e0", b"1E+0", b"1.0000000000000001"):
+      with self.subTest(literal=literal):
+        body = encoded.replace(b'"version":1', b'"version":' + literal, 1)
+        result = self.run_host(struct.pack("<I", len(body)) + body)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+
   def test_browser_supplied_origin_does_not_enable_a_scan(self):
     result = self.run_host(frame(ping()), "chrome-extension://exampleid/")
     self.assertEqual(result.returncode, 0)
