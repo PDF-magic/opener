@@ -51,5 +51,34 @@ class BrowsersSettingsPageTests(unittest.TestCase):
         self.assertNotIn(forbidden, source)
 
 
+  def test_browser_download_monitoring_toggle_is_explicit_and_inert(self):
+    source = BROWSERS.read_text(encoding="utf-8")
+    store = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text(
+        encoding="utf-8"
+    )
+    for required in (
+        'GroupBox("Browser downloads")',
+        'Toggle("Enable Browser Download Monitoring", isOn: Binding(',
+        'accessibilityIdentifier("enableBrowserDownloadMonitoringToggle")',
+        'accessibilityIdentifier("browserDownloadsSection")',
+        "BrowserDownloadMonitoringPreference.save(enabled)",
+        "BrowserDownloadMonitoringPreference.isEnabled()",
+        "Browser download monitoring is not active",
+        "Browser permissions must be granted separately",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, source)
+    self.assertIn('static let key = "downloadMonitoringEnabled"', store)
+    self.assertIn("CFGetTypeID(value) == CFBooleanGetTypeID()", store)
+    for forbidden in ("permissions.request", "download.onCreated", "downloads.open",
+                      "nativeMessaging", "sendNativeMessage", "scan-and-open"):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, source)
+    background = (ROOT / "extensions/webextension/src/background.js").read_text(
+        encoding="utf-8"
+    )
+    self.assertTrue(background.strip().endswith("void 0;"))
+
+
 if __name__ == "__main__":
   unittest.main()
