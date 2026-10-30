@@ -126,6 +126,28 @@ struct PDFMagicNativeMessagingHost {
         "scanVerified": false,
         "authorizesOpen": false
       ]
+    case "scan.result":
+      // The standalone host has no verified scan records or trusted scanner
+      // coordinator. A correlated result query must never manufacture a
+      // clean/malware/error verdict or imply that PDF opening is permitted.
+      guard handshakeComplete,
+            let resultQuery = message["payload"] as? [String: Any],
+            resultQuery.count == 1,
+            let scanRequestId = resultQuery["scanRequestId"] as? String,
+            isValidRequestId(scanRequestId) else {
+        throw HostError.invalidMessage
+      }
+      // Even a matching scan.request ID was rejected as unavailable; the
+      // host does not store job identities or observe scanner subprocesses.
+      payload = [
+        "scanRequestId": scanRequestId,
+        "status": "unavailable",
+        "reason": "trusted-scan-coordinator-required",
+        "result": NSNull(),
+        "scanCompleted": false,
+        "scanVerified": false,
+        "authorizesOpen": false
+      ]
     default:
       throw HostError.invalidMessage
     }
