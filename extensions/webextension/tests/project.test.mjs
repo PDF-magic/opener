@@ -23,7 +23,7 @@ test("the shared project is a private dependency-free Node package", async () =>
 test("the common Manifest V3 scaffold has no browser or host privileges", async () => {
   const manifest = await load("manifest.json");
   assert.deepEqual(Object.keys(manifest).sort(), [
-    "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+    "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
   ]);
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
@@ -31,7 +31,7 @@ test("the common Manifest V3 scaffold has no browser or host privileges", async 
   assert.deepEqual(manifest.permissions, []);
   assert.deepEqual(manifest.host_permissions, []);
   for (const forbidden of [
-    "background", "content_scripts", "externally_connectable", "nativeMessaging",
+    "content_scripts", "externally_connectable", "nativeMessaging",
     "web_accessible_resources", "action", "optional_permissions", "optional_host_permissions"
   ]) {
     assert.equal(manifest[forbidden], undefined);
@@ -91,4 +91,29 @@ test("the manifest identifies four actual portable PNG icon sizes", async () => 
     }
     assert.ok(colors.size >= 3, "icons contain distinguishable artwork colors");
   }
+});
+
+test("the shared Manifest V3 declares a packaged no-op background module", async () => {
+  const manifest = await load("manifest.json");
+  const builtManifest = await load("dist/manifest.json");
+  assert.deepEqual(manifest.background, {
+    service_worker: "background.js",
+    type: "module"
+  });
+  assert.deepEqual(builtManifest.background, manifest.background);
+
+  const workerSource = await readFile(join(root, "src", "background.js"), "utf8");
+  const packagedWorker = await readFile(join(root, "dist", "background.js"), "utf8");
+  assert.equal(packagedWorker, workerSource);
+  assert.equal(workerSource,
+    "// Inactive shared WebExtensions background entry point.\\n" +
+    "// Do not listen for messages, inspect PDFs or request native access here.\\n" +
+    "export {};\\n"
+  );
+
+  // Importing the packaged module has no side effects, registrations,
+  // browser API calls, network requests or access to native scan policy.
+  const url = new URL("../dist/background.js", import.meta.url);
+  const imported = await import(url.href);
+  assert.deepEqual(Object.keys(imported), []);
 });
