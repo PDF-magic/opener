@@ -322,6 +322,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
+      - name: Verify Show Scan Results display preference remains optional and safe
+        run: PYTHONPATH=. python3 tests/general/download-scan-results.py -v
       - name: Verify explanatory help for technical preferences
         run: PYTHONPATH=. python3 tests/general/technical-preferences-help.py -v
       - name: Verify Extensions and Integrations settings page
@@ -691,6 +693,10 @@ jobs:
           assert "CFBundleDocumentTypes" not in info
           ABOUT_PLIST
           cmp LICENSE "$app/Contents/Resources/LICENSE"
+      - name: Verify isolated download scan-result display preference
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-scan-results.swift -o "$RUNNER_TEMP/TestDownloadScanResults"
+          "$RUNNER_TEMP/TestDownloadScanResults"
       - name: Verify opt-in successful scan notifications in isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"

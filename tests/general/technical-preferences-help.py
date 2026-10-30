@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import unittest
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "PDFMagicOpenerApp"
@@ -70,12 +71,25 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # scanner-parameter editor or bypass. Forbid every other button.
         if filename == "AdvancedScanningSettingsView.swift" and term == "Button(":
           continue
+        # Browsers may expose only the explicitly scoped download toggles.
+        if filename == "BrowsersSettingsView.swift" and term == "Toggle(":
+          continue
         # Updates now has two explicit, user-initiated actions; keep all
         # scanner bypass and settings mutation prohibitions intact.
         if filename == "UpdatesSettingsView.swift" and term in ("Button(", "Process(", "URLSession"):
           continue
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
+      if filename == "BrowsersSettingsView.swift":
+        toggle_names = re.findall(r'Toggle\("([^"]+)"', source)
+        allowed = {
+            "Show Scan Results",
+            "Enable Browser Download Monitoring",
+            "Scan Other Supported Files",
+        }
+        self.assertIn("Show Scan Results", toggle_names)
+        self.assertEqual(len(toggle_names), len(set(toggle_names)))
+        self.assertFalse(set(toggle_names) - allowed)
       if filename == "AdvancedScanningSettingsView.swift":
         self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
         self.assertIn('Button("Cancel", role: .cancel)', source)
