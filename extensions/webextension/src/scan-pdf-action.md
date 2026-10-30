@@ -21,11 +21,14 @@ is clean, or that opening is permitted. Errors return generic, path-free
 \`unavailable\` results. Merely setting configuration defaults, detecting a
 PDF candidate or observing a browser download cannot enable native scanning.
 
-The browser toolbar popup belongs to opener-0577's independent PR #371,
-stacked on opener-0576's PR #369. That popup currently has no scanner bridge;
-a real \`Scan PDF\` control must remain disabled until a trustworthy, reviewed
-native request path is connected. This action module does not alter manifest
-permissions, turn on downloads listeners, install a native host or open PDFs.
+The browser toolbar popup now displays a permanently disabled **Scan PDF**
+button with a visible, screen-reader-associated explanation that no verified
+native scanner is connected (opener-0592). The popup stays static, with no
+scripts, native host or scanner bridge. Its packaging validator rejects
+enabled buttons, altered accessibility state or injected interactions.
+A future enabled scan action requires a separately reviewed trusted native
+request path, permission checks and coordinator. This task does not activate
+scanning or change the user's application preferences.
 
 The existing WebExtensions \`npm test\` job runs
 \`tests/scan-pdf-action.test.mjs\` automatically. Tests verify manual consent,
