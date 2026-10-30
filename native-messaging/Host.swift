@@ -394,9 +394,11 @@ struct PDFMagicNativeMessagingHost {
   }
 
   static func main() {
+    // Validate a registered browser origin before receiving native messages.
+    guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
     do {
-      // Reject unregistered callers before taking a native messaging slot.
-      // Launch arguments are not proof of an authenticated scanner.
+      // Validate the exact installed native host extension identity independently
+      // of the browser's origin marker, before admitting a connection.
       guard NativeCallerAdmission.allows(Array(CommandLine.arguments.dropFirst())) else {
         exit(1)
       }
