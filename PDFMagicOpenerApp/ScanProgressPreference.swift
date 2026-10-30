@@ -430,7 +430,7 @@ enum PDFMagicPolicySettingsUpgrade {
 
 
 // Download scan-result presentation only. No native scanner, browser permission,
-// mandatory warning, blocked-file alert, quarantine or PDF destination depends
+// mandatory warning, blocked-file alert, or PDF destination depends
 // on this preference. Unverified/incomplete results must remain visible.
 enum DownloadWarningDisplayKind {
   case verifiedCleanSummary
