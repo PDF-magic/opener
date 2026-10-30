@@ -1,0 +1,37 @@
+name: Native host request-rate security
+
+on:
+  pull_request:
+    paths:
+      - "native-messaging/Host.swift"
+      - "native-messaging/HostStatus.swift"
+      - "test-native-messaging-host.py"
+      - ".github/workflows/native-request-rate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "native-messaging/Host.swift"
+      - "native-messaging/HostStatus.swift"
+      - "test-native-messaging-host.py"
+      - ".github/workflows/native-request-rate.yml"
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  compiled-host-rate:
+    name: Limit native host requests (compiled Swift)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Swift compiler
+        run: swiftc --version
+      - name: Exercise host burst, recovery and process isolation
+        run: |
+          python3 test-native-messaging-host.py \
+            NativeMessagingHostTests.test_native_request_rate_limit_closes_burst_without_responding_to_overflow \
+            NativeMessagingHostTests.test_request_rate_budget_expires_after_sliding_window \
+            NativeMessagingHostTests.test_new_host_process_has_independent_request_rate_budget -v
