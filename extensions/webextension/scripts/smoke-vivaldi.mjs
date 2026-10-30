@@ -27,7 +27,7 @@ try {
 
   // Target the actual installed Vivaldi binary, NOT bundled Chromium.
   // Xvfb permits headed extension loading even when headless flags change.
-  context = await chromium.launchPersistentContext(profile, {
+  const launchOptions = {
     executablePath,
     headless: false,
     args: [
@@ -39,7 +39,29 @@ try {
       "--disable-dev-shm-usage"
     ],
     timeout: 45000
-  });
+  };
+  context = await chromium.launchPersistentContext(profile, launchOptions);
+
+  // Chromium 2025+ requires Developer Mode for local unpacked extensions.
+  // Use only this disposable CI profile, then restart if the setting changes.
+  const manager = await context.newPage();
+  await manager.goto("vivaldi://extensions/", { waitUntil: "domcontentloaded" });
+  console.log("Vivaldi extension manager:", manager.url(),
+    "toolbar elements:", await manager.locator("extensions-toolbar").count(),
+    "developer switches:", await manager.locator("#devMode").count(),
+    "loaded workers:", context.serviceWorkers().length);
+  const developerMode = manager.locator("#devMode");
+  if (await developerMode.count() !== 1) {
+    throw new Error("Vivaldi Extensions developer-mode control is unavailable");
+  }
+  const isEnabled = await developerMode.evaluate((el) =>
+    el.checked === true || el.hasAttribute("checked") ||
+    el.getAttribute("aria-pressed") === "true");
+  if (!isEnabled) {
+    await developerMode.click();
+    await context.close();
+    context = await chromium.launchPersistentContext(profile, launchOptions);
+  }
 
   const worker = context.serviceWorkers().find((entry) =>
     entry.url().startsWith("chrome-extension://")) ??
