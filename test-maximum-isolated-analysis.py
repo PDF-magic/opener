@@ -70,7 +70,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
         pdf = sample_pdf()
         for attempt in range(12):
             with self.subTest(attempt=attempt):
-                report = isolated.run_isolated_pdf_analysis(pdf, "malformedStructures")
+                report = self.assert_isolated_worker_succeeds(pdf, "malformedStructures")
                 self.assertGreater(report.worker_pid, 0)
                 self.assertFalse(report.permits_open)
 
