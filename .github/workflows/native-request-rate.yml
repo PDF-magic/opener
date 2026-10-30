@@ -5,14 +5,14 @@ on:
     paths:
       - "native-messaging/Host.swift"
       - "native-messaging/HostStatus.swift"
-      - "test-native-messaging-host.py"
+      - "tests/native/messaging-host.py"
       - ".github/workflows/native-request-rate.yml"
   push:
     branches: [main]
     paths:
       - "native-messaging/Host.swift"
       - "native-messaging/HostStatus.swift"
-      - "test-native-messaging-host.py"
+      - "tests/native/messaging-host.py"
       - ".github/workflows/native-request-rate.yml"
   merge_group:
     types: [checks_requested]

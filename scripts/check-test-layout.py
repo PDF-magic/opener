@@ -16,4 +16,10 @@ for old, new in MAPPING.items():
     assert not filename.startswith(folder + "-"), new
     assert not (ROOT / old).exists(), f"Unorganized test in repository root: {old}"
     assert (ROOT / new).is_file(), f"Missing moved test: {new}"
+for workflow in (ROOT / ".github" / "workflows").glob("*.yml"):
+    content = workflow.read_text(encoding="utf-8")
+    for old in MAPPING:
+        assert f'- "{old}"' not in content, (
+            f"Workflow uses old moved test path: {workflow.name}: {old}"
+        )
 print(f"Validated {len(MAPPING)} categorized Python tests.")
