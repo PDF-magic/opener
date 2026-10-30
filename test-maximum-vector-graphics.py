@@ -216,7 +216,7 @@ class VectorFixtureTests(unittest.TestCase):
     def test_optional_sanitizer_and_installed_scanner_are_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         workflow = (
-            ROOT / ".github/workflows/maximum-sanitized-copy.yml"
+            ROOT / ".github/workflows/consolidated-checks.yml"
         ).read_text(encoding="utf-8")
         self.assertNotIn("maximum-vector-graphics", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

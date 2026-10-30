@@ -202,7 +202,7 @@ class MultiColumnFixtureTests(unittest.TestCase):
 
     def test_optional_converter_and_deployed_scanner_remain_unchanged(self):
         scan = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/maximum-sanitized-copy.yml").read_text(
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("maximum-multi-column-fidelity", scan)
