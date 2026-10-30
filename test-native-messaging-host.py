@@ -701,7 +701,7 @@ class NativeMessagingHostTests(unittest.TestCase):
 
   def test_partial_headers_and_bodies_expire_without_a_response(self):
     # Keep stdin open: EOF would otherwise test truncation, not a deadline.
-    stalled = [b"\\x01", struct.pack("<I", 50) + b"{}"]
+    stalled = [b"\x01", struct.pack("<I", 50) + b"{}"]
     for index, fragment in enumerate(stalled):
       with self.subTest(fragment=index):
         with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
