@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """opener-0491: bound memory use in the optional Maximum sanitizer process."""
+import errno
 import os
 import resource
 import signal
@@ -108,53 +109,34 @@ raise SystemExit(3)
         finally:
             process.wait(timeout=3)
 
-    def test_macos_process_group_rss_uses_targeted_probe(self):
-        completed = subprocess.CompletedProcess(("ps",), 0, b"120\n80\n", None)
-        with patch.object(sanitizer.subprocess, "run", return_value=completed) as probe:
+    def test_macos_process_group_rss_filters_complete_process_table(self):
+        table = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 120\n102 101 80\n103 103 999\n", None,
+        )
+        with patch.object(sanitizer.subprocess, "run", return_value=table) as probe:
             measured = sanitizer._darwin_process_group_memory_bytes(
                 101, allow_empty=False, timeout_seconds=1,
             )
         self.assertEqual(measured, 200 * 1024)
-        self.assertEqual(
-            probe.call_args.args[0], ("/bin/ps", "-o", "rss=", "-g", "101"),
-        )
-
-    def test_macos_missing_group_fallback_verifies_process_table(self):
-        targeted = subprocess.CompletedProcess(("ps",), 1, b"", None)
-        table = subprocess.CompletedProcess(
-            ("ps",), 0, b"101 101 120\n102 101 80\n103 103 999\n", None,
-        )
-        with patch.object(sanitizer.subprocess, "run", side_effect=[targeted, table]) as probe:
-            measured = sanitizer._darwin_process_group_memory_bytes(
-                101, allow_empty=True, timeout_seconds=1,
-            )
-        self.assertEqual(measured, 200 * 1024)
-        self.assertEqual(probe.call_count, 2)
-        self.assertEqual(
-            probe.call_args_list[1].args[0],
-            ("/bin/ps", "-A", "-o", "pid=,pgid=,rss="),
-        )
+        probe.assert_called_once()
+        self.assertEqual(probe.call_args.args[0], ("/bin/ps", "-A", "-o", "pid=,pgid=,rss="))
 
     def test_macos_missing_group_is_allowed_only_after_exit(self):
-        targeted = subprocess.CompletedProcess(("ps",), 1, b"", None)
         table = subprocess.CompletedProcess(("ps",), 0, b"1 1 100\n", None)
-        with patch.object(sanitizer.subprocess, "run", return_value=targeted):
+        with patch.object(sanitizer.subprocess, "run", return_value=table):
             with self.assertRaises(sanitizer.SanitizerProcessMemoryLimitError):
                 sanitizer._darwin_process_group_memory_bytes(
                     101, allow_empty=False, timeout_seconds=1,
                 )
-        with patch.object(sanitizer.subprocess, "run", side_effect=[targeted, table]):
             self.assertEqual(
                 sanitizer._darwin_process_group_memory_bytes(
                     101, allow_empty=True, timeout_seconds=1,
-                ),
-                0,
+                ), 0,
             )
 
     def test_malformed_macos_process_table_fails_closed(self):
-        targeted = subprocess.CompletedProcess(("ps",), 1, b"", None)
         malformed = subprocess.CompletedProcess(("ps",), 0, b"not a process row\n", None)
-        with patch.object(sanitizer.subprocess, "run", side_effect=[targeted, malformed]):
+        with patch.object(sanitizer.subprocess, "run", return_value=malformed):
             with self.assertRaises(sanitizer.SanitizerProcessMemoryLimitError):
                 sanitizer._darwin_process_group_memory_bytes(
                     101, allow_empty=True, timeout_seconds=1,
@@ -162,27 +144,53 @@ raise SystemExit(3)
 
     def test_macos_exit_detection_does_not_reap_a_running_process(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
-        completed = subprocess.CompletedProcess(("ps",), 0, b"S+\n", None)
-        with patch.object(sanitizer.sys, "platform", "darwin"):
-            with patch.object(sanitizer.subprocess, "run", return_value=completed) as probe:
+        if all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
+            with patch.object(sanitizer.sys, "platform", "darwin"), \
+                    patch.object(sanitizer.os, "waitid", return_value=None):
                 self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
-        self.assertEqual(
-            probe.call_args.args[0], ("/bin/ps", "-o", "stat=", "-p", "101"),
-        )
+        else:
+            completed = subprocess.CompletedProcess(("ps",), 0, b"S+\n", None)
+            with patch.object(sanitizer.sys, "platform", "darwin"), \
+                    patch.object(sanitizer.subprocess, "run", return_value=completed):
+                self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
 
     def test_macos_exit_detection_recognizes_zombie_without_reaping(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
-        completed = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
-        with patch.object(sanitizer.sys, "platform", "darwin"):
-            with patch.object(sanitizer.subprocess, "run", return_value=completed):
+        if all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
+            result = type("WaitResult", (), {"si_pid": 101})()
+            with patch.object(sanitizer.sys, "platform", "darwin"), \
+                    patch.object(sanitizer.os, "waitid", return_value=result):
+                self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+        else:
+            completed = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
+            with patch.object(sanitizer.sys, "platform", "darwin"), \
+                    patch.object(sanitizer.subprocess, "run", return_value=completed):
                 self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
 
     def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
         with patch.object(sanitizer.sys, "platform", "darwin"):
-            with patch.object(sanitizer.subprocess, "run", side_effect=OSError("private")):
+            if all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
+                with patch.object(sanitizer.os, "waitid", side_effect=OSError("private")):
+                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                        sanitizer._process_has_exited_without_reaping(process)
+            else:
+                with patch.object(sanitizer.subprocess, "run", side_effect=OSError("private")):
+                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                        sanitizer._process_has_exited_without_reaping(process)
+
+    def test_macos_eperm_cleanup_requires_no_live_group_members(self):
+        process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
+        zombie = subprocess.CompletedProcess(("ps",), 0, b"101 Z+\n201 S+\n", None)
+        living = subprocess.CompletedProcess(("ps",), 0, b"101 S+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.os, "killpg", side_effect=PermissionError(errno.EPERM, "denied")), \
+                patch.object(process, "kill", return_value=None, create=True):
+            with patch.object(sanitizer.subprocess, "run", return_value=zombie):
+                sanitizer._stop_process_group(process)
+            with patch.object(sanitizer.subprocess, "run", return_value=living):
                 with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
-                    sanitizer._process_has_exited_without_reaping(process)
+                    sanitizer._stop_process_group(process)
 
     def test_memory_overage_kills_the_process_group_and_returns_no_output(self):
         killed = []
@@ -218,7 +226,7 @@ raise SystemExit(3)
 
     def test_ci_runs_memory_checks_on_linux_and_macos(self):
         from pathlib import Path
-        workflow = (Path(__file__).parent / ".github/workflows/maximum-sanitized-copy.yml").read_text()
+        workflow = (Path(__file__).parent / ".github/workflows/ci.yml").read_text()
         self.assertIn("ubuntu-latest", workflow)
         self.assertIn("macos-latest", workflow)
         self.assertGreaterEqual(workflow.count("test-maximum-sanitizer-memory-limits.py -v"), 2)

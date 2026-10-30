@@ -107,14 +107,17 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
             self.assertIn(marker, self.view)
 
     def test_ci_includes_cross_platform_evidence_guard_and_native_build(self):
-        workflow = (ROOT / ".github/workflows/enhanced-new-install-default.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn("test-enhanced-new-install-default.py -v", workflow)
+        self.assertEqual(
+            workflow.count("python3 test-enhanced-new-install-default.py -v"), 2
+        )
         self.assertIn("ubuntu-latest", workflow)
         self.assertIn("macos-latest", workflow)
-        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("macos-build:", ci)
+        self.assertIn("macos-policy:", workflow)
+        self.assertIn("if: needs.change-scope.outputs.macos_policy == 'true'", workflow)
+        self.assertIn("macos-build:", workflow)
 
 
 if __name__ == "__main__":

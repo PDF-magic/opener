@@ -133,44 +133,13 @@ def _linux_process_group_memory_bytes(process_group_id: int, *, allow_empty: boo
 def _darwin_process_group_memory_bytes(
     process_group_id: int, *, allow_empty: bool, timeout_seconds: float,
 ) -> int:
-    """Sum macOS process-group RSS; failed or malformed probes fail closed."""
-    try:
-        deadline = time.monotonic() + max(0.001, timeout_seconds)
-        timeout = max(0.001, min(timeout_seconds, 0.25))
-        completed = subprocess.run(
-            ("/bin/ps", "-o", "rss=", "-g", str(process_group_id)),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            close_fds=True,
-            cwd="/",
-            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-            timeout=timeout,
-            check=False,
-        )
-        if completed.returncode == 0:
-            values = []
-            for line in completed.stdout.decode("ascii").splitlines():
-                if not line.strip():
-                    continue
-                value = line.strip()
-                if not value.isdecimal():
-                    raise ValueError
-                values.append(int(value))
-            if values:
-                # ps reports RSS in KiB on macOS.
-                return sum(values) * 1024
-            if not allow_empty:
-                raise OSError
-        elif not allow_empty:
-            raise OSError
+    """Measure every member of an isolated macOS process group.
 
-        # A process can exit between the wait-status check and the targeted
-        # ps snapshot. Verify that the process group is truly gone and that
-        # the monitoring command itself still works before accepting zero.
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise subprocess.TimeoutExpired("/bin/ps", timeout_seconds)
+    Use the complete kernel process table rather than macOS ps -g: the latter
+    selects a session and may return an empty result for a live process group.
+    Never assume an unobserved live group consumes zero memory.
+    """
+    try:
         completed = subprocess.run(
             ("/bin/ps", "-A", "-o", "pid=,pgid=,rss="),
             stdin=subprocess.DEVNULL,
@@ -179,7 +148,7 @@ def _darwin_process_group_memory_bytes(
             close_fds=True,
             cwd="/",
             env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-            timeout=max(0.001, min(remaining, 0.25)),
+            timeout=max(0.001, min(timeout_seconds, 2.0)),
             check=True,
         )
         total_kib = 0
@@ -197,11 +166,9 @@ def _darwin_process_group_memory_bytes(
                 raise ValueError
             total_kib += int(fields[2])
             found = True
-        if found:
-            return total_kib * 1024
-        if not allow_empty:
+        if not found and not allow_empty:
             raise OSError
-        return 0
+        return total_kib * 1024
     except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
         raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE) from None
 
@@ -329,8 +296,13 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
         return False
 
 
+def _darwin_group_is_gone_or_zombie_only(process_group_id: int) -> bool:
+    """Compatibility helper for consolidated CI and safe process cleanup."""
+    return _darwin_group_has_only_zombies(process_group_id)
+
+
 def _stop_process_group(process):
-    """Kill the whole isolated process group, including surviving descendants."""
+    """Kill the complete isolated group; fail closed if any live process remains."""
     try:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
@@ -341,12 +313,14 @@ def _stop_process_group(process):
                 pass
             except OSError:
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
-    except OSError as error:
-        if (sys.platform == "darwin" and error.errno == errno.EPERM and
-                _process_has_exited_without_reaping(process) and
-                _darwin_group_has_only_zombies(process.pid)):
-            # No live process remains to signal. The leader remains owned
-            # until the caller reaps it; other errors or survivors fail closed.
+    except OSError as exc:
+        # Zombie-only groups have nothing left to signal. Never accept an
+        # ambiguous EPERM or leave surviving descendants unsupervised.
+        if (
+            sys.platform == "darwin" and exc.errno == errno.EPERM
+            and _process_has_exited_without_reaping(process)
+            and _darwin_group_is_gone_or_zombie_only(process.pid)
+        ):
             return
         try:
             process.kill()
