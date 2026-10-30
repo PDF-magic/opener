@@ -26,7 +26,9 @@ class ShowOnlyWarningsTests(unittest.TestCase):
 
   def test_only_verified_nonwarnings_can_be_filtered(self):
     source = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
-    contract = source.split("enum DownloadWarningDisplayKind {", 1)[1]
+    contract = source.split("enum DownloadWarningDisplayKind {", 1)[1].split(
+        "// Only recognized optional scanner-limit override metadata is in scope.", 1
+    )[0]
     for expected in (
         'static let key = "showOnlyWarnings"',
         "ScanProgressPreference.suiteName",
