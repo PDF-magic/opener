@@ -291,7 +291,9 @@ jobs:
           node scripts/build-firefox.mjs
           npm test
       - name: Verify sandboxed Safari Web Extension target configuration
-        run: python3 test-safari-extension-target.py -v
+        run: |
+          python3 test-safari-extension-target.py -v
+          python3 test-browser-preferences-deep-link.py -v
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
       - name: Verify menu-bar status item decision
@@ -512,6 +514,7 @@ jobs:
         run: |
           python3 test-safari-extension-target.py -v
           python3 test-safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          python3 test-browser-preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
       - name: Exercise SwiftUI preferences at increased text sizes
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors \
