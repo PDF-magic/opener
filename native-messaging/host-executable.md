@@ -255,6 +255,25 @@ fail closed without a response for that message. Health checks can be
 repeated on the established connection and cannot mutate scan or cancellation
 state. The existing compiled-host macOS CI suite exercises these cases.
 
+### Communication deadlines (opener-0634)
+
+The standalone host enforces cumulative monotonic deadlines on its native
+messaging pipes: **10 seconds** to receive the first byte of each request
+(including the first request), **5 seconds** to finish its length prefix and
+bounded JSON frame after that first byte, and **5 seconds** to write the full
+framed response. Partial reads, slow byte-by-byte senders, blocked stdout
+pipes, repeated interrupted system calls, and idle peers cannot extend those
+deadlines. Completion of one message starts a fresh deadline for the next.
+Normal complete messages and clean EOF between frames remain supported.
+
+A timeout terminates the connection **fail-closed** with no timeout response
+or stderr diagnostics, and a new native host process starts without the
+previous handshake state. A receiver must discard any incomplete response
+frame following a failed connection; no transport success, partial message
+or timeout implies a clean scan, verified cancellation, or permission to
+open a PDF. Timeouts are fixed safety limits, not caller-configurable
+scanner settings. This host remains transport-only and unregistered.
+
 The existing `host.ping` request remains a backward-compatible, read-only
 liveness probe before or after a handshake:
 
