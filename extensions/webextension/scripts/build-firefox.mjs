@@ -10,7 +10,7 @@ const keys = Object.keys(settings.gecko ?? {}).sort();
 if (
   source.manifest_version !== 3 ||
   typeof source.name !== "string" || !source.name.trim() ||
-  !/^\\d+\\.\\d+\\.\\d+$/.test(source.version) ||
+  !/^\d+\.\d+\.\d+$/.test(source.version) ||
   source.browser_specific_settings !== undefined ||
   !Array.isArray(source.permissions) || source.permissions.length !== 0 ||
   !Array.isArray(source.host_permissions) || source.host_permissions.length !== 0 ||
