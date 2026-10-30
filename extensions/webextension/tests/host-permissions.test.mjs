@@ -63,7 +63,11 @@ test("host scope is independent of browser API permission scope", async () => {
   for (const path of manifestFiles) {
     const manifest = await load(path);
     assert.deepEqual(manifest.permissions, [], path);
-    assert.equal(Object.hasOwn(manifest, "optional_permissions"), false, path);
+    // The independent optional-downloads PR may add a downloads-only API
+    // prompt; that does not permit access to website origins.
+    if (Object.hasOwn(manifest, "optional_permissions")) {
+      assert.deepEqual(manifest.optional_permissions, ["downloads"], path);
+    }
     assert.equal(Object.hasOwn(manifest, "web_accessible_resources"), false, path);
     assert.equal(Object.hasOwn(manifest, "content_scripts"), false, path);
   }
