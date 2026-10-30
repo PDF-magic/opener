@@ -4,7 +4,8 @@ This checklist item tests the **browser-owned Downloads/History open action**, n
 PDF Magic Opener's optional "Open After Scanning" or "Download, Scan & Open"
 actions. The browser's history/open UI is an **independent opening path**:
 listening to `downloads.onChanged` or checking `downloads.search` does
-**not intercept** a user's history click. The extension currently has an
+**not intercept** a user's history click.
+History clicks are not intercepted by PDF Magic Opener. The extension currently has an
 inactive background and does not provide a universal pre-open scanner gate.
 
 ## Automated regression (CI)
