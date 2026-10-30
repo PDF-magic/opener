@@ -1,0 +1,63 @@
+name: Vivaldi WebExtension compatibility
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/vivaldi-webextension.yml"
+  push:
+    branches: [main]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/vivaldi-webextension.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vivaldi-extension-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  vivaldi-extension-smoke:
+    name: Vivaldi Stable MV3 extension smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install Vivaldi Stable from official signed APT repository
+        run: |
+          set -euo pipefail
+          curl -fsSLo "$RUNNER_TEMP/vivaldi-signing-key.asc" \
+            https://repo.vivaldi.com/archive/linux_signing_key.pub
+          gpg --batch --dearmor -o "$RUNNER_TEMP/vivaldi-signing-key.gpg" \
+            "$RUNNER_TEMP/vivaldi-signing-key.asc"
+          sudo install -m 0644 "$RUNNER_TEMP/vivaldi-signing-key.gpg" \
+            /usr/share/keyrings/vivaldi-browser.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/vivaldi-browser.gpg] https://repo.vivaldi.com/archive/deb/ stable main" |
+            sudo tee /etc/apt/sources.list.d/vivaldi-browser.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq vivaldi-stable xvfb
+          /usr/bin/vivaldi-stable --version | tee "$RUNNER_TEMP/vivaldi-version.txt"
+          grep -qi vivaldi "$RUNNER_TEMP/vivaldi-version.txt"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build and verify Vivaldi-targeted Chromium extension assets
+        working-directory: extensions/webextension
+        run: |
+          npm run build
+          npm run package:chrome
+          node --test tests/vivaldi-compatibility.test.mjs
+      - name: Launch actual Vivaldi and inspect installed MV3 extension
+        working-directory: extensions/webextension
+        env:
+          VIVALDI_BROWSER_PATH: /usr/bin/vivaldi-stable
+        timeout-minutes: 4
+        run: xvfb-run -a node scripts/smoke-vivaldi.mjs
