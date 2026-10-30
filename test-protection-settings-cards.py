@@ -92,11 +92,11 @@ class ProtectionCardsTests(unittest.TestCase):
     # exclusively a read-only preview of the unavailable Maximum tier.
     self.assertRegex(
         self.source,
-        r"if selectedPreview == \\.maximum \\{\\s*MaximumOriginalSafeCopyComparison\\(\\)")
+        r"if selectedPreview == \.maximum \{\s*MaximumOriginalSafeCopyComparison\(\)")
     self.assertEqual(self.source.count("MaximumOriginalSafeCopyComparison()"), 1)
     comparison = self.source.split(
         "private struct MaximumOriginalSafeCopyComparison: View {", 1)[1].split(
-        "\\nstruct ProtectionSettingsView: View {", 1)[0]
+        "\nstruct ProtectionSettingsView: View {", 1)[0]
     for label in (
         'Text("Original versus generated safe copy")',
         'Text("Original PDF")',
