@@ -8,7 +8,13 @@ import os
 import selectors
 import signal
 import subprocess
+import sys
 import time
+
+from maximum_sanitizer_process import (
+    _darwin_group_has_only_zombies,
+    _process_has_exited_without_reaping,
+)
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 4096
@@ -29,8 +35,14 @@ def _stop_group(process):
         # ESRCH is expected if the worker exited without any descendants.
         if process.poll() is None:
             process.kill()
-    except OSError:
-        # Do not mistake a failed group teardown for a successful inspection.
+    except OSError as error:
+        # macOS may reject signalling an all-zombie group with EPERM. This
+        # exception is safe only after validating that the owned leader has
+        # exited and that no live descendants survive in its process group.
+        if (sys.platform == "darwin" and error.errno == errno.EPERM and
+                _process_has_exited_without_reaping(process) and
+                _darwin_group_has_only_zombies(process.pid)):
+            return
         try:
             process.kill()
         except ProcessLookupError:
@@ -124,8 +136,18 @@ def run_limited_worker(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
-        if process.wait(timeout=remaining) != 0:
+        # Do not reap before stopping descendants: keeping the exited leader
+        # as a zombie retains ownership of its process-group identifier.
+        while not _process_has_exited_without_reaping(process):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+            time.sleep(min(remaining, 0.025))
+        _stop_group(process)
+        exit_code = process.wait(timeout=REAP_SECONDS)
+        if exit_code != 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+        process = None
         return bytes(output)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         raise MaximumProcessTerminationError(BLOCK_MESSAGE) from None

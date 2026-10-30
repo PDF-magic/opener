@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import maximum_sanitizer_process as sanitizer
 
@@ -21,13 +21,32 @@ ENV = {
 
 
 def run_script(source, *, timeout=2, contents=b"input", max_output_bytes=128):
-    return sanitizer.run_limited_converter(
-        (sys.executable, "-I", "-B", "-c", source),
-        contents,
-        timeout_seconds=timeout,
-        max_output_bytes=max_output_bytes,
-        environment=ENV.copy(),
-    )
+    def invoke():
+        return sanitizer.run_limited_converter(
+            (sys.executable, "-I", "-B", "-c", source),
+            contents,
+            timeout_seconds=timeout,
+            max_output_bytes=max_output_bytes,
+            environment=ENV.copy(),
+        )
+
+    # Test-only, bounded errno diagnostics: never log worker output, source
+    # content, command arguments, paths, or the sanitizer's internal error.
+    # Do not interfere with tests that explicitly spy on process-group kills.
+    if sys.platform != "darwin" or isinstance(sanitizer.os.killpg, Mock):
+        return invoke()
+    real_killpg = sanitizer.os.killpg
+
+    def annotated_killpg(pid, sig):
+        try:
+            return real_killpg(pid, sig)
+        except OSError as error:
+            print("macOS sanitizer cleanup errno=" +
+                  errno.errorcode.get(error.errno, "UNKNOWN"), file=sys.stderr)
+            raise
+
+    with patch.object(sanitizer.os, "killpg", side_effect=annotated_killpg):
+        return invoke()
 
 
 class SanitizerProcessDeadlineTests(unittest.TestCase):
@@ -230,6 +249,43 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         result = run_script("import sys; sys.stdin.buffer.read(); sys.exit(7)")
         self.assertEqual(result.returncode, 7)
         self.assertEqual(result.stdout, b"")
+
+    def test_macos_cleanup_recognizes_only_verified_zombie_groups(self):
+        # Darwin returns EPERM when a group contains only unreaped zombies.
+        # This must never permit a live descendant or an unverifiable group.
+        leader_pid = 31337
+        leader = unittest.mock.Mock(pid=leader_pid)
+        cases = (
+            (b"31337 31337 Z\n31338 31337 Z\n", True),
+            (b"31337 31337 Z\n31338 31337 S\n", False),
+            (b"31338 31337 Z\n", False),
+            (b"invalid process table", False),
+        )
+        for stdout, allowed in cases:
+            with (
+                self.subTest(allowed=allowed, output=stdout),
+                patch.object(sanitizer.sys, "platform", "darwin"),
+                patch.object(
+                    sanitizer.os, "killpg",
+                    side_effect=PermissionError(errno.EPERM, "denied"),
+                ),
+                patch.object(
+                    sanitizer, "_process_has_exited_without_reaping",
+                    return_value=True,
+                ),
+                patch.object(
+                    sanitizer.subprocess, "run",
+                    return_value=subprocess.CompletedProcess([], 0, stdout, b""),
+                ),
+            ):
+                if allowed:
+                    sanitizer._stop_process_group(leader)
+                    leader.kill.assert_not_called()
+                else:
+                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                        sanitizer._stop_process_group(leader)
+                    leader.kill.assert_called()
+                    leader.kill.reset_mock()
 
     def test_invalid_limits_fail_before_process_launch(self):
         command = (sys.executable, "-I", "-B", "-c", "pass")
