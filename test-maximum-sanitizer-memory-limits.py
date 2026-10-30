@@ -179,7 +179,8 @@ raise SystemExit(3)
                              return_value=empty) as probe:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._process_has_exited_without_reaping(process)
-            self.assertEqual(probe.call_count, 4)
+            # Four targeted probes plus the independent process-table check.
+            self.assertEqual(probe.call_count, 5)
         self.assertIsNone(process.returncode)
 
     def test_macos_exit_detection_uses_verified_fallback_snapshot(self):
