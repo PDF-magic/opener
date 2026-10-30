@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 SAFARI = ROOT / "extensions" / "safari"
 SHARED = ROOT / "extensions" / "webextension" / "manifest.json"
+SAFARI_MANIFEST = SAFARI / "manifest.json"
 BACKGROUND = ROOT / "extensions" / "webextension" / "src" / "background.js"
 ICONS = ROOT / "extensions" / "webextension" / "icons"
 TOOLBAR_TITLE = "PDF Magic Opener (not active)"
@@ -37,11 +38,11 @@ def verify_built_app(app: Path) -> None:
   executable = extension / "Contents" / "MacOS" / "PDFMagicOpenerSafari"
   assert executable.is_file(), f"Missing compiled extension executable: {executable}"
   bundled = extension / "Contents" / "Resources" / "manifest.json"
-  assert bundled.is_file(), f"Missing shared web extension manifest: {bundled}"
-  assert bundled.read_bytes() == SHARED.read_bytes(), "Safari manifest diverges from shared source"
+  assert bundled.is_file(), f"Missing Safari web extension manifest: {bundled}"
+  assert bundled.read_bytes() == SAFARI_MANIFEST.read_bytes(), "Safari manifest diverges from Safari source"
   manifest = json.loads(bundled.read_text(encoding="utf-8"))
   assert manifest["incognito"] == "not_allowed"
-  assert manifest["permissions"] == [] and manifest["host_permissions"] == []
+  assert manifest["permissions"] == ["nativeMessaging"] and manifest["host_permissions"] == []
   assert manifest["optional_permissions"] == ["downloads"]
   assert "optional_host_permissions" not in manifest
   assert manifest["background"] == {"service_worker": "background.js", "type": "module"}
@@ -101,7 +102,7 @@ class SafariExtensionTargetTests(unittest.TestCase):
       'CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;',
       'INFOPLIST_FILE = extensions/safari/Info.plist;',
       'PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;',
-      'path = extensions/webextension/manifest.json;',
+      'path = extensions/safari/manifest.json;',
       'files = (D56700000000000000000003, D56700000000000000000014, D57500000000000000000001, D57600000000000000000001, D57600000000000000000003,);',
       'fileRef = D56700000000000000000015;',
       'path = extensions/webextension/src/background.js;',
@@ -114,6 +115,19 @@ class SafariExtensionTargetTests(unittest.TestCase):
         self.assertIn(expected, project)
     self.assertEqual(project.count('productType = "com.apple.product-type.app-extension";'), 1)
     self.assertEqual(project.count('dstSubfolderSpec = 13;'), 1)
+
+  def test_safari_native_permission_is_the_only_manifest_difference(self):
+    shared = json.loads(SHARED.read_text(encoding="utf-8"))
+    safari = json.loads(SAFARI_MANIFEST.read_text(encoding="utf-8"))
+    self.assertEqual(shared["permissions"], [])
+    self.assertEqual(safari["permissions"], ["nativeMessaging"])
+    self.assertEqual({**safari, "permissions": []}, shared)
+    self.assertEqual(safari["host_permissions"], [])
+    self.assertEqual(safari["optional_permissions"], ["downloads"])
+    self.assertNotIn("externally_connectable", safari)
+    self.assertNotIn("content_scripts", safari)
+    project = PROJECT.read_text(encoding="utf-8")
+    self.assertEqual(project.count("path = extensions/safari/manifest.json;"), 1)
 
   def test_native_status_messaging_preserves_inactive_scanner_boundary(self):
     source = (SAFARI / "SafariWebExtensionHandler.swift").read_text(encoding="utf-8")

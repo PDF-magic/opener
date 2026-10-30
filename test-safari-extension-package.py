@@ -36,9 +36,8 @@ class SafariPackageTests(unittest.TestCase):
       safari.APPEX + "MacOS/PDFMagicOpenerSafari": b"extension fixture executable",
     }
     for name in safari.RESOURCES:
-      src = safari.SOURCE / (
-        name if name == "manifest.json" or name.startswith("icons/")
-        else "src/" + name)
+      src = (safari.SAFARI_MANIFEST if name == "manifest.json" else
+             safari.SOURCE / (name if name.startswith("icons/") else "src/" + name))
       self.files[safari.APPEX + "Resources/" + name] = src.read_bytes()
     for name in safari.OPTIONAL_DYLIBS:
       self.files[name] = b"generated Xcode Debug dylib fixture"
@@ -78,10 +77,31 @@ class SafariPackageTests(unittest.TestCase):
     executable.chmod(0o755)
     manifest = self.app / safari.APPEX / "Resources" / "manifest.json"
     unsafe = json.loads(manifest.read_text())
-    unsafe["permissions"] = ["nativeMessaging"]
+    unsafe["permissions"] = ["nativeMessaging", "tabs"]
     manifest.write_text(json.dumps(unsafe))
     with self.assertRaises(ValueError):
       safari.package(self.app, self.root / "output")
+
+  def test_reject_other_browser_manifest_and_extra_safari_privileges(self):
+    manifest = self.app / safari.APPEX / "Resources" / "manifest.json"
+    approved = manifest.read_bytes()
+    try:
+      manifest.write_bytes((safari.SOURCE / "manifest.json").read_bytes())
+      with self.assertRaises(ValueError):
+        safari.package(self.app, self.root / "output")
+      for mutation in (
+        {"permissions": ["nativeMessaging", "tabs"]},
+        {"permissions": []},
+        {"host_permissions": ["<all_urls>"]},
+        {"optional_permissions": ["downloads", "nativeMessaging"]},
+      ):
+        alternative = json.loads(approved)
+        alternative.update(mutation)
+        manifest.write_text(json.dumps(alternative))
+        with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+          safari.package(self.app, self.root / "output")
+    finally:
+      manifest.write_bytes(approved)
 
   def test_reject_modified_popup_or_nonexecutable_bundle(self):
     popup = self.app / safari.APPEX / "Resources" / "popup.html"

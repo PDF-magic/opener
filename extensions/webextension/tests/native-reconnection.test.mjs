@@ -4,6 +4,11 @@ import test from "node:test";
 import { createNativeReconnectController } from "../src/native-reconnection.js";
 
 const consent = { registrationVerified: true, nativePermissionGranted: true, userApproved: true };
+const approvedChromiumId = "abcdefghijklmnopabcdefghijklmnop";
+const identity = () => ({
+  browserKind: "chromium", browserRuntime: { id: approvedChromiumId },
+  approvedExtensionIds: [approvedChromiumId]
+});
 
 function fakeScheduler() {
   const tasks = new Map();
@@ -57,6 +62,7 @@ function rig(connectNative) {
   let counter = 0;
   const ports = [];
   const controller = createNativeReconnectController({
+    ...identity(),
     connectNative: connectNative ?? ((host) => {
       assert.equal(host, "org.pdfmagic.opener");
       const port = fakePort();
@@ -141,6 +147,7 @@ test("connectNative throws are privacy-safe and exhaust the same retry budget", 
   const scheduler = fakeScheduler();
   let attempts = 0;
   const controller = createNativeReconnectController({
+    ...identity(),
     connectNative() { attempts++; throw Error("/private/secret/native-host"); },
     nonceFactory: () => "Nonce_12345678901234567890",
     schedule: scheduler.schedule, cancel: scheduler.cancel
@@ -246,6 +253,7 @@ test("user stop in a connecting-state callback prevents a late native connection
   let connections = 0;
   let controller;
   controller = createNativeReconnectController({
+    ...identity(),
     connectNative() { connections++; return fakePort(); },
     onStateChange(state) { if (state === "connecting") controller.stop(); }
   });
@@ -257,6 +265,7 @@ test("user stop in a connecting-state callback prevents a late native connection
 test("invalid handshake challenges do not get sent or retried", () => {
   const { controller, ports, scheduler } = rig();
   const invalid = createNativeReconnectController({
+    ...identity(),
     connectNative() { const port = fakePort(); ports.push(port); return port; },
     nonceFactory: () => "../../private.pdf",
     schedule: scheduler.schedule, cancel: scheduler.cancel

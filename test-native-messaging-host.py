@@ -891,6 +891,38 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(result.stderr, diagnostic)
 
+  def test_extension_stream_disconnect_during_scan_request(self):
+    # The standalone host cannot start scanning: an extension closing its
+    # native messaging pipe must terminate the connection without inventing
+    # an active scan, a verdict, or permission to open a document.
+    submitted = frame(handshake()) + frame(scan_request("inflight_1"))
+    run = self.run_host(submitted)
+    self.assertEqual(run.returncode, 0)
+    self.assert_diagnostics(run)
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 2)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply("inflight_1"))
+
+    # A new process cannot inherit a handshake or any scan job identity.
+    fresh = self.run_host(frame(scan_status("late_1", "inflight_1")))
+    self.assertNotEqual(fresh.returncode, 0)
+    self.assertEqual(fresh.stdout, b"")
+    self.assert_diagnostics(fresh)
+
+  def test_extension_disconnection_mid_frame_fails_closed(self):
+    # Broken native messaging streams must not produce partial responses,
+    # stderr path leaks, or any scanner result after the last complete frame.
+    partial = frame(scan_result("late_1", "inflight_1"))[:-3]
+    run = self.run_host(frame(handshake()) + frame(scan_request("inflight_1")) +
+                        partial)
+    self.assertNotEqual(run.returncode, 0)
+    self.assert_diagnostics(run)
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 2)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply("inflight_1"))
+
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",
                  struct.pack("<I", 0), struct.pack("<I", 16385),
