@@ -21,6 +21,9 @@ struct PDFMagicNativeMessagingHost {
   private static let idleTimeoutSeconds: TimeInterval = 10
   private static let frameTimeoutSeconds: TimeInterval = 5
   private static let responseTimeoutSeconds: TimeInterval = 5
+  // One overall limit per request, including idle, frame, dispatch and reply.
+  // Individual transport deadlines remain more restrictive where applicable.
+  private static let requestTimeoutSeconds: TimeInterval = 15
   private static let expectedFields: Set<String> = [
     "version", "kind", "topic", "requestId", "payload"
   ]
@@ -72,14 +75,18 @@ struct PDFMagicNativeMessagingHost {
     return result
   }
 
-  private static func readFrame() throws -> Data? {
+  private static func readFrame(requestDeadline: TimeInterval) throws -> Data? {
     // Idle waiting is separate from the entire active frame deadline.
     // Dripping bytes cannot reset the deadline for the length or body.
     guard let firstByte = try readExactly(
       1, allowCleanEOF: true,
-      deadline: ProcessInfo.processInfo.systemUptime + idleTimeoutSeconds
+      deadline: min(
+        requestDeadline, ProcessInfo.processInfo.systemUptime + idleTimeoutSeconds
+      )
     ) else { return nil }
-    let deadline = ProcessInfo.processInfo.systemUptime + frameTimeoutSeconds
+    let deadline = min(
+      requestDeadline, ProcessInfo.processInfo.systemUptime + frameTimeoutSeconds
+    )
     guard let headerTail = try readExactly(
       3, allowCleanEOF: false, deadline: deadline
     ) else { throw HostError.invalidMessage }
@@ -261,7 +268,9 @@ struct PDFMagicNativeMessagingHost {
     return encoded
   }
 
-  private static func writeFrame(_ data: Data) throws {
+  private static func writeFrame(
+    _ data: Data, requestDeadline: TimeInterval
+  ) throws {
     let size = UInt32(data.count)
     var frame = Data([
       UInt8(truncatingIfNeeded: size),
@@ -270,7 +279,9 @@ struct PDFMagicNativeMessagingHost {
       UInt8(truncatingIfNeeded: size >> 24)
     ])
     frame.append(data)
-    let deadline = ProcessInfo.processInfo.systemUptime + responseTimeoutSeconds
+    let deadline = min(
+      requestDeadline, ProcessInfo.processInfo.systemUptime + responseTimeoutSeconds
+    )
     var offset = 0
     while offset < frame.count {
       try waitForIO(STDOUT_FILENO, events: Int16(POLLOUT), deadline: deadline)
@@ -290,8 +301,16 @@ struct PDFMagicNativeMessagingHost {
     do {
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
-      while let request = try readFrame() {
-        try writeFrame(response(for: request, handshakeComplete: &handshakeComplete))
+      while true {
+        let requestDeadline = ProcessInfo.processInfo.systemUptime +
+          requestTimeoutSeconds
+        guard let request = try readFrame(requestDeadline: requestDeadline) else { break }
+        let reply = try response(for: request, handshakeComplete: &handshakeComplete)
+        // Expiration is fatal even if a future handler performs slow work.
+        guard ProcessInfo.processInfo.systemUptime < requestDeadline else {
+          throw HostError.invalidMessage
+        }
+        try writeFrame(reply, requestDeadline: requestDeadline)
       }
     } catch {
       // No stderr or stdout diagnostics: native paths and user data must not leak.

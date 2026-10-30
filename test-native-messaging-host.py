@@ -848,6 +848,43 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertGreater(len(output), 4)
         self.assertEqual(process.stderr.read(), b"")
 
+  def test_end_to_end_native_request_deadline(self):
+    # A request can spend less than each individual 10s/5s/5s phase
+    # timeout yet exceed the shared 15s budget when its stdout is blocked.
+    # Prefill the pipe, rather than sending fake commands or altering limits.
+    read_fd, write_fd = os.pipe()
+    try:
+      os.set_blocking(write_fd, False)
+      while True:
+        try:
+          os.write(write_fd, b"x" * 4096)
+        except BlockingIOError:
+          break
+      with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                            stdout=write_fd, stderr=subprocess.PIPE) as process:
+        os.close(write_fd)
+        write_fd = None
+        started = time.monotonic()
+        time.sleep(8.5)
+        self.assertIsNone(process.poll(), "idle phase expired before 10s")
+        request = frame(ping("request_deadline"))
+        process.stdin.write(request[:1])
+        process.stdin.flush()
+        time.sleep(3.5)
+        self.assertIsNone(process.poll(), "frame expired before 5s")
+        process.stdin.write(request[1:])
+        process.stdin.flush()
+        self.assertNotEqual(process.wait(timeout=6), 0)
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed, 13.0)
+        self.assertLess(elapsed, 16.5, "request exceeded the total 15s budget")
+        self.assertEqual(process.stderr.read(), b"")
+        process.stdin.close()
+    finally:
+      if write_fd is not None:
+        os.close(write_fd)
+      os.close(read_fd)
+
   def test_extension_stream_disconnect_during_scan_request(self):
     # The standalone host cannot start scanning: an extension closing its
     # native messaging pipe must terminate the connection without inventing
