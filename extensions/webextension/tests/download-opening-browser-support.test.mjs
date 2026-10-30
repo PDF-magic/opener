@@ -145,3 +145,101 @@ test("safety guidance does not treat browser downloads.open as a scanner verdict
     "clean verdict"
   ]) assert.ok(documentation.includes(snippet), snippet);
 });
+
+function strictInterceptionRows(documentation) {
+  const marker = "## Strict pre-open interception availability (opener-0717)";
+  const start = documentation.indexOf(marker);
+  assert.notEqual(start, -1, "strict interception section must be discoverable");
+  const section = documentation.slice(start + marker.length)
+    .split("\n## What can actually be enforced?")[0];
+  return section.split("\n").filter(line =>
+    /^\| (?:Brave \(default\)|Google Chrome|Chromium|Microsoft Edge|Vivaldi|Opera|Arc|Mozilla Firefox|Apple Safari) \|/.test(line));
+}
+
+test("strict interception limitations identify all nine registry browsers exactly once", async () => {
+  const { documentation, browserRegistry } = await load();
+  const expected = [
+    "Brave (default)", "Google Chrome", "Chromium", "Microsoft Edge",
+    "Vivaldi", "Opera", "Arc", "Mozilla Firefox", "Apple Safari"
+  ];
+  const rows = strictInterceptionRows(documentation);
+  assert.equal(rows.length, expected.length);
+  for (const name of expected) {
+    const found = rows.filter(line => line.startsWith("| " + name + " | "));
+    assert.equal(found.length, 1, name);
+    assert.match(browserRegistry, /com\.brave\.Browser/);
+    assert.ok(found[0].split("|")[3].trim().length > 10, "uncaptured opening path: " + name);
+    assert.match(found[0], /OS opening|Finder/);
+    assert.doesNotMatch(found[0], /\| (?:Supported|Available|Enforced) \|/);
+  }
+});
+
+test("standard downloads API cannot guarantee strict opening interception in Chromium-family or Firefox", async () => {
+  const { documentation } = await load();
+  const map = new Map(strictInterceptionRows(documentation).map(line =>
+    [line.split("|")[1].trim(), line.split("|")[2].trim()]));
+  for (const name of [
+    "Brave (default)", "Google Chrome", "Chromium", "Microsoft Edge",
+    "Vivaldi", "Opera", "Arc", "Mozilla Firefox"
+  ]) {
+    assert.match(map.get(name), /\*\*Unavailable\*\*/, name);
+    assert.doesNotMatch(map.get(name), /strict interception supported/i);
+  }
+  assert.match(map.get("Apple Safari"), /\*\*Unverified; treat as unavailable\*\*/);
+  assert.doesNotMatch(map.get("Apple Safari"), /proven impossible|supported/i);
+});
+
+test("strict-interception definition covers browser-owned and OS bypass paths without inventing universal authority", async () => {
+  const { documentation } = await load();
+  const section = documentation.split("## Strict pre-open interception availability (opener-0717)")[1]
+    .split("\n## What can actually be enforced?")[0];
+  for (const phrase of [
+    "universal, pre-open veto",
+    "public WebExtensions downloads API",
+    "automatic-open",
+    "inline",
+    "Finder",
+    "downloads.onCreated",
+    "downloads.onChanged",
+    "downloads.onErased",
+    "downloads.onDeterminingFilename",
+    "filename selection",
+    "downloads.open",
+    "user gesture",
+    "browser's own",
+    "controlled native handoff",
+    "not browser-wide strict interception",
+    "current-file identity",
+    "quarantine",
+    "selected-application",
+    "user consent",
+    "real installed-browser tests",
+    "remain inactive"
+  ]) assert.ok(section.includes(phrase), phrase);
+  assert.match(section, /not.*a general right to veto all/i);
+  assert.match(section, /not.*proof that all possible privileged OS controls/i);
+  assert.match(section, /no Safari-specific strict/);
+});
+
+test("vendor documentation for unavailable public intercept mechanisms remains linked", async () => {
+  const { documentation } = await load();
+  const section = documentation.split("## Strict pre-open interception availability (opener-0717)")[1]
+    .split("\n## What can actually be enforced?")[0];
+  for (const url of [
+    "https://developer.chrome.com/docs/extensions/reference/api/downloads",
+    "https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/downloads",
+    "https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/downloads/open",
+    "https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support",
+    "https://developer.apple.com/documentation/safariservices/assessing-your-safari-web-extension-s-browser-compatibility"
+  ]) assert.ok(section.includes(url), url);
+});
+
+test("strict opening limitations are documentation only and change no installed extension privileges", async () => {
+  const { documentation, manifest, safariManifest, backgroundText } = await load();
+  assert.match(documentation, /current shipped\s+background and popup remain inactive/i);
+  assert.deepEqual(manifest.permissions, []);
+  assert.deepEqual(manifest.optional_permissions, ["downloads"]);
+  assert.deepEqual(manifest.host_permissions, []);
+  assert.equal(backgroundText.trimEnd().endsWith("void 0;"), true);
+  assert.equal(safariManifest.permissions.includes("downloads.open"), false);
+});
