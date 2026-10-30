@@ -1033,6 +1033,30 @@ jobs:
                   print("isolated_import_exit_code=" + str(completed.returncode))
               except (OSError, subprocess.SubprocessError):
                   print("isolated_import_probe=failed")
+              # Probe resource-limit startup using only trusted code and empty
+              # stdin. Output consists exclusively of fixed boolean markers.
+              command[-2:] = [
+                  "-c",
+                  "import sys; sys.path.insert(0, " + repr(str(root)) + "); "
+                  "from maximum_isolated_worker import _apply_limits; "
+                  "_apply_limits(); print('limits-ready')",
+              ]
+              try:
+                  completed = subprocess.run(
+                      command, input=b"", stdout=subprocess.PIPE,
+                      stderr=subprocess.DEVNULL, timeout=10, check=False,
+                      close_fds=True, start_new_session=True, cwd="/",
+                      env={"PATH": "/usr/bin:/bin", "HOME": "/nonexistent",
+                           "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
+                           "PYTHONNOUSERSITE": "1",
+                           "PDF_MAGIC_RENDER_NETWORK_SANDBOX": "seatbelt-v1"},
+                  )
+                  print("isolated_limits_passed=" + str(
+                      completed.returncode == 0 and
+                      completed.stdout == b"limits-ready\\n").lower())
+                  print("isolated_limits_exit_code=" + str(completed.returncode))
+              except (OSError, subprocess.SubprocessError):
+                  print("isolated_limits_probe=failed")
           PY
       - name: Run test-maximum-memory-limits.py
         run: python3 test-maximum-memory-limits.py -v
