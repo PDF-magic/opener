@@ -138,7 +138,7 @@ class SafariPackageTests(unittest.TestCase):
 
   def test_ci_publishes_verified_safari_package(self):
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    self.assertIn("python3 test-safari-extension-package.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-package.py -v", ci)
     self.assertIn("scripts/package_safari_extension.py --app", ci)
     self.assertIn("scripts/package_safari_extension.py --verify", ci)
     self.assertIn("pdf-magic-opener-safari-unsigned", ci)

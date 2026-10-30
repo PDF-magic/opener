@@ -60,7 +60,7 @@ class SafariExtensionActivationTests(unittest.TestCase):
 
   def test_ci_compiles_and_self_tests_the_probe_without_enabling_safari(self):
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 test-safari-extension-activation.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-activation.py -v", ci)
     self.assertIn(
       "swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift",
       ci

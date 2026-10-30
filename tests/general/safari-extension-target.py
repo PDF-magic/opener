@@ -196,8 +196,8 @@ class SafariExtensionTargetTests(unittest.TestCase):
   def test_ci_builds_and_inspects_embedded_extension(self):
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     self.assertIn("xcodebuild -project PDFMagicOpener.xcodeproj", ci)
-    self.assertIn("python3 test-safari-extension-target.py -v", ci)
-    self.assertIn("python3 test-safari-extension-target.py --verify-built-app", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-target.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-target.py --verify-built-app", ci)
     self.assertIn("CODE_SIGNING_ALLOWED=NO build", ci)
 
 
