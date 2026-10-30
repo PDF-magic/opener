@@ -44,3 +44,15 @@ Future integrations must use the established ClamAV freshness and file-integrity
 gates and verified application handoff, preserve quarantine protections, and
 respect the user's selected PDF destination. No browser extension can claim
 that a PDF was verified merely because this project builds successfully.
+
+## Conditional download monitoring permission (opener-0583)
+
+The manifest declares only `optional_permissions: ["downloads"]`, not a
+required grant. The pure `src/download-permission.js` helper may request that
+single permission **only** when a trusted user-initiated monitoring action
+passes both explicit gating flags. Denied, rejected or unsupported requests
+return false and do not register event listeners. There is no automatic
+request on installation, extension startup, toolbar open or import; the
+background script remains inert, and the existing disabled configuration
+baseline is unchanged. This permission never enables native messaging,
+PDF scanning, content access or automatic opening.

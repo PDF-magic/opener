@@ -23,7 +23,7 @@ test("the shared project is a private dependency-free Node package", async () =>
 test("the common Manifest V3 scaffold has no browser or host privileges", async () => {
   const manifest = await load("manifest.json");
   assert.deepEqual(Object.keys(manifest).sort(), [
-    "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+    "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "optional_permissions", "permissions", "version"
   ]);
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
@@ -33,9 +33,10 @@ test("the common Manifest V3 scaffold has no browser or host privileges", async 
   assert.ok(manifest.description.length <= 132);
   assert.deepEqual(manifest.permissions, []);
   assert.deepEqual(manifest.host_permissions, []);
+  assert.deepEqual(manifest.optional_permissions, ["downloads"]);
   for (const forbidden of [
     "content_scripts", "externally_connectable", "nativeMessaging",
-    "web_accessible_resources", "optional_permissions", "optional_host_permissions"
+    "web_accessible_resources", "optional_host_permissions"
   ]) {
     assert.equal(manifest[forbidden], undefined);
   }

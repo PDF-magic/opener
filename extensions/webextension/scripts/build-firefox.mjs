@@ -16,6 +16,7 @@ if (
     JSON.stringify({ service_worker: "background.js", type: "module" }) ||
   !Array.isArray(source.permissions) || source.permissions.length !== 0 ||
   !Array.isArray(source.host_permissions) || source.host_permissions.length !== 0 ||
+  JSON.stringify(source.optional_permissions) !== JSON.stringify(["downloads"]) ||
   !source.action || typeof source.action !== "object" ||
   Array.isArray(source.action) ||
   JSON.stringify(Object.keys(source.action).sort()) !==
@@ -23,7 +24,7 @@ if (
   source.action.default_title !== "PDF Magic Opener (not active)" ||
   JSON.stringify(source.action.default_icon) !== JSON.stringify(source.icons) ||
   ["content_scripts", "externally_connectable",
-   "optional_permissions", "optional_host_permissions"].some(
+   "optional_host_permissions"].some(
     (field) => Object.hasOwn(source, field)
   ) ||
   Object.keys(settings).join() !== "gecko" ||

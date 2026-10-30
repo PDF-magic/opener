@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const allowed = [
-  "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+  "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "optional_permissions", "permissions", "version"
 ];
 
 // The initial shared project must not accidentally acquire runtime privileges.
@@ -30,6 +30,7 @@ if (
   !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
   !Array.isArray(manifest.permissions) || manifest.permissions.length !== 0 ||
   !Array.isArray(manifest.host_permissions) || manifest.host_permissions.length !== 0 ||
+  JSON.stringify(manifest.optional_permissions) !== JSON.stringify(["downloads"]) ||
   !manifest.icons || typeof manifest.icons !== "object" ||
   Array.isArray(manifest.icons) ||
   JSON.stringify(Object.keys(manifest.icons)) !== JSON.stringify(["16", "32", "48", "128"])
