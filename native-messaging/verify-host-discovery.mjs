@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import { access, lstat, readFile } from "node:fs/promises";
 import { homedir, platform as currentPlatform } from "node:os";
 import { isAbsolute, join, parse, relative, resolve, sep } from "node:path";
+import { validateAbsolutePath, validateExistingPath } from "./path-safety.mjs";
 import { fileURLToPath } from "node:url";
 
 const sourceRoot = fileURLToPath(new URL("./", import.meta.url));
@@ -41,9 +42,7 @@ const unconfirmedLocations = new Set(inventory.targets
 const chromeOrigin = /^chrome-extension:\/\/[a-p]{32}\/$/;
 
 export function lookupDirectory(browser, { home, platform = "darwin", browserMajor } = {}) {
-  if (typeof home !== "string" || !isAbsolute(home)) {
-    throw new Error("A real absolute home directory is required");
-  }
+  validateAbsolutePath(home);
   if (browser === "chrome-for-testing") {
     if (platform !== "darwin" || !Number.isSafeInteger(browserMajor) || browserMajor < 1) {
       throw new Error("Chrome for Testing requires macOS and an explicitly verified browser major version");
@@ -99,7 +98,7 @@ async function validateManifest(path, browser, expectedExtensionId) {
     throw new Error("Invalid native host manifest identity, transport or executable path");
   }
   // Only metadata inspection: no executable invocation, no scanner or PDF access.
-  await requireSafeRegular(document.path, { executable: true });
+  await validateExistingPath(document.path, { executable: true });
   const firefox = browser === "firefox";
   const key = firefox ? "allowed_extensions" : "allowed_origins";
   const ids = document[key];

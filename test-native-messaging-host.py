@@ -163,6 +163,56 @@ class NativeMessagingHostTests(unittest.TestCase):
     self.assertEqual(completed.stdout, b"")
     self.assertEqual(completed.stderr, b"")
 
+  def test_native_request_rate_limit_closes_burst_without_responding_to_overflow(self):
+    # A successful handshake consumes a slot just like a read-only ping.
+    # The 65th request must never receive a response, even when well-formed.
+    burst = [handshake()] + [ping(f"burst_{index}") for index in range(63)]
+    overflow = scan_request("overflow_scan")
+    run = self.run_host(b"".join(frame(request) for request in burst + [overflow]))
+    self.assertNotEqual(run.returncode, 0)
+    self.assertEqual(run.stderr, b"")
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 64)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual([item["requestId"] for item in replies[1:]],
+                     [f"burst_{index}" for index in range(63)])
+    self.assertTrue(all(item["payload"].get("scanAvailable") is False
+                        for item in replies))
+    self.assertTrue(all(item["requestId"] != "overflow_scan" for item in replies))
+
+  def test_request_rate_budget_expires_after_sliding_window(self):
+    # Exercise the compiled host with the *same* process and handshake.
+    # A temporary output file avoids unrelated stdout pipe backpressure.
+    with tempfile.TemporaryFile() as output:
+      with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                            stdout=output, stderr=subprocess.PIPE) as process:
+        first = [handshake()] + [ping(f"early_{i}") for i in range(63)]
+        process.stdin.write(b"".join(frame(message) for message in first))
+        process.stdin.flush()
+        time.sleep(2.2)
+        process.stdin.write(frame(health("after_window")))
+        process.stdin.close()
+        process.stdin = None
+        self.assertEqual(process.wait(timeout=6), 0)
+        self.assertEqual(process.stderr.read(), b"")
+        output.seek(0)
+        replies = responses(output.read())
+        self.assertEqual(len(replies), 65)
+        self.assert_handshake_response(replies[0])
+        self.assertEqual(replies[-1], health_reply("after_window"))
+
+  def test_new_host_process_has_independent_request_rate_budget(self):
+    # Exhaustion stops the offending stream; new processes start anew.
+    burst = b"".join(frame(ping(f"ping_{i}")) for i in range(65))
+    for _ in range(2):
+      exhausted = self.run_host(burst)
+      self.assertNotEqual(exhausted.returncode, 0)
+      self.assertEqual(len(responses(exhausted.stdout)), 64)
+      self.assertEqual(exhausted.stderr, b"")
+    recovered = self.run_host(frame(handshake()) + frame(health()))
+    self.assertEqual(recovered.returncode, 0)
+    self.assertEqual(responses(recovered.stdout)[1], health_reply())
+
   def test_liveness_is_explicitly_transport_only(self):
     result = self.run_host(frame(ping()))
     self.assertEqual(result.returncode, 0)
@@ -961,6 +1011,74 @@ class NativeMessagingHostTests(unittest.TestCase):
     self.assertEqual(completed.returncode, 0, completed.stderr.decode("utf-8"))
     self.assertIn(b"fixture checks passed", completed.stdout)
     self.assertEqual(completed.stderr, b"")
+
+  def test_messages_cannot_launch_an_executable(self):
+    # Exercise the compiled binary, not a mocked JSON validator. An attacker
+    # controls messages, but cannot select a program or its arguments.
+    with tempfile.TemporaryDirectory(prefix="native-no-exec-") as directory:
+      launcher = Path(directory) / "attacker-command"
+      marker = Path(directory) / "launched"
+      launcher.write_text("#!/bin/sh\nprintf executed > '" + str(marker) + "'\n",
+                          encoding="utf-8")
+      launcher.chmod(0o700)
+      command = str(launcher)
+      attempts = [
+        dict(ping("exec_1"), topic="host.exec",
+             payload={"executable": command, "args": [str(marker)]}),
+        dict(ping("exec_2"), topic="process.launch",
+             payload={"command": command}),
+        dict(ping("exec_3"), topic="shell.run",
+             payload={"shell": "/bin/sh", "script": command}),
+        dict(ping("exec_4"), topic="scan.execute",
+             payload={"binary": command}),
+        dict(ping("exec_5"), topic="pdf.open",
+             payload={"application": command}),
+        dict(ping("exec_6"), topic="host.run",
+             payload={"path": command}),
+        dict(ping("exec_7"), topic="host.ping",
+             payload={"command": command}),
+        dict(health("exec_8"), payload={"executable": command}),
+        dict(scan_request("exec_9"), payload={
+          "intent": "user-selected-pdf", "executable": command}),
+        dict(scan_status("exec_10"), payload={
+          "scanRequestId": "scan_1", "command": command}),
+        dict(scan_result("exec_11"), payload={
+          "scanRequestId": "scan_1", "argv": [command]}),
+        dict(scan_cancel("exec_12"), payload={
+          "scanRequestId": "scan_1", "pid": os.getpid(), "signal": "SIGTERM",
+          "executable": command}),
+        dict(ping("exec_13"), topic="host.handshake", payload={
+          "clientNonce": "Client_Challenge_123456789", "command": command}),
+      ]
+      for message in attempts:
+        with self.subTest(topic=message["topic"], request=message["requestId"]):
+          run = self.run_host(frame(handshake()) + frame(message))
+          self.assertNotEqual(run.returncode, 0)
+          self.assertEqual(run.stderr, b"")
+          received = responses(run.stdout)
+          self.assertEqual(len(received), 1)
+          self.assert_handshake_response(received[0])
+          self.assertFalse(marker.exists())
+
+      # A failed command attempt cannot poison another native process.
+      recovery = self.run_host(frame(handshake()) + frame(scan_request()))
+      self.assertEqual(recovery.returncode, 0)
+      self.assertEqual(recovery.stderr, b"")
+      self.assertEqual(responses(recovery.stdout)[1], unavailable_scan_reply())
+      self.assertFalse(marker.exists())
+
+  def test_native_host_forbids_process_launch_apis(self):
+    # Guard the transport-only source against accidental execution primitives.
+    import re
+    source = SOURCE.read_text(encoding="utf-8")
+    for forbidden in (
+      r"\bProcess\s*\(", r"\bNSTask\b", r"\bposix_spawn(?:p)?\s*\(",
+      r"\bexec(?:l|le|lp|v|ve|vp|vpe)?\s*\(", r"\bsystem\s*\(",
+      r"\bpopen\s*\(", r"\bfork\s*\(", r"\bNSWorkspace\b",
+      r"\bdlopen\s*\("
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertIsNone(re.search(forbidden, source))
 
   def test_no_file_or_process_actions_from_untrusted_input(self):
     with tempfile.TemporaryDirectory(prefix="native-host-no-action-") as d:

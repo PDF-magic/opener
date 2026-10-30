@@ -257,6 +257,33 @@ fail closed without a response for that message. Health checks can be
 repeated on the established connection and cannot mutate scan or cancellation
 state. The existing compiled-host macOS CI suite exercises these cases.
 
+### Native request rate limit (opener-0664)
+
+The standalone host enforces a fixed **maximum of 64 complete native request
+frames in any rolling two-second window per host process**. The bound is
+checked *after* reading a framed request but *before* parsing its JSON or
+dispatching a handler, so ordinary pings, handshakes, status lookups and
+unavailable scan operations all consume the same budget. The limiter uses
+monotonic process uptime and stores at most 64 timestamps; it neither waits
+nor allocates an unbounded queue. A 65th frame inside the window terminates
+that native host process **without an error response or stderr diagnostics**.
+Previously emitted valid responses remain framed and unchanged.
+
+The rolling window expires naturally during an otherwise healthy, long-lived
+connection, preserving normal use of `host.health`, `host.ping` and the
+existing handshake. Rate limiting does **not** indicate a scan failure, a
+scanner verdict or authorization to open a PDF. A new native host process has
+a new independent budget; this is a **per-connection abuse limit**, not a
+cross-process or per-user quota. Caller authentication and browser-side
+controls are separate security requirements, and native messaging remains
+transport-only. No scanner, policy preferences, file access or registration
+manifests are modified.
+
+The compiled-host tests cover over-limit termination, correct response
+framing, independent new connections, and replenishment after the sliding
+window. They run in the existing `macos-build` CI job via
+`python3 test-native-messaging-host.py -v`.
+
 ### Communication deadlines (opener-0634)
 
 The standalone host enforces cumulative monotonic deadlines on its native
@@ -290,9 +317,51 @@ multiple frames until clean EOF. Malformed, oversized, truncated, unknown, or
 privileged requests terminate without an output response for the offending
 message or user-data diagnostics. Stdout contains only framed protocol bytes.
 
-**Security boundary:** This executable is **not automatically installed or registered as a browser native messaging host**. PR opener-0614 separately defines the stable host identifier; do not duplicate its identity file or documentation. Browser host manifests, allowed extension identity validation, installation, consent, packaging, native adapters, and scanner coordination are separate checklist tasks. No browser permission or existing browser script is changed here. An arbitrary process can invoke the unregistered binary: ping is *not* authentication, a scanner status, a safe-file verdict or authorization to open any PDF. Browser-supplied origin arguments cannot authorize requests. The host does not access document bytes, paths, scanner processes, quarantine settings, user configurations or launch preferences.
+**Security boundary:** This executable is deliberately **not installed or registered as a browser native messaging host**. PR opener-0614 separately defines the stable host identifier; do not duplicate its identity file or documentation. Browser host manifests, allowed extension identity validation, installation, consent, packaging, native adapters, and scanner coordination are separate checklist tasks. No browser permission or existing browser script is changed here. An arbitrary process can invoke the unregistered binary: ping is *not* authentication, a scanner status, a safe-file verdict or authorization to open any PDF. Browser-supplied origin arguments cannot authorize requests. The host does not access document bytes, paths, scanner processes, quarantine settings, user configurations or launch preferences.
 
 `python3 test-native-messaging-host.py -v` compiles and exercises the actual host process with real framed input and rejection cases. The existing macOS CI build job runs this suite. Deployment must independently authorize the caller and enforce existing ClamAV freshness, document integrity, quarantine and user-selected application gates before enabling privileged operations.
+
+### Validate all supplied native registration paths (opener-0655)
+
+The current native messaging host **does not accept any browser-supplied PDF
+file path**. Only a trusted local coordinator with independent file-selection
+proof could add that capability. Existing `scan.request`, status, result and
+cancel contracts continue to reject file paths and never scan or open PDFs.
+
+The executable paths accepted by the current Chrome and Firefox per-user
+registrars and the read-only host discovery verifier are validated as absolute,
+canonical local paths with bounded UTF-8 length, no control characters or
+traversal components, no symlinked executable or ancestor directory, and an
+existing regular executable with OS execute permission. Home and registration
+directory paths are likewise checked before use. The uninstall helper validates
+the original exact executable path (including any existing ancestors) without
+requiring the executable to survive uninstall; it still refuses customized
+manifests and preserves unrelated user registrations.
+
+All invalid inputs fail closed. These changes do not grant any extension
+permission, authenticate a scanner, change ClamAV/quarantine policy, or modify
+PDF opening and user-selected destinations. Real PDF path admission is an
+independent prerequisite of any future privileged scan coordinator.
+
+### Executable-launch boundary (opener-0657)
+
+The native messaging host enforces an explicit fixed `approvedTopics` allowlist
+before its per-topic payload checks. Unknown requests to execute programs,
+launch shells, run processes, open applications or handle unreviewed command
+topics fail closed. Approved topics retain their exact payload validation;
+caller-supplied executable paths, process IDs, argv and shell scripts are not
+accepted. The host does not expose process-launch APIs to native messages.
+
+This is not browser authentication. A valid handshake never enables scanning.
+Existing ClamAV signature freshness, verified scan evidence, integrity,
+quarantine, opening authorization and user-configured PDF application settings
+remain separately enforced and unchanged.
+
+The existing macOS CI compiled-host suite `python3 test-native-messaging-host.py -v`
+exercises executable selection across unknown topics and approved payloads
+using a real executable canary, confirms rejection without launching it, and
+checks a fresh connection still returns truthful scan unavailability. It also
+guards `Host.swift` against common process and application-launch APIs.
 
 ### Caller-origin admission (opener-0653)
 

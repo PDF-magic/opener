@@ -7,6 +7,23 @@ import Glibc
 #endif
 
 
+// Bound request volume before JSON parsing and response generation. Every
+// complete frame consumes a slot, including ping and handshake requests.
+// A burst over budget terminates only this process without a protocol reply.
+private struct NativeRequestRateLimiter {
+  static let maximumRequests = 64
+  static let windowSeconds: TimeInterval = 2
+  private var acceptedAt: [TimeInterval] = []
+
+  mutating func allow(now: TimeInterval) -> Bool {
+    // A bounded sliding window prevents edge-of-window double bursts.
+    acceptedAt.removeAll { now - $0 >= Self.windowSeconds }
+    guard acceptedAt.count < Self.maximumRequests else { return false }
+    acceptedAt.append(now)
+    return true
+  }
+}
+
 // A standalone, transport-only WebExtensions native messaging process.
 // It must never scan, open, or authorize a document.
 private enum HostError: Error {
@@ -23,6 +40,13 @@ struct PDFMagicNativeMessagingHost {
   private static let responseTimeoutSeconds: TimeInterval = 5
   private static let expectedFields: Set<String> = [
     "version", "kind", "topic", "requestId", "payload"
+  ]
+  // Keep a separate allowlist for native message operations. A new switch
+  // handler is unusable until its topic passes an explicit security review.
+  // No message topic can select an executable, process or shell.
+  private static let approvedTopics: Set<String> = [
+    "host.handshake", "host.health", "host.ping",
+    "scan.cancel", "scan.request", "scan.result", "scan.status"
   ]
 
   private static func waitForIO(
@@ -104,6 +128,7 @@ struct PDFMagicNativeMessagingHost {
           version.intValue == 1 && version.doubleValue == 1,
           let kind = message["kind"] as? String, kind == "request",
           let topic = message["topic"] as? String,
+          approvedTopics.contains(topic),
           let requestId = message["requestId"] as? String,
           isValidRequestId(requestId) else {
       throw HostError.invalidMessage
@@ -279,14 +304,17 @@ struct PDFMagicNativeMessagingHost {
   }
 
   static func main() {
-    // Browser-origin arguments must match an approved, installed host manifest.
-    // The argument can be spoofed by a local process, so this is an admission
-    // check only; it must not authorize privileged actions or scanning.
+    // Exact browser launch-origin admission, not process authentication.
+    // Invalid browser origins are rejected before reading protocol frames.
     guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
     do {
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
+      var rateLimiter = NativeRequestRateLimiter()
       while let request = try readFrame() {
+        guard rateLimiter.allow(now: ProcessInfo.processInfo.systemUptime) else {
+          throw HostError.invalidMessage
+        }
         try writeFrame(response(for: request, handshakeComplete: &handshakeComplete))
       }
     } catch {
