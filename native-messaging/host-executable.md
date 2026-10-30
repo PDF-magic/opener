@@ -255,6 +255,33 @@ fail closed without a response for that message. Health checks can be
 repeated on the established connection and cannot mutate scan or cancellation
 state. The existing compiled-host macOS CI suite exercises these cases.
 
+### Native request rate limit (opener-0664)
+
+The standalone host enforces a fixed **maximum of 64 complete native request
+frames in any rolling two-second window per host process**. The bound is
+checked *after* reading a framed request but *before* parsing its JSON or
+dispatching a handler, so ordinary pings, handshakes, status lookups and
+unavailable scan operations all consume the same budget. The limiter uses
+monotonic process uptime and stores at most 64 timestamps; it neither waits
+nor allocates an unbounded queue. A 65th frame inside the window terminates
+that native host process **without an error response or stderr diagnostics**.
+Previously emitted valid responses remain framed and unchanged.
+
+The rolling window expires naturally during an otherwise healthy, long-lived
+connection, preserving normal use of `host.health`, `host.ping` and the
+existing handshake. Rate limiting does **not** indicate a scan failure, a
+scanner verdict or authorization to open a PDF. A new native host process has
+a new independent budget; this is a **per-connection abuse limit**, not a
+cross-process or per-user quota. Caller authentication and browser-side
+controls are separate security requirements, and native messaging remains
+transport-only. No scanner, policy preferences, file access or registration
+manifests are modified.
+
+The compiled-host tests cover over-limit termination, correct response
+framing, independent new connections, and replenishment after the sliding
+window. They run in the existing `macos-build` CI job via
+`python3 test-native-messaging-host.py -v`.
+
 ### Communication deadlines (opener-0634)
 
 The standalone host enforces cumulative monotonic deadlines on its native
