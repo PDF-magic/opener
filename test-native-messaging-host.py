@@ -7,6 +7,7 @@ import shutil
 import struct
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent
@@ -789,6 +790,63 @@ class NativeMessagingHostTests(unittest.TestCase):
       self.assertEqual(accepted.stderr, b"")
       self.assertEqual(responses(accepted.stdout)[1], unavailable_cancel_reply())
       self.assertEqual(private_file.read_bytes(), original)
+
+  def test_partial_headers_and_bodies_expire_without_a_response(self):
+    # Keep stdin open: EOF would otherwise test truncation, not a deadline.
+    stalled = [b"\x01", struct.pack("<I", 50) + b"{}"]
+    for index, fragment in enumerate(stalled):
+      with self.subTest(fragment=index):
+        with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+          process.stdin.write(frame(ping("before")) + fragment)
+          process.stdin.flush()
+          started = time.monotonic()
+          self.assertNotEqual(process.wait(timeout=8), 0)
+          self.assertGreaterEqual(time.monotonic() - started, 3.5)
+          self.assertEqual(process.stderr.read(), b"")
+          self.assertEqual([r["requestId"] for r in responses(process.stdout.read())],
+                           ["before"])
+          process.stdin.close()
+
+  def test_idle_native_connection_expires_without_protocol_output(self):
+    # A browser that never sends a request must not retain an idle host forever.
+    with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+      started = time.monotonic()
+      self.assertNotEqual(process.wait(timeout=13), 0)
+      self.assertGreaterEqual(time.monotonic() - started, 8.5)
+      self.assertEqual(process.stdout.read(), b"")
+      self.assertEqual(process.stderr.read(), b"")
+      process.stdin.close()
+
+  def test_slow_but_complete_frame_and_clean_eof_remain_valid(self):
+    with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+      request = frame(ping("chunked"))
+      for part in (request[:1], request[1:3], request[3:7], request[7:]):
+        process.stdin.write(part)
+        process.stdin.flush()
+        time.sleep(0.03)
+      process.stdin.close()
+      process.stdin = None
+      output, errors = process.communicate(timeout=6)
+      self.assertEqual(process.returncode, 0)
+      self.assertEqual(errors, b"")
+      self.assertEqual(responses(output)[0]["requestId"], "chunked")
+
+  def test_blocked_response_pipe_expires_without_diagnostics(self):
+    # Regular-file stdin avoids deadlocking the test writer. The host's
+    # stdout pipe is deliberately never drained until its write deadline.
+    message = frame(ping("fill"))
+    with tempfile.TemporaryFile() as requests:
+      requests.write(message * 4096)
+      requests.seek(0)
+      with subprocess.Popen([str(self.binary)], stdin=requests,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+        self.assertNotEqual(process.wait(timeout=8), 0)
+        output = process.stdout.read()
+        self.assertGreater(len(output), 4)
+        self.assertEqual(process.stderr.read(), b"")
 
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",
