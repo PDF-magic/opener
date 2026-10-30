@@ -111,5 +111,59 @@ class ChromeHostRegistrationTests(unittest.TestCase):
     self.assertFalse((self.home / registration.CHROME_DIRECTORY).exists())
 
 
+  def test_registration_survives_atomic_application_update_at_same_executable_path(self):
+    """Updating executable bytes at a stable path must preserve the manifest and user files."""
+    import os
+    import subprocess
+
+    target, created = registration.register(self.binary, [VALID_ID], self.home)
+    self.assertTrue(created)
+    original_manifest = target.read_bytes()
+    original_inode = target.stat().st_ino
+    user_file = target.parent / "user-managed-config.txt"
+    user_file.write_text("preserve this setting", encoding="utf-8")
+
+    staged = self.root / "native-host-version-2"
+    staged.write_text("#!/bin/sh\nprintf 'updated-version\\n'\n", encoding="utf-8")
+    staged.chmod(0o700)
+    os.replace(staged, self.binary)
+    self.assertEqual(subprocess.check_output([str(self.binary)], text=True).strip(),
+                     "updated-version", "the registered path must execute the updated version")
+
+    target_after, created_again = registration.register(self.binary, [VALID_ID], self.home)
+    self.assertFalse(created_again, "same-path application update is already registered")
+    self.assertEqual(target_after, target)
+    self.assertEqual(target.read_bytes(), original_manifest)
+    self.assertEqual(target.stat().st_ino, original_inode, "registration is not silently rewritten")
+    self.assertEqual(json.loads(target.read_text())["path"], str(self.binary))
+    self.assertEqual(user_file.read_text(), "preserve this setting")
+    self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+
+  def test_relocated_update_fails_closed_without_overwriting_saved_registration(self):
+    """An app move requires reviewed migration, not silent origin or path replacement."""
+    updated = self.root / "UpdatedApplication.app" / "Contents" / "MacOS" / "native-host"
+    updated.parent.mkdir(parents=True)
+    updated.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    updated.chmod(0o700)
+    target, _ = registration.register(self.binary, [VALID_ID], self.home)
+    original_manifest = target.read_bytes()
+    other = target.parent / "user.host.json"
+    other.write_text('{"customized":true}\n', encoding="utf-8")
+
+    self.binary.unlink()
+    with self.assertRaises(ValueError):
+      registration.build_manifest(self.binary, [VALID_ID])
+    with self.assertRaises(FileExistsError):
+      registration.register(updated, [VALID_ID], self.home)
+    with self.assertRaises(FileExistsError):
+      registration.register(updated, [SECOND_ID], self.home)
+
+    self.assertEqual(target.read_bytes(), original_manifest)
+    self.assertEqual(json.loads(target.read_text())["path"], str(self.binary))
+    self.assertEqual(other.read_text(encoding="utf-8"), '{"customized":true}\n')
+    self.assertTrue(updated.is_file())
+    self.assertFalse(self.binary.exists(), "obsolete registration is not treated as working")
+
+
 if __name__ == "__main__":
   unittest.main()

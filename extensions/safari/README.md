@@ -3,8 +3,10 @@
 `PDFMagicOpenerSafari` is a **separate macOS Safari Web Extension target**
 inside `PDFMagicOpener.xcodeproj`, embedded in the existing
 `PDFMagicOpener.app` at `Contents/PlugIns/PDFMagicOpenerSafari.appex`.
-Xcode copies the **same** shared `extensions/webextension/manifest.json`
-to `Contents/Resources/manifest.json` inside the .appex.
+Xcode bundles the reviewed Safari-only `extensions/safari/manifest.json` into
+`Contents/Resources/manifest.json` in the .appex. For the containing-app
+native messaging route (opener-0647), this differs from the shared manifest
+**only** by the required `nativeMessaging` browser permission.
 
 This adds a target and build packaging, **not** an active PDF integration.
 The shared Manifest V3 contains no permissions, host access, actions, content
@@ -15,8 +17,9 @@ Embedding does not automatically enable the extension in Safari. An installed
 host app may make the extension visible in Safari's extension preferences;
 the user controls enabling it.
 
-The Safari extension has only the sandbox entitlement, with no file, network,
-application group, or native messaging privileges. The host application's
+The Safari extension has only sandbox entitlements, with no file, network or
+application-group privileges. Its Safari-only manifest declares native
+messaging, but the shared background has no native sender or listener. The host application's
 default PDF handler registration, ClamAV scan gate, signature freshness,
 quarantine, verified file handoff, and user preferences are unchanged.
 Future Safari functionality requires separately reviewed implementation.
@@ -70,9 +73,9 @@ The Safari-specific permission tests exercise the **current inert extension**
 without installing it or claiming that Safari has approved access.
 `test-safari-extension-permissions.py` checks the source and built .appex
 manifests, the sandbox-only entitlement, and regressions that would introduce
-required browser permissions, website access, optional native messaging, or
+unexpected browser permissions, website access, optional native messaging, or
 private-browsing eligibility. The build-time check compares the embedded
-manifest byte-for-byte with the reviewed shared source.
+manifest byte-for-byte with the reviewed Safari-specific source.
 
 `extensions/webextension/tests/safari-permission-handling.test.mjs` uses
 injected Safari-like WebExtensions permission APIs to test opt-in-only
@@ -116,9 +119,9 @@ python3 scripts/package_safari_extension.py --verify "/path/to/artifacts/pdf-mag
 The package builder rejects unknown files, symlinks, missing or nonexecutable
 binaries, broadened browser privileges, mismatched source assets and unsafe
 archive paths. CI validates the archive, extracts it without installation,
-and rechecks the embedded Safari extension. No PDF scanning, native messaging,
-Safari activation, native scanner changes, quarantine changes, or user
-configuration changes are introduced.
+and rechecks the embedded Safari extension. No PDF scanning, native-message sending, Safari auto-activation, native
+scanner changes, quarantine changes, or user configuration changes are
+introduced.
 
 ## Safari activation acceptance test (opener-0611)
 
