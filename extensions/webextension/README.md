@@ -1,7 +1,9 @@
 # Shared WebExtensions project (opener-0560)
 
 This private, dependency-free Manifest V3 project is the common starting point
-for future browser integrations. It is not a packaged, installed, or activated
+for future browser integrations. The shared browser extension display name is
+**PDF Magic Opener** (opener-0561). This is a stable product name, not a claim
+that the extension is currently installable or active. It is not a packaged, installed, or activated
 extension, and is not wired into the native PDF Magic Opener application.
 
 From this directory, with Node.js 20 or newer:
