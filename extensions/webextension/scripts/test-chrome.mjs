@@ -109,8 +109,26 @@ try {
       t.type === "service_worker" &&
       /^chrome-extension:\/\/[a-p]{32}\/background\.js$/.test(t.url));
     if (workers.length === 0) return null;
-    assert.equal(workers.length, 1, "Only the tested extension worker may be present");
-    return workers[0].url.split("/")[2];
+    // Chrome for Testing may register other built-in service workers even in a
+    // temporary profile. Identify our extension by its actual runtime name,
+    // never by the count or ordering of unrelated browser workers.
+    for (const worker of workers) {
+      try {
+        const attached = await command("Target.attachToTarget", {
+          targetId: worker.targetId, flatten: true
+        });
+        const evaluated = await command("Runtime.evaluate", {
+          expression: "chrome.runtime.getManifest().name",
+          returnByValue: true
+        }, attached.sessionId);
+        if (!evaluated.exceptionDetails && evaluated.result?.value === "PDF Magic Opener") {
+          return worker.url.split("/")[2];
+        }
+      } catch {
+        // An unrelated built-in worker is not our extension.
+      }
+    }
+    return null;
   }, "a loaded PDF Magic Opener MV3 service worker");
 
   const { targetId } = await command("Target.createTarget", {
