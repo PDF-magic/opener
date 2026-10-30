@@ -79,6 +79,15 @@ class NativeHostUninstallTests(unittest.TestCase):
         self.assertTrue(target.exists())
     self.assertEqual(self.remove("firefox"), [target])
 
+  def test_rejects_symlinked_home_ancestor_without_touching_registrations(self):
+    target = self.manifest("firefox")
+    alias = self.root / "home-link"
+    alias.symlink_to(self.home, target_is_directory=True)
+    with self.assertRaises(ValueError):
+      cleanup.unregister(self.host, browsers=["firefox"], home=alias,
+                         platform="darwin", development=True)
+    self.assertTrue(target.exists())
+
   def test_absent_registrations_do_not_create_directories(self):
     self.assertEqual(self.remove("chrome", "firefox"), [])
     self.assertEqual(list(self.home.iterdir()), [])

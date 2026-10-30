@@ -105,7 +105,7 @@ def unregister(host_path, *, browsers, home=None, platform=None,
   modified, substituted, or symlinked manifest. Missing registrations are no-ops.
   """
   host = validate_original_host_path(host_path)
-  home = Path.home() if home is None else Path(home)
+  home = validate_original_host_path(Path.home() if home is None else home)
   platform = sys.platform if platform is None else platform
   requested = list(browsers)
   if (not host.is_absolute() or host.is_symlink() or

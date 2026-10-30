@@ -64,7 +64,7 @@ export async function registerFirefoxHost({ hostPath, development = false, home,
     try {
       const metadata = await lstat(cursor);
       if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
-        throw new Error("Unsafe Firefox registration directory");
+        throw new Error("Unsafe Firefox registration directory: not a real directory");
       }
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
