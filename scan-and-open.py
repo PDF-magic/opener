@@ -894,7 +894,10 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         database=DATABASE, document=path, is_pdf=is_pdf, timeout=timeout)
     if is_pdf:
         verify_local_file_available(path)
-    destination = None if scan_only else intended_destination(path)
+    if scan_only:
+        destination = None
+    else:
+        destination = intended_destination(path)
     # The optional fallback is an explicit PDF-only preference. Validate it
     # before scanning or handoff, and never derive it from the
     # default PDF handler (which may recursively invoke this opener).
