@@ -13,7 +13,7 @@ test("the shared project is a private dependency-free Node package", async () =>
   assert.equal(pkg.private, true);
   assert.equal(pkg.type, "module");
   assert.equal(pkg.scripts.build, "node scripts/build.mjs");
-  assert.equal(pkg.scripts.test, "node --test tests/*.test.mjs");
+  assert.equal(pkg.scripts.test, "node --test --test-concurrency=1 tests/*.test.mjs");
   assert.equal(pkg.dependencies, undefined);
   assert.equal(pkg.devDependencies, undefined);
   assert.equal(pkg.scripts.install, undefined);
