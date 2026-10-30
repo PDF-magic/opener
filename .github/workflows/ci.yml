@@ -461,6 +461,38 @@ jobs:
       - name: Inspect suspicious embedded PDF URLs without fetching destinations
         run: python3 test-pdf-suspicious-urls.py -v
 
+  edge-compatibility:
+    name: Microsoft Edge compatibility (Windows)
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Require installed Microsoft Edge and matching EdgeDriver
+        shell: pwsh
+        run: |
+          if (-not $env:EDGEWEBDRIVER) { throw "Windows runner is missing EdgeDriver" }
+          $driver = Join-Path $env:EDGEWEBDRIVER "msedgedriver.exe"
+          if (-not (Test-Path -LiteralPath $driver)) { throw "EdgeDriver executable missing" }
+          $pf86 = [Environment]::GetFolderPath("ProgramFilesX86")
+          $candidates = @(
+            (Join-Path $pf86 "Microsoft\Edge\Application\msedge.exe"),
+            (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe")
+          )
+          if (-not ($candidates | Where-Object { Test-Path -LiteralPath $_ })) {
+            throw "Microsoft Edge executable missing"
+          }
+          "EDGE_WEBDRIVER_BINARY=$driver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build validated Chromium package and smoke-test it in real Edge
+        working-directory: extensions/webextension
+        shell: pwsh
+        run: |
+          npm run build
+          node --test tests/edge-compatibility.test.mjs
+
   macos-build:
     needs: detect-scope
     if: needs.detect-scope.outputs.run_macos == 'true'
