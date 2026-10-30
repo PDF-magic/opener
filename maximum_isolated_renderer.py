@@ -104,12 +104,31 @@ def _trusted_directory(path: str, *, runtime: bool = False) -> bool:
         return False
 
 
+def _sandbox_python_executable() -> str:
+    """Avoid the Python.org macOS framework shim that tries to spawn again.
+
+    The framework's command-line shim starts the real Python.app executable
+    with posix_spawn. A deny-process-fork sandbox must execute that exact
+    trusted interpreter directly instead of loosening the process policy.
+    Any other installation continues through its original interpreter.
+    """
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    framework_binary = (
+        f"/Library/Frameworks/Python.framework/Versions/{version}/"
+        "Resources/Python.app/Contents/MacOS/Python"
+    )
+    base_executable = getattr(sys, "_base_executable", None)
+    if type(base_executable) is str and base_executable == framework_binary:
+        return framework_binary
+    return sys.executable
+
+
 def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
     """Resolve and validate the only paths the renderer process may read."""
     if sys.platform != "darwin":
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     try:
-        python = str(Path(sys.executable).resolve(strict=True))
+        python = str(Path(_sandbox_python_executable()).resolve(strict=True))
         worker = str(Path(worker_path).resolve(strict=True))
         source_root = Path(__file__).resolve(strict=True).parent
         worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
