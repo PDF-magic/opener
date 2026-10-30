@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import sys
 import subprocess
 import tempfile
 import time
@@ -13,6 +14,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "native-messaging" / "Host.swift"
 STATUS_SOURCE = ROOT / "native-messaging" / "HostStatus.swift"
+CALLER_SOURCE = ROOT / "native-messaging" / "NativeCallerAdmission.swift"
 STATUS_TEST = ROOT / "test-native-host-status.swift"
 
 
@@ -127,18 +129,38 @@ class NativeMessagingHostTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.directory = tempfile.TemporaryDirectory(prefix="pdfmagic-native-host-")
-    cls.binary = Path(cls.directory.name) / "pdf-magic-native-host"
+    cls.root = Path(cls.directory.name).resolve()
+    cls.binary = cls.root / "pdf-magic-native-host"
     compiler = shutil.which("swiftc")
     if not compiler:
       cls.directory.cleanup()
       raise unittest.SkipTest("Swift compiler is required")
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    str(SOURCE), str(STATUS_SOURCE), "-o", str(cls.binary)],
+                    str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE),
+                    "-o", str(cls.binary)],
                    capture_output=True, text=True, check=True, timeout=120)
     cls.status_binary = Path(cls.directory.name) / "native-host-status-tests"
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     str(STATUS_SOURCE), str(STATUS_TEST), "-o", str(cls.status_binary)],
                    capture_output=True, text=True, check=True, timeout=120)
+
+    # Only an isolated Firefox registration is permitted in the host tests.
+    cls.home = cls.root / "home"
+    cls.home.mkdir()
+    relative = (".mozilla/native-messaging-hosts" if sys.platform == "linux"
+                else "Library/Application Support/Mozilla/NativeMessagingHosts")
+    folder = cls.home / relative
+    folder.mkdir(parents=True)
+    cls.manifest = folder / "org.pdfmagic.opener.json"
+    cls.extension_id = "pdf-magic-opener@example.invalid"
+    cls.approved_manifest = {
+      "name": "org.pdfmagic.opener",
+      "description": "Isolated native-host caller test fixture",
+      "path": str(cls.binary), "type": "stdio",
+      "allowed_extensions": [cls.extension_id]
+    }
+    cls.manifest.write_text(json.dumps(cls.approved_manifest), encoding="utf-8")
+    cls.env = {**os.environ, "HOME": str(cls.home)}
 
   @classmethod
   def tearDownClass(cls):
@@ -146,8 +168,9 @@ class NativeMessagingHostTests(unittest.TestCase):
       cls.directory.cleanup()
 
   def run_host(self, data, *args):
-    return subprocess.run([str(self.binary), *args], input=data,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    return subprocess.run([str(self.binary), str(self.manifest),
+                           self.extension_id, *args], input=data,
+                          env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           timeout=6, check=False)
 
   def test_compiled_host_is_executable(self):
@@ -796,7 +819,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     stalled = [b"\x01", struct.pack("<I", 50) + b"{}"]
     for index, fragment in enumerate(stalled):
       with self.subTest(fragment=index):
-        with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+        with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
           process.stdin.write(frame(ping("before")) + fragment)
           process.stdin.flush()
@@ -810,7 +833,7 @@ class NativeMessagingHostTests(unittest.TestCase):
 
   def test_idle_native_connection_expires_without_protocol_output(self):
     # A browser that never sends a request must not retain an idle host forever.
-    with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+    with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
       started = time.monotonic()
       self.assertNotEqual(process.wait(timeout=13), 0)
@@ -820,7 +843,7 @@ class NativeMessagingHostTests(unittest.TestCase):
       process.stdin.close()
 
   def test_slow_but_complete_frame_and_clean_eof_remain_valid(self):
-    with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+    with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
       request = frame(ping("chunked"))
       for part in (request[:1], request[1:3], request[3:7], request[7:]):
@@ -841,7 +864,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     with tempfile.TemporaryFile() as requests:
       requests.write(message * 4096)
       requests.seek(0)
-      with subprocess.Popen([str(self.binary)], stdin=requests,
+      with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id], env=self.env, stdin=requests,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         self.assertNotEqual(process.wait(timeout=8), 0)
         output = process.stdout.read()
@@ -938,11 +961,72 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(result.stderr, b"")
 
-  def test_browser_supplied_origin_does_not_enable_a_scan(self):
+  def test_extra_or_spoofed_origin_is_rejected_without_response(self):
     result = self.run_host(frame(ping()), "chrome-extension://exampleid/")
-    self.assertEqual(result.returncode, 0)
-    reply, = responses(result.stdout)
-    self.assertFalse(reply["payload"]["scanAvailable"])
+    self.assertNotEqual(result.returncode, 0)
+    self.assertEqual(result.stdout, b"")
+    self.assertEqual(result.stderr, b"")
+
+  def reject_unrecognized(self, args, data=None):
+    result = subprocess.run([str(self.binary), *args],
+                            input=frame(ping()) if data is None else data,
+                            env=self.env, capture_output=True, timeout=6)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertEqual(result.stdout, b"")
+    self.assertEqual(result.stderr, b"")
+
+  def test_missing_unknown_and_injected_callers_fail_before_reading(self):
+    for args in (
+      [], [str(self.manifest)], [self.extension_id],
+      [str(self.manifest), "other@example.org"],
+      [str(self.manifest), self.extension_id + "-spoof"],
+      [str(self.manifest), self.extension_id, "extra"],
+      [str(self.manifest) + ".json", self.extension_id],
+      ["chrome-extension://" + "a" * 32 + "/"],
+      ["chrome-extension://*/*"],
+    ):
+      with self.subTest(args=args):
+        self.reject_unrecognized(args)
+    self.reject_unrecognized([], frame(handshake()) + frame(scan_request()))
+    self.assertEqual(self.run_host(frame(ping())).returncode, 0)
+
+  def test_invalid_registration_denies_even_matching_gecko_caller(self):
+    saved = self.manifest.read_bytes()
+    try:
+      for modification in (
+        {"name": "another.host"},
+        {"type": "not-stdio"},
+        {"path": str(self.root / "different-host")},
+        {"allowed_extensions": ["other@example.org"]},
+        {"allowed_extensions": [self.extension_id, "*"]},
+        {"allowed_extensions": [self.extension_id, self.extension_id]},
+        {"allowed_extensions": []},
+        {"allowed_origins": ["chrome-extension://" + "a" * 32 + "/"]},
+      ):
+        with self.subTest(modification=modification):
+          candidate = dict(self.approved_manifest, **modification)
+          self.manifest.write_text(json.dumps(candidate), encoding="utf-8")
+          self.reject_unrecognized([str(self.manifest), self.extension_id])
+      self.manifest.write_bytes(b"not-json")
+      self.reject_unrecognized([str(self.manifest), self.extension_id])
+      self.manifest.write_bytes(b" " * 17000)
+      self.reject_unrecognized([str(self.manifest), self.extension_id])
+    finally:
+      self.manifest.write_bytes(saved)
+    self.assertEqual(self.run_host(frame(ping())).returncode, 0)
+
+  def test_symlinked_registration_does_not_authorize_native_messages(self):
+    original = self.manifest.read_bytes()
+    outside = self.root / "registration-copy.json"
+    outside.write_bytes(original)
+    self.manifest.unlink()
+    self.manifest.symlink_to(outside)
+    try:
+      self.reject_unrecognized([str(self.manifest), self.extension_id])
+      self.assertEqual(outside.read_bytes(), original)
+    finally:
+      self.manifest.unlink()
+      self.manifest.write_bytes(original)
 
   def test_no_file_or_process_actions_from_untrusted_input(self):
     with tempfile.TemporaryDirectory(prefix="native-host-no-action-") as d:

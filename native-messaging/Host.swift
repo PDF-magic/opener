@@ -280,6 +280,10 @@ struct PDFMagicNativeMessagingHost {
 
   static func main() {
     do {
+      // Reject unrecognized launchers before processing any native protocol frame.
+      guard NativeCallerAdmission.allows(Array(CommandLine.arguments.dropFirst())) else {
+        exit(1)
+      }
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
       while let request = try readFrame() {
