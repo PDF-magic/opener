@@ -223,11 +223,14 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
                 subprocess.CalledProcessError(1, "/bin/ps"),
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CompletedProcess(
+                    ("/bin/ps",), 0, b"202 202 S+\n",
+                ),
             ]
         ) as probe:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._process_has_exited_without_reaping(process)
-            self.assertEqual(probe.call_count, 4)
+            self.assertEqual(probe.call_count, 5)
 
         # An initially malformed status may be retried only until a trusted
         # kernel snapshot explicitly confirms the worker has exited.
