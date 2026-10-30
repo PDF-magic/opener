@@ -50,7 +50,7 @@ def _scan_staged_without_open(path, offer):
 
 
 def _destination_path(destination):
-    if (type(destination) not in (str, Path) or
+    if (not isinstance(destination, (str, Path)) or
             "\x00" in str(destination)):
         raise SanitizedCopySaveError(SAVE_BLOCKED_MESSAGE)
     path = Path(destination)
