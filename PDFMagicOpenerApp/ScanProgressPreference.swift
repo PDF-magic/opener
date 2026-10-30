@@ -105,6 +105,62 @@ enum BlockedFileNotificationPreference {
   }
 }
 
+// Optional browser-download *scope* preference only. It cannot grant browser
+// permissions, enable monitoring, authorize an open, or alter the mandatory
+// installed ClamAV scanner. Native Finder/file scans are never filtered here.
+// The browser download coordinator currently supports PDF candidates only;
+// this opt-in is saved for a future independently verified non-PDF integration.
+enum ScanOtherSupportedFilesPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "scanOtherSupportedFiles"
+
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    _ = defaults?.synchronize()
+    // Malformed, missing or non-Boolean values do not constitute consent.
+    guard let defaults, let raw = defaults.object(forKey: key) as? NSNumber,
+          CFGetTypeID(raw) == CFBooleanGetTypeID() else { return false }
+    return raw.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    func restorePrevious() {
+      if let previous { defaults.set(previous, forKey: key) }
+      else { defaults.removeObject(forKey: key) }
+      _ = defaults.synchronize()
+    }
+
+    // UserDefaults can compare numeric 1/0 and Boolean true/false as equal,
+    // leaving an existing malformed integer on disk after set(Bool).
+    // Only an explicit save may normalize this key; flush its removal first.
+    let previousWasBoolean = (previous as? NSNumber).map {
+      CFGetTypeID($0) == CFBooleanGetTypeID()
+    } ?? false
+    if previous != nil && !previousWasBoolean {
+      defaults.removeObject(forKey: key)
+      guard defaults.synchronize() else {
+        restorePrevious()
+        return false
+      }
+    }
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    // Never discard an earlier explicit choice on a failed save.
+    restorePrevious()
+    return false
+  }
+}
+
 // The installed scanner currently has only one mandatory policy. Persist its
 // identifier separately from scanner controls; unsupported future identifiers
 // remain intact and are not silently treated as the Built-in selection.
