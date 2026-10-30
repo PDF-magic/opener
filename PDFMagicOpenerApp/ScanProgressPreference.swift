@@ -658,3 +658,65 @@ enum MalformedConfigurationRecovery {
     return number.boolValue
   }
 }
+
+// Download scan-result presentation only. No native scanner, browser permission,
+// mandatory warning, blocked-file alert, quarantine or PDF destination depends
+// on this preference. Unverified/incomplete results must remain visible.
+enum DownloadWarningDisplayKind {
+  case verifiedCleanSummary
+  case verifiedInformationalSummary
+  case securityWarning
+  case scanIncompleteOrFailed
+  case unknown
+}
+
+enum DownloadWarningOnlyPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "showOnlyWarnings"
+
+  // Preserve existing summary visibility for users who have not opted in.
+  // Malformed settings cannot silently suppress any result.
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    guard let stored = defaults.object(forKey: key),
+          let value = stored as? NSNumber,
+          CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
+    return value.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    if let previous { defaults.set(previous, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+
+  // Call ONLY after an authenticated native coordinator classifies the full
+  // canonical scan result. Browser MIME, filename and labels are not verdicts.
+  // Optional summaries may be hidden, but every potential warning remains.
+  static func shouldPresent(
+    _ kind: DownloadWarningDisplayKind,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    switch kind {
+    case .verifiedCleanSummary, .verifiedInformationalSummary:
+      return !isEnabled(defaults: defaults)
+    case .securityWarning, .scanIncompleteOrFailed, .unknown:
+      return true
+    }
+  }
+}
