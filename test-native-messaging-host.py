@@ -1045,7 +1045,8 @@ class NativeMessagingHostTests(unittest.TestCase):
           os.write(write_fd, b"x" * 4096)
         except BlockingIOError:
           break
-      with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+      with subprocess.Popen([str(self.binary), str(self.manifest), self.extension_id],
+                            env=self.env, stdin=subprocess.PIPE,
                             stdout=write_fd, stderr=subprocess.PIPE) as process:
         os.close(write_fd)
         write_fd = None
