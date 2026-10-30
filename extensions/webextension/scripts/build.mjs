@@ -12,7 +12,7 @@ const allowed = [
 if (
   JSON.stringify(Object.keys(manifest).sort()) !== JSON.stringify(allowed) ||
   manifest.manifest_version !== 3 ||
-  typeof manifest.name !== "string" || !manifest.name.trim() ||
+  manifest.name !== "PDF Magic Opener" ||
   !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
   !Array.isArray(manifest.permissions) || manifest.permissions.length !== 0 ||
   !Array.isArray(manifest.host_permissions) || manifest.host_permissions.length !== 0
