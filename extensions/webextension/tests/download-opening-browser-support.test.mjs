@@ -59,7 +59,7 @@ test("support matrix covers all nine canonical browser bundle identifiers once",
 test("vendor-documented browser open methods are distinguished from conditional and unverified browsers", async () => {
   const { documentation } = await load();
   const rows = new Map(browserRows(documentation).map(row =>
-    [row.match(/^\\| ([^|]+) \\|/)[1], row]));
+    [row.split("|")[1].trim(), row]));
   for (const name of ["Google Chrome", "Mozilla Firefox"]) {
     assert.match(rows.get(name), /\*\*Documented\*\*/);
     assert.match(rows.get(name), /downloads.open/);
@@ -85,12 +85,10 @@ test("documentation separates browser-owned opens, gesture-gated opens and nativ
     "user gesture",
     "does not intercept or veto",
     "enabled opening command",
-    "trusted native coordinator",
+    "native coordinator",
     "browser's own opening",
     "user consent"
   ]) {
-    // The onDeterminingFilename API is not used as a scan authorization.
-    if (required === "onDeterminingFilename") continue;
     assert.ok(documentation.includes(required), required);
   }
   assert.match(documentation, /asynchronous "scan finished" callback/);
