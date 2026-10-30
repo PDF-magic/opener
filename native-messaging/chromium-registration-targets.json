@@ -1,0 +1,63 @@
+{
+  "hostName": "org.pdfmagic.opener",
+  "platform": "macOS",
+  "status": "identification-only",
+  "targets": [
+    {
+      "browser": "Google Chrome",
+      "registration": "separate",
+      "userManifestDirectory": "~/Library/Application Support/Google/Chrome/NativeMessagingHosts",
+      "evidence": "publisher-documented",
+      "source": "https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging"
+    },
+    {
+      "browser": "Chromium",
+      "registration": "separate",
+      "userManifestDirectory": "~/Library/Application Support/Chromium/NativeMessagingHosts",
+      "evidence": "publisher-documented",
+      "source": "https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging"
+    },
+    {
+      "browser": "Google Chrome for Testing",
+      "registration": "separate-since-146",
+      "userManifestDirectory": "~/Library/Application Support/Google/ChromeForTesting/NativeMessagingHosts",
+      "evidence": "publisher-documented",
+      "source": "https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging"
+    },
+    {
+      "browser": "Microsoft Edge",
+      "registration": "separate",
+      "userManifestDirectory": "~/Library/Application Support/Microsoft Edge/NativeMessagingHosts",
+      "evidence": "publisher-documented",
+      "source": "https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/native-messaging"
+    },
+    {
+      "browser": "Brave",
+      "registration": "verify-browser-specific",
+      "userManifestDirectory": "~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts",
+      "evidence": "integration-reference-not-publisher-confirmed",
+      "source": "https://github.com/bitwarden/clients/blob/main/apps/desktop/src/main/native-messaging.main.ts"
+    },
+    {
+      "browser": "Vivaldi",
+      "registration": "verify-browser-specific",
+      "userManifestDirectory": "~/Library/Application Support/Vivaldi/NativeMessagingHosts",
+      "evidence": "integration-reference-not-publisher-confirmed",
+      "source": "https://github.com/keepassxreboot/keepassxc-browser/wiki/Troubleshooting-guide"
+    },
+    {
+      "browser": "Arc",
+      "registration": "verify-browser-specific",
+      "userManifestDirectory": "~/Library/Application Support/Arc/User Data/NativeMessagingHosts",
+      "evidence": "integration-reference-not-publisher-confirmed",
+      "source": "https://github.com/keepassxreboot/keepassxc-browser/wiki/Troubleshooting-guide"
+    },
+    {
+      "browser": "Opera",
+      "registration": "chrome-location-documented",
+      "userManifestDirectory": "~/Library/Application Support/Google/Chrome/NativeMessagingHosts",
+      "evidence": "publisher-documented",
+      "source": "https://help.opera.com/en/extensions/message-passing/"
+    }
+  ]
+}
