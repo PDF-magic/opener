@@ -322,6 +322,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify native download connection-health indicator fails closed
         run: PYTHONPATH=. python3 tests/general/download-connection-health.py -v
+      - name: Verify browser download monitoring protection and limits explanation
+        run: PYTHONPATH=. python3 tests/general/download-monitoring-limits.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
       - name: Verify opt-in non-PDF download scan preference surface

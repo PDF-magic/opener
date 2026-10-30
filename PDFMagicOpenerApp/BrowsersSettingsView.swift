@@ -240,6 +240,31 @@ struct BrowsersSettingsView: View {
         }
         .accessibilityIdentifier("browserDownloadsSection")
 
+        GroupBox("What monitoring can and cannot prevent") {
+          VStack(alignment: .leading, spacing: 12) {
+            Text("What monitoring does today")
+              .font(.headline)
+            Text("Browser download monitoring is not active. Turning on the preference does not inspect downloaded files, block browser automatic opening, or stop a file opened through download history.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("What a verified integration could protect")
+              .font(.headline)
+            Text("With separate browser permission and an authenticated native scanner connection, supported and fully available downloads could be scanned before a PDF Magic Opener handoff. A detected threat, failed scan, or incomplete check must never authorize that handoff. Files opened through the installed PDF Magic Opener already have an independent scan-before-open gate.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("What monitoring cannot guarantee")
+              .font(.headline)
+            Text("Monitoring cannot stop a browser's built-in PDF viewer, automatic download opening, Finder or another application from opening a file unless that opening path is separately integrated with verified scan enforcement. It cannot guarantee detection of every threat or retroactively protect a file already opened. An alert is not a block.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadMonitoringCapabilitiesAndLimitsSection")
+
         GroupBox("Additional applications") {
           browserSettingDetail(
             "Custom choices",
