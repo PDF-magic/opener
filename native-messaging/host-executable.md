@@ -387,3 +387,24 @@ exercises executable selection across unknown topics and approved payloads
 using a real executable canary, confirms rejection without launching it, and
 checks a fresh connection still returns truthful scan unavailability. It also
 guards `Host.swift` against common process and application-launch APIs.
+
+### End-to-end request deadline (opener-0665)
+
+In addition to the existing per-phase deadlines, each native messaging request
+now has one **15-second cumulative monotonic deadline**, starting before the
+host waits for its first byte and ending only when its response is written.
+The existing 10-second idle, 5-second frame and 5-second response timeouts
+still apply individually, but they cannot be added together to extend a
+single request's lifetime. An expired deadline is fatal to that connection
+with no fabricated scanner result or authorization. A new request gets a
+new deadline only after the previous request completes; an incomplete
+request never extends or resets its own timer.
+
+The compiled native-host macOS CI regression intentionally delays the first
+byte and the rest of a valid frame while keeping the output pipe full. Each
+individual phase stays within its own timeout, but the combined operation
+must exit at the shared deadline rather than wait out a fresh response timeout.
+Normal complete messages and clean EOF remain unchanged. Browser-provided
+messages cannot override these fixed limits. The scanner remains unavailable
+from the transport-only native host, and signature freshness, quarantine,
+file integrity, scan verdicts and user PDF-opening preferences are unaffected.
