@@ -29,7 +29,7 @@ class BrowserMonitoringStatusTests(unittest.TestCase):
         self.assertIn(expected, view)
     self.assertIn('browserNames.map { (id: $0.0, name: $0.1) }', catalog)
     # One source of supported IDs, not an independent hardcoded list.
-    browser_ids = re.findall(r'\("([^"]+)", "[^"]+"\)', catalog.split('private static let browserNames:', 1)[1].split(']', 1)[0])
+    browser_ids = re.findall(r'\("([^"]+)", "[^"]+"\)', catalog.split('private static let browserNames:', 1)[1].split('= [', 1)[1].split(']', 1)[0])
     self.assertEqual(len(browser_ids), 9)
     self.assertEqual(len(set(browser_ids)), 9)
 
