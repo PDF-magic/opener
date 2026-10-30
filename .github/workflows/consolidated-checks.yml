@@ -262,7 +262,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: mac / blocking-severity-native / Display verified sanitizer failures in the shared native progress component
+      - name: mac / blocking-severity-native / Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           python3 test-scan-progress-component.py -v
