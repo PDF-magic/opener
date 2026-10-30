@@ -40,6 +40,7 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (allow sysctl-read)
 (allow file-read-metadata (subpath "/"))
 (allow file-read*
+    (literal "/")
     (literal (param "PYTHON"))
     (literal (param "WORKER"))
     (literal (param "WORKER_SUPPORT"))
