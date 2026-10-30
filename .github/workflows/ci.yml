@@ -543,6 +543,10 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
+      - name: Validate Safari's bounded native messaging response on macOS
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors extensions/safari/SafariWebExtensionHandler.swift test-safari-native-messaging.swift -o "$RUNNER_TEMP/TestSafariNativeMessaging"
+          "$RUNNER_TEMP/TestSafariNativeMessaging"
       - name: Verify Built-in scanner defaults on macOS
         run: python3 test-scanner-defaults-summary.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS

@@ -8,8 +8,10 @@ to `Contents/Resources/manifest.json` inside the .appex.
 
 This adds a target and build packaging, **not** an active PDF integration.
 The shared Manifest V3 contains no permissions, host access, actions, content
-scripts or background worker. The Swift request handler returns no items;
-it cannot scan, sanitize, launch, or approve PDFs, or message the parent app.
+scripts or background worker. The Swift request handler accepts only a bounded, versioned `native.status`
+request and returns `status: inactive` with both `scanVerified` and
+`authorizesOpen` false. All other requests return no items. It cannot scan,
+sanitize, launch, or approve PDFs, or message the parent app.
 Embedding does not automatically enable the extension in Safari. An installed
 host app may make the extension visible in Safari's extension preferences;
 the user controls enabling it.
@@ -51,7 +53,7 @@ The static shared popup now includes a single opt-in
 preferences URL, which may trigger a browser confirmation. The source and
 bundled Safari popup are byte-identical and retain their explicit inactive
 PDF scanning status. This is not an extension-to-scanner message or PDF
-opening capability; the existing native handler remains inert.
+opening capability; the native handler cannot invoke the scanner or approve a PDF.
 
 ## Exclude private windows by default (opener-0593)
 
@@ -62,3 +64,27 @@ the manifest flag alone is not a claim that Safari will block every
 user-authorized private window on every release. The extension remains inert,
 without page access, native messaging or PDF opening. Future activated Safari
 integrations must separately review and test private-context exclusion.
+
+## Native message adapter (opener-0610)
+
+The native `SafariWebExtensionHandler` now reads Safari's
+`SFExtensionMessageKey` from the first `NSExtensionItem`, validates a
+single version-1 shared envelope (`request`, `native.status`, ASCII
+`requestId`, null payload, no extra fields, at most 16 KiB), and returns a
+matching envelope inside a new `NSExtensionItem`. The only possible payload
+reports `{status: "inactive", scanVerified: false, authorizesOpen: false}`.
+Invalid or unsupported requests get no response items; no error details,
+file paths, URL, profile data, or input payload are forwarded.
+
+This is a **dormant, read-only adapter**, not a browser-to-scanner bridge:
+the shared manifest intentionally does not declare Safari's required
+`nativeMessaging` permission; the background script registers no
+listeners or senders. Enabling native messages and authenticating privileged
+actions are separate, reviewed tasks. No file, app group, network or scanner
+privilege was added, and user preferences and all native scan gates are intact.
+
+Run `swiftc -parse-as-library -warnings-as-errors
+extensions/safari/SafariWebExtensionHandler.swift
+test-safari-native-messaging.swift -o /tmp/test-safari-native-messaging`
+and execute that temporary binary for functional request/rejection coverage.
+The macOS CI job runs this test and builds the real Safari .appex.
