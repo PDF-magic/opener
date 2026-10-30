@@ -105,6 +105,27 @@ struct PDFMagicNativeMessagingHost {
         "scanVerified": false,
         "authorizesOpen": false
       ]
+    case "scan.status":
+      // A scan request is currently never submitted to a trusted coordinator.
+      // A status lookup must be correlated but cannot invent a job, progress,
+      // scanner verdict, or authorization. Even an unknown scan request ID
+      // therefore receives the same truthful unavailable response.
+      guard handshakeComplete,
+            let statusQuery = message["payload"] as? [String: Any],
+            statusQuery.count == 1,
+            let scanRequestId = statusQuery["scanRequestId"] as? String,
+            isValidRequestId(scanRequestId) else {
+        throw HostError.invalidMessage
+      }
+      payload = [
+        "scanRequestId": scanRequestId,
+        "status": "unavailable",
+        "reason": "trusted-scan-coordinator-required",
+        "scanAvailable": false,
+        "scanStarted": false,
+        "scanVerified": false,
+        "authorizesOpen": false
+      ]
     default:
       throw HostError.invalidMessage
     }

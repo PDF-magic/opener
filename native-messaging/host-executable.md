@@ -99,6 +99,46 @@ mandatory ClamAV and signature freshness gate, file integrity and quarantine
 checks, verified destination handoff, and safe cancellation/results. No browser
 input may weaken these checks; no message is proof a PDF is clean.
 
+### Scan-status message (opener-0629)
+
+A caller can ask about a scan-request correlation identifier after completing
+`host.handshake` on the **same native host connection**:
+
+```json
+{"version":1,"kind":"request","topic":"scan.status","requestId":"status_1","payload":{"scanRequestId":"scan_1"}}
+```
+
+The `scanRequestId` is the bounded, 1–80 character ASCII identifier from
+the earlier `scan.request` **requestId** (letters, digits, underscore, or
+hyphen). It is a correlation value only, **not proof the scan exists**.
+The status query's own `requestId` correlates this response independently.
+The payload must contain **exactly** `scanRequestId`; local paths, URLs,
+download IDs, caller-supplied verdicts, progress values, policy overrides,
+or extra fields are rejected without responding.
+
+Until an authenticated, trusted scanner coordinator exists, `scan.request`
+never launches a job. Every well-formed status query—whether or not it
+refers to an earlier rejected request—therefore returns this truthful
+unavailable state:
+
+```json
+{"version":1,"kind":"response","topic":"scan.status","requestId":"status_1","payload":{"scanRequestId":"scan_1","status":"unavailable","reason":"trusted-scan-coordinator-required","scanAvailable":false,"scanStarted":false,"scanVerified":false,"authorizesOpen":false}}
+```
+
+A successful handshake and a matching request ID are **not** evidence of
+authorization, a running scan, a verified clean result, or permission to open
+a PDF. The native host does not read files, query a scanner, invent
+completion percentages, maintain a cross-process job registry, or alter
+user preferences. Requests before handshake, malformed IDs, extra payload
+keys and unsupported message kinds/versions fail closed without a status
+response. The response is intentionally not an actual scanner verdict.
+
+A later separately reviewed integration must authenticate the caller and
+coordinate trusted user-selected local files, active scan lifecycle,
+cancellation, ClamAV freshness and mandatory checks, file integrity,
+quarantine, and verified opening before it can expose real job states.
+Neither message alone may weaken the existing scanner safeguards.
+
 The existing `host.ping` request remains a backward-compatible, read-only
 liveness probe before or after a handshake:
 
