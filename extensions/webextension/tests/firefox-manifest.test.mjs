@@ -27,14 +27,25 @@ test("Firefox build includes the shared MV3 identity without new privileges", as
   });
   const source = await load("manifest.json");
   const built = await load("dist/firefox/manifest.json");
-  const { browser_specific_settings: firefoxSettings, ...shared } = built;
-  assert.deepEqual(shared, source);
+  const { browser_specific_settings: firefoxSettings,
+    background: firefoxBackground, ...shared } = built;
+  const { background: chromiumBackground, ...common } = source;
+  assert.deepEqual(shared, common);
+  assert.deepEqual(chromiumBackground, {
+    service_worker: "background.js", type: "module"
+  });
+  assert.deepEqual(firefoxBackground, { scripts: ["background.js"] });
+  const inputWorker = await readFile(join(root, "src", "background.js"));
+  const builtWorker = await readFile(join(root, "dist", "firefox", "background.js"));
+  assert.deepEqual(builtWorker, inputWorker);
+  assert.equal(inputWorker.toString("utf8").trimEnd().endsWith("void 0;"), true);
   assert.deepEqual(firefoxSettings, await load("firefox/gecko.json"));
   assert.equal(built.manifest_version, 3);
   assert.deepEqual(built.permissions, []);
   assert.deepEqual(built.host_permissions, []);
+  assert.equal(built.background.service_worker, undefined);
   for (const forbidden of [
-    "background", "content_scripts", "externally_connectable",
+    "content_scripts", "externally_connectable",
     "optional_permissions", "optional_host_permissions", "action"
   ]) {
     assert.equal(built[forbidden], undefined);

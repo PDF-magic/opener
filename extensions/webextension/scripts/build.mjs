@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const allowed = [
-  "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+  "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
 ];
 
 // The initial shared project must not accidentally acquire runtime privileges.
@@ -15,6 +15,12 @@ if (
   manifest.name !== "PDF Magic Opener" ||
   typeof manifest.description !== "string" ||
   !manifest.description.trim() || manifest.description.length > 132 ||
+  !manifest.background || typeof manifest.background !== "object" ||
+  Array.isArray(manifest.background) ||
+  JSON.stringify(Object.keys(manifest.background).sort()) !==
+    JSON.stringify(["service_worker", "type"]) ||
+  manifest.background.service_worker !== "background.js" ||
+  manifest.background.type !== "module" ||
   !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
   !Array.isArray(manifest.permissions) || manifest.permissions.length !== 0 ||
   !Array.isArray(manifest.host_permissions) || manifest.host_permissions.length !== 0 ||
@@ -54,12 +60,30 @@ for (const size of iconSizes) {
   }
 }
 
+// The worker is an intentionally inert module, not a scan or open handler.
+// Reject symlinks and unexpected source contents until a separately reviewed
+// feature explicitly defines the browser-to-native safety boundary.
+const workerPath = join(root, "src", "background.js");
+const workerInfo = await lstat(workerPath);
+if (!workerInfo.isFile() || workerInfo.isSymbolicLink() ||
+    workerInfo.size > 4096) {
+  throw new Error("Invalid shared WebExtensions background entry point");
+}
+const backgroundSource = await readFile(workerPath, "utf8");
+if (backgroundSource !==
+    "// Inactive shared WebExtensions background entry point.\n" +
+    "// Do not listen for messages, inspect PDFs or request native access here.\n" +
+    "void 0;\n") {
+  throw new Error("Background entry point must remain inert");
+}
+
 const output = join(root, "dist");
 await mkdir(output, { recursive: true });
 await writeFile(join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+await copyFile(workerPath, join(output, "background.js"));
 
-// Copy only validated static art. The shared extension still has no runtime
-// permissions, content scripts, background worker or native PDF bridge.
+// Copy only validated static art. The no-op background module has no runtime
+// permissions, content scripts, event listeners or native PDF bridge.
 await mkdir(join(output, "icons"), { recursive: true });
 for (const size of iconSizes) {
   const name = `icon-${size}.png`;
