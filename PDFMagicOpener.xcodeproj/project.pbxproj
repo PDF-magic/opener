@@ -5,155 +5,6 @@
   objectVersion = 56;
   objects = {
 
-    D56700000000000000000001 = {
-      isa = PBXBuildFile;
-      fileRef = D56700000000000000000002;
-    };
-    D56700000000000000000002 = {
-      isa = PBXFileReference;
-      lastKnownFileType = sourcecode.swift;
-      path = SafariWebExtensionHandler.swift;
-      sourceTree = "<group>";
-    };
-    D56700000000000000000003 = {
-      isa = PBXBuildFile;
-      fileRef = D56700000000000000000004;
-    };
-    D56700000000000000000004 = {
-      isa = PBXFileReference;
-      lastKnownFileType = text.json;
-      path = extensions/webextension/manifest.json;
-      sourceTree = SOURCE_ROOT;
-    };
-    D56700000000000000000005 = {
-      isa = PBXFileReference;
-      lastKnownFileType = text.plist.xml;
-      path = Info.plist;
-      sourceTree = "<group>";
-    };
-    D56700000000000000000006 = {
-      isa = PBXFileReference;
-      explicitFileType = "wrapper.app-extension";
-      includeInIndex = 0;
-      path = PDFMagicOpenerSafari.appex;
-      sourceTree = BUILT_PRODUCTS_DIR;
-    };
-    D56700000000000000000007 = {
-      isa = PBXBuildFile;
-      fileRef = D56700000000000000000006;
-      settings = { ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-    };
-    D56700000000000000000008 = {
-      isa = PBXCopyFilesBuildPhase;
-      buildActionMask = 2147483647;
-      dstPath = "";
-      dstSubfolderSpec = 13;
-      files = (D56700000000000000000007,);
-      name = "Embed App Extensions";
-      runOnlyForDeploymentPostprocessing = 0;
-    };
-    D56700000000000000000009 = {
-      isa = PBXNativeTarget;
-      buildConfigurationList = D56700000000000000000010;
-      buildPhases = (D5670000000000000000000A, D5670000000000000000000B, D5670000000000000000000C,);
-      buildRules = ();
-      dependencies = ();
-      name = PDFMagicOpenerSafari;
-      productName = PDFMagicOpenerSafari;
-      productReference = D56700000000000000000006;
-      productType = "com.apple.product-type.app-extension";
-    };
-    D5670000000000000000000A = {
-      isa = PBXSourcesBuildPhase;
-      buildActionMask = 2147483647;
-      files = (D56700000000000000000001,);
-      runOnlyForDeploymentPostprocessing = 0;
-    };
-    D5670000000000000000000B = {
-      isa = PBXFrameworksBuildPhase;
-      buildActionMask = 2147483647;
-      files = ();
-      runOnlyForDeploymentPostprocessing = 0;
-    };
-    D5670000000000000000000C = {
-      isa = PBXResourcesBuildPhase;
-      buildActionMask = 2147483647;
-      files = (D56700000000000000000003,);
-      runOnlyForDeploymentPostprocessing = 0;
-    };
-    D5670000000000000000000D = {
-      isa = PBXTargetDependency;
-      target = D56700000000000000000009;
-      targetProxy = D5670000000000000000000E;
-    };
-    D5670000000000000000000E = {
-      isa = PBXContainerItemProxy;
-      containerPortal = A1000000000000000000000B;
-      proxyType = 1;
-      remoteGlobalIDString = D56700000000000000000009;
-      remoteInfo = PDFMagicOpenerSafari;
-    };
-    D5670000000000000000000F = {
-      isa = PBXGroup;
-      children = (D56700000000000000000002, D56700000000000000000005, D56700000000000000000013, D56700000000000000000004,);
-      name = "Safari Web Extension";
-      path = extensions/safari;
-      sourceTree = SOURCE_ROOT;
-    };
-    D56700000000000000000010 = {
-      isa = XCConfigurationList;
-      buildConfigurations = (D56700000000000000000011, D56700000000000000000012,);
-      defaultConfigurationIsVisible = 0;
-      defaultConfigurationName = Release;
-    };
-    D56700000000000000000011 = {
-      isa = XCBuildConfiguration;
-      buildSettings = {
-        APPLICATION_EXTENSION_API_ONLY = YES;
-        CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;
-        CODE_SIGN_STYLE = Automatic;
-        CURRENT_PROJECT_VERSION = 1;
-        GENERATE_INFOPLIST_FILE = NO;
-        INFOPLIST_FILE = extensions/safari/Info.plist;
-        LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", "@executable_path/../../../../Frameworks",);
-        MACOSX_DEPLOYMENT_TARGET = 13.0;
-        MARKETING_VERSION = 0.1.0;
-        PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;
-        PRODUCT_NAME = "$(TARGET_NAME)";
-        SDKROOT = macosx;
-        SKIP_INSTALL = YES;
-        SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-        SWIFT_VERSION = 5.0;
-      };
-      name = Debug;
-    };
-    D56700000000000000000012 = {
-      isa = XCBuildConfiguration;
-      buildSettings = {
-        APPLICATION_EXTENSION_API_ONLY = YES;
-        CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;
-        CODE_SIGN_STYLE = Automatic;
-        CURRENT_PROJECT_VERSION = 1;
-        GENERATE_INFOPLIST_FILE = NO;
-        INFOPLIST_FILE = extensions/safari/Info.plist;
-        LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", "@executable_path/../../../../Frameworks",);
-        MACOSX_DEPLOYMENT_TARGET = 13.0;
-        MARKETING_VERSION = 0.1.0;
-        PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;
-        PRODUCT_NAME = "$(TARGET_NAME)";
-        SDKROOT = macosx;
-        SKIP_INSTALL = YES;
-        SWIFT_OPTIMIZATION_LEVEL = "-O";
-        SWIFT_VERSION = 5.0;
-      };
-      name = Release;
-    };
-    D56700000000000000000013 = {
-      isa = PBXFileReference;
-      lastKnownFileType = text.plist.entitlements;
-      path = SafariExtension.entitlements;
-      sourceTree = "<group>";
-    };
     B33200000000000000000001 = {
       isa = PBXBuildFile;
       fileRef = B33200000000000000000002;
@@ -507,6 +358,155 @@
         SWIFT_VERSION = 5.0;
       };
       name = Release;
+    };
+    D56700000000000000000001 = {
+      isa = PBXBuildFile;
+      fileRef = D56700000000000000000002;
+    };
+    D56700000000000000000002 = {
+      isa = PBXFileReference;
+      lastKnownFileType = sourcecode.swift;
+      path = SafariWebExtensionHandler.swift;
+      sourceTree = "<group>";
+    };
+    D56700000000000000000003 = {
+      isa = PBXBuildFile;
+      fileRef = D56700000000000000000004;
+    };
+    D56700000000000000000004 = {
+      isa = PBXFileReference;
+      lastKnownFileType = text.json;
+      path = extensions/webextension/manifest.json;
+      sourceTree = SOURCE_ROOT;
+    };
+    D56700000000000000000005 = {
+      isa = PBXFileReference;
+      lastKnownFileType = text.plist.xml;
+      path = Info.plist;
+      sourceTree = "<group>";
+    };
+    D56700000000000000000006 = {
+      isa = PBXFileReference;
+      explicitFileType = "wrapper.app-extension";
+      includeInIndex = 0;
+      path = PDFMagicOpenerSafari.appex;
+      sourceTree = BUILT_PRODUCTS_DIR;
+    };
+    D56700000000000000000007 = {
+      isa = PBXBuildFile;
+      fileRef = D56700000000000000000006;
+      settings = { ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
+    };
+    D56700000000000000000008 = {
+      isa = PBXCopyFilesBuildPhase;
+      buildActionMask = 2147483647;
+      dstPath = "";
+      dstSubfolderSpec = 13;
+      files = (D56700000000000000000007,);
+      name = "Embed App Extensions";
+      runOnlyForDeploymentPostprocessing = 0;
+    };
+    D56700000000000000000009 = {
+      isa = PBXNativeTarget;
+      buildConfigurationList = D56700000000000000000010;
+      buildPhases = (D5670000000000000000000A, D5670000000000000000000B, D5670000000000000000000C,);
+      buildRules = ();
+      dependencies = ();
+      name = PDFMagicOpenerSafari;
+      productName = PDFMagicOpenerSafari;
+      productReference = D56700000000000000000006;
+      productType = "com.apple.product-type.app-extension";
+    };
+    D5670000000000000000000A = {
+      isa = PBXSourcesBuildPhase;
+      buildActionMask = 2147483647;
+      files = (D56700000000000000000001,);
+      runOnlyForDeploymentPostprocessing = 0;
+    };
+    D5670000000000000000000B = {
+      isa = PBXFrameworksBuildPhase;
+      buildActionMask = 2147483647;
+      files = ();
+      runOnlyForDeploymentPostprocessing = 0;
+    };
+    D5670000000000000000000C = {
+      isa = PBXResourcesBuildPhase;
+      buildActionMask = 2147483647;
+      files = (D56700000000000000000003,);
+      runOnlyForDeploymentPostprocessing = 0;
+    };
+    D5670000000000000000000D = {
+      isa = PBXTargetDependency;
+      target = D56700000000000000000009;
+      targetProxy = D5670000000000000000000E;
+    };
+    D5670000000000000000000E = {
+      isa = PBXContainerItemProxy;
+      containerPortal = A1000000000000000000000B;
+      proxyType = 1;
+      remoteGlobalIDString = D56700000000000000000009;
+      remoteInfo = PDFMagicOpenerSafari;
+    };
+    D5670000000000000000000F = {
+      isa = PBXGroup;
+      children = (D56700000000000000000002, D56700000000000000000005, D56700000000000000000013, D56700000000000000000004,);
+      name = "Safari Web Extension";
+      path = extensions/safari;
+      sourceTree = SOURCE_ROOT;
+    };
+    D56700000000000000000010 = {
+      isa = XCConfigurationList;
+      buildConfigurations = (D56700000000000000000011, D56700000000000000000012,);
+      defaultConfigurationIsVisible = 0;
+      defaultConfigurationName = Release;
+    };
+    D56700000000000000000011 = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+        APPLICATION_EXTENSION_API_ONLY = YES;
+        CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;
+        CODE_SIGN_STYLE = Automatic;
+        CURRENT_PROJECT_VERSION = 1;
+        GENERATE_INFOPLIST_FILE = NO;
+        INFOPLIST_FILE = extensions/safari/Info.plist;
+        LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", "@executable_path/../../../../Frameworks",);
+        MACOSX_DEPLOYMENT_TARGET = 13.0;
+        MARKETING_VERSION = 0.1.0;
+        PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;
+        PRODUCT_NAME = "$(TARGET_NAME)";
+        SDKROOT = macosx;
+        SKIP_INSTALL = YES;
+        SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+        SWIFT_VERSION = 5.0;
+      };
+      name = Debug;
+    };
+    D56700000000000000000012 = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+        APPLICATION_EXTENSION_API_ONLY = YES;
+        CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;
+        CODE_SIGN_STYLE = Automatic;
+        CURRENT_PROJECT_VERSION = 1;
+        GENERATE_INFOPLIST_FILE = NO;
+        INFOPLIST_FILE = extensions/safari/Info.plist;
+        LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", "@executable_path/../../../../Frameworks",);
+        MACOSX_DEPLOYMENT_TARGET = 13.0;
+        MARKETING_VERSION = 0.1.0;
+        PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;
+        PRODUCT_NAME = "$(TARGET_NAME)";
+        SDKROOT = macosx;
+        SKIP_INSTALL = YES;
+        SWIFT_OPTIMIZATION_LEVEL = "-O";
+        SWIFT_VERSION = 5.0;
+      };
+      name = Release;
+    };
+    D56700000000000000000013 = {
+      isa = PBXFileReference;
+      lastKnownFileType = text.plist.entitlements;
+      path = SafariExtension.entitlements;
+      sourceTree = "<group>";
     };
   };
   rootObject = A1000000000000000000000B;
