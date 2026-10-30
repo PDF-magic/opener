@@ -4,6 +4,19 @@ import SwiftUI
 // Browser discovery, selection and PDF launch remain in the installed tools;
 // displaying this page must not mutate user choices or scanning policy.
 struct BrowsersSettingsView: View {
+  @State private var downloadMonitoringEnabled = false
+  @State private var downloadMonitoringMessage: String?
+
+  private func setDownloadMonitoring(_ enabled: Bool) {
+    if BrowserDownloadMonitoringPreference.save(enabled) {
+      downloadMonitoringEnabled = enabled
+      downloadMonitoringMessage = "Preference saved. Browser download monitoring is not active."
+    } else {
+      downloadMonitoringEnabled = BrowserDownloadMonitoringPreference.isEnabled()
+      downloadMonitoringMessage = "Could not save the preference. The previous setting is unchanged."
+    }
+  }
+
   @State private var scanOtherSupportedFiles = false
   @State private var scanOtherFilesStatus: String?
 
@@ -74,6 +87,30 @@ struct BrowsersSettingsView: View {
         .accessibilityIdentifier("downloadScanningSettingsSection")
         .onAppear(perform: loadOtherFilePreference)
 
+        GroupBox("Browser downloads") {
+          VStack(alignment: .leading, spacing: 8) {
+            Toggle("Enable Browser Download Monitoring", isOn: Binding(
+              get: { downloadMonitoringEnabled },
+              set: { setDownloadMonitoring($0) }
+            ))
+            .accessibilityIdentifier("enableBrowserDownloadMonitoringToggle")
+
+            Text("This saves your opt-in preference only. Browser download monitoring is not active: the browser extension is not connected to a verified scanner and cannot monitor downloads yet. Browser permissions must be granted separately.")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let downloadMonitoringMessage {
+              Text(downloadMonitoringMessage)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("browserDownloadMonitoringStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("browserDownloadsSection")
+
         GroupBox("Additional applications") {
           browserSettingDetail(
             "Custom choices",
@@ -87,6 +124,10 @@ struct BrowsersSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("browsersSettingsPage")
+    .onAppear {
+      // Reading is side-effect free; do not prompt for browser permissions.
+      downloadMonitoringEnabled = BrowserDownloadMonitoringPreference.isEnabled()
+    }
   }
 
   private func browserSettingDetail(_ title: String, _ description: String, helpText: String) -> some View {
