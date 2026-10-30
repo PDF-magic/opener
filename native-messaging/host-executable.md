@@ -363,6 +363,33 @@ permission, authenticate a scanner, change ClamAV/quarantine policy, or modify
 PDF opening and user-selected destinations. Real PDF path admission is an
 independent prerequisite of any future privileged scan coordinator.
 
+### Limit simultaneous native messaging processes (opener-0663)
+
+Each browser native messaging port starts a separate host process. The native
+host now admits at most **four concurrent processes per OS user**, across
+supported browsers, using four nonblocking `flock` slots under the actual
+account's `~/.pdf-magic-native-connections/` directory. The directory is
+created with user-only permissions (`0700`), each lock file with `0600`,
+and symlinks, hard links, unsafe ownership and permissive lock directories are
+rejected. The process acquires its slot **before reading any native message**
+and holds the descriptor for its entire connection. A fifth concurrent host
+fails closed without stdout or stderr protocol output. No queue is created.
+
+The OS releases locks automatically on clean EOF, host crash or termination;
+empty lock files remain for reuse and are not a user preference or scanner
+cache. The production lock scope is derived from the OS account, **not** from
+untrusted browser input, `HOME`, a user-supplied host path, or an extension ID.
+A compile-time-only test build can use a disposable home fixture; production
+builds never honor that override.
+
+This limits simultaneous processes, **not** the number of requests handled on
+one admitted port. It does not authenticate callers, activate the dormant
+browser scanner integration, alter PDF paths, execute programs, change the
+selected target app, or bypass signature freshness, scan integrity, quarantine
+or opening gates. The macOS native host test suite covers saturation, immediate
+rejection, ordinary exit, crash recovery, and unsafe slot directories.
+
+
 ### Executable-launch boundary (opener-0657)
 
 The native messaging host enforces an explicit fixed `approvedTopics` allowlist
