@@ -170,6 +170,13 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
     }
   }
 
+  // Fixed, document-independent preview text. Only Maximum can rasterize
+  // into a generated copy; this does not claim that Maximum is active.
+  var capabilityLossExplanation: String? {
+    guard self == .maximum else { return nil }
+    return "A future Maximum-generated safe copy is rebuilt from flattened page images, not an editable original. Flattening may remove selectable and searchable text, clickable links, interactive form fields, annotations and comments, embedded attachments, document metadata, and scripts or other active PDF actions. Digital signatures may be invalidated, and visual details can change. OCR is not restored. Keep the untouched original if you need these capabilities. A generated copy is not a malware-clean verdict and still requires a separate fresh scan before opening."
+  }
+
   // This view may only preview named protection tiers. A complete,
   // separately verified engine-to-scan-gate integration is required before
   // any tier can become an effective selection.
@@ -296,6 +303,7 @@ struct ProtectionSettingsView: View {
   @State private var pendingLowerPreview: PlannedProtectionTier?
   @State private var showLowerPreviewWarning = false
   @State private var showExactEffectivePolicy = false
+  @State private var showConversionDetails = false
   @State private var showExistingExceptions = false
   @State private var showProtectionResetConfirmation = false
 
@@ -449,6 +457,17 @@ struct ProtectionSettingsView: View {
                 Text(selectedPreview.detail)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
+                if let capabilityLoss = selectedPreview.capabilityLossExplanation {
+                  VStack(alignment: .leading, spacing: 6) {
+                    Text("PDF capabilities that may be removed")
+                      .font(.subheadline.weight(.semibold))
+                      .accessibilityAddTraits(.isHeader)
+                    Text(capabilityLoss)
+                      .foregroundStyle(.secondary)
+                      .fixedSize(horizontal: false, vertical: true)
+                  }
+                  .accessibilityIdentifier("maximumCapabilityLossExplanation")
+                }
                 Text(selectedPreview.activationBlockReason)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
@@ -489,6 +508,13 @@ struct ProtectionSettingsView: View {
                   .font(.footnote)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
+                if selectedPreview == .maximum {
+                  Button("View Conversion Details") {
+                    showConversionDetails = true
+                  }
+                  .accessibilityIdentifier("maximumViewConversionDetails")
+                  .accessibilityHint("View general Maximum conversion details; no document is converted or scanned.")
+                }
               }
               .padding(12)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -592,6 +618,9 @@ struct ProtectionSettingsView: View {
         selectedPreview = tier
       }
     }
+    .sheet(isPresented: $showConversionDetails) {
+      conversionDetailsSheet
+    }
     .alert("Lower planned protection preview?", isPresented: $showLowerPreviewWarning) {
       Button("Keep current preview", role: .cancel) {
         pendingLowerPreview = nil
@@ -635,6 +664,59 @@ struct ProtectionSettingsView: View {
     // Reflect the value only after the shared preference confirms persistence.
     selectedPreview = PlannedProtectionTier(rawValue: PreferredProtectionLevel.standard.rawValue)
     previewSaveStatus = "Protection preview reset to Standard. Active protection remains Built-in."
+  }
+
+  // Future Maximum-only explanation. This sheet does not inspect a PDF or
+  // fabricate per-document conversion results; no file path or document
+  // data enters the view, and the installed scanner policy stays unchanged.
+  private var conversionDetailsSheet: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 16) {
+        Text("Maximum conversion details")
+          .font(.title2.weight(.semibold))
+          .accessibilityAddTraits(.isHeader)
+
+        Text("Preview only — Maximum protection is not available. No PDF has been converted, saved, scanned or opened by this action.")
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        GroupBox("How the generated copy is made") {
+          Text("A future Maximum conversion renders supported PDF pages into flattened images and builds a separate visual-only PDF. The untouched original remains unchanged; the generated copy is not the original document.")
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+
+        GroupBox("What can change or be removed") {
+          Text("Selectable and searchable text, clickable links, interactive forms, annotations, embedded attachments, scripts and document metadata may be removed. OCR is not restored. Flattening can invalidate digital signatures, and visual details may differ. Keep the original if these capabilities matter.")
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+
+        GroupBox("Safety checks before opening") {
+          Text("Conversion is not a malware-clean verdict. Any generated PDF requires its own fresh scan and verified opening handoff. If conversion or a required check fails, the original must not be opened as a fallback.")
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+
+        Text("These are general conversion characteristics, not results for a selected PDF.")
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        HStack {
+          Spacer()
+          Button("Done") {
+            showConversionDetails = false
+          }
+          .keyboardShortcut(.defaultAction)
+          .accessibilityIdentifier("maximumConversionDetailsClose")
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(24)
+    }
+    .frame(minWidth: 420, minHeight: 340)
+    .accessibilityIdentifier("maximumConversionDetailsSheet")
   }
 
   private func includedCheckDetail(_ check: ProtectionLevelCheck) -> some View {

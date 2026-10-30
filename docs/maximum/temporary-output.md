@@ -47,3 +47,24 @@ permissions, success/error cleanup, symlink and inode substitution,
 forged leases, unknown extra files, partial writes, parallel sessions,
 and noninterference with the active scanner. The result is not a clean
 scan verdict and does not enable Maximum.
+
+
+## Abandoned-output recovery (opener-0541)
+
+New outputs are placed beneath a fixed, verified, user-owned 0700
+application-private temporary root. Each private directory records the creating
+process ID in its name and retains an unpredictable random suffix. Before
+staging another copy, the application conservatively reclaims a directory
+**only** if its creating process no longer exists, the directory and its
+sole generated PDF are both older than seven days, and every directory/file
+permission, ownership, name, identity and link-count check passes.
+
+Recovery never scans the system-wide temporary directory, accepts caller paths
+or recursively removes files. Live processes, recent handoffs, symlinks, hard
+links, unexpected directory entries and substituted objects are preserved.
+A process ID reused by a live process postpones cleanup rather than risking
+premature removal. Historical staging directories created before this private
+root existed are deliberately not swept because their ownership cannot be
+reliably reconstructed. Successful viewer handoffs remain readable for their
+active session; explicit lease release remains the preferred cleanup method.
+The installed Built-in scanner and non-selectable Maximum profile are unchanged.
