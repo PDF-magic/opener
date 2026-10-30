@@ -65,6 +65,8 @@ def filesystem_sandbox_command(worker, *arguments):
         ("PYTHON_BASE_PREFIX", "python_base_prefix"),
     ):
         command.extend(("-D", name + "=" + context[key]))
+    for key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
+        command.extend(("-D", parameter + "=" + context[key]))
     command.extend((context["python"], "-I", "-B", context["worker"], *arguments))
     return command
 
@@ -194,6 +196,14 @@ class MaximumRendererTests(unittest.TestCase):
         ):
             result = renderer.render_isolated_pdf_page(self.pdf, 0)
         command = tuple(run.call_args.args[0])
+        self.assertEqual(command.count("-D"), 8 + len(renderer.RENDERER_LIMIT_SUPPORT))
+        with patch.object(renderer, "_renderer_sandbox_context", return_value=context):
+            probe_command = filesystem_sandbox_command(
+                ROOT / "maximum_render_worker.py", "probe",
+            )
+        self.assertEqual(probe_command.count("-D"), len(renderer.RENDERER_LIMIT_SUPPORT) + 8)
+        for key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
+            self.assertIn(parameter + "=" + context[key], probe_command)
         self.assertEqual(command[:3], (
             renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_FILESYSTEM_PROFILE,
         ))
