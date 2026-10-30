@@ -380,6 +380,9 @@ jobs:
       - name: Verify passive PDF navigation response MIME detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-response-mime.test.mjs
+      - name: Verify existing downloaded copy lookup for Scan This PDF
+        working-directory: extensions/webextension
+        run: node --test tests/scan-pdf-existing-copy.test.mjs
       - name: Verify HTML responses cannot masquerade as PDFs
         working-directory: extensions/webextension
         run: node --test tests/pdf-html-pages.test.mjs
