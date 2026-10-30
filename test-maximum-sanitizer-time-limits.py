@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """opener-0490: hard deadlines and process-tree cleanup for PDF sanitization."""
+import errno
 import os
 import signal
 import subprocess
 import sys
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import maximum_sanitizer_process as sanitizer
 
@@ -20,13 +21,32 @@ ENV = {
 
 
 def run_script(source, *, timeout=2, contents=b"input", max_output_bytes=128):
-    return sanitizer.run_limited_converter(
-        (sys.executable, "-I", "-B", "-c", source),
-        contents,
-        timeout_seconds=timeout,
-        max_output_bytes=max_output_bytes,
-        environment=ENV.copy(),
-    )
+    def invoke():
+        return sanitizer.run_limited_converter(
+            (sys.executable, "-I", "-B", "-c", source),
+            contents,
+            timeout_seconds=timeout,
+            max_output_bytes=max_output_bytes,
+            environment=ENV.copy(),
+        )
+
+    # Test-only, bounded errno diagnostics: never log worker output, source
+    # content, command arguments, paths, or the sanitizer's internal error.
+    # Do not interfere with tests that explicitly spy on process-group kills.
+    if sys.platform != "darwin" or isinstance(sanitizer.os.killpg, Mock):
+        return invoke()
+    real_killpg = sanitizer.os.killpg
+
+    def annotated_killpg(pid, sig):
+        try:
+            return real_killpg(pid, sig)
+        except OSError as error:
+            print("macOS sanitizer cleanup errno=" +
+                  errno.errorcode.get(error.errno, "UNKNOWN"), file=sys.stderr)
+            raise
+
+    with patch.object(sanitizer.os, "killpg", side_effect=annotated_killpg):
+        return invoke()
 
 
 class SanitizerProcessDeadlineTests(unittest.TestCase):
