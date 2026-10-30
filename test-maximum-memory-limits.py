@@ -134,6 +134,11 @@ try:
 except BaseException as error:
     print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))
     raise SystemExit(2)
+finally:
+    # Test-only probe has no untrusted work remaining during interpreter exit.
+    if sys.platform == 'darwin':
+        import signal
+        signal.setitimer(signal.ITIMER_REAL, 0)
 """
         completed = subprocess.run(
             [sys.executable, "-I", "-B", "-c", script, str(ROOT)],

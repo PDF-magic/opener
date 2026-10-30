@@ -77,4 +77,13 @@ if __name__ == "__main__":
         # Never reflect a parser traceback, PDF text, path or exception in
         # stdout/stderr; the parent always reports a fixed blocked outcome.
         exit_code = 2
+    finally:
+        # Keep the memory watchdog active until inspection finishes, then
+        # disarm it before interpreter teardown can receive a late SIGALRM.
+        if sys.platform == "darwin":
+            try:
+                import signal
+                signal.setitimer(signal.ITIMER_REAL, 0)
+            except BaseException:
+                exit_code = 2
     raise SystemExit(exit_code)

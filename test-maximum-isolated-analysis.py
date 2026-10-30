@@ -65,6 +65,15 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                 with self.assertRaises(FrozenInstanceError):
                     report.permits_open = True
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS RSS watchdog regression")
+    def test_macos_worker_completes_without_late_watchdog_signal(self):
+        pdf = sample_pdf()
+        for attempt in range(12):
+            with self.subTest(attempt=attempt):
+                report = isolated.run_isolated_pdf_analysis(pdf, "malformedStructures")
+                self.assertGreater(report.worker_pid, 0)
+                self.assertFalse(report.permits_open)
+
     def test_input_is_raw_bytes_not_path_and_worker_is_isolated_python(self):
         document = sample_pdf()
         real_run = isolated.run_limited_worker
