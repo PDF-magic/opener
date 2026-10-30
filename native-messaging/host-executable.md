@@ -181,6 +181,51 @@ Real result delivery requires a separately reviewed, authenticated scanner
 coordinator enforcing explicit file selection, ClamAV freshness, complete
 scanning, file integrity, quarantine, cancellation and verified handoff.
 
+### Scan-cancellation message (opener-0631)
+
+After a successful `host.handshake` on the **same native host process**,
+the caller may send a cancellation request correlated to an earlier scan
+request ID:
+
+```json
+{"version":1,"kind":"request","topic":"scan.cancel","requestId":"cancel_1","payload":{"scanRequestId":"scan_1"}}
+```
+
+The `scanRequestId` is a 1–80-character ASCII identifier consisting of
+letters, digits, underscore or hyphen, corresponding to the earlier
+`scan.request` envelope's `requestId`. It does **not** prove that any job
+was accepted or that the sender owns it. The cancellation envelope's own
+`requestId` independently correlates the reply. The payload must contain
+**exactly one** field, `scanRequestId`. Arbitrary process IDs, signals,
+paths, URLs, claimed results, permission changes or extra fields are rejected.
+
+As in `scan.request`, `scan.status`, and `scan.result`, the standalone host
+has **no authenticated scanner coordinator or active native scan jobs**.
+It must not claim that cancellation succeeded or modify a real scanner
+process. Each valid cancellation message, even when repeated or referring
+to an unknown scan ID, receives:
+
+```json
+{"version":1,"kind":"response","topic":"scan.cancel","requestId":"cancel_1","payload":{"scanRequestId":"scan_1","status":"unavailable","reason":"trusted-scan-coordinator-required","cancellationAccepted":false,"cancelled":false,"scanStarted":false,"scanVerified":false,"authorizesOpen":false}}
+```
+
+`cancelled:false` and `cancellationAccepted:false` are deliberate:
+they distinguish **no cancellation occurred** from a confirmed
+cancellation or a scan failure. No completed scan result, clean verdict
+or PDF-opening authorization is implied. A cancellation request does not
+change subsequent `scan.status` or `scan.result` responses, spawn a
+process, kill a caller-specified PID, change user preferences or touch any
+PDF. Pre-handshake and malformed requests fail closed with no response or
+diagnostic output.
+
+The application's *existing* scanner subprocess cancellation controls
+remain independent. Connecting them to browser native messaging is a
+separate security-reviewed task requiring caller authentication, trusted
+file selection, authorization to cancel **only that caller's active job**,
+cancellation/cleanup lifecycle handling, and preservation of mandatory
+ClamAV freshness, integrity, quarantine and verified-opening protections.
+The host handshake alone is not authorization.
+
 The existing `host.ping` request remains a backward-compatible, read-only
 liveness probe before or after a handshake:
 

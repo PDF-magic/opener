@@ -81,6 +81,22 @@ def unavailable_result_reply(request_id="result_1", scan_request_id="scan_1"):
             "scanVerified": False, "authorizesOpen": False}}
 
 
+def scan_cancel(request_id="cancel_1", scan_request_id="scan_1"):
+  return dict(ping(request_id), topic="scan.cancel",
+              payload={"scanRequestId": scan_request_id})
+
+
+def unavailable_cancel_reply(request_id="cancel_1", scan_request_id="scan_1"):
+  return {"version": 1, "kind": "response", "topic": "scan.cancel",
+          "requestId": request_id, "payload": {
+            "scanRequestId": scan_request_id,
+            "status": "unavailable",
+            "reason": "trusted-scan-coordinator-required",
+            "cancellationAccepted": False, "cancelled": False,
+            "scanStarted": False, "scanVerified": False,
+            "authorizesOpen": False}}
+
+
 def responses(output):
   decoded = []
   while output:
@@ -560,6 +576,126 @@ class NativeMessagingHostTests(unittest.TestCase):
       self.assertEqual(run.returncode, 0)
       self.assertEqual(run.stderr, b"")
       self.assertEqual(responses(run.stdout)[1], unavailable_result_reply())
+      self.assertEqual(private_file.read_bytes(), original)
+
+  def test_scan_cancel_requires_completed_handshake(self):
+    for prefix in (b"", frame(ping("probe"))):
+      with self.subTest(probe=bool(prefix)):
+        run = self.run_host(prefix + frame(scan_cancel()))
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(run.stderr, b"")
+        replies = responses(run.stdout)
+        self.assertEqual(len(replies), 1 if prefix else 0)
+        if replies:
+          self.assertEqual(replies[0]["topic"], "host.ping")
+          self.assertIs(replies[0]["payload"]["scanAvailable"], False)
+
+  def test_scan_cancel_correlates_and_never_claims_a_cancellation(self):
+    run = self.run_host(
+      frame(handshake()) +
+      frame(scan_request("scan_1")) +
+      frame(scan_cancel("cancel_1", "scan_1"))
+    )
+    self.assertEqual(run.returncode, 0)
+    self.assertEqual(run.stderr, b"")
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 3)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply())
+    self.assertEqual(replies[2], unavailable_cancel_reply())
+    payload = replies[2]["payload"]
+    self.assertIs(payload["cancellationAccepted"], False)
+    self.assertIs(payload["cancelled"], False)
+    self.assertIs(payload["scanStarted"], False)
+    self.assertIs(payload["scanVerified"], False)
+    self.assertIs(payload["authorizesOpen"], False)
+    for forbidden in ("pid", "processId", "path", "verdict", "result",
+                      "signal", "scanCompleted"):
+      self.assertNotIn(forbidden, payload)
+
+  def test_scan_cancel_unknown_repeat_and_reconnection_remain_unavailable(self):
+    messages = [handshake(), scan_cancel("unknown_1", "missing"),
+                scan_request("manual_1"), scan_cancel("cancel_1", "manual_1"),
+                scan_cancel("cancel_2", "manual_1"),
+                scan_status("status_1", "manual_1"),
+                scan_result("result_1", "manual_1"), ping("still_alive")]
+    run = self.run_host(b"".join(frame(m) for m in messages))
+    self.assertEqual(run.returncode, 0)
+    self.assertEqual(run.stderr, b"")
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), len(messages))
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_cancel_reply("unknown_1", "missing"))
+    self.assertEqual(replies[2], unavailable_scan_reply("manual_1"))
+    self.assertEqual(replies[3], unavailable_cancel_reply("cancel_1", "manual_1"))
+    self.assertEqual(replies[4], unavailable_cancel_reply("cancel_2", "manual_1"))
+    self.assertEqual(replies[5], unavailable_status_reply("status_1", "manual_1"))
+    self.assertEqual(replies[6], unavailable_result_reply("result_1", "manual_1"))
+    self.assertEqual(replies[7]["topic"], "host.ping")
+
+    fresh = self.run_host(frame(handshake()) +
+                          frame(scan_cancel("fresh_1", "manual_1")))
+    self.assertEqual(fresh.returncode, 0)
+    self.assertEqual(fresh.stderr, b"")
+    self.assertEqual(responses(fresh.stdout)[1],
+                     unavailable_cancel_reply("fresh_1", "manual_1"))
+
+  def test_scan_cancel_rejects_malformed_and_privileged_payloads(self):
+    valid = scan_cancel()
+    malformed = [
+      dict(valid, payload=None),
+      dict(valid, payload={}),
+      dict(valid, payload=[]),
+      dict(valid, payload={"scanRequestId": ""}),
+      dict(valid, payload={"scanRequestId": "x" * 81}),
+      dict(valid, payload={"scanRequestId": "has space"}),
+      dict(valid, payload={"scanRequestId": "../private.pdf"}),
+      dict(valid, payload={"scanRequestId": 1}),
+      dict(valid, payload={"scanRequestId": True}),
+      dict(valid, payload={"scanRequestId": None}),
+      dict(valid, payload={"scanRequestId": ["scan_1"]}),
+      dict(valid, payload={"scanRequestId": "scan_1", "pid": 12345}),
+      dict(valid, payload={"scanRequestId": "scan_1", "signal": "SIGKILL"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "path": "/tmp/private.pdf"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "cancelled": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "authorizesOpen": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "scanVerified": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "protectionLevel": "off"}),
+      dict(valid, kind="response"),
+      dict(valid, kind="event"),
+      dict(valid, version=2),
+      dict(valid, requestId="bad/id"),
+      dict(valid, topic="pdf.cancel"),
+    ]
+    for message in malformed:
+      with self.subTest(message=message):
+        run = self.run_host(frame(handshake()) + frame(message))
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(run.stderr, b"")
+        replies = responses(run.stdout)
+        self.assertEqual(len(replies), 1)
+        self.assert_handshake_response(replies[0])
+
+  def test_scan_cancel_never_reads_a_file_or_terminates_a_process(self):
+    with tempfile.TemporaryDirectory(prefix="native-cancel-no-action-") as d:
+      private_file = Path(d) / "private.pdf"
+      original = b"cancellation must not read or overwrite private PDF contents"
+      private_file.write_bytes(original)
+      invalid = dict(scan_cancel(), payload={
+        "scanRequestId": "scan_1", "path": str(private_file),
+        "pid": os.getpid(), "signal": "SIGTERM"
+      })
+      refused = self.run_host(frame(handshake()) + frame(invalid))
+      self.assertNotEqual(refused.returncode, 0)
+      self.assertEqual(refused.stderr, b"")
+      self.assertNotIn(str(private_file).encode(), refused.stdout)
+      self.assertNotIn(original, refused.stdout)
+      self.assertEqual(private_file.read_bytes(), original)
+
+      accepted = self.run_host(frame(handshake()) + frame(scan_cancel()))
+      self.assertEqual(accepted.returncode, 0)
+      self.assertEqual(accepted.stderr, b"")
+      self.assertEqual(responses(accepted.stdout)[1], unavailable_cancel_reply())
       self.assertEqual(private_file.read_bytes(), original)
 
   def test_truncated_and_invalid_length_fail_closed(self):
