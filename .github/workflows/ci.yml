@@ -336,6 +336,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/download-scan-results.py -v
       - name: Verify read-only per-browser monitoring status display
         run: PYTHONPATH=. python3 tests/general/browser-monitoring-status.py -v
+      - name: Verify read-only Test Browser Integration action
+        run: PYTHONPATH=. python3 tests/general/browser-integration-test.py -v
       - name: Verify explanatory help for technical preferences
         run: PYTHONPATH=. python3 tests/general/technical-preferences-help.py -v
       - name: Verify Extensions and Integrations settings page
@@ -712,6 +714,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-monitoring-status.swift -o "$RUNNER_TEMP/TestBrowserMonitoringStatus"
           "$RUNNER_TEMP/TestBrowserMonitoringStatus"
+      - name: Verify browser integration preflight never claims scanner connectivity
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-integration.swift -o "$RUNNER_TEMP/TestBrowserIntegration"
+          "$RUNNER_TEMP/TestBrowserIntegration"
       - name: Verify isolated browser download monitoring toggle preference
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
