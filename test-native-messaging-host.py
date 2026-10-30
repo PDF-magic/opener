@@ -135,13 +135,18 @@ class NativeMessagingHostTests(unittest.TestCase):
       raise unittest.SkipTest("Swift compiler is required")
     # Typecheck the production path, then run the same host with an isolated,
     # compile-time-only home override. No test writes to the CI user's home.
-    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    "-typecheck", str(SOURCE), str(STATUS_SOURCE)],
-                   capture_output=True, text=True, check=True, timeout=120)
-    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    "-D", "NATIVE_HOST_CONNECTION_TESTING",
-                    str(SOURCE), str(STATUS_SOURCE), "-o", str(cls.binary)],
-                   capture_output=True, text=True, check=True, timeout=120)
+    def checked_compile(arguments):
+      completed = subprocess.run(arguments, capture_output=True, text=True,
+                                 check=False, timeout=120)
+      if completed.returncode != 0:
+        raise AssertionError("Swift native-host compilation failed:\n" +
+                             completed.stderr[-8000:])
+
+    checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
+                     "-typecheck", str(SOURCE), str(STATUS_SOURCE)])
+    checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
+                     "-D", "NATIVE_HOST_CONNECTION_TESTING",
+                     str(SOURCE), str(STATUS_SOURCE), "-o", str(cls.binary)])
     cls.prior_test_home = os.environ.get("PDF_MAGIC_NATIVE_TEST_HOME")
     os.environ["PDF_MAGIC_NATIVE_TEST_HOME"] = cls.directory.name
     cls.status_binary = Path(cls.directory.name) / "native-host-status-tests"
