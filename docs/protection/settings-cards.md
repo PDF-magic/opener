@@ -41,3 +41,28 @@ target. Existing main preferences and technical-help tests now explicitly
 allow the UI-only preview buttons while continuing to block scanner,
 filesystem and preference mutation. The `scanner-tests` GitHub Actions
 job runs these checks and the macOS application build compiles the view.
+
+## Maximum PDF capability-loss preview (opener-0552)
+
+Selecting the **planned Maximum** card shows an accessible, read-only heading
+**“PDF capabilities that may be removed”** followed by a fixed explanation.
+A future rasterized safe copy may lose selectable/searchable text, clickable
+links, interactive form fields, annotations/comments, embedded attachments,
+metadata, and scripts or other active PDF actions. Flattening can invalidate
+digital signatures and change the appearance of some visual details; OCR is
+not restored. Users should retain the untouched original if they need those
+features. A generated copy is not a malware-clean verdict and requires a
+separate fresh scan before opening.
+
+The warning is scoped to the Maximum preview, not Standard/Enhanced and not
+a fabricated scan result for any PDF. It shows no PDF-controlled strings,
+source path, or filenames. Selecting the preview neither enables Maximum nor
+converts, saves, scans, opens, or modifies any document. The separate
+original-versus-generated comparison (opener-0551) can appear alongside
+this explanatory notice without duplicating its identity controls.
+
+The existing `test-protection-settings-cards.py` regression, executed by
+the required `scanner-tests` job, verifies the warning's content,
+Maximum-only gating and accessible display. The native `macos-build` job
+compiles the SwiftUI view. Current Built-in ClamAV protections, mandatory
+scan/handoff boundaries, quarantine and customized preferences are unchanged.

@@ -66,12 +66,48 @@ class SanitizerReportingTests(unittest.TestCase):
             worker = Path(temp) / "sanitizer-crash"
             worker.write_text("#!/bin/sh\nkill -KILL $$\n", encoding="ascii")
             worker.chmod(0o700)
+            # Prove that the real executable dies from SIGKILL, independent
+            # of sanitizer supervision's subsequent fail-closed cleanup.
+            direct = subprocess.run(
+                (str(worker),), stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3, check=False,
+            )
+            self.assertEqual(direct.returncode, -signal.SIGKILL)
+
+            # On macOS the supervisor can refuse to report a completed crash
+            # if it cannot verify the whole process group's cleanup. That is
+            # a mandatory blocked result, not permission to open the PDF.
+            original_run = copies.run_limited_converter
+            supervision_failures = []
+
+            def observe_supervision(*args, **kwargs):
+                try:
+                    return original_run(*args, **kwargs)
+                except copies.SanitizerProcessExecutionError as error:
+                    supervision_failures.append(type(error))
+                    raise
+
             data = valid_pdf()
-            with patch.object(copies, "_trusted_converter", return_value=worker):
+            with patch.object(copies, "_trusted_converter", return_value=worker), \
+                    patch.object(copies, "run_limited_converter",
+                                 side_effect=observe_supervision):
                 report = copies.attempt_sanitized_pdf_copy(data)
-                self.assertEqual(report.failure.kind, copies.SanitizerFailureKind.CRASHED)
+                self.assertIsNotNone(report.failure)
+                if supervision_failures:
+                    # Only an actual generic supervision error can explain a
+                    # launch-failed outcome for this known crashing worker.
+                    self.assertEqual(
+                        supervision_failures,
+                        [copies.SanitizerProcessExecutionError],
+                    )
+                    expected = copies.SanitizerFailureKind.LAUNCH_FAILED
+                else:
+                    expected = copies.SanitizerFailureKind.CRASHED
+                self.assertEqual(report.failure.kind, expected)
                 self.assertIsNone(report.offer)
-                self.assertIn("crashed", report.failure.message.lower())
+                self.assertIs(report.permits_open, False)
+                self.assertEqual(report.failure.to_dict()["scanVerdict"], "notAssessed")
                 self.assertNotIn(str(worker), report.failure.message)
                 self.assertIsNone(copies.offer_sanitized_pdf_copy(data))
 
