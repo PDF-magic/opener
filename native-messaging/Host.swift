@@ -148,6 +148,30 @@ struct PDFMagicNativeMessagingHost {
         "scanVerified": false,
         "authorizesOpen": false
       ]
+    case "scan.cancel":
+      // Cancellation is a distinct v1 message but cannot operate on a scan
+      // until a trusted scanner coordinator is connected. A handshake or
+      // matching scan ID is not proof that an actual job exists.
+      guard handshakeComplete,
+            let cancelRequest = message["payload"] as? [String: Any],
+            cancelRequest.count == 1,
+            let scanRequestId = cancelRequest["scanRequestId"] as? String,
+            isValidRequestId(scanRequestId) else {
+        throw HostError.invalidMessage
+      }
+      // Do not claim cancellation succeeded, terminate arbitrary processes,
+      // or clear verified scan results. Never accept caller-supplied PIDs,
+      // local file paths, signals, claimed verdicts, or policy overrides.
+      payload = [
+        "scanRequestId": scanRequestId,
+        "status": "unavailable",
+        "reason": "trusted-scan-coordinator-required",
+        "cancellationAccepted": false,
+        "cancelled": false,
+        "scanStarted": false,
+        "scanVerified": false,
+        "authorizesOpen": false
+      ]
     default:
       throw HostError.invalidMessage
     }
