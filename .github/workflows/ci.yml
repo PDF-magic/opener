@@ -24,6 +24,37 @@ permissions:
 
 jobs:
 
+  chrome-package-smoke:
+    # Exercise the actual Chrome Web Store ZIP in a Chrome for Testing browser.
+    # Official branded Chrome 137+ disables --load-extension, so use CfT.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: Chrome package smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: Load the extracted ZIP as a real Chrome extension
+        working-directory: extensions/webextension
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          PACKAGE_DIR: ${{ runner.temp }}/pdfmagic-chrome-smoke
+          # Ubuntu hosted runners may not expose unprivileged user namespaces.
+          # This flag applies only to the disposable CI test browser/profile.
+          CHROME_TEST_NO_SANDBOX: "1"
+        run: |
+          npm run package:chrome
+          mkdir -p "$PACKAGE_DIR"
+          unzip -q "dist/chrome/pdf-magic-opener-chrome-$(node -p 'require("./manifest.json").version').zip" -d "$PACKAGE_DIR"
+          node scripts/test-chrome.mjs "$CHROME_PATH" "$PACKAGE_DIR"
+
+
   detect-scope:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Validate dependency map for native CI
@@ -460,6 +491,38 @@ jobs:
         run: python3 test-detection-responses.py -v
       - name: Inspect suspicious embedded PDF URLs without fetching destinations
         run: python3 test-pdf-suspicious-urls.py -v
+
+  edge-compatibility:
+    name: Microsoft Edge compatibility (Windows)
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Require installed Microsoft Edge and matching EdgeDriver
+        shell: pwsh
+        run: |
+          if (-not $env:EDGEWEBDRIVER) { throw "Windows runner is missing EdgeDriver" }
+          $driver = Join-Path $env:EDGEWEBDRIVER "msedgedriver.exe"
+          if (-not (Test-Path -LiteralPath $driver)) { throw "EdgeDriver executable missing" }
+          $pf86 = [Environment]::GetFolderPath("ProgramFilesX86")
+          $candidates = @(
+            (Join-Path $pf86 "Microsoft\Edge\Application\msedge.exe"),
+            (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe")
+          )
+          if (-not ($candidates | Where-Object { Test-Path -LiteralPath $_ })) {
+            throw "Microsoft Edge executable missing"
+          }
+          "EDGE_WEBDRIVER_BINARY=$driver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build validated Chromium package and smoke-test it in real Edge
+        working-directory: extensions/webextension
+        shell: pwsh
+        run: |
+          npm run build
+          node --test tests/edge-compatibility.test.mjs
 
   macos-build:
     needs: detect-scope
