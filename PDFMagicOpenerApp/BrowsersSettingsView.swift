@@ -61,6 +61,19 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  @State private var notifyOnFailedScan = false
+  @State private var failedScanNotificationStatus: String?
+
+  private func updateNotifyOnFailedScan(_ enabled: Bool) {
+    if DownloadFailedScanNotificationPreference.save(enabled) {
+      notifyOnFailedScan = enabled
+      failedScanNotificationStatus = "Failed-scan notification preference saved."
+    } else {
+      notifyOnFailedScan = DownloadFailedScanNotificationPreference.isEnabled()
+      failedScanNotificationStatus = "Could not save this preference. Your previous choice is unchanged."
+    }
+  }
+
   @State private var browserMonitoringRows: [BrowserMonitoringStatusRow] = []
 
   private func refreshBrowserMonitoringStatus() {
@@ -238,6 +251,34 @@ struct BrowsersSettingsView: View {
           // Display-only: never request downloads permission or start scanning.
           showOnlyWarnings = DownloadWarningOnlyPreference.isEnabled()
         }
+        GroupBox("Download failure notifications") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Notify on Failed Scan", isOn: Binding(
+              get: { notifyOnFailedScan },
+              set: { updateNotifyOnFailedScan($0) }
+            ))
+            .accessibilityIdentifier("notifyOnFailedDownloadScanToggle")
+
+            Text("Opt in to an additional notification when an independently verified browser download scan fails or cannot finish. Required failure messages, blocked-opening alerts and security warnings remain visible regardless of this setting. Download scan notifications are not active until a separately authenticated native integration is available.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let failedScanNotificationStatus {
+              Text(failedScanNotificationStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("notifyOnFailedDownloadScanStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadFailureNotificationsSection")
+        .onAppear {
+          // Read-only load: requesting notification permission is a separate task.
+          notifyOnFailedScan = DownloadFailedScanNotificationPreference.isEnabled()
+        }
+
       }
       .padding(28)
       .frame(maxWidth: .infinity, alignment: .leading)

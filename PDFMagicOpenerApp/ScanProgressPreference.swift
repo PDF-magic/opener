@@ -485,6 +485,84 @@ enum PDFMagicPolicySettingsUpgrade {
 }
 
 
+// Optional browser-download notification *preference* only. The installed
+// opener retains independent blocking and safety messages even when disabled.
+// No browser or native delivery integration currently consumes this setting.
+enum DownloadScanNotificationOutcome {
+  case failed
+  case incomplete
+  case clean
+  case blocked
+  case cancelled
+  case unknown
+}
+
+enum DownloadFailedScanNotificationPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "notifyOnFailedScan"
+
+  // Explicit opt-in. Missing, malformed or unavailable settings are disabled.
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    guard let raw = defaults.object(forKey: key) as? NSNumber,
+          CFGetTypeID(raw) == CFBooleanGetTypeID() else { return false }
+    return raw.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    func restore() {
+      if let previous { defaults.set(previous, forKey: key) }
+      else { defaults.removeObject(forKey: key) }
+      _ = defaults.synchronize()
+    }
+    // Remove a malformed numeric/string entry first: UserDefaults can
+    // otherwise preserve a numeric 1/0 when setting a Boolean equivalent.
+    if let previous {
+      let valid = (previous as? NSNumber).map {
+        CFGetTypeID($0) == CFBooleanGetTypeID()
+      } ?? false
+      if !valid {
+        defaults.removeObject(forKey: key)
+        guard defaults.synchronize() else {
+          restore()
+          return false
+        }
+      }
+    }
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    restore()
+    return false
+  }
+
+  // Must only be called with a result independently classified by an
+  // authenticated native coordinator. Download metadata is not scan evidence.
+  // This controls optional extra notifications, never required warning UI.
+  static func shouldNotify(
+    _ outcome: DownloadScanNotificationOutcome,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    switch outcome {
+    case .failed, .incomplete:
+      return isEnabled(defaults: defaults)
+    case .clean, .blocked, .cancelled, .unknown:
+      return false
+    }
+  }
+}
+
 // Download scan-result presentation only. No native scanner, browser permission,
 // mandatory warning, blocked-file alert, or PDF destination depends
 // on this preference. Unverified/incomplete results must remain visible.
