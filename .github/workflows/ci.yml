@@ -79,7 +79,7 @@ jobs:
             python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
           fi
       - name: Verify dependency-map behavior
-        run: python3 test-ci-test-scope.py -v
+        run: PYTHONPATH=. python3 tests/general/ci-test-scope.py -v
 
   scanner-tests:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
@@ -91,236 +91,251 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Check Python test organization
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          tests = list(Path("tests").glob("*/*.py"))
+          assert len(tests) >= 250, "Regression suites are missing"
+          for path in tests:
+              topic = path.parent.name
+              assert re.fullmatch(r"[a-z]+(?:-[a-z]+)*", topic), path
+              assert re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*\.py", path.name), path
+              assert not path.stem.startswith(topic + "-"), path
+          assert not list(Path(".").glob("test-*.py"))
+          assert not list(Path(".").glob("test_*.py"))
+          PY
       - name: Verify safe versioned configuration loading
-        run: python3 -m unittest discover -p 'test-configuration-loading.py' -v
+        run: PYTHONPATH=. python3 tests/configuration/loading.py -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
-        run: python3 test-pdf-embedded-file-types.py -v
+        run: PYTHONPATH=. python3 tests/pdf/embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
-        run: python3 test-pdf-structure-parser.py -v
+        run: PYTHONPATH=. python3 tests/pdf/structure-parser.py -v
       - name: Enforce the total PDF object budget before graph traversal
-        run: python3 test-pdf-object-limit.py -v
+        run: PYTHONPATH=. python3 tests/pdf/object-limit.py -v
       - name: Reject PDFs exceeding bounded decoded-stream data
-        run: python3 test-pdf-decompressed-size.py -v
+        run: PYTHONPATH=. python3 tests/pdf/decompressed-size.py -v
       - name: Reject excessive PDF recursion depth and cyclic page trees
-        run: python3 test-pdf-recursion-depth.py -v
+        run: PYTHONPATH=. python3 tests/pdf/recursion-depth.py -v
       - name: Enforce hard wall-clock timeout on optional PDF structure analysis
-        run: python3 test-timed-pdf-structure-analysis.py -v
+        run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
-        run: python3 test-pdf-cross-reference-parsing.py -v
+        run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
-        run: python3 test-pdf-encryption-policy.py -v
+        run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
       - name: Reject malformed direct and indirect PDF stream lengths
-        run: python3 test-pdf-stream-lengths.py -v
+        run: PYTHONPATH=. python3 tests/pdf/stream-lengths.py -v
       - name: Verify bounded structured PDF parser output contract
-        run: python3 test-pdf-parser-output.py -v
+        run: PYTHONPATH=. python3 tests/pdf/parser-output.py -v
       - name: Verify structured, fail-closed PDF parsing failure results
-        run: python3 test-pdf-parser-failure-result.py -v
+        run: PYTHONPATH=. python3 tests/pdf/parser-failure-result.py -v
       - name: Verify the evaluated parser, BSD license and consistent version pin
-        run: python3 test-pdf-parser-evaluation.py -v
+        run: PYTHONPATH=. python3 tests/pdf/parser-evaluation.py -v
       - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
         run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Inspect indirect PDF object links and page-tree consistency
-        run: python3 test-pdf-object-relationships.py -v
+        run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
       - name: Detect suspiciously repeated PDF object structures
-        run: python3 test-pdf-repeated-structures.py -v
+        run: PYTHONPATH=. python3 tests/pdf/repeated-structures.py -v
       - name: Inspect automatic PDF action hooks without executing them
-        run: python3 test-pdf-automatic-actions.py -v
+        run: PYTHONPATH=. python3 tests/pdf/automatic-actions.py -v
       - name: Detect unusual and contradictory PDF action chains
-        run: python3 test-pdf-action-chains.py -v
+        run: PYTHONPATH=. python3 tests/pdf/action-chains.py -v
       - name: Inspect JavaScript action payloads without evaluating them
-        run: python3 test-pdf-javascript-actions.py -v
+        run: PYTHONPATH=. python3 tests/pdf/javascript-actions.py -v
       - name: Detect hidden active PDF content in incremental revisions
-        run: python3 test-pdf-revision-active-content.py -v
+        run: PYTHONPATH=. python3 tests/pdf/revision-active-content.py -v
       - name: Detect XFA form entries without decoding XML
-        run: python3 test-pdf-xfa-forms.py -v
+        run: PYTHONPATH=. python3 tests/pdf/xfa-forms.py -v
       - name: Extract declared PDF document metadata without executing contents
-        run: python3 test-pdf-declared-metadata.py -v
+        run: PYTHONPATH=. python3 tests/pdf/declared-metadata.py -v
       - name: Inspect PDF document permissions without decryption
-        run: python3 test-pdf-document-permissions.py -v
+        run: PYTHONPATH=. python3 tests/pdf/document-permissions.py -v
       - name: Verify built-in active protection profile label and unchanged scanner gates
-        run: python3 test-active-protection-profile.py -v
+        run: PYTHONPATH=. python3 tests/general/active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
-        run: python3 test-protection-profiles.py -v
+        run: PYTHONPATH=. python3 tests/protection/profiles.py -v
       - name: Verify signature update check is within the existing 48-hour window
-        run: python3 test-signature-freshness-window.py -v
+        run: PYTHONPATH=. python3 tests/signature/freshness-window.py -v
       - name: Detect the last attempted and successful ClamAV signature update times
-        run: python3 test-signature-update-times.py -v
+        run: PYTHONPATH=. python3 tests/signature/update-times.py -v
       - name: Preserve usable ClamAV signatures across failed and overlapping updates
-        run: python3 test-preserve-signature-database.py -v
+        run: PYTHONPATH=. python3 tests/general/preserve-signature-database.py -v
       - name: Verify staged signatures before activation
-        run: python3 test-validate-signature-database.py -v
+        run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permission failures and rollback
-        run: python3 test-signature-directory-permissions.py -v
+        run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Verify ClamAV signature update failures are recorded safely
-        run: python3 test-signature-update-failures.py -v
+        run: PYTHONPATH=. python3 tests/signature/update-failures.py -v
       - name: Detect incomplete ClamAV signature downloads
-        run: python3 test-incomplete-signature-downloads.py -v
+        run: PYTHONPATH=. python3 tests/general/incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
-        run: python3 test-signature-network-interruptions.py -v
+        run: PYTHONPATH=. python3 tests/signature/network-interruptions.py -v
       - name: Recover the signature update agent after a simulated system restart
-        run: python3 test-signature-agent-restart.py -v
+        run: PYTHONPATH=. python3 tests/signature/agent-restart.py -v
       - name: Keep scanned document contents out of ClamAV update traffic
-        run: python3 test-signature-update-privacy.py -v
+        run: PYTHONPATH=. python3 tests/signature/update-privacy.py -v
       - name: Verify live signature-update progress and cleanup
-        run: python3 test-signature-update-progress.py -v
+        run: PYTHONPATH=. python3 tests/signature/update-progress.py -v
       - name: Verify scanner-failure response policy and existing fail-closed gate
-        run: python3 test-scanner-failure-policy.py -v
+        run: PYTHONPATH=. python3 tests/scanner/failure-policy.py -v
       - name: Reject unapproved ClamAV arguments before scanner invocation
-        run: python3 test-scanner-arguments.py -v
+        run: PYTHONPATH=. python3 tests/scanner/arguments.py -v
       - name: Validate scanner file-size limits without relaxing active flags
-        run: python3 test-scanner-file-size-limits.py -v
+        run: PYTHONPATH=. python3 tests/scanner/file-size-limits.py -v
       - name: Verify fixed, non-editable ClamAV parameters
-        run: python3 test-scanner-parameters-decision.py -v
+        run: PYTHONPATH=. python3 tests/scanner/parameters-decision.py -v
       - name: Audit safety-fixed ClamAV scanner parameters
-        run: python3 test-scanner-fixed-safety-parameters.py -v
+        run: PYTHONPATH=. python3 tests/scanner/fixed-safety-parameters.py -v
       - name: Keep scanner failures distinct from rejected feature exceptions
-        run: python3 test-protection-failure-exception-boundary.py -v
+        run: PYTHONPATH=. python3 tests/protection/failure-exception-boundary.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
-        run: python3 test-clamav-installation.py -v
+        run: PYTHONPATH=. python3 tests/clamav/installation.py -v
       - name: Reject non-regular ClamAV scanner executables before scanning
-        run: python3 test_scanner_executable_access.py -v
+        run: PYTHONPATH=. python3 tests/scanner/executable-access.py -v
       - name: Verify fail-closed responses for missing protection dependencies
-        run: python3 test-missing-dependency-policy.py -v
+        run: PYTHONPATH=. python3 tests/general/missing-dependency-policy.py -v
       - name: Verify explicit no-exceptions policy cannot bypass required scanner gates
-        run: python3 test-protection-exceptions-decision.py -v
+        run: PYTHONPATH=. python3 tests/protection/exceptions-decision.py -v
       - name: Review the read-only empty protection exceptions list without altering scan safety
-        run: python3 test-protection-exceptions-review.py -v
+        run: PYTHONPATH=. python3 tests/protection/exceptions-review.py -v
       - name: Verify structured policies for every planned protection profile
-        run: python3 test-structured-protection-policy.py -v
+        run: PYTHONPATH=. python3 tests/general/structured-protection-policy.py -v
       - name: Inspect embedded PDF attachments under the planned Enhanced policy
         run: |
           python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
-          python3 test-enhanced-embedded-files.py -v
+          PYTHONPATH=. python3 tests/enhanced/embedded-files.py -v
       - name: Inspect embedded PDF filenames without opening attachments
-        run: python3 test-pdf-embedded-filenames.py -v
+        run: PYTHONPATH=. python3 tests/pdf/embedded-filenames.py -v
       - name: Detect suspiciously large PDF embedded objects
-        run: python3 test-pdf-embedded-object-sizes.py -v
+        run: PYTHONPATH=. python3 tests/pdf/embedded-object-sizes.py -v
       - name: Detect excessive PDF decompression requirements safely
-        run: python3 test-pdf-decompression-requirements.py -v
+        run: PYTHONPATH=. python3 tests/pdf/decompression-requirements.py -v
       - name: Detect unexpected executable signatures in embedded PDF streams
-        run: python3 test-pdf-embedded-executable-content.py -v
+        run: PYTHONPATH=. python3 tests/pdf/embedded-executable-content.py -v
       - name: Inspect external PDF launch actions without executing targets
-        run: python3 test-pdf-external-launch-actions.py -v
+        run: PYTHONPATH=. python3 tests/pdf/external-launch-actions.py -v
       - name: Detect malformed PDF structures in the planned Enhanced stage
-        run: python3 test-pdf-malformed-structures.py -v
+        run: PYTHONPATH=. python3 tests/pdf/malformed-structures.py -v
       - name: Distinguish dangerous PDF behavior from legitimate features
-        run: python3 test-pdf-behavior-classification.py -v
+        run: PYTHONPATH=. python3 tests/pdf/behavior-classification.py -v
       - name: Verify maximum processing time for each protection stage
-        run: python3 test-protection-stage-time-limits.py -v
+        run: PYTHONPATH=. python3 tests/protection/stage-time-limits.py -v
       - name: Verify required and optional checks for each protection profile
-        run: python3 test-required-optional-profile-checks.py -v
+        run: PYTHONPATH=. python3 tests/general/required-optional-profile-checks.py -v
       - name: Verify Maximum inherits every Enhanced protection requirement
-        run: python3 test-maximum-inherits-enhanced.py -v
+        run: PYTHONPATH=. python3 tests/maximum/inherits-enhanced.py -v
       - name: Test every planned profile admission against one reference PDF collection
-        run: python3 test-reference-pdf-profiles.py -v
+        run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
       - name: Identify PDF format and declared version from file bytes
-        run: python3 test-pdf-format-identification.py -v
+        run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
-        run: python3 test-effective-protection-policy.py -v
+        run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
-        run: python3 test-pdf-unsupported-feature-inspection.py -v
+        run: PYTHONPATH=. python3 tests/pdf/unsupported-feature-inspection.py -v
       - name: Verify fail-closed response to unsupported PDF features
-        run: python3 test-unsupported-pdf-features.py -v
+        run: PYTHONPATH=. python3 tests/general/unsupported-pdf-features.py -v
       - name: Verify resource budgets for every protection policy stage
-        run: python3 test-protection-stage-resource-budgets.py -v
+        run: PYTHONPATH=. python3 tests/protection/stage-resource-budgets.py -v
       - name: Verify General reset confirmation and scanner isolation
-        run: python3 test-reset-general-preferences.py -v
+        run: PYTHONPATH=. python3 tests/general/reset-general-preferences.py -v
       - name: Verify preferences-wide Reset to Defaults confirmation and safe scope
-        run: python3 test-reset-to-defaults.py -v
+        run: PYTHONPATH=. python3 tests/general/reset-to-defaults.py -v
       - name: Verify main Dock icon and invisible PDF scan-helper policy
-        run: python3 test-dock-behavior.py -v
+        run: PYTHONPATH=. python3 tests/general/dock-behavior.py -v
       - name: Verify selected destination browser display never changes scanner policy
-        run: python3 test-selected-destination-browser.py -v
+        run: PYTHONPATH=. python3 tests/general/selected-destination-browser.py -v
       - name: Verify native window title and bundled application icon
-        run: python3 test-native-window-branding.py -v
+        run: PYTHONPATH=. python3 tests/native/window-branding.py -v
       - name: Verify independent SwiftUI application target
-        run: python3 test-swiftui-app-target.py -v
+        run: PYTHONPATH=. python3 tests/general/swiftui-app-target.py -v
       - name: Verify SwiftUI About window, version and AGPL license
-        run: python3 test-about-window.py -v
+        run: PYTHONPATH=. python3 tests/general/about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
-        run: python3 test-main-preferences-window.py -v
+        run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
       - name: Verify three accessible protection preview cards never change active scan policy
-        run: python3 test-protection-settings-cards.py -v
+        run: PYTHONPATH=. python3 tests/protection/settings-cards.py -v
       - name: Verify Maximum View Conversion Details action is accessible and preview-only
-        run: python3 test-maximum-conversion-details-action.py -v
+        run: PYTHONPATH=. python3 tests/maximum/conversion-details-action.py -v
       - name: Verify unavailable mandatory engines block effective profile selection
-        run: python3 test-unavailable-protection-dependencies.py -v
+        run: PYTHONPATH=. python3 tests/general/unavailable-protection-dependencies.py -v
       - name: Verify Reset Protection Settings is confirmed and scoped to preview metadata
-        run: python3 test-reset-protection-settings.py -v
+        run: PYTHONPATH=. python3 tests/general/reset-protection-settings.py -v
       - name: Verify selected protection previews are saved without scanner activation
-        run: python3 test-protection-choice-persistence.py -v
+        run: PYTHONPATH=. python3 tests/protection/choice-persistence.py -v
       - name: Verify only measured protection timings appear in performance descriptions
-        run: python3 test-protection-performance-implications.py -v
+        run: PYTHONPATH=. python3 tests/protection/performance-implications.py -v
       - name: Verify opt-in ClamAV startup benchmark is isolated and unmeasured by default
-        run: python3 test-scanner-startup-benchmark.py -v
+        run: PYTHONPATH=. python3 tests/scanner/startup-benchmark.py -v
       - name: Verify displayed checks for each protection level match the policy schema
-        run: python3 test-protection-settings-checks.py -v
+        run: PYTHONPATH=. python3 tests/protection/settings-checks.py -v
       - name: Audit increased system text size layout
-        run: python3 test-preferences-large-text.py -v
+        run: PYTHONPATH=. python3 tests/preferences/large-text.py -v
       - name: Verify VoiceOver navigation labels
-        run: python3 test-voiceover-preferences-navigation.py -v
+        run: PYTHONPATH=. python3 tests/general/voiceover-preferences-navigation.py -v
       - name: Verify keyboard navigation through preferences
-        run: python3 test-preferences-keyboard-navigation.py -v
+        run: PYTHONPATH=. python3 tests/preferences/keyboard-navigation.py -v
       - name: Verify About and Diagnostics settings page
-        run: python3 test-about-diagnostics-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/general/about-diagnostics-settings-page.py -v
       - name: Verify Advanced Scanning settings page and navigation
-        run: python3 test-advanced-scanning-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/general/advanced-scanning-settings-page.py -v
       - name: Verify dedicated Updates settings page
-        run: python3 test-updates-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/updates/settings-page.py -v
       - name: Verify manual update action behavior
-        run: python3 test-manual-update-actions.py -v
+        run: PYTHONPATH=. python3 tests/general/manual-update-actions.py -v
       - name: Verify signature update status is read-only and labeled in Updates
-        run: python3 test-signature-update-status-display.py -v
+        run: PYTHONPATH=. python3 tests/signature/update-status-display.py -v
       - name: Verify stale-signature warning and fail-closed age boundary
-        run: python3 test-stale-signature-warning.py -v
+        run: PYTHONPATH=. python3 tests/general/stale-signature-warning.py -v
       - name: Verify Notifications settings navigation and safe informational page
-        run: python3 test-notifications-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/notifications/settings-page.py -v
       - name: Verify dedicated General settings page
-        run: python3 test-general-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/general/settings-page.py -v
       - name: Verify persistent configuration storage location and user customizations
-        run: python3 test-configuration-location.py -v
+        run: PYTHONPATH=. python3 tests/configuration/location.py -v
       - name: Verify upgrade preserves the installed PDF browser choice
-        run: python3 test-persistent-installer-preferences.py -v
+        run: PYTHONPATH=. python3 tests/general/persistent-installer-preferences.py -v
       - name: Verify versioned configuration contract without rewriting preferences
-        run: python3 test-configuration-schema.py -v
+        run: PYTHONPATH=. python3 tests/configuration/schema.py -v
       - name: Verify active scan count reports launched scans only
-        run: python3 test-active-scan-count.py -v
+        run: PYTHONPATH=. python3 tests/general/active-scan-count.py -v
       - name: Verify Show Scan Progress option and scanner safety
-        run: python3 test-show-scan-progress.py -v
+        run: PYTHONPATH=. python3 tests/general/show-scan-progress.py -v
       - name: Verify Show Successful Scan Notifications option and fail-closed behavior
         run: |
-          python3 test-show-successful-scan-notifications.py -v
-          python3 test-show-blocked-file-notifications.py -v
+          PYTHONPATH=. python3 tests/general/show-successful-scan-notifications.py -v
+          PYTHONPATH=. python3 tests/general/show-blocked-file-notifications.py -v
       - name: Verify verified default PDF browser selector
-        run: python3 test-default-pdf-browser-selector.py -v
+        run: PYTHONPATH=. python3 tests/default/pdf-browser-selector.py -v
       - name: Verify default PDF handler indicator is read-only
-        run: python3 test-general-pdf-handler-indicator.py -v
+        run: PYTHONPATH=. python3 tests/general/pdf-handler-indicator.py -v
       - name: Verify explicit General default PDF association action
-        run: python3 test-general-default-pdf-action.py -v
+        run: PYTHONPATH=. python3 tests/general/default-pdf-action.py -v
       - name: Verify opt-in Restore Previous Default action
-        run: python3 test-general-restore-previous-default.py -v
+        run: PYTHONPATH=. python3 tests/general/restore-previous-default.py -v
       - name: Verify Built-in scanner defaults appear before advanced explanations
-        run: python3 test-scanner-defaults-summary.py -v
+        run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
-        run: python3 test-browsers-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
       - name: Verify opt-in non-PDF download scan preference surface
-        run: python3 test-scan-other-supported-files.py -v
+        run: PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v
       - name: Verify explanatory help for technical preferences
-        run: python3 test-technical-preferences-help.py -v
+        run: PYTHONPATH=. python3 tests/general/technical-preferences-help.py -v
       - name: Verify Extensions and Integrations settings page
-        run: python3 test-extensions-integrations-settings-page.py -v
+        run: PYTHONPATH=. python3 tests/general/extensions-integrations-settings-page.py -v
       - name: Verify native messaging length-prefixed stream transport
-        run: python3 test-native-message-framing.py -v
+        run: PYTHONPATH=. python3 tests/native/message-framing.py -v
       - name: Verify Chrome native host manifest, origins and registration safety
-        run: python3 test-chrome-native-host-registration.py -v
+        run: PYTHONPATH=. python3 tests/general/chrome-native-host-registration.py -v
       - name: Verify uninstall cleanup removes only matching native host registrations
-        run: python3 test-native-host-uninstall.py -v
+        run: PYTHONPATH=. python3 tests/native/host-uninstall.py -v
       - name: Verify safe per-browser Chromium native host registration
-        run: python3 test-native-chromium-registration.py -v
+        run: PYTHONPATH=. python3 tests/native/chromium-registration.py -v
       - name: Set up Node.js for shared WebExtensions project checks
         uses: actions/setup-node@v4
         with:
@@ -334,7 +349,7 @@ jobs:
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
       - name: Verify versioned native JSON message contract
-        run: python3 test-native-message-format.py -v
+        run: PYTHONPATH=. python3 tests/native/message-format.py -v
       - name: Upload validated Chrome extension package
         uses: actions/upload-artifact@v4
         with:
@@ -350,171 +365,171 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Reject unsafe Safari packages in portable tests
-        run: python3 test-safari-extension-package.py -v
+        run: PYTHONPATH=. python3 tests/general/safari-extension-package.py -v
       - name: Verify sandboxed Safari Web Extension target configuration
         run: |
-          python3 test-safari-extension-target.py -v
-          python3 test-safari-extension-permissions.py -v
-          python3 test-safari-extension-activation.py -v
-          python3 test-browser-preferences-deep-link.py -v
+          PYTHONPATH=. python3 tests/general/safari-extension-target.py -v
+          PYTHONPATH=. python3 tests/general/safari-extension-permissions.py -v
+          PYTHONPATH=. python3 tests/general/safari-extension-activation.py -v
+          PYTHONPATH=. python3 tests/browser/preferences-deep-link.py -v
       - name: Verify native Settings shortcut
-        run: python3 test-settings-keyboard-shortcut.py -v
+        run: PYTHONPATH=. python3 tests/settings/keyboard-shortcut.py -v
       - name: Verify menu-bar status item decision
-        run: python3 test-menu-bar-decision.py -v
+        run: PYTHONPATH=. python3 tests/general/menu-bar-decision.py -v
       - name: Verify Launch at Login is unnecessary for the standalone preferences app
-        run: python3 test-launch-at-login-decision.py -v
+        run: PYTHONPATH=. python3 tests/launch/at-login-decision.py -v
       - name: Verify native application Quit action
-        run: python3 test-native-quit-action.py -v
+        run: PYTHONPATH=. python3 tests/native/quit-action.py -v
       - name: Verify opt-in PDF default-handler action
-        run: python3 test-pdf-default-user-action.py -v
+        run: PYTHONPATH=. python3 tests/pdf/default-user-action.py -v
       - name: Verify application naming and migration
-        run: python3 test-app-name.py
+        run: PYTHONPATH=. python3 tests/app/name.py
       - name: Verify generic PDF default-handler utility naming
-        run: python3 test-pdf-default-handler-name.py -v
+        run: PYTHONPATH=. python3 tests/pdf/default-handler-name.py -v
       - name: Verify opt-in PDF handler restoration offer
-        run: python3 test-offer-restore-pdf-handler.py -v
+        run: PYTHONPATH=. python3 tests/general/offer-restore-pdf-handler.py -v
       - name: Verify macOS PDF default-handler status reporting
-        run: python3 test-pdf-handler-status.py -v
+        run: PYTHONPATH=. python3 tests/pdf/handler-status.py -v
       - name: Verify active scan policy cannot change during execution
-        run: python3 test-scan-policy-snapshot.py -v
+        run: PYTHONPATH=. python3 tests/scan/policy-snapshot.py -v
       - name: Verify installed scanner configuration boundary values
-        run: python3 test-scanner-configuration-boundaries.py -v
+        run: PYTHONPATH=. python3 tests/scanner/configuration-boundaries.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
-        run: python3 test-retain-os-quarantine.py -v
+        run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Verify Standard baseline parity with the existing scanner
-        run: python3 test-standard-scanner-parity.py -v
+        run: PYTHONPATH=. python3 tests/general/standard-scanner-parity.py -v
       - name: Reject zero-length files before scanning, caching, or opening
-        run: python3 test-zero-length-files.py -v
+        run: PYTHONPATH=. python3 tests/general/zero-length-files.py -v
       - name: Reject unsupported ClamAV versions before scanning or cache reuse
-        run: python3 test-clamav-version-support.py -v
+        run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
       - name: Run scan-gate and request-metadata tests
-        run: python3 test-scan-and-open.py -v
+        run: PYTHONPATH=. python3 tests/scan/and-open.py -v
       - name: Reject unreadable scan files before scanning or cached opening
-        run: python3 test-unreadable-scan-input.py -v
+        run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
-        run: python3 test-installed-clamav-version.py -v
+        run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
-        run: python3 test-scanner-feature-check.py -v
+        run: PYTHONPATH=. python3 tests/scanner/feature-check.py -v
       - name: Verify Standard signature database files exist before scanning
-        run: python3 test-signature-database-existence.py -v
+        run: PYTHONPATH=. python3 tests/signature/database-existence.py -v
       - name: Block each scan if mandatory signatures become unavailable
-        run: python3 test-mandatory-signature-gate.py -v
+        run: PYTHONPATH=. python3 tests/general/mandatory-signature-gate.py -v
       - name: Verify cancellation and scanner process-group cleanup
         timeout-minutes: 2
-        run: python3 test-cancellation.py -v
+        run: PYTHONPATH=. python3 tests/general/cancellation.py -v
       - name: Verify detection and opening decisions are separate
-        run: python3 test-detection-policy.py -v
+        run: PYTHONPATH=. python3 tests/general/detection-policy.py -v
       - name: Verify scanner errors are not presented as malware detections
-        run: python3 test-scan-failure-presentation.py -v
+        run: PYTHONPATH=. python3 tests/scan/failure-presentation.py -v
       - name: Verify optional browser download identifiers
-        run: python3 test-browser-download-id.py -v
+        run: PYTHONPATH=. python3 tests/browser/download-id.py -v
       - name: Verify supported browser bundle identifier registry
-        run: python3 test-browser-registry.py -v
+        run: PYTHONPATH=. python3 tests/browser/registry.py -v
       - name: Verify browser-independent scan engine and launch defaults
-        run: python3 test-file-launcher.py
+        run: PYTHONPATH=. python3 tests/file/launcher.py
       - name: Verify PDF scan gates on external-drive paths
-        run: python3 test-external-drives.py -v
+        run: PYTHONPATH=. python3 tests/general/external-drives.py -v
       - name: Verify download-availability launch gate
-        run: python3 test-download-availability.py -v
+        run: PYTHONPATH=. python3 tests/download/availability.py -v
       - name: Inspect PDF annotations without evaluating their contents
-        run: python3 test-pdf-annotations.py -v
+        run: PYTHONPATH=. python3 tests/pdf/annotations.py -v
       - name: Detect PDF rich-media content without media execution
-        run: python3 test-pdf-rich-media.py -v
+        run: PYTHONPATH=. python3 tests/pdf/rich-media.py -v
       - name: Verify locally accessible iCloud Drive PDFs
-        run: python3 test-icloud-drive.py -v
+        run: PYTHONPATH=. python3 tests/general/icloud-drive.py -v
       - name: Verify original PDF filenames, Unicode and special-character paths
-        run: python3 test-pdf-filename-paths.py -v
+        run: PYTHONPATH=. python3 tests/pdf/filename-paths.py -v
       - name: Reject unsupported configuration values and fill absent keys safely
-        run: python3 test-configuration-values.py -v
+        run: PYTHONPATH=. python3 tests/configuration/values.py -v
       - name: Validate optional scanner concurrency limits without changing scan safety
-        run: python3 test-scanner-concurrency-limits.py -v
+        run: PYTHONPATH=. python3 tests/scanner/concurrency-limits.py -v
       - name: Validate persisted PDF application configuration and reject unsafe files
-        run: python3 test-configuration-validation.py -v
+        run: PYTHONPATH=. python3 tests/configuration/validation.py -v
       - name: Verify configurable PDF targets including Arc and Opera
-        run: python3 test-target-app.py
+        run: PYTHONPATH=. python3 tests/target/app.py
       - name: Verify Microsoft Edge PDF launch routing and fail-closed behavior
-        run: python3 test-edge-target.py -v
+        run: PYTHONPATH=. python3 tests/general/edge-target.py -v
       - name: Verify Chromium PDF launching and fail-closed preflight
-        run: python3 test-chromium-launch.py -v
+        run: PYTHONPATH=. python3 tests/general/chromium-launch.py -v
       - name: Verify system-default-browser selection and fail-closed handoff
-        run: python3 test-system-default-browser.py -v
+        run: PYTHONPATH=. python3 tests/system/default-browser.py -v
       - name: Verify selector hides unsupported browsers and marks macOS default
-        run: python3 test-browser-preference-selector.py -v
+        run: PYTHONPATH=. python3 tests/browser/preference-selector.py -v
       - name: Verify selected-browser removal preserves preference and blocks PDF launch
-        run: python3 test-selected-browser-removed.py -v
+        run: PYTHONPATH=. python3 tests/general/selected-browser-removed.py -v
       - name: Verify explicit custom application choice and atomic persistence
-        run: python3 test-select-custom-pdf-application.py -v
+        run: PYTHONPATH=. python3 tests/general/select-custom-pdf-application.py -v
       - name: Verify Brave PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: brave
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Google Chrome PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: chrome
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Mozilla Firefox PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: firefox
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Safari PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: safari
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Microsoft Edge PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: edge
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Chromium PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: chromium
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Vivaldi PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: vivaldi
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Opera PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: opera
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify Arc PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: arc
-        run: python3 test-browser-pdf-behavior.py
+        run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify stable and preview browser release classification
-        run: python3 test-browser-release.py -v
+        run: PYTHONPATH=. python3 tests/browser/release.py -v
       - name: Verify browser PDF viewer comparison documentation
-        run: python3 test-browser-viewer-docs.py -v
+        run: PYTHONPATH=. python3 tests/browser/viewer-docs.py -v
       - name: Verify optional PDF fallback selection and safety
-        run: python3 test-fallback-app.py -v
+        run: PYTHONPATH=. python3 tests/general/fallback-app.py -v
       - name: Verify clean scan results survive launch failures
-        run: python3 test-launch-results.py -v
+        run: PYTHONPATH=. python3 tests/launch/results.py -v
       - name: Verify scan-request origin records
-        run: python3 test-scan-request-origin.py
+        run: PYTHONPATH=. python3 tests/scan/request-origin.py
       - name: Verify scan-request application attribution
-        run: python3 test-scan-request.py
+        run: PYTHONPATH=. python3 tests/scan/request.py
       - name: Verify file lifecycle state transitions
-        run: python3 test-file-lifecycle.py
+        run: PYTHONPATH=. python3 tests/file/lifecycle.py
       - name: Measure extra Enhanced analysis time without changing scan outcomes
-        run: python3 test-enhanced-analysis-timing.py -v
+        run: PYTHONPATH=. python3 tests/enhanced/analysis-timing.py -v
       - name: Verify cross-process scan concurrency
-        run: python3 test-scan-concurrency.py
+        run: PYTHONPATH=. python3 tests/scan/concurrency.py
       - name: Verify native owner termination aborts active scans
-        run: python3 test-app-termination.py -v
+        run: PYTHONPATH=. python3 tests/app/termination.py -v
 
       - name: Verify scan result contract
-        run: python3 test-scan-results.py
+        run: PYTHONPATH=. python3 tests/scan/results.py
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
-        run: python3 test-enhanced-analysis-findings.py -v
+        run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
-        run: python3 test-enhanced-finding-explanations.py -v
+        run: PYTHONPATH=. python3 tests/enhanced/finding-explanations.py -v
       - name: Determine which Enhanced findings require additional inspection
-        run: python3 test-enhanced-additional-inspections.py -v
+        run: PYTHONPATH=. python3 tests/enhanced/additional-inspections.py -v
       - name: Verify effective protection policy identifier in scan results
-        run: python3 test-effective-policy-scan-results.py -v
+        run: PYTHONPATH=. python3 tests/general/effective-policy-scan-results.py -v
       - name: Verify responses for every detection remain fail-closed
-        run: python3 test-detection-responses.py -v
+        run: PYTHONPATH=. python3 tests/general/detection-responses.py -v
       - name: Inspect suspicious embedded PDF URLs without fetching destinations
-        run: python3 test-pdf-suspicious-urls.py -v
+        run: PYTHONPATH=. python3 tests/pdf/suspicious-urls.py -v
 
   edge-compatibility:
     name: Microsoft Edge compatibility (Windows)
@@ -555,18 +570,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Compile and test the transport-only native messaging host
-        run: python3 test-native-messaging-host.py -v
+        run: PYTHONPATH=. python3 tests/native/messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
-        run: python3 test-scanner-defaults-summary.py -v
+        run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
-        run: python3 test-validate-signature-database.py -v
+        run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permissions on macOS
-        run: python3 test-signature-directory-permissions.py -v
+        run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Test read-only ClamAV signature revision parsing
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
@@ -609,10 +624,10 @@ jobs:
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
       - name: Verify built Safari extension containing-app native permission
         run: |
-          python3 test-safari-extension-target.py -v
-          python3 test-safari-extension-permissions.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
-          python3 test-safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
-          python3 test-browser-preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          PYTHONPATH=. python3 tests/general/safari-extension-target.py -v
+          PYTHONPATH=. python3 tests/general/safari-extension-permissions.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          PYTHONPATH=. python3 tests/general/safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          PYTHONPATH=. python3 tests/browser/preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
       - name: Compile and self-test read-only Safari activation probe
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
@@ -626,7 +641,7 @@ jobs:
           unzip -t "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip"
           mkdir -p "$RUNNER_TEMP/PDFMagicSafariExtract"
           ditto -x -k "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip" "$RUNNER_TEMP/PDFMagicSafariExtract"
-          python3 test-safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicSafariExtract/PDFMagicOpener.app"
+          PYTHONPATH=. python3 tests/general/safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicSafariExtract/PDFMagicOpener.app"
       - name: Upload verified unsigned Safari Web Extension host app
         uses: actions/upload-artifact@v4
         with:
@@ -714,7 +729,7 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
           "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
-          python3 test-cross-process-configuration.py -v
+          PYTHONPATH=. python3 tests/general/cross-process-configuration.py -v
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
@@ -746,11 +761,11 @@ jobs:
       - name: Verify editing preferences while the malware scan is running
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-preferences-during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
-          PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" python3 test-preferences-during-scan.py -v
+          PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" PYTHONPATH=. python3 tests/preferences/during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
-          python3 test-scan-progress-component.py -v
+          PYTHONPATH=. python3 tests/scan/progress-component.py -v
       - name: Verify General PDF association action with synthetic apps only
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-default-pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
@@ -768,7 +783,7 @@ jobs:
       - name: Compile PDF handler utility
         run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
       - name: Verify that PDF default-handler updates take effect
-        run: python3 test-pdf-default-handler.py -v
+        run: PYTHONPATH=. python3 tests/pdf/default-handler.py -v
       - name: Verify previous PDF-handler backup and safe restoration
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
@@ -814,7 +829,7 @@ jobs:
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
       - name: Verify native PDF cloud download-state decisions
-        run: python3 test-native-file-availability.py
+        run: PYTHONPATH=. python3 tests/native/file-availability.py
       - name: Verify browser names, icons, versions and executable paths
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
@@ -888,49 +903,49 @@ jobs:
           if "$RUNNER_TEMP/SelectCustomPDFApplication" --application "$RUNNER_TEMP/Absent.app"; then exit 1; fi
       - name: Verify PDF handoff to an already-running browser process
         timeout-minutes: 3
-        run: python3 test-browser-already-running.py -v
+        run: PYTHONPATH=. python3 tests/browser/already-running.py -v
       - name: Verify bundle-identifier resolution, duplicate installations and app existence
-        run: python3 test-bundle-target.py
+        run: PYTHONPATH=. python3 tests/bundle/target.py
       - name: Verify Finder-style PDF open-event delivery through Launch Services
         timeout-minutes: 3
-        run: python3 test-finder-double-click.py
+        run: PYTHONPATH=. python3 tests/general/finder-double-click.py
       - name: Verify PDF drop onto an explicitly selected macOS app
         timeout-minutes: 3
-        run: python3 test-pdf-drag-drop.py
+        run: PYTHONPATH=. python3 tests/pdf/drag-drop.py
       - name: Display native scanner initialization failures and preserve fail-closed scan behavior
-        run: python3 test-scanner-initialization-errors.py -v
+        run: PYTHONPATH=. python3 tests/scanner/initialization-errors.py -v
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
-        run: python3 test-brave-pdf-opener.py
+        run: PYTHONPATH=. python3 tests/general/brave-pdf-opener.py
       - name: Verify actual multi-document progress and unknown single-file progress
         timeout-minutes: 3
-        run: python3 test-native-determinate-progress.py -v
+        run: PYTHONPATH=. python3 tests/native/determinate-progress.py -v
       - name: Verify scan failures identify the PDF and show useful details
         timeout-minutes: 2
-        run: python3 test-native-scan-failure.py
+        run: PYTHONPATH=. python3 tests/native/scan-failure.py
       - name: Verify blocked scans keep the progress window until user acknowledgement
         timeout-minutes: 3
-        run: python3 test-native-attention-required.py -v
+        run: PYTHONPATH=. python3 tests/native/attention-required.py -v
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
-        run: python3 test-native-cancellation.py
+        run: PYTHONPATH=. python3 tests/native/cancellation.py
       - name: Verify hidden progress does not bypass native scan dispatch
-        run: python3 test-native-hidden-scan-progress.py
+        run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS
-        run: python3 test-retain-os-quarantine.py -v
+        run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
-        run: python3 test-scan-resource-cleanup.py
+        run: PYTHONPATH=. python3 tests/scan/resource-cleanup.py
       - name: Compile Finder Open AppleScript and test the safe integration harness
         timeout-minutes: 2
         run: |
           /usr/bin/osacompile -o "$RUNNER_TEMP/FinderOpen.scpt" test-finder-open.applescript
-          python3 test-finder-open.py -v
+          PYTHONPATH=. python3 tests/general/finder-open.py -v
       - name: Verify native open-event origin classification
-        run: python3 test-native-request-origin.py
+        run: PYTHONPATH=. python3 tests/native/request-origin.py
       - name: Verify per-request timestamps and duplicate suppression
         timeout-minutes: 5
-        run: python3 test-request-timestamp.py
+        run: PYTHONPATH=. python3 tests/general/request-timestamp.py
 
       - name: Verify supported setting defaults and existing user overrides
         run: |

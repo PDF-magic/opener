@@ -5,9 +5,23 @@ Unknown paths and shared scanner/security infrastructure deliberately select
 the full suite. This is a group-level dependency map, not filename-only
 workflow triggers; central workflows always start and retain a final gate.
 """
+import json
 from pathlib import Path
 import subprocess
 import sys
+
+# Relocated tests run in place. Map known subsystem folders to their
+# historical dependency categories; unknown paths conservatively run all groups.
+def _normalize_changed_path(path):
+    path = path.replace("\\", "/")
+    parts = path.split("/")
+    if len(parts) == 3 and parts[0] == "tests" and parts[2].endswith(".py"):
+        if parts[1] in {
+            "pdf", "enhanced", "maximum", "protection", "scan", "scanner", "clamav"
+        }:
+            return f"test-{parts[1]}-{parts[2]}"
+    return path
+
 
 GROUPS = ("pdf", "policy", "maximum", "macos")
 ALL_GROUPS = frozenset(GROUPS)
@@ -77,7 +91,7 @@ def _documentation_only(path):
 
 def select_groups(paths):
     """Return affected suites; unknown/shared changes conservatively run all."""
-    normalized = {str(path).replace("\\", "/") for path in paths}
+    normalized = {_normalize_changed_path(str(path)) for path in paths}
     if not normalized:
         return ALL_GROUPS
 

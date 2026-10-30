@@ -25,6 +25,6 @@ jobs:
           npm run package:chrome
           npm run package:firefox
       - name: Audit channel packages and signing blockers
-        run: python3 test-extension-distribution.py -v
+        run: PYTHONPATH=. python3 tests/general/extension-distribution.py -v
       - name: Check Safari embedded app extension target
-        run: python3 test-safari-extension-target.py -v
+        run: PYTHONPATH=. python3 tests/general/safari-extension-target.py -v

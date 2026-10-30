@@ -49,7 +49,6 @@ struct BrowsersSettingsView: View {
         }
         .accessibilityIdentifier("preferredBrowserSection")
 
-
         GroupBox("Download scanning") {
           VStack(alignment: .leading, spacing: 10) {
             Toggle("Scan Other Supported Files", isOn: Binding(
