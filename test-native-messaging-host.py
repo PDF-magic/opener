@@ -83,7 +83,7 @@ class NativeMessagingHostTests(unittest.TestCase):
                      ["first", "second"])
 
   def test_truncated_and_invalid_length_fail_closed(self):
-    for data in (b"\\x01", b"\\x08\\x00\\x00\\x00{}",
+    for data in (b"\x01", b"\x08\x00\x00\x00{}",
                  struct.pack("<I", 0), struct.pack("<I", 16385),
                  struct.pack("<I", 0xffffffff)):
       with self.subTest(data=data):
@@ -93,7 +93,7 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertEqual(result.stderr, b"")
 
   def test_rejects_non_json_and_invalid_encoding(self):
-    for raw in (b"{", b"not json", b"\\xff", b"[]", b"null"):
+    for raw in (b"{", b"not json", b"\xff", b"[]", b"null"):
       with self.subTest(raw=raw):
         result = self.run_host(struct.pack("<I", len(raw)) + raw)
         self.assertNotEqual(result.returncode, 0)
