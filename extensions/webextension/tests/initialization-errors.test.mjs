@@ -45,6 +45,20 @@ test("successful startup acquires resources in order and cleans up in reverse", 
   assert.deepEqual(await controller.start(), expected("stopped"));
 });
 
+
+test("shutdown marks initialized resources as stopping until asynchronous cleanup completes", async () => {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const controller = createExtensionInitializer([() => async () => { await pending; }]);
+  assert.deepEqual(await controller.start(), expected("initialized"));
+  const finishing = controller.stop();
+  assert.deepEqual(controller.state(), expected("stopping"));
+  assert.deepEqual(await controller.start(), expected("stopping"));
+  release();
+  assert.deepEqual(await finishing, expected("stopped"));
+  assert.deepEqual(await controller.start(), expected("stopped"));
+});
+
 test("startup failure rolls back acquired resources and hides sensitive errors", async () => {
   const calls = [];
   const controller = createExtensionInitializer([

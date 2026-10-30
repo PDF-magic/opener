@@ -76,7 +76,7 @@ export function createExtensionInitializer(initializers = []) {
   }
 
   function start() {
-    if (startPromise) return startPromise;
+    if (phase === "initializing" && startPromise) return startPromise;
     if (phase !== "idle") return Promise.resolve(state());
     if (steps.length === 0) {
       phase = "failed";
@@ -120,6 +120,7 @@ export function createExtensionInitializer(initializers = []) {
   function stop() {
     if (stopPromise) return stopPromise;
     stopRequested = true;
+    if (phase === "initialized") phase = "stopping";
     stopPromise = (async () => {
       if (startPromise) await startPromise;
       if (disposers.length !== 0) {
