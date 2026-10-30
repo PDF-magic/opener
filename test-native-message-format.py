@@ -27,7 +27,8 @@ class NativeMessageFormatTests(unittest.TestCase):
 
   def test_rejects_unknown_version_fields_and_types(self):
     for changes in (
-      {"version": 2}, {"version": "1"}, {"version": True},
+      {"version": 0}, {"version": -1}, {"version": 2},
+      {"version": 1.0}, {"version": "1"}, {"version": True},
       {"kind": "open"}, {"kind": 1}, {"topic": "bad/path"},
       {"topic": "bad..topic"}, {"topic": "A.ping"}, {"topic": "a" * 81},
       {"requestId": ""}, {"requestId": "path/secret"},
@@ -38,6 +39,16 @@ class NativeMessageFormatTests(unittest.TestCase):
           encode_native_message(sample() | changes)
     with self.assertRaises(InvalidNativeMessage):
       encode_native_message({"version": 1})
+
+  def test_rejects_unsupported_wire_version_representations(self):
+    valid = encode_native_message(sample())
+    self.assertIn(b'"version":1', valid)
+    for literal in (b"0", b"-1", b"2", b"1.0", b"1e0", b"1E+0",
+                    b"1.0000000000000001", b"true", b'"1"', b"null"):
+      with self.subTest(version=literal):
+        raw = valid.replace(b'"version":1', b'"version":' + literal, 1)
+        with self.assertRaises(InvalidNativeMessage):
+          decode_native_message(raw)
 
   def test_rejects_duplicate_keys_and_prototype_pollution(self):
     for wire in (
