@@ -6,7 +6,6 @@ The host executable may already be absent when this cleanup is run.
 """
 import argparse
 from contextlib import ExitStack
-import errno
 import json
 import os
 from pathlib import Path

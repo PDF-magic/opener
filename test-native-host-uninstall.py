@@ -4,7 +4,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import stat
 import subprocess
 import sys
 import tempfile
@@ -110,9 +109,10 @@ class NativeHostUninstallTests(unittest.TestCase):
     target.symlink_to(outside)
     with self.assertRaises(ValueError):
       self.remove("chrome")
-    self.assertEqual(outside.read_bytes(), cleanup._expected_bytes_for_test if False else
-                     (json.dumps(cleanup._expected_manifest("chrome", self.host, (CHROME_ID,), False),
-                                 indent=2) + "\n").encode())
+    expected = (json.dumps(cleanup._expected_manifest("chrome", self.host,
+                                                       (CHROME_ID,), False),
+                           indent=2) + "\n").encode()
+    self.assertEqual(outside.read_bytes(), expected)
     target.unlink()
     target.parent.rmdir()
     outside_directory = self.root / "redirect"
