@@ -163,6 +163,56 @@ raise SystemExit(3)
         probe.assert_called_once()
         self.assertIsNone(process.returncode)
 
+    def test_macos_exit_detection_retries_empty_status_but_requires_zombie(self):
+        process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
+        empty = subprocess.CompletedProcess(("ps",), 0, b"", None)
+        zombie = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), \
+                patch.object(sanitizer.subprocess, "run",
+                             side_effect=(empty, zombie)) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+            self.assertEqual(probe.call_count, 2)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), \
+                patch.object(sanitizer.subprocess, "run",
+                             return_value=empty) as probe:
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._process_has_exited_without_reaping(process)
+            # Four targeted probes plus the independent process-table check.
+            self.assertEqual(probe.call_count, 5)
+        self.assertIsNone(process.returncode)
+
+    def test_macos_exit_detection_uses_verified_fallback_snapshot(self):
+        process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
+        empty = subprocess.CompletedProcess(("ps",), 0, b"", None)
+        verified = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 Z+\n202 202 S+\n", None
+        )
+        untrusted = (b"102 101 Z+\n", b"101 202 Z+\n",
+                     b"101 101 S+\n", b"invalid-data\n")
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), patch.object(
+                    sanitizer.subprocess, "run",
+                    side_effect=(empty, empty, empty, empty, verified),
+                ) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+            self.assertEqual(probe.call_count, 5)
+            self.assertEqual(
+                probe.call_args.args[0], ("/bin/ps", "-A", "-o", "pid=,pgid=,stat=")
+            )
+        for rows in untrusted:
+            with self.subTest(rows=rows), \
+                    patch.object(sanitizer.sys, "platform", "darwin"), \
+                    patch.object(sanitizer.time, "sleep"), patch.object(
+                        sanitizer.subprocess, "run",
+                        side_effect=(empty, empty, empty, empty,
+                                     subprocess.CompletedProcess(("ps",), 0, rows)),
+                    ):
+                with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                    sanitizer._process_has_exited_without_reaping(process)
+        self.assertIsNone(process.returncode)
+
     def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
         with patch.object(sanitizer.sys, "platform", "darwin"), \
