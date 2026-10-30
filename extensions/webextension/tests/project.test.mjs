@@ -27,6 +27,9 @@ test("the common Manifest V3 scaffold has no browser or host privileges", async 
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.match(manifest.name, /Shared Extension Scaffold/);
+  assert.equal(manifest.description,
+    "PDF Magic Opener browser integration scaffold. Not active; cannot scan, sanitize, or open PDF files.");
+  assert.ok(manifest.description.length <= 132);
   assert.deepEqual(manifest.permissions, []);
   assert.deepEqual(manifest.host_permissions, []);
   for (const forbidden of [

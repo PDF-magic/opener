@@ -3,6 +3,10 @@
 This private, dependency-free Manifest V3 project is the common starting point
 for future browser integrations. It is not a packaged, installed, or activated
 extension, and is not wired into the native PDF Magic Opener application.
+The manifest description identifies PDF Magic Opener as the intended future
+browser integration and explicitly warns that this inactive scaffold cannot
+scan, sanitize or open PDF files. It must not advertise protection before
+runtime integration is implemented and reviewed.
 
 From this directory, with Node.js 20 or newer:
 
