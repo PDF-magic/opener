@@ -1,5 +1,3 @@
-import { createDownloadOpenCommandGate } from "./download-open-command-once.js";
-
 export const OPEN_SCANNED_PDF_LABEL = "Open Scanned PDF";
 export const OPEN_SCANNED_PDF_UNAVAILABLE_MESSAGE =
   "Open Scanned PDF is unavailable until a verified clean scan and trusted native opening service are connected.";
@@ -130,11 +128,17 @@ export function createOpenScannedPdfAction(root, coordinator, gate) {
       const read = own(coordinator, "readVerifiedExplicitPdfScanResult");
       const open = own(coordinator, "requestVerifiedExplicitPdfOpen");
       const reference = Object.freeze({ requestId, scanRequestId, selectionId });
-      const isCurrent = () => active && generation === ticket && ready() &&
-        own(coordinator, "readCurrentSelectionId") === currentSelection &&
-        own(coordinator, "readVerifiedExplicitPdfScanResult") === read &&
-        own(coordinator, "requestVerifiedExplicitPdfOpen") === open &&
-        currentSelection.call(coordinator) === selectionId;
+      function isCurrent() {
+        try {
+          return active && generation === ticket && ready() &&
+            own(coordinator, "readCurrentSelectionId") === currentSelection &&
+            own(coordinator, "readVerifiedExplicitPdfScanResult") === read &&
+            own(coordinator, "requestVerifiedExplicitPdfOpen") === open &&
+            currentSelection.call(coordinator) === selectionId;
+        } catch {
+          return false;
+        }
+      }
       async function verifyClean() {
         if (!isCurrent()) return false;
         const promise = read.call(coordinator, reference);
@@ -152,8 +156,14 @@ export function createOpenScannedPdfAction(root, coordinator, gate) {
       explanation.setAttribute("aria-live", "polite");
 
       async function click(event) {
-        if (event?.isTrusted !== true || !isCurrent() ||
+        if (event?.isTrusted !== true ||
             state !== STATUS.offered || choice.disabled) return;
+        if (!isCurrent()) {
+          choice.disabled = true;
+          state = STATUS.unavailable;
+          explanation.textContent = REFUSED;
+          return;
+        }
         choice.disabled = true;
         state = STATUS.pending;
         explanation.textContent = PENDING;

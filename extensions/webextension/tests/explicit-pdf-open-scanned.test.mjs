@@ -205,16 +205,16 @@ test("opening request is one-shot across repeated trusted clicks and separate UI
     return new Promise(resolve => { release = resolve; });
   };
   await f.action.offer(ids);
-  const second = createOpenScannedPdfAction(root(), f.coordinator, f.gate);
+  const secondRoot = root();
+  const second = createOpenScannedPdfAction(secondRoot, f.coordinator, f.gate);
   await second.offer(ids);
   const pending = f.target.children[0].fire("click", { isTrusted: true });
   await tick();
   assert.equal(f.opens.length, 1);
   await f.target.children[0].fire("click", { isTrusted: true });
   assert.equal(f.opens.length, 1);
-  await second.offer(ids);
-  assert.deepEqual(second.state(), result("offered"));
-  await second.offer(ids);
+  await secondRoot.children[0].fire("click", { isTrusted: true });
+  assert.deepEqual(second.state(), result("unavailable"));
   const view = second;
   // A second view must not bypass the session-owned one-shot opening gate.
   release({ accepted: true, scanRequestId: ids.scanRequestId });
