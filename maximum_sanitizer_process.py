@@ -255,27 +255,38 @@ def _process_has_exited_without_reaping(process) -> bool:
         except (OSError, ValueError, IndexError):
             raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
     if sys.platform == "darwin":
-        try:
-            completed = subprocess.run(
-                ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                close_fds=True,
-                cwd="/",
-                env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-                timeout=0.25,
-                check=True,
-            )
-            states = [
-                line.strip() for line in completed.stdout.decode("ascii").splitlines()
-                if line.strip()
-            ]
-            if len(states) != 1 or not states[0][0].isalpha():
-                raise ValueError
-            return states[0][0].upper() == "Z"
-        except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
-            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+        # Python 3.11 on macOS has no non-reaping os.waitid. /bin/ps can
+        # occasionally be delayed on hosted runners; retry a transient probe
+        # failure once, but accept exit only after an explicit zombie record.
+        # An absent, malformed or repeatedly unavailable status fails closed.
+        for _ in range(2):
+            try:
+                completed = subprocess.run(
+                    ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    close_fds=True,
+                    cwd="/",
+                    env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+                    timeout=0.5,
+                    check=True,
+                )
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                continue
+            except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+            try:
+                states = [
+                    line.strip() for line in completed.stdout.decode("ascii").splitlines()
+                    if line.strip()
+                ]
+                if len(states) != 1 or not states[0][0].isalpha():
+                    raise ValueError
+                return states[0][0].upper() == "Z"
+            except (ValueError, UnicodeDecodeError):
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+        raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
 
