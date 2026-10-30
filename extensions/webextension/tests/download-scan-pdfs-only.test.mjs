@@ -104,7 +104,7 @@ test("PDF-only excludes non-PDF hints; disabling broadens only candidate conside
 test("invalid, mismatched and hostile metadata never passes the scope filter", () => {
   const pairs = [
     [mime(42, "application/pdf"), file(43, "x.pdf")],
-    [mime(42, "application/pdf"), file(42, "x.pdf", { trusted: true })],
+    [mime(42, "application/pdf"), { id: 42, filename: "x.pdf", extra: true }],
     [mime(42, "bad mime"), file(42, "x.pdf")],
     [{ id: 42, mime: "application/pdf", authorizesOpen: true }, file(42, "x.pdf")],
     [null, file(42, "x.pdf")],
