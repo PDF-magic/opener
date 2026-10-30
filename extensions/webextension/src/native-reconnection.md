@@ -12,17 +12,35 @@ selection are unchanged.
 A trusted integration must first independently establish all of these facts:
 
 1. The locally installed native host `org.pdfmagic.opener` is registered and
-   its browser extension identity is approved. A host-name match or a boolean
-   provided by untrusted content is **not** registration or authentication.
+   its browser extension identity is approved. The adapter must snapshot the
+   **exact, explicitly approved IDs** from the independently verified host
+   registration manifest (Chrome/Chromium `allowed_origins` converted to
+   canonical extension IDs, or Firefox `allowed_extensions`). A host-name
+   match, a browser-supplied request payload, or a boolean from untrusted
+   content is **not** registration or authentication.
 2. The browser actually granted the required optional native messaging
    permission through the separately reviewed user-initiated permission flow.
 3. The user explicitly approved this connection session.
 
 Only that trusted integration may inject a **bound**
-`browser.runtime.connectNative`-compatible function and invoke
-`controller.start({ registrationVerified: true,
- nativePermissionGranted: true, userApproved: true })`.
-The module does not itself determine those facts or request permissions.
+`browser.runtime.connectNative`-compatible function, the browser-provided
+`runtime.id` (copied into a plain `{ id }` record), a reviewed `browserKind`
+(`chromium` or `firefox`), and `approvedExtensionIds` from the verified
+local registration. It then invokes `controller.start({
+ registrationVerified: true, nativePermissionGranted: true,
+ userApproved: true })`. The controller **fails closed before opening any
+native port** if the identity is missing or not in that exact allowlist, if
+the list is empty, malformed or wildcard-based, or if a Firefox development
+ID is used without explicit `development: true`. It snapshots the approved
+list and rechecks the current runtime ID before each reconnect. IDs are
+case-sensitive and must match browser-specific formats. No identity is
+approved by default.
+The module does not itself discover or authenticate the browser process or
+registration: the trusted integration must do so using browser-controlled
+metadata and a securely verified host manifest. Command-line origin flags
+and caller-provided records can be spoofed by another local process; exact
+ID matching is an **additional admission control, not process authentication**.
+The module does not request permissions.
 The currently inactive manifest has no native messaging permission, so it
 must not invoke `start()` in production.
 

@@ -1,3 +1,7 @@
+import {
+  isApprovedNativeExtensionIdentity, snapshotApprovedExtensionIds
+} from "./native-extension-identity.js";
+
 // Dormant native-transport recovery for a future explicitly approved integration.
 // Importing this module never connects, requests permissions, scans or opens files.
 const HOST_NAME = "org.pdfmagic.opener";
@@ -50,11 +54,21 @@ function matchesHandshake(message, requestId, nonce) {
  */
 export function createNativeReconnectController({
   connectNative,
+  browserKind,
+  browserRuntime,
+  approvedExtensionIds,
+  development = false,
   nonceFactory = createNonce,
   schedule = (callback, delay) => setTimeout(callback, delay),
   cancel = (handle) => clearTimeout(handle),
   onStateChange = () => {}
 } = {}) {
+  // Capture only reviewed IDs, not a mutable caller-owned allowlist.
+  const approvedIds = snapshotApprovedExtensionIds(approvedExtensionIds);
+  const identityAllowed = () => approvedIds !== null &&
+    isApprovedNativeExtensionIdentity({
+      browserKind, browserRuntime, approvedExtensionIds: approvedIds, development
+    });
   let active = false;
   let state = "idle";
   let port = null;
@@ -112,6 +126,9 @@ export function createNativeReconnectController({
 
   function connect() {
     if (!active) return;
+    // Recheck the current browser runtime identity after every disconnect.
+    // A revoked or changed identity never initiates another native process.
+    if (!identityAllowed()) { halt("unavailable"); return; }
     changeState("connecting");
     if (!active) return;
     const currentGeneration = ++generation;
@@ -171,7 +188,7 @@ export function createNativeReconnectController({
     start({ registrationVerified, nativePermissionGranted, userApproved } = {}) {
       if (active || registrationVerified !== true ||
           nativePermissionGranted !== true || userApproved !== true ||
-          typeof connectNative !== "function") return false;
+          typeof connectNative !== "function" || !identityAllowed()) return false;
       // Fresh opt-in is required after stop or exhaustion; attempts never
       // survive a controller restart or extension-worker shutdown.
       clearTimers();
