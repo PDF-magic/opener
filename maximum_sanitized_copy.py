@@ -167,6 +167,37 @@ class SanitizerFailureReport:
         }
 
 
+class SanitizationActivity(str, Enum):
+    """UI-only activity signal for the optional Maximum copy pipeline.
+
+    The installed Built-in scanner never emits this status. Neither phase is
+    a document safety verdict or permission to open a converted document.
+    """
+
+    RUNNING = "sanitizing"
+    IDLE = "idle"
+
+    def to_public_metadata(self) -> dict:
+        running = self is SanitizationActivity.RUNNING
+        return {
+            "phase": self.value,
+            "isRunning": running,
+            "label": "Sanitizing document…" if running else "Sanitization stopped",
+            "scanVerdict": "notAssessed",
+            "authorizesOpen": False,
+        }
+
+
+def _notify_sanitization_activity(on_activity, phase: SanitizationActivity) -> None:
+    """Never let a presentation observer affect the fail-closed scan gate."""
+    if on_activity is not None:
+        try:
+            on_activity(phase.to_public_metadata())
+        except Exception:
+            # Progress presentation is best-effort, never an opening decision.
+            pass
+
+
 @dataclass(frozen=True)
 class SanitizerAttempt:
     """Exactly one verified offer or a separately typed sanitizer failure."""
@@ -459,7 +490,7 @@ def _passive_pages(
         return False
 
 
-def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
+def attempt_sanitized_pdf_copy(source_bytes: bytes, *, on_activity=None) -> SanitizerAttempt:
     """Report converter crashes separately, never infer malware from a crash.
 
     A verified offer is distinct from sanitization failures; neither
@@ -493,6 +524,19 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
     except Exception:
         return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
 
+    _notify_sanitization_activity(on_activity, SanitizationActivity.RUNNING)
+    try:
+        return _convert_and_verify_sanitized_copy(
+            converter, source_bytes, count, page_geometry,
+        )
+    finally:
+        _notify_sanitization_activity(on_activity, SanitizationActivity.IDLE)
+
+
+def _convert_and_verify_sanitized_copy(
+    converter, source_bytes: bytes, count: int, page_geometry: tuple,
+) -> SanitizerAttempt:
+    """Keep the activity indicator live through final output verification."""
     try:
         converted = run_limited_converter(
             (str(converter),),
@@ -547,7 +591,7 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
         return _failed(SanitizerFailureKind.INVALID_OUTPUT)
 
 
-def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
+def assess_sanitized_pdf_copy(source_bytes: bytes, *, on_activity=None) -> SanitizationDecision:
     """Classify unsupported sanitization without changing crash-reporting.
 
     Only verified offers from the existing sanitizer attempt may be
@@ -576,7 +620,7 @@ def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
     except Exception:
         return _blocked(SanitizationBlockReason.unreadableSource)
 
-    attempt = attempt_sanitized_pdf_copy(source_bytes)
+    attempt = attempt_sanitized_pdf_copy(source_bytes, on_activity=on_activity)
     if attempt.offer is not None:
         return SanitizationDecision(attempt.offer, None)
     # Keep the separately typed sanitizer-crash result on
@@ -591,10 +635,10 @@ def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
     return _blocked(SanitizationBlockReason.conversionFailed)
 
 
-def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
+def offer_sanitized_pdf_copy(source_bytes: bytes, *, on_activity=None) -> SanitizedCopyOffer | None:
     """Compatibility API: an unsuccessful conversion still offers nothing.
 
     Use attempt_sanitized_pdf_copy() when callers need to show a specific
     sanitizer failure without conflating it with malware detections.
     """
-    return attempt_sanitized_pdf_copy(source_bytes).offer
+    return attempt_sanitized_pdf_copy(source_bytes, on_activity=on_activity).offer
