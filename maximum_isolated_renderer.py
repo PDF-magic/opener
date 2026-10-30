@@ -26,6 +26,17 @@ MAGIC = b"MAXPNG01"
 _HEADER = struct.Struct(">8sII")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
+
+# Explicit allowlist for trusted resource-limit bootstrap imports.
+RENDERER_LIMIT_SUPPORT = (
+    ("analysis_support", "ANALYSIS_SUPPORT", "maximum_isolated_analysis.py"),
+    ("process_support", "PROCESS_SUPPORT", "maximum_process_termination.py"),
+    ("sanitizer_support", "SANITIZER_SUPPORT", "maximum_sanitizer_process.py"),
+    ("memory_support", "MEMORY_SUPPORT", "maximum_memory_limits.py"),
+    ("policy_support", "POLICY_SUPPORT", "protection_policy_definitions.py"),
+    ("budget_support", "BUDGET_SUPPORT", "protection_stage_resource_budgets.py"),
+    ("profile_support", "PROFILE_SUPPORT", "protection_profiles.py"),
+)
 RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
 (allow process-exec (literal (param "PYTHON")))
@@ -45,6 +56,13 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
     (literal (param "WORKER_SUPPORT"))
     (literal (param "NETWORK_SUPPORT"))
     (literal (param "RENDERER_SUPPORT"))
+    (literal (param "ANALYSIS_SUPPORT"))
+    (literal (param "PROCESS_SUPPORT"))
+    (literal (param "SANITIZER_SUPPORT"))
+    (literal (param "MEMORY_SUPPORT"))
+    (literal (param "POLICY_SUPPORT"))
+    (literal (param "BUDGET_SUPPORT"))
+    (literal (param "PROFILE_SUPPORT"))
     (subpath (param "PYTHON_PREFIX"))
     (subpath (param "PYTHON_BASE_PREFIX"))
     (subpath "/System")
@@ -133,6 +151,10 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
         network_support = (source_root / "maximum_network_isolation.py").resolve(strict=True)
         renderer_support = Path(__file__).resolve(strict=True)
+        limit_support = {
+            key: (source_root / filename).resolve(strict=True)
+            for key, _parameter, filename in RENDERER_LIMIT_SUPPORT
+        }
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
     except (OSError, RuntimeError, TypeError):
@@ -144,11 +166,13 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
             not _trusted_regular_file(python, executable=True) or
             not _trusted_regular_file(worker) or
             not all(_trusted_regular_file(str(path)) for path in support_files) or
+            any(path.parent != source_root or not _trusted_regular_file(str(path))
+                for path in limit_support.values()) or
             not _trusted_directory(str(source_root)) or
             not _trusted_directory(prefix, runtime=True) or
             not _trusted_directory(base_prefix, runtime=True)):
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
-    return {
+    context = {
         "python": python,
         "worker": worker,
         "worker_support": str(worker_support),
@@ -157,6 +181,8 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         "python_prefix": prefix,
         "python_base_prefix": base_prefix,
     }
+    context.update({key: str(path) for key, path in limit_support.items()})
+    return context
 
 
 def _sbpl_path_literal(path: str) -> str:
@@ -177,7 +203,7 @@ def apply_renderer_sandbox(context: dict[str, str]) -> None:
     expected_keys = {
         "python", "worker", "worker_support", "network_support",
         "renderer_support", "python_prefix", "python_base_prefix",
-    }
+    } | {key for key, _parameter, _filename in RENDERER_LIMIT_SUPPORT}
     if sys.platform != "darwin" or type(context) is not dict or set(context) != expected_keys:
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
 
@@ -192,6 +218,8 @@ def apply_renderer_sandbox(context: dict[str, str]) -> None:
         ("PYTHON_BASE_PREFIX", "python_base_prefix"),
     ):
         profile = profile.replace(f'(param "{name}")', _sbpl_path_literal(context[key]))
+    for key, parameter, _filename in RENDERER_LIMIT_SUPPORT:
+        profile = profile.replace(f'(param "{parameter}")', _sbpl_path_literal(context[key]))
     if '(param "' in profile:
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
 

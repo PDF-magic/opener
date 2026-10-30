@@ -269,6 +269,43 @@ jobs:
         run: python3 -m pip install --no-deps --disable-pip-version-check "pymupdf==2.0"
       - name: mac / maximum-isolated-renderer / Verify real isolated page rasterization, sandbox confinement and fail-closed limits
         run: python3 test-maximum-isolated-renderer.py -v
+      - name: mac / maximum-isolated-renderer / Diagnose trusted sandbox bootstrap without PDF data
+        if: ${{ failure() && runner.os == 'macOS' }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+          import maximum_isolated_renderer as renderer
+
+          root = Path(renderer.__file__).resolve().parent
+          worker = root / "maximum_render_worker.py"
+          checks = {
+              "python": renderer._trusted_regular_file(
+                  str(Path(renderer._sandbox_python_executable()).resolve()),
+                  executable=True),
+              "worker": renderer._trusted_regular_file(str(worker)),
+              "source_root": renderer._trusted_directory(str(root)),
+              "python_prefix": renderer._trusted_directory(
+                  str(Path(sys.prefix).resolve()), runtime=True),
+              "base_prefix": renderer._trusted_directory(
+                  str(Path(sys.base_prefix).resolve()), runtime=True),
+          }
+          for key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT:
+              checks["trusted_" + key] = renderer._trusted_regular_file(
+                  str((root / filename).resolve()))
+          for name, trusted in sorted(checks.items()):
+              print(name + "=" + str(bool(trusted)).lower())
+          try:
+              context = renderer._renderer_sandbox_context(worker)
+          except renderer.MaximumPDFRenderError:
+              print("renderer_preflight=blocked")
+          else:
+              print("renderer_preflight=accepted")
+              print("complete_support_allowlist=" + str(
+                  all(key in context for key, _parameter, _filename
+                      in renderer.RENDERER_LIMIT_SUPPORT)).lower())
+          # No worker is launched without its required kernel sandbox.
+          PY
       - name: mac / maximum-child-process-restriction / Verify Seatbelt denies child processes but permits threads
         run: python3 test-maximum-child-process-restriction.py -v
       - name: mac / maximum-isolated-analysis / Install pinned PDF parser

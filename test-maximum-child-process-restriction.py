@@ -141,6 +141,10 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
+        context.update({
+            key: str((ROOT / filename).resolve())
+            for key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT
+        })
         with (
             patch.object(renderer.sys, "platform", "darwin"),
             patch.object(renderer, "_renderer_sandbox_context", return_value=context),
@@ -157,6 +161,8 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertIn("(deny process-fork)", profile)
         self.assertNotIn("(allow default)", profile)
         self.assertNotIn("(allow file-write", profile)
+        for _key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
+            self.assertIn('(literal (param "' + parameter + '"))', profile)
         worker_source = (ROOT / "maximum_render_worker.py").read_text(encoding="utf-8")
         self.assertLess(worker_source.index("apply_renderer_sandbox(context)"),
                         worker_source.index("document_bytes = sys.stdin.buffer.read"))

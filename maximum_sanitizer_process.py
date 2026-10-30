@@ -296,44 +296,6 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
         return False
 
 
-def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
-    """Confirm the owned leader and every remaining group member are zombies.
-
-    Darwin can return EPERM when the group consists exclusively of unreaped
-    zombies, not ESRCH. Never treat EPERM as a successful cleanup unless a
-    complete, trusted process-table snapshot proves nothing can run again.
-    """
-    try:
-        completed = subprocess.run(
-            ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            close_fds=True,
-            cwd="/",
-            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-            timeout=0.25,
-            check=True,
-        )
-        found_leader = False
-        for line in completed.stdout.decode("ascii").splitlines():
-            if not line.strip():
-                continue
-            fields = line.split()
-            if (len(fields) != 3 or not fields[0].isdecimal()
-                    or not fields[1].isdecimal() or not fields[2][0].isalpha()):
-                return False
-            pid, group_id, status = int(fields[0]), int(fields[1]), fields[2]
-            if group_id != process_group_id:
-                continue
-            if status[0].upper() != "Z":
-                return False
-            if pid == process_group_id:
-                found_leader = True
-        return found_leader
-    except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
-        return False
-
 
 def _stop_process_group(process):
     """Kill the whole isolated process group, including surviving descendants."""

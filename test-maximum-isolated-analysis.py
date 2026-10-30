@@ -70,9 +70,9 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
         # Each call starts a real restricted worker with its mandatory memory
         # guard. Repeated successful exits catch alarms firing during teardown.
         pdf = sample_pdf()
-        for attempt in range(8):
+        for attempt in range(12):
             with self.subTest(attempt=attempt):
-                result = isolated.run_isolated_pdf_analysis(pdf, "malformedStructures")
+                result = self.assert_isolated_worker_succeeds(pdf, "malformedStructures")
                 self.assertGreater(result.worker_pid, 0)
                 self.assertEqual(result.to_dict()["metrics"]["page_count"], 1)
                 self.assertFalse(result.permits_open)
