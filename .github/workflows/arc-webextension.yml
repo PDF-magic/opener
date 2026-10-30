@@ -1,0 +1,55 @@
+name: Arc WebExtension compatibility
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/arc-webextension.yml"
+  push:
+    branches: [main]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/arc-webextension.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arc-extension-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  arc-extension-smoke:
+    name: Arc macOS MV3 extension smoke test
+    runs-on: macos-latest
+    timeout-minutes: 18
+    steps:
+      - name: Check out reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install actual Arc browser for macOS
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask arc
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' /Applications/Arc.app/Contents/Info.plist | grep -Fx 'company.thebrowser.Browser'
+          codesign --verify --deep --strict /Applications/Arc.app
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build and verify inert shared extension
+        working-directory: extensions/webextension
+        run: |
+          npm run build
+          node --test tests/arc-compatibility.test.mjs
+      - name: Install CI-only browser automation driver
+        working-directory: extensions/webextension
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
+      - name: Test real Arc browser loading the disabled scanner extension
+        working-directory: extensions/webextension
+        env:
+          ARC_APP_PATH: /Applications/Arc.app
+        timeout-minutes: 4
+        run: node scripts/test-arc.mjs
