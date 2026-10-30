@@ -15,17 +15,40 @@ CHROME_DIRECTORY = Path("Library/Application Support/Google/Chrome/NativeMessagi
 EXTENSION_ID = re.compile(r"[a-p]{32}\Z", re.ASCII)
 
 
+def validate_supplied_path(value, *, executable=False, directory=False):
+  """Validate every ancestor before publishing a browser-executable path."""
+  raw = os.fspath(value)
+  if (not isinstance(raw, str) or not raw.startswith("/") or
+      len(raw.encode("utf-8")) > 4096 or
+      any(ord(ch) < 32 or ord(ch) == 127 for ch in raw) or
+      any(part in (".", "..") for part in raw.split("/"))):
+    raise ValueError("Unsafe or noncanonical supplied file path")
+  current = Path("/")
+  parts = [part for part in raw.split("/") if part]
+  if not parts:
+    raise ValueError("Supplied file path cannot be the filesystem root")
+  for index, part in enumerate(parts):
+    current /= part
+    try:
+      mode = current.lstat().st_mode
+    except OSError as exc:
+      raise ValueError("Supplied file path is missing or inaccessible") from exc
+    if stat.S_ISLNK(mode):
+      raise ValueError("Symlink in supplied file path")
+    if index < len(parts) - 1 or directory:
+      if not stat.S_ISDIR(mode):
+        raise ValueError("Non-directory in supplied file path")
+    elif not stat.S_ISREG(mode):
+      raise ValueError("Host executable must be a regular file")
+    if index == len(parts) - 1 and executable:
+      if not (mode & 0o111) or not os.access(current, os.X_OK):
+        raise ValueError("Host executable must be executable")
+  return Path(raw)
+
+
 def build_manifest(host_path, extension_ids):
   """Create Chrome's exact stdio manifest, never a wildcard allowlist."""
-  binary = Path(host_path)
-  if not binary.is_absolute() or binary.is_symlink():
-    raise ValueError("Host executable must be an absolute, non-symlink path")
-  try:
-    mode = binary.stat().st_mode
-  except OSError as exc:
-    raise ValueError("Host executable does not exist") from exc
-  if not stat.S_ISREG(mode) or not (mode & 0o111) or not os.access(binary, os.X_OK):
-    raise ValueError("Host executable must be a regular executable file")
+  binary = validate_supplied_path(host_path, executable=True)
   ids = list(extension_ids)
   if not ids or any(not isinstance(value, str) or not EXTENSION_ID.fullmatch(value) for value in ids):
     raise ValueError("Provide actual approved 32-character Chrome extension IDs (a-p only)")
@@ -41,9 +64,7 @@ def build_manifest(host_path, extension_ids):
 def register(host_path, extension_ids, home):
   """Publish one registration without replacing any other user's configuration."""
   manifest = build_manifest(host_path, extension_ids)
-  home = Path(home)
-  if not home.is_absolute() or not home.is_dir():
-    raise ValueError("An existing absolute home directory is required")
+  home = validate_supplied_path(home, directory=True)
   directory = home
   for component in CHROME_DIRECTORY.parts:
     directory = directory / component
