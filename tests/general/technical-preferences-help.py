@@ -71,8 +71,8 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # scanner-parameter editor or bypass. Forbid every other button.
         if filename == "AdvancedScanningSettingsView.swift" and term == "Button(":
           continue
-        # The Browsers page may expose only explicitly reviewed presentation
-        # and download-monitoring toggles, never scanner-policy overrides.
+        # Only the dedicated opt-in download-scope toggle is allowed here.
+        # Do not permit an unrelated scanner-bypass control in this page.
         if filename == "BrowsersSettingsView.swift" and term == "Toggle(":
           continue
         # Updates now has two explicit, user-initiated actions; keep all
@@ -83,15 +83,17 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
           self.assertNotIn(term, source)
       if filename == "BrowsersSettingsView.swift":
         toggles = re.findall(r'Toggle\\("([^"]+)"', source)
-        expected = {
+        allowed = {
             "Show Only Warnings",
             "Show Scan Results",
             "Enable Browser Download Monitoring",
             "Scan Other Supported Files",
         }
         self.assertIn("Show Only Warnings", toggles)
+        self.assertIn("Scan Other Supported Files", toggles)
         self.assertEqual(len(toggles), len(set(toggles)))
-        self.assertFalse(set(toggles) - expected)
+        self.assertFalse(set(toggles) - allowed)
+        self.assertIn('ScanOtherSupportedFilesPreference.save(enabled)', source)
       if filename == "AdvancedScanningSettingsView.swift":
         self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
         self.assertIn('Button("Cancel", role: .cancel)', source)

@@ -322,6 +322,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
+      - name: Verify opt-in non-PDF download scan preference surface
+        run: PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v
       - name: Verify download Show Only Warnings option and mandatory warning visibility
         run: PYTHONPATH=. python3 tests/download/show-only-warnings.py -v
       - name: Verify explanatory help for technical preferences
@@ -754,6 +756,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-protection-choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
           "$RUNNER_TEMP/TestProtectionChoiceRestart"
+      - name: Verify isolated opt-in download scan scope persistence
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-scan-other-supported-files.swift -o "$RUNNER_TEMP/TestScanOtherSupportedFiles"
+          "$RUNNER_TEMP/TestScanOtherSupportedFiles"
       - name: Verify settings survive app restart and replacement executable
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
