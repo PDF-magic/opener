@@ -51,6 +51,37 @@ CONVERSION_CHANGE_WARNING = (
     "Review the generated copy before relying on it."
 )
 
+SAVED_COPY_LABEL = "Generated sanitized PDF copy (not the original)"
+SAVED_COPY_NOTICE = (
+    "This is a newly generated sanitized copy, not the original PDF. "
+    "Keep the untouched original separately; the flattened copy may differ "
+    "and must be scanned independently before opening."
+)
+
+
+def suggested_saved_copy_filename(source_path: str | Path) -> str:
+    """Suggest a clearly distinct basename, never a full path or write target.
+
+    Only trusted source-path data supplies the basename; PDF-controlled
+    metadata is never used. The future save dialog must still require explicit
+    consent and perform an exclusive, non-overwriting save.
+    """
+    import re
+
+    if (not (type(source_path) is str or type(source_path) is Path) or
+            not str(source_path) or "\x00" in str(source_path)):
+        raise ValueError("A source PDF filename is required")
+    name = Path(source_path).name
+    if not name.lower().endswith(".pdf") or len(name) <= 4:
+        raise ValueError("A source PDF filename is required")
+    stem = re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', "-", name[:-4])
+    stem = stem.strip(" .-_")[:96].rstrip(" .-_") or "document"
+    candidate = f"{stem}-sanitized-copy.pdf"
+    if candidate.casefold() == name.casefold():
+        raise ValueError("Generated name must differ from the original")
+    return candidate
+
+
 @dataclass(frozen=True)
 class SanitizedCopyOffer:
     """In-memory, user-initiated save option, never a permission to open."""
@@ -78,6 +109,29 @@ class SanitizedCopyOffer:
             "requiresFreshScan": True,
             "authorizesOpen": False,
             "ocrRestored": False,
+        }
+
+    def to_save_presentation(self, source_path: str | Path) -> dict:
+        """Local save-dialog identity, never permission to save or open.
+
+        The returned name cannot match the supplied original PDF basename.
+        A save implementation must use exclusive creation and must never
+        replace an existing file, especially the source.
+        """
+        if (type(self.content_origin) is not str or
+                self.content_origin != GENERATED_CONTENT_ORIGIN or
+                self.permits_open is not False or
+                self.needs_separate_scan is not True or
+                self.rasterized is not True):
+            raise ValueError("Only verified generated copies can be presented")
+        return {
+            "contentOrigin": GENERATED_CONTENT_ORIGIN,
+            "isUntouchedOriginal": False,
+            "label": SAVED_COPY_LABEL,
+            "notice": SAVED_COPY_NOTICE,
+            "suggestedFilename": suggested_saved_copy_filename(source_path),
+            "requiresFreshScan": True,
+            "authorizesOpen": False,
         }
 
     def __post_init__(self):
