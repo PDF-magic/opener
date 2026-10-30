@@ -30,7 +30,8 @@ function root() {
   const doc = { createElement(tag) { return element(tag, doc); } };
   return element("section", doc);
 }
-function fixture(response = { accepted: true }) {
+function fixture(...args) {
+  const response = args.length === 0 ? { accepted: true } : args[0];
   const calls = [];
   const native = {
     nativeOpenAfterScanningReady: true,
