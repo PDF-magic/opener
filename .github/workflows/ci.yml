@@ -345,6 +345,7 @@ jobs:
         run: |
           python3 test-safari-extension-target.py -v
           python3 test-safari-extension-permissions.py -v
+          python3 test-safari-extension-activation.py -v
           python3 test-browser-preferences-deep-link.py -v
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
@@ -602,6 +603,10 @@ jobs:
           python3 test-safari-extension-permissions.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           python3 test-safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           python3 test-browser-preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+      - name: Compile and self-test read-only Safari activation probe
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
+          "$RUNNER_TEMP/TestSafariExtensionActivation" --self-test
       - name: Package and verify unsigned Safari Web Extension host app
         run: |
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"

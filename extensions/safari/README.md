@@ -118,3 +118,45 @@ archive paths. CI validates the archive, extracts it without installation,
 and rechecks the embedded Safari extension. No PDF scanning, native messaging,
 Safari activation, native scanner changes, quarantine changes, or user
 configuration changes are introduced.
+
+## Safari activation acceptance test (opener-0611)
+
+**Activation is controlled by the Safari user, not CI or the host app.**
+Run the native build and bundled-extension verification in CI first.
+On a disposable macOS Safari profile with the **installed, launched**
+PDF Magic Opener host app, open **Safari > Settings > Extensions**.
+Verify that **PDF Magic Opener Safari Extension** is listed. A development
+build must be properly signed, or the tester must explicitly allow unsigned
+extensions under Safari > Settings > Developer for that Safari session.
+Never modify a user's existing Safari extension preferences for this test.
+
+Compile the read-only probe on macOS:
+
+```sh
+xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o /tmp/TestSafariExtensionActivation
+/tmp/TestSafariExtensionActivation --self-test
+```
+
+1. Leave the extension unchecked in Safari > Settings > Extensions and run
+   `/tmp/TestSafariExtensionActivation --expect disabled`. This must exit
+   successfully **only** when Safari reports the registered extension disabled.
+2. Explicitly enable the extension in Safari's Extensions settings, then run
+   `/tmp/TestSafariExtensionActivation --expect enabled`. Check the Safari
+   toolbar popup: it must still say **Not active**, and explain that it
+   **cannot scan, sanitize, or open PDF** files. Enabling the scaffold is not
+   a malware-scan verdict or an authorization to open documents.
+3. Uncheck the extension again and rerun
+   `/tmp/TestSafariExtensionActivation --expect disabled`. The test must
+   report disabled, with no change to existing PDF application preferences.
+4. If the probe reports **not registered**, a SafariServices error, or a
+   timeout, record an **inconclusive/failed test**, not a disabled or enabled
+   result. Verify the installed host app, Safari profile and signing before
+   retrying. The state query is designed for an extension embedded in its
+   containing application; a standalone diagnostic process may not have
+   the same registration context.
+
+The probe only reads SafariServices activation state. It never enables
+an extension, opens settings, changes permissions, scans PDFs, or modifies
+ClamAV/quarantine checks. CI compiles the probe and exercises its state
+decision matrix without installing the app or approving a Safari extension;
+**actual end-to-end enable/disable is a manual macOS acceptance test**.
