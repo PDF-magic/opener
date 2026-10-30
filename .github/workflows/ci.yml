@@ -365,6 +365,9 @@ jobs:
       - name: Verify passive top-frame PDF navigation detection contract
         working-directory: extensions/webextension
         run: node --test tests/pdf-navigation.test.mjs
+      - name: Verify passive privileged PDF viewer page recognition
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-privileged-viewer.test.mjs
       - name: Verify passive PDF navigation response MIME detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-response-mime.test.mjs
@@ -374,6 +377,9 @@ jobs:
       - name: Verify passive JavaScript PDF.js viewer candidates
         working-directory: extensions/webextension
         run: node --test tests/pdf-js-viewer.test.mjs
+      - name: Verify passive inline Content-Disposition response detection
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-inline-disposition.test.mjs
       - name: Verify versioned native JSON message contract
         run: PYTHONPATH=. python3 tests/native/message-format.py -v
       - name: Upload validated Chrome extension package
