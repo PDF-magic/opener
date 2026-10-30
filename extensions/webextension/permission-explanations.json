@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "apiPermissions": {
+    "downloads": {
+      "feature": "Opt-in download-event monitoring",
+      "explanation": "Allow PDF Magic Opener to observe browser download events so you can select newly downloaded PDFs for separate scanning.",
+      "dataAccess": "The browser downloads permission may expose filenames, download URLs, and download history, not a malware-clean verdict.",
+      "userChoice": "Request only after you explicitly enable monitoring and approve the browser prompt; declining leaves monitoring off.",
+      "safetyBoundary": "Never open downloaded PDFs, bypass quarantine, or skip ClamAV signature freshness, file integrity or scanning."
+    },
+    "nativeMessaging": {
+      "feature": "Verified local application communication",
+      "explanation": "Allow PDF Magic Opener to exchange authorized messages with a registered and identity-verified local companion application.",
+      "dataAccess": "Native messages could convey sensitive information to a local app; never send PDF paths or bytes without a separately reviewed protocol.",
+      "userChoice": "Request only following verified local registration, explicit user action, and an approved communication protocol.",
+      "safetyBoundary": "A grant does not prove any PDF safe or authorize arbitrary processes, remote hosts, scanner bypasses or file opening."
+    },
+    "notifications": {
+      "feature": "Optional browser status notifications",
+      "explanation": "Allow PDF Magic Opener to display browser notifications for an explicitly enabled status-notification feature.",
+      "dataAccess": "Notifications may appear on the desktop; private PDF filenames, contents and download addresses must not appear by default.",
+      "userChoice": "Request only when the user explicitly enables a feature requiring notifications, and support denial without reduced security.",
+      "safetyBoundary": "Notification display conveys status only; it cannot authorize a PDF opening or replace scanner verification."
+    },
+    "storage": {
+      "feature": "Optional browser extension settings",
+      "explanation": "Allow PDF Magic Opener to remember selected extension settings between sessions when persistent preferences are implemented.",
+      "dataAccess": "Persisted browser settings can survive restarts; do not retain PDF contents, document paths or scan results by default.",
+      "userChoice": "Explain which settings would be stored and ask before enabling persistence; preserve existing user preferences.",
+      "safetyBoundary": "Stored preferences cannot bypass mandatory scanning, signature freshness, integrity checks or quarantine."
+    }
+  },
+  "hostPermissions": {}
+}
