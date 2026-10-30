@@ -85,11 +85,19 @@ try {
     defaultViewport: null,
     protocolTimeout: 20000
   });
-  const workerTarget = await browser.waitForTarget(
-    (target) => target.type() === "service_worker" &&
-      target.url().startsWith("chrome-extension://"),
-    { timeout: 30000 }
-  );
+  // Opera exposes built-in extension workers (e.g. Opera Touch Background).
+  // Identify *our* extension by its live manifest, never the first worker.
+  const workerTarget = await browser.waitForTarget(async (target) => {
+    if (target.type() !== "service_worker" ||
+        !target.url().startsWith("chrome-extension://")) return false;
+    try {
+      const candidate = await target.worker();
+      return candidate && await candidate.evaluate(() =>
+        chrome.runtime.getManifest().name) === "PDF Magic Opener";
+    } catch {
+      return false;
+    }
+  }, { timeout: 30000 });
   const extensionId = new URL(workerTarget.url()).host;
   assert.match(extensionId, /^[a-p]{32}$/,
     "Opera must load an actual unpacked MV3 extension service worker");
