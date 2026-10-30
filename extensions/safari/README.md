@@ -8,8 +8,9 @@ to `Contents/Resources/manifest.json` inside the .appex.
 
 This adds a target and build packaging, **not** an active PDF integration.
 The shared Manifest V3 contains no permissions, host access, actions, content
-scripts or background worker. The Swift request handler returns no items;
+scripts or background worker. The Swift request handler responds only to validated, inactive status requests;
 it cannot scan, sanitize, launch, or approve PDFs, or message the parent app.
+See [native messaging adapter](native-messaging.md) for the strict boundary.
 Embedding does not automatically enable the extension in Safari. An installed
 host app may make the extension visible in Safari's extension preferences;
 the user controls enabling it.

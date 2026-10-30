@@ -95,14 +95,21 @@ class SafariPermissionTests(unittest.TestCase):
       with self.subTest(bad=bad), self.assertRaises(AssertionError):
         validate_safari_permissions(self.manifest, bad)
 
-  def test_native_request_handler_cannot_grant_permission_or_open_pdf(self):
+  def test_native_request_handler_only_reports_inactive_status(self):
     source = HANDLER.read_text(encoding="utf-8")
-    self.assertIn("context.completeRequest(returningItems: [], completionHandler: nil)",
-                  source)
+    for expected in (
+      "SFExtensionMessageKey", "context.inputItems.first",
+      "SafariNativeMessagingAdapter.reply(to: message)",
+      "context.completeRequest(returningItems: [], completionHandler: nil)",
+      'kind == "request"', 'topic == "native.status"',
+      '"status": "inactive"', '"scanVerified": false',
+      '"authorizesOpen": false', "encoded.count <= 16 * 1024",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, source)
     for forbidden in (
-      "SFExtensionMessageKey", "sendNativeMessage(", "connectNative(",
-      "NSWorkspace", "URLSession", "Process(", "FileManager", "clamscan",
-      "context.inputItems", "UserDefaults", "@AppStorage",
+      "sendNativeMessage(", "connectNative(", "NSWorkspace", "URLSession",
+      "Process(", "FileManager", "clamscan", "UserDefaults", "@AppStorage",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)

@@ -3,7 +3,9 @@
 import json
 from pathlib import Path
 import plistlib
+import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent
@@ -113,15 +115,37 @@ class SafariExtensionTargetTests(unittest.TestCase):
     self.assertEqual(project.count('productType = "com.apple.product-type.app-extension";'), 1)
     self.assertEqual(project.count('dstSubfolderSpec = 13;'), 1)
 
-  def test_no_native_message_or_scanner_handoff(self):
+  def test_native_status_messaging_preserves_inactive_scanner_boundary(self):
     source = (SAFARI / "SafariWebExtensionHandler.swift").read_text(encoding="utf-8")
     self.assertIn("NSExtensionRequestHandling", source)
-    self.assertIn("context.completeRequest(returningItems: [], completionHandler: nil)", source)
-    for forbidden in ("SFExtensionMessageKey", "nativeMessaging", "NSWorkspace",
-                      "FileManager", "URLSession", "Process(", "open(", "clamscan",
-                      "context.inputItems", "@AppStorage", "UserDefaults"):
+    for expected in (
+      "SFExtensionMessageKey", "context.inputItems.first", "NSExtensionItem()",
+      "SafariNativeMessagingAdapter.reply(to: message)",
+      "context.completeRequest(returningItems: [response], completionHandler: nil)",
+      "context.completeRequest(returningItems: [], completionHandler: nil)",
+      'topic == "native.status"', 'kind == "request"', '"status": "inactive"',
+      '"scanVerified": false', '"authorizesOpen": false',
+      "encoded.count <= 16 * 1024", "message.count == 5"
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, source)
+    for forbidden in ("NSWorkspace", "FileManager", "URLSession", "Process(",
+                      "open(", "clamscan", "@AppStorage", "UserDefaults",
+                      "SFSafariApplication.dispatchMessage", "connectNative"):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
+
+  @unittest.skipUnless(sys.platform == "darwin", "Safari native messaging tests require macOS")
+  def test_native_adapter_swift_behavior_on_macos(self):
+    with tempfile.TemporaryDirectory(prefix="pdfmagic-safari-messaging-") as directory:
+      binary = Path(directory) / "TestSafariNativeMessaging"
+      subprocess.run([
+        "xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors",
+        str(SAFARI / "SafariWebExtensionHandler.swift"),
+        str(ROOT / "test-safari-native-messaging.swift"),
+        "-o", str(binary)
+      ], check=True)
+      subprocess.run([str(binary)], check=True)
 
   def test_shared_manifest_is_permission_free(self):
     manifest = json.loads(SHARED.read_text(encoding="utf-8"))
