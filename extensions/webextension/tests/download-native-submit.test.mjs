@@ -34,7 +34,7 @@ function fixture(options = {}) {
       return Promise.resolve([{
         id: query.id, state: "complete", exists: true, paused: false,
         canResume: false, bytesReceived: 1024, totalBytes: 1024,
-        filename, mime, url: "https://private.invalid/secret",
+        filename, mime, danger: "safe", url: "https://private.invalid/secret",
         cookies: "secret", scanVerified: true, authorizesOpen: true
       }]);
     }
@@ -78,8 +78,8 @@ test("completed PDF submits to injected native scanner only after repeated scope
     scanVerified: false, authorizesOpen: false
   });
   assert.equal(Object.isFrozen(result), true);
-  assert.deepEqual(f.lookups, Array.from({ length: 5 }, () => ({ id: 7 })));
-  assert.deepEqual(f.grants, Array.from({ length: 5 }, () => ({
+  assert.deepEqual(f.lookups, Array.from({ length: 6 }, () => ({ id: 7 })));
+  assert.deepEqual(f.grants, Array.from({ length: 6 }, () => ({
     permissions: ["downloads"]
   })));
   assert.deepEqual(f.submitted, [{ id: 7, localPath: "/home/user/report.PDF" }]);
@@ -301,4 +301,73 @@ test("module remains inert, does not bypass native host admission or change app 
     "fetch(", "storage.local", "permissions.request(", "nativeHost.startScan("]) {
     assert.equal(code.includes(forbidden), false, forbidden);
   }
+});
+
+
+test("browser's own malware warnings and accepted-danger downloads veto native submission", async () => {
+  for (const danger of ["file", "url", "content", "uncommon", "unwanted",
+    "accepted", "allowlistedByPolicy", "asyncScanning",
+    "sensitiveContentWarning", "sensitiveContentBlock", undefined, "unknown"]) {
+    const f = fixture();
+    const original = f.downloads.search;
+    f.downloads.search = (query) => original(query).then(rows =>
+      rows.map(row => ({ ...row, danger })));
+    assert.deepEqual(await call(f), unavailable, String(danger));
+    assert.deepEqual(f.submitted, []);
+    assert.deepEqual(f.lookups, Array.from({ length: 6 }, () => ({ id: 7 })));
+    noListeners(f);
+  }
+});
+
+test("a browser danger change during metadata lookup cancels native handoff", async () => {
+  for (const danger of ["file", "accepted", "safe"]) {
+    const f = fixture();
+    let count = 0;
+    const original = f.downloads.search;
+    f.downloads.search = query => {
+      count++;
+      if (count === 2) {
+        f.downloads.onChanged.emit({
+          id: 7, danger: { previous: "safe", current: danger }
+        });
+      }
+      return original(query);
+    };
+    assert.deepEqual(await call(f), unavailable);
+    assert.deepEqual(f.submitted, []);
+    noListeners(f);
+  }
+});
+
+test("a danger warning arriving during final browser check cancels native handoff", async () => {
+  const f = fixture();
+  let count = 0;
+  const original = f.downloads.search;
+  f.downloads.search = query => {
+    count++;
+    if (count === 6) {
+      f.downloads.onChanged.emit({
+        id: 7, danger: { previous: "safe", current: "file" }
+      });
+    }
+    return original(query);
+  };
+  assert.deepEqual(await call(f), unavailable);
+  assert.deepEqual(f.submitted, []);
+  noListeners(f);
+});
+
+test("native handoff never dismisses or changes a browser malware warning", async () => {
+  const f = fixture();
+  for (const name of ["acceptDanger", "open", "removeFile", "erase"]) {
+    f.downloads[name] = () => { throw Error("MUST NOT CALL: " + name); };
+  }
+  assert.equal((await call(f)).scanSubmitted, true);
+  const source = await readFile(
+    new URL("../src/download-native-submit.js", import.meta.url), "utf8");
+  for (const forbidden of ["acceptDanger(", "downloads.open(",
+    "downloads.removeFile(", "downloads.erase("]) {
+    assert.equal(source.includes(forbidden), false, forbidden);
+  }
+  noListeners(f);
 });

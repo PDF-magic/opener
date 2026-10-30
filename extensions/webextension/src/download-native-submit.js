@@ -5,6 +5,7 @@ import { retrieveCompletedDownloadLocalPath } from "./download-local-path.js";
 import { retrieveCompletedDownloadMime } from "./download-mime.js";
 import { detectCompletedDownloadPdfMime } from "./download-pdf-mime.js";
 import { detectCompletedPdfFilename } from "./download-pdf-filename.js";
+import { verifyBrowserNativeMalwareWarning } from "./download-browser-warning.js";
 
 // A browser event cannot authenticate a native host or authorize a scan.
 // Only a separately authenticated native scanner coordinator may receive a
@@ -78,7 +79,7 @@ export async function submitCompletedPdfDownloadToNative({
       if (event.id !== id) return;
       if (event.kind !== "changed" || event.filename !== undefined ||
           (event.state !== undefined && event.state !== "complete") ||
-          event.error !== undefined) stale = true;
+          event.error !== undefined || event.danger !== undefined) stale = true;
     });
     const invalidated = () => stale || revocations.isRevoked("downloads");
 
@@ -107,6 +108,17 @@ export async function submitCompletedPdfDownloadToNative({
         current === null || current.id !== id ||
         current.localPath !== path.localPath || invalidated() ||
         own(coordinator, "nativeScannerReady") !== true) return unavailable;
+
+    // Preserve the browser's independent malware/download warnings. A user-
+    // accepted warning is NOT "safe"; never acknowledge it, auto-accept it, or
+    // offer the file to a native scan just because another scanner exists.
+    const browserWarning = await verifyBrowserNativeMalwareWarning(
+      downloadsApi, permissionsApi, completion
+    );
+    if (browserWarning === null || browserWarning.id !== id ||
+        invalidated() || own(coordinator, "nativeScannerReady") !== true) {
+      return unavailable;
+    }
 
     // Only explicitly injected, independently verified native coordination
     // receives the untrusted browser path. No raw native messaging payload is

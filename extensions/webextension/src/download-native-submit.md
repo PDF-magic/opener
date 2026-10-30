@@ -39,6 +39,19 @@ reports readiness. The request contains only
 `Object.freeze({ id, localPath })`. Before invoking the injected coordinator, the existing session-owned scan
 gate atomically reserves that completed download ID. Duplicate notifications
 cannot issue duplicate native requests, even when callbacks are pending.
+Browser-native malware and download warnings are an **independent veto**:
+before invoking native coordination, the adapter performs an additional fresh,
+exact-ID, permission-checked lookup and requires an explicitly un-warned
+browser classification (`safe` or `deepScannedSafe`). An omitted or unknown
+danger value, dangerous/suspicious status, or `accepted` classification
+(a user bypassed a browser warning) blocks the handoff. A `downloads.onChanged`
+danger update for the in-flight download also invalidates the request, even
+when the new value appears harmless. This module never acknowledges,
+dismisses, overrides or suppresses a browser's warning UI, and does not call
+browser `acceptDanger`, `open`, `erase` or `removeFile` APIs.
+A browser that does not report the danger field requires a separately reviewed
+integration rather than assuming its download was safe.
+
 The ID can be reused only after the existing gate observes a new/erased
 browser lifecycle event. Any exception, failure, stale state,
 revocation, or non-Promise callback response fails closed.
