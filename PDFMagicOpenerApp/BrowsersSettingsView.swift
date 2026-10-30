@@ -48,6 +48,19 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  @State private var showScanResults = true
+  @State private var showScanResultsStatus: String?
+
+  private func updateShowScanResults(_ enabled: Bool) {
+    if DownloadScanResultsPreference.save(enabled) {
+      showScanResults = enabled
+      showScanResultsStatus = "Scan result display preference saved."
+    } else {
+      showScanResults = DownloadScanResultsPreference.isEnabled()
+      showScanResultsStatus = "Could not save the display preference. Your previous choice is unchanged."
+    }
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -57,6 +70,34 @@ struct BrowsersSettingsView: View {
 
         Text("Browser settings for verified PDF opening.")
           .foregroundStyle(.secondary)
+
+        GroupBox("Download scan results") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Show Scan Results", isOn: Binding(
+              get: { showScanResults },
+              set: { updateShowScanResults($0) }
+            ))
+            .accessibilityIdentifier("showDownloadScanResultsToggle")
+
+            Text("Choose whether to show optional summaries of browser download scans when a verified integration becomes available. Browser download scanning is not currently active. Blocking decisions, malware warnings, failed-scan alerts and native scanner safeguards are never disabled or hidden by this setting.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let showScanResultsStatus {
+              Text(showScanResultsStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("showDownloadScanResultsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadScanResultsSection")
+        .onAppear {
+          // Display-only preference: never request downloads permission here.
+          showScanResults = DownloadScanResultsPreference.isEnabled()
+        }
 
         GroupBox("Installed browsers") {
           browserSettingDetail(
