@@ -102,6 +102,12 @@ browser can open a PDF in-tab.
   browser-specific user-gesture route would require separate explicit
   permission review and real browser acceptance tests.
 
+For stronger browser-specific controls, see the separate
+[interception API feasibility assessment](browser-interception-apis.md). It
+compares Chromium MV3 declarative rules, Firefox blocking network requests,
+Safari declarative content blocking, and their limits. None is a universal
+local-file opening veto; this project has **not** enabled those permissions.
+
 ## Acceptance checks before claiming controlled opening
 
 For **each** browser on a disposable test profile: verify the actual
