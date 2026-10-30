@@ -11,6 +11,8 @@ import signal
 import subprocess
 import time
 
+from maximum_sanitizer_process import _process_has_exited_without_reaping
+
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 4096
 MAX_WALL_SECONDS = 30
@@ -170,7 +172,17 @@ def run_limited_worker(
         if remaining <= 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
         try:
-            return_code = process.wait(timeout=remaining)
+            # Retain the exited group leader until every descendant is killed.
+            # Otherwise reaping can allow PID reuse before group cleanup.
+            while not _process_has_exited_without_reaping(process):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise MaximumProcessTerminationError(
+                        BLOCK_MESSAGE, category="timeout",
+                    )
+                time.sleep(min(remaining, 0.025))
+            _stop_group(process)
+            return_code = process.wait(timeout=REAP_SECONDS)
         except subprocess.TimeoutExpired:
             raise MaximumProcessTerminationError(
                 BLOCK_MESSAGE, category="timeout",
@@ -179,6 +191,7 @@ def run_limited_worker(
             raise MaximumProcessTerminationError(
                 BLOCK_MESSAGE, category="worker-exit",
             )
+        process = None
         return bytes(output)
     except MaximumProcessTerminationError:
         raise

@@ -76,7 +76,31 @@ class MaximumRendererTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_real_page_rasterization_uses_separate_process(self):
-        render = renderer.render_isolated_pdf_page(self.pdf, 0)
+        try:
+            render = renderer.render_isolated_pdf_page(self.pdf, 0)
+        except renderer.MaximumPDFRenderError:
+            # CI-only diagnosis with a synthetic PDF: never print worker output,
+            # raw stderr, sandbox paths, or any document-controlled payload.
+            worker = ROOT / "maximum_render_worker.py"
+            probe = subprocess.run(
+                renderer._renderer_command(worker, 0), input=self.pdf,
+                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                timeout=renderer.WORKER_WALL_SECONDS, check=False,
+                close_fds=True, start_new_session=True, cwd="/",
+                env={
+                    "PATH": "/usr/bin:/bin", "HOME": "/nonexistent",
+                    "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
+                    "PYTHONNOUSERSITE": "1",
+                    "PDF_MAGIC_RENDER_NETWORK_SANDBOX": "seatbelt-v1",
+                },
+            )
+            notes = probe.stderr.decode("utf-8", "replace").lower()
+            markers = tuple(token for token in (
+                "sandbox", "deny", "abort", "dyld", "permission",
+                "operation not permitted", "traceback", "pymupdf",
+            ) if token in notes)
+            self.fail("macOS synthetic renderer exit=%d; diagnostic markers=%r" %
+                      (probe.returncode, markers))
         self.assertNotEqual(render.worker_pid, os.getpid())
         self.assertGreater(render.worker_pid, 0)
         self.assertEqual((render.page_index, render.page_count), (0, 2))
@@ -433,6 +457,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("(deny process-fork)", profile)
         self.assertNotIn("(allow default)", profile)
         self.assertNotIn("(allow file-write", profile)
+        self.assertIn('(literal "/")', profile)
         self.assertNotIn('(subpath "/Users")', profile)
         self.assertNotIn('(subpath "/private/tmp")', profile)
         self.assertNotIn('(subpath "/private/var")', profile)

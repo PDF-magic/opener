@@ -192,19 +192,6 @@ def _process_has_exited_without_reaping(process) -> bool:
     """Detect child exit while retaining its PID until process-group cleanup."""
     if process.returncode is not None:
         return True
-    if (
-        sys.platform == "darwin"
-        and callable(getattr(os, "waitid", None))
-        and all(hasattr(os, name) for name in ("P_PID", "WEXITED", "WNOHANG", "WNOWAIT"))
-    ):
-        # Avoid macOS ps status races; keep the group leader unreaped.
-        try:
-            result = os.waitid(
-                os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT,
-            )
-        except (AttributeError, ChildProcessError, OSError, ValueError):
-            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
-        return result is not None and result.si_pid != 0
     if sys.platform == "linux":
         if (
             callable(getattr(os, "waitid", None))
@@ -235,57 +222,83 @@ def _process_has_exited_without_reaping(process) -> bool:
         except (OSError, ValueError, IndexError):
             raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
     if sys.platform == "darwin":
-        try:
-            completed = subprocess.run(
-                ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                close_fds=True,
-                cwd="/",
-                env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-                timeout=0.25,
-                check=True,
-            )
-            states = [
-                line.strip() for line in completed.stdout.decode("ascii").splitlines()
-                if line.strip()
-            ]
-            if len(states) != 1 or not states[0][0].isalpha():
-                raise ValueError
-            return states[0][0].upper() == "Z"
-        except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
-            raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+        # Python 3.11 on macOS has no non-reaping os.waitid. /bin/ps can
+        # occasionally be delayed on hosted runners; retry a transient probe
+        # failure once, but accept exit only after an explicit zombie record.
+        # An absent, malformed or repeatedly unavailable status fails closed.
+        for _ in range(2):
+            try:
+                completed = subprocess.run(
+                    ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    close_fds=True,
+                    cwd="/",
+                    env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+                    timeout=0.5,
+                    check=True,
+                )
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                continue
+            except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+            try:
+                states = [
+                    line.strip() for line in completed.stdout.decode("ascii").splitlines()
+                    if line.strip()
+                ]
+                if len(states) != 1 or not states[0][0].isalpha():
+                    raise ValueError
+                return states[0][0].upper() == "Z"
+            except (ValueError, UnicodeDecodeError):
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+        raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
 
-def _darwin_group_is_gone_or_zombie_only(process_group_id: int) -> bool:
-    """Confirm no signalable children remain after macOS reports EPERM.
+def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
+    """Confirm the owned leader and every remaining group member are zombies.
 
-    macOS can return EPERM when a process group contains only zombies. Never
-    treat that as successful cleanup without a fresh, complete process table.
+    Darwin can return EPERM when the group consists exclusively of unreaped
+    zombies, not ESRCH. Never treat EPERM as a successful cleanup unless a
+    complete, trusted process-table snapshot proves nothing can run again.
     """
     try:
         completed = subprocess.run(
-            ("/bin/ps", "-A", "-o", "pgid=,stat="),
+            ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             close_fds=True,
             cwd="/",
             env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-            timeout=2.0,
+            timeout=0.25,
             check=True,
         )
+        found_leader = False
         for line in completed.stdout.decode("ascii").splitlines():
+            if not line.strip():
+                continue
             fields = line.split()
-            if len(fields) != 2 or not fields[0].isdecimal() or not fields[1]:
+            if (len(fields) != 3 or not fields[0].isdecimal()
+                    or not fields[1].isdecimal() or not fields[2][0].isalpha()):
                 return False
-            if int(fields[0]) == process_group_id and fields[1][0].upper() != "Z":
+            pid, group_id, status = int(fields[0]), int(fields[1]), fields[2]
+            if group_id != process_group_id:
+                continue
+            if status[0].upper() != "Z":
                 return False
-        return True
+            if pid == process_group_id:
+                found_leader = True
+        return found_leader
     except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
         return False
+
+
+def _darwin_group_is_gone_or_zombie_only(process_group_id: int) -> bool:
+    """Compatibility helper for consolidated CI and safe process cleanup."""
+    return _darwin_group_has_only_zombies(process_group_id)
 
 
 def _stop_process_group(process):
@@ -305,6 +318,7 @@ def _stop_process_group(process):
         # ambiguous EPERM or leave surviving descendants unsupervised.
         if (
             sys.platform == "darwin" and exc.errno == errno.EPERM
+            and _process_has_exited_without_reaping(process)
             and _darwin_group_is_gone_or_zombie_only(process.pid)
         ):
             return
