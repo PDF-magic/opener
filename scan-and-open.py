@@ -860,7 +860,7 @@ def supported_request_path(item):
 
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                    browser_download_identifier=None, policy_snapshot=None,
-                   force_rescan=False, expected_fingerprint=None):
+                   force_rescan=False, expected_fingerprint=None, scan_only=False):
     # The admission-time snapshot persists across queue waits and handoff.
     if policy_snapshot is None:
         policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
@@ -874,6 +874,8 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         request_kwargs['browser_download_identifier'] = browser_download_identifier
     request = ScanRequest.from_path(path, **request_kwargs)
     is_pdf = path.is_file() and request.file_type == 'pdf'
+    if scan_only and (not is_pdf or not force_rescan or expected_fingerprint is None):
+        raise RuntimeError('Only a fresh generated PDF can be scanned without opening.')
     # Check the entire fixed argv before touching the clean cache, audit
     # storage, or an external scanner. Cached hits must not skip this gate.
     # Size options are validated centrally. PDFs retain no configured
@@ -892,12 +894,14 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         database=DATABASE, document=path, is_pdf=is_pdf, timeout=timeout)
     if is_pdf:
         verify_local_file_available(path)
-    destination = intended_destination(path)
+    destination = None if scan_only else intended_destination(path)
     # The optional fallback is an explicit PDF-only preference. Validate it
     # before scanning or handoff, and never derive it from the
     # default PDF handler (which may recursively invoke this opener).
-    fallback = pdf_fallback_application(primary=destination) if is_pdf else None
-    record_scan_destination(destination)
+    fallback = (pdf_fallback_application(primary=destination)
+                if is_pdf and not scan_only else None)
+    if not scan_only:
+        record_scan_destination(destination)
     identity = file_identity(path)
     before = fingerprint(path)
     if expected_fingerprint is not None and before != expected_fingerprint:
@@ -957,6 +961,13 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     # Cache hits are not proof the file remains downloaded locally.
     if is_pdf:
         verify_local_file_available(path)
+    if scan_only:
+        # The optional Save action performs a fresh scan without choosing,
+        # recording, or launching an application. No opening audit is emitted.
+        if scan_result.from_cache is not False:
+            raise RuntimeError('A fresh generated PDF scan is required.')
+        verify_file_integrity(path, before, identity)
+        return scan_result
     # Verify a destination before opening; keep OS quarantine in place.
     # Fallback never overrides a failed scan, missing local bytes or a changed file.
     verified_fallback = None
@@ -1056,6 +1067,32 @@ def scan_and_open_generated_copy(item, offer):
         return _scan_and_open(
             path, scanner, policy_snapshot=policy_snapshot,
             force_rescan=True, expected_fingerprint=expected,
+        )
+
+
+@cancellable_scan
+def scan_generated_copy_without_open(item, offer):
+    """Scan a verified generated PDF freshly, without any application handoff.
+
+    This optional Maximum save-only path shares the installed scan arguments,
+    signature freshness, concurrency, policy and file-integrity checks. It
+    cannot use a cached clean verdict or authorize opening a document.
+    """
+    from maximum_generated_rescan import verified_generated_pdf_bytes
+    generated_bytes = verified_generated_pdf_bytes(offer)
+    if generated_bytes is None:
+        raise RuntimeError('The sanitized PDF copy could not be verified.')
+    path = supported_request_path(item)
+    if path.suffix.lower() != '.pdf' or not path.is_file():
+        raise RuntimeError('A generated PDF is required for a fresh scan.')
+    expected = _fingerprint_generated_pdf_bytes(generated_bytes)
+    scanner = scanner_path()
+    policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
+    with scan_slot():
+        check_database()
+        return _scan_and_open(
+            path, scanner, policy_snapshot=policy_snapshot,
+            force_rescan=True, expected_fingerprint=expected, scan_only=True,
         )
 
 

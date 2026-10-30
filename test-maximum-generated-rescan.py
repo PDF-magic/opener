@@ -94,6 +94,36 @@ class GeneratedPDFRescanTests(unittest.TestCase):
         self.assertEqual(result.status, "clean")
         self.assertFalse(result.from_cache)
 
+    def test_save_only_fresh_scan_does_not_select_or_open_a_browser(self):
+        with patch.object(opener, "run_scan_command", return_value=self.clean()) as scan, \
+                patch.object(opener, "intended_destination") as app, \
+                patch.object(opener, "record_scan_destination") as destination, \
+                patch.object(opener, "launch_clean_file") as launch, \
+                patch.object(opener, "record_opened_document_origin") as audit:
+            result = opener.scan_generated_copy_without_open(self.pdf, self.offer)
+        self.assertEqual(result.status, "clean")
+        self.assertFalse(result.from_cache)
+        scan.assert_called_once()
+        app.assert_not_called()
+        destination.assert_not_called()
+        launch.assert_not_called()
+        audit.assert_not_called()
+
+    def test_save_only_never_accepts_stale_or_modified_content(self):
+        with patch.object(opener, "check_database",
+                          side_effect=RuntimeError("Stale signatures")), \
+                patch.object(opener, "run_scan_command") as scan:
+            with self.assertRaises(RuntimeError):
+                opener.scan_generated_copy_without_open(self.pdf, self.offer)
+            scan.assert_not_called()
+        self.pdf.write_bytes(self.offer.pdf_bytes + b"\nmodified")
+        with patch.object(opener, "run_scan_command") as scan, \
+                patch.object(opener, "launch_clean_file") as launch:
+            with self.assertRaises(RuntimeError):
+                opener.scan_generated_copy_without_open(self.pdf, self.offer)
+            scan.assert_not_called()
+            launch.assert_not_called()
+
     def test_generated_file_modified_before_scanning_is_never_opened(self):
         self.pdf.write_bytes(self.offer.pdf_bytes + b"\nchanged")
         with patch.object(opener, "run_scan_command") as scan, \
