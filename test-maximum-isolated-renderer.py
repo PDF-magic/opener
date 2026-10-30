@@ -75,7 +75,31 @@ class MaximumRendererTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_real_page_rasterization_uses_separate_process(self):
-        render = renderer.render_isolated_pdf_page(self.pdf, 0)
+        try:
+            render = renderer.render_isolated_pdf_page(self.pdf, 0)
+        except renderer.MaximumPDFRenderError:
+            # CI-only diagnosis with a synthetic PDF: never print worker output,
+            # raw stderr, sandbox paths, or any document-controlled payload.
+            worker = ROOT / "maximum_render_worker.py"
+            probe = subprocess.run(
+                renderer._renderer_command(worker, 0), input=self.pdf,
+                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                timeout=renderer.WORKER_WALL_SECONDS, check=False,
+                close_fds=True, start_new_session=True, cwd="/",
+                env={
+                    "PATH": "/usr/bin:/bin", "HOME": "/nonexistent",
+                    "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
+                    "PYTHONNOUSERSITE": "1",
+                    "PDF_MAGIC_RENDER_NETWORK_SANDBOX": "seatbelt-v1",
+                },
+            )
+            notes = probe.stderr.decode("utf-8", "replace").lower()
+            markers = tuple(token for token in (
+                "sandbox", "deny", "abort", "dyld", "permission",
+                "operation not permitted", "traceback", "pymupdf",
+            ) if token in notes)
+            self.fail("macOS synthetic renderer exit=%d; diagnostic markers=%r" %
+                      (probe.returncode, markers))
         self.assertNotEqual(render.worker_pid, os.getpid())
         self.assertGreater(render.worker_pid, 0)
         self.assertEqual((render.page_index, render.page_count), (0, 2))
@@ -413,10 +437,30 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("pymupdf==2.0", ci)
         self.assertTrue((ROOT / "maximum_render_filesystem_probe.py").is_file())
 
+    def test_framework_python_launcher_uses_real_trusted_interpreter(self):
+        version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        framework_binary = (
+            f"/Library/Frameworks/Python.framework/Versions/{version}/"
+            "Resources/Python.app/Contents/MacOS/Python"
+        )
+        with patch.object(renderer.sys, "_base_executable", framework_binary, create=True):
+            self.assertEqual(renderer._sandbox_python_executable(), framework_binary)
+        for candidate in (
+            framework_binary.replace(f"/Versions/{version}/", "/Versions/9.9/"),
+            "/tmp/Python.app/Contents/MacOS/Python",
+            None,
+        ):
+            with self.subTest(candidate=candidate), patch.object(
+                renderer.sys, "_base_executable", candidate, create=True
+            ):
+                self.assertEqual(renderer._sandbox_python_executable(), sys.executable)
+
     def test_filesystem_policy_is_deny_by_default_and_read_only(self):
         profile = renderer.RENDERER_FILESYSTEM_PROFILE
         self.assertIn("(deny default)", profile)
         self.assertIn("(allow file-map-executable", profile)
+        # Root-directory lookup is not permission to read its children.
+        self.assertIn('(literal "/")', profile)
         self.assertIn('(literal (param "PYTHON"))', profile)
         self.assertIn('(literal (param "WORKER_SUPPORT"))', profile)
         self.assertIn('(literal (param "NETWORK_SUPPORT"))', profile)

@@ -151,8 +151,13 @@ class TextFidelityMetricTests(unittest.TestCase):
 class NativeTextReadabilityTests(unittest.TestCase):
     def test_text_remains_legible_after_real_two_page_conversion(self):
         source = _synthetic_text_pdf()
-        offer = copies.offer_sanitized_pdf_copy(source)
-        self.assertIsNotNone(offer, "Native conversion must offer a valid raster copy")
+        attempt = copies.attempt_sanitized_pdf_copy(source)
+        self.assertIsNotNone(
+            attempt.offer,
+            "Native conversion failure category: " +
+            (attempt.failure.kind.value if attempt.failure else "unknown"),
+        )
+        offer = attempt.offer
         self.assertFalse(offer.permits_open)
         self.assertTrue(offer.needs_separate_scan)
         self.assertTrue(offer.rasterized)

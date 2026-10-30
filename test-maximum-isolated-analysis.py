@@ -42,6 +42,18 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
                 with self.assertRaises(FrozenInstanceError):
                     report.permits_open = True
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS memory watchdog only")
+    def test_macos_worker_disarms_alarm_before_shutdown(self):
+        # Each call starts a real restricted worker with its mandatory memory
+        # guard. Repeated successful exits catch alarms firing during teardown.
+        pdf = sample_pdf()
+        for attempt in range(8):
+            with self.subTest(attempt=attempt):
+                result = isolated.run_isolated_pdf_analysis(pdf, "malformedStructures")
+                self.assertGreater(result.worker_pid, 0)
+                self.assertEqual(result.to_dict()["metrics"]["page_count"], 1)
+                self.assertFalse(result.permits_open)
+
     def test_input_is_raw_bytes_not_path_and_worker_is_isolated_python(self):
         document = sample_pdf()
         real_run = isolated.run_limited_worker
