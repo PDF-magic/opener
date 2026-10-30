@@ -100,7 +100,9 @@ test("required CI covers blob candidates and background stays inactive", async (
     read("../src/background.js"), read("../manifest.json"),
     read("../../safari/manifest.json")
   ]);
-  assert.match(ci, /node --test tests\/pdf-blob\.test\.mjs/);
+  assert.match(ci, /npm test/);
+  const npm = JSON.parse(await read("../package.json"));
+  assert.equal(npm.scripts.test, "node --test --test-concurrency=1 tests/*.test.mjs");
   assert.ok(bg.trimEnd().endsWith("void 0;"));
   for (const manifest of [JSON.parse(shared), JSON.parse(safari)]) {
     assert.deepEqual(manifest.host_permissions, []);

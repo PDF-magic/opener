@@ -383,9 +383,6 @@ jobs:
       - name: Verify passive inline Content-Disposition response detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-inline-disposition.test.mjs
-      - name: Verify PDF content loaded from supported blob URLs
-        working-directory: extensions/webextension
-        run: node --test tests/pdf-blob.test.mjs
       - name: Verify versioned native JSON message contract
         run: PYTHONPATH=. python3 tests/native/message-format.py -v
       - name: Upload validated Chrome extension package

@@ -8,4 +8,4 @@ A blob URL or MIME declaration alone cannot identify PDF content. The helper rea
 
 The result is a frozen `{ isPdfCandidate, evidence, authorizesOpen: false }` object without private URLs, paths, filenames or bytes. A signature is not PDF validity, an antivirus verdict, or permission to open. No browser listeners, script injection, new privileges, networking, native calls, scanner bypass, quarantine changes or user preference changes are introduced. The background remains inactive.
 
-`tests/pdf-blob.test.mjs` is included in `npm test` and explicitly required CI, covering supported frames, signature/MIME rejection, URL validation, hostile metadata, response privacy, and unchanged extension permissions.
+`tests/pdf-blob.test.mjs` is automatically discovered by the existing required CI `npm test` step, covering supported frames, signature/MIME rejection, URL validation, hostile metadata, response privacy, and unchanged extension permissions.
