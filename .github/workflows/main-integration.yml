@@ -48,6 +48,63 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check "pypdf==5.9.0" "Pillow==11.3.0" "cryptography==46.0.4" "pymupdf==2.0"
       - name: Verify native isolated renderer under deny-by-default confinement
         run: python3 test-maximum-isolated-renderer.py -v
+      - name: Diagnose failed renderer resource setup with no PDF input
+        if: ${{ failure() }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import maximum_isolated_renderer as renderer
+
+          worker = Path(renderer.__file__).resolve().with_name("maximum_render_worker.py")
+          try:
+              command = list(renderer._renderer_command(worker, 0))
+          except renderer.MaximumPDFRenderError:
+              print("renderer_preflight=blocked")
+              raise SystemExit(0)
+          script = "\n".join((
+              "import resource, sys",
+              "sys.path.insert(0, " + repr(str(worker.parent)) + ")",
+              "try:",
+              "    from maximum_isolated_worker import _apply_limits",
+              "except BaseException:",
+              "    print('probe-import-failed', flush=True)",
+              "    raise SystemExit(2)",
+              "original = resource.setrlimit",
+              "def traced_limit(kind, bounds):",
+              "    tags = {resource.RLIMIT_CORE: 'core', resource.RLIMIT_FSIZE: 'fsize', resource.RLIMIT_CPU: 'cpu'}",
+              "    print('probe-rlimit-' + tags.get(kind, 'other'), flush=True)",
+              "    return original(kind, bounds)",
+              "resource.setrlimit = traced_limit",
+              "try:",
+              "    _apply_limits()",
+              "except BaseException:",
+              "    print('probe-limits-failed', flush=True)",
+              "    raise SystemExit(2)",
+              "print('probe-limits-ready', flush=True)",
+          ))
+          command[-2:] = ["-c", script]
+          try:
+              result = subprocess.run(
+                  command, input=b"", stdout=subprocess.PIPE,
+                  stderr=subprocess.DEVNULL, timeout=10, check=False,
+                  close_fds=True, start_new_session=True, cwd="/",
+                  env={"PATH": "/usr/bin:/bin", "HOME": "/nonexistent",
+                       "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
+                       "PYTHONNOUSERSITE": "1",
+                       "PDF_MAGIC_RENDER_NETWORK_SANDBOX": "seatbelt-v1"},
+              )
+              print("probe_exit_code=" + str(result.returncode))
+              valid = frozenset((b"probe-import-failed", b"probe-rlimit-core",
+                  b"probe-rlimit-fsize", b"probe-rlimit-cpu",
+                  b"probe-rlimit-other", b"probe-limits-failed",
+                  b"probe-limits-ready"))
+              for line in result.stdout.splitlines():
+                  if line in valid:
+                      print("probe_stage=" + line.decode("ascii"))
+          except (OSError, subprocess.SubprocessError):
+              print("probe_execution=failed")
+          PY
       - name: Compile the CoreGraphics PDF sanitizer used by the handoff tests
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: Verify native raster conversion, page fidelity and active-content removal
