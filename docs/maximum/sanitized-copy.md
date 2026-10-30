@@ -46,6 +46,18 @@ claim that a copy was generated. Maximum remains unavailable in the installed
 Built-in-only application; this contract does not represent a presently
 deployed conversion UI.
 
+For the future Maximum protection interface (opener-0549), a verified
+`SanitizedCopyOffer.to_public_metadata()` and the corresponding successful
+`SanitizationDecision.to_dict()` expose a fixed
+`sanitizationComplete: true`, `sanitizationStatus: "complete"`, and the
+message **“Sanitization complete. The generated PDF still requires a separate
+scan before opening.”** The signal means that conversion and structural
+verification have finished, **not** that the output has passed a malware scan
+or is authorized to open. Blocked decisions and sanitizer failures report
+`sanitizationComplete: false` and `sanitizationStatus: "notCompleted"` with
+a fixed message, never a premature success indicator. These are passive,
+path-free UI presentation fields; Maximum is not enabled by this change.
+
 An offer is **not** a claim that the source or output is malware-free.
 Rasterization loses searchable/selectable text, links, forms and other
 features; unusual page content may render differently. **Flattening can
