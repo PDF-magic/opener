@@ -4,16 +4,6 @@
   classes = {};
   objectVersion = 56;
   objects = {
-    D57700000000000000000001 = {
-      isa = PBXBuildFile;
-      fileRef = D57700000000000000000002;
-    };
-    D57700000000000000000002 = {
-      isa = PBXFileReference;
-      lastKnownFileType = text.html;
-      path = extensions/webextension/preferences.html;
-      sourceTree = SOURCE_ROOT;
-    };
 
     B33200000000000000000001 = {
       isa = PBXBuildFile;
@@ -369,6 +359,17 @@
       };
       name = Release;
     };
+    D57500000000000000000001 = {
+      isa = PBXBuildFile;
+      fileRef = D57500000000000000000002;
+    };
+    D57500000000000000000002 = {
+      isa = PBXFileReference;
+      lastKnownFileType = folder;
+      name = icons;
+      path = extensions/webextension/icons;
+      sourceTree = SOURCE_ROOT;
+    };
     D56700000000000000000014 = {
       isa = PBXBuildFile;
       fileRef = D56700000000000000000015;
@@ -378,6 +379,26 @@
       lastKnownFileType = sourcecode.javascript;
       name = background.js;
       path = extensions/webextension/src/background.js;
+      sourceTree = SOURCE_ROOT;
+    };
+    D57600000000000000000001 = {
+      isa = PBXBuildFile;
+      fileRef = D57600000000000000000002;
+    };
+    D57600000000000000000002 = {
+      isa = PBXFileReference;
+      lastKnownFileType = text.html;
+      path = extensions/webextension/src/popup.html;
+      sourceTree = SOURCE_ROOT;
+    };
+    D57600000000000000000003 = {
+      isa = PBXBuildFile;
+      fileRef = D57600000000000000000004;
+    };
+    D57600000000000000000004 = {
+      isa = PBXFileReference;
+      lastKnownFileType = text.css;
+      path = extensions/webextension/src/popup.css;
       sourceTree = SOURCE_ROOT;
     };
     D56700000000000000000001 = {
@@ -453,7 +474,7 @@
     D5670000000000000000000C = {
       isa = PBXResourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = (D56700000000000000000003, D56700000000000000000014, D57700000000000000000001,);
+      files = (D56700000000000000000003, D56700000000000000000014, D57500000000000000000001, D57600000000000000000001, D57600000000000000000003,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     D5670000000000000000000D = {
@@ -470,7 +491,7 @@
     };
     D5670000000000000000000F = {
       isa = PBXGroup;
-      children = (D56700000000000000000002, D56700000000000000000005, D56700000000000000000013, D56700000000000000000004, D56700000000000000000015, D57700000000000000000002,);
+      children = (D56700000000000000000002, D56700000000000000000005, D56700000000000000000013, D56700000000000000000004, D56700000000000000000015, D57500000000000000000002, D57600000000000000000002, D57600000000000000000004,);
       name = "Safari Web Extension";
       path = extensions/safari;
       sourceTree = SOURCE_ROOT;

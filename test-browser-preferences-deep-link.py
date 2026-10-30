@@ -1,56 +1,63 @@
 #!/usr/bin/env python3
-"""Regress the narrow native browser preferences deep-link contract."""
-import plistlib
+"""Verify the user-initiated browser-to-native preferences URL boundary."""
 from pathlib import Path
+import plistlib
 import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parent
-SCHEME = "pdfmagicopener"
-URL = "pdfmagicopener://preferences"
+PREFERENCES_URL = "pdfmagicopener://preferences"
+EXPECTED_URL_TYPES = [{
+  "CFBundleURLName": "local.studio.pdfmagicopener.preferences",
+  "CFBundleURLSchemes": ["pdfmagicopener"],
+}]
+POPUP = ROOT / "extensions/webextension/src/popup.html"
 
 
-class BrowserPreferencesDeepLinkTests(unittest.TestCase):
-  def test_exact_scheme_and_not_a_pdf_handler(self):
-    with (ROOT / "PDFMagicOpenerApp" / "Info.plist").open("rb") as f:
+def verify_built_app(app: Path) -> None:
+  """Check real host URL registration and bundled Safari static popup."""
+  assert app.is_dir(), f"Missing built app: {app}"
+  with (app / "Contents/Info.plist").open("rb") as f:
+    info = plistlib.load(f)
+  assert info["CFBundleURLTypes"] == EXPECTED_URL_TYPES
+  assert "CFBundleDocumentTypes" not in info
+  assert info["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"
+  bundle_popup = (app / "Contents/PlugIns/PDFMagicOpenerSafari.appex/"
+                  "Contents/Resources/popup.html")
+  assert bundle_popup.read_bytes() == POPUP.read_bytes(), (
+    "Safari popup differs from shared source"
+  )
+
+
+class NativePreferencesLinkTests(unittest.TestCase):
+  def test_scheme_is_registered_without_pdf_document_associations(self):
+    with (ROOT / "PDFMagicOpenerApp/Info.plist").open("rb") as f:
       info = plistlib.load(f)
-    self.assertEqual(info["CFBundleURLTypes"], [{
-      "CFBundleURLName": "local.studio.pdfmagicopener.preferences",
-      "CFBundleURLSchemes": [SCHEME],
-    }])
+    self.assertEqual(info["CFBundleURLTypes"], EXPECTED_URL_TYPES)
     self.assertNotIn("CFBundleDocumentTypes", info)
 
-  def test_only_exact_preference_request_is_handled(self):
-    app = (ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift").read_text()
-    self.assertIn(f'url.absoluteString == "{URL}"', app)
+  def test_exact_url_only_raises_existing_preferences_app(self):
+    app = (ROOT / "PDFMagicOpenerApp/PDFMagicOpenerApp.swift").read_text()
+    self.assertIn(f'url.absoluteString == "{PREFERENCES_URL}"', app)
     self.assertIn("NSApplication.shared.activate(ignoringOtherApps: true)", app)
     self.assertIn("MainPreferencesView()", app)
     self.assertNotIn("NSWorkspace.shared.open(url)", app)
+    self.assertNotIn("openPDF(", app)
 
-  def test_safari_popup_resource_uses_shared_exact_file(self):
-    xcode = (ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj").read_text()
-    self.assertIn("path = extensions/webextension/preferences.html;", xcode)
-    self.assertIn("files = (D56700000000000000000003, D57700000000000000000001,);", xcode)
+  def test_static_popup_never_issues_a_scan_verdict(self):
+    text = POPUP.read_text(encoding="utf-8")
+    link = ('<a id="openPDFMagicPreferences" '
+            'href="pdfmagicopener://preferences">Open PDF Magic Preferences</a>')
+    self.assertEqual(text.count(link), 1)
+    self.assertIn("Not active", text)
+    self.assertIn("cannot scan, sanitize, or open PDF files yet", text)
+    for forbidden in ("<script", "<form", "<iframe", "onclick=", "https://"):
+      self.assertNotIn(forbidden, text)
 
-  def test_popup_cannot_claim_a_scan_verdict(self):
-    text = (ROOT / "extensions/webextension/preferences.html").read_text()
-    self.assertIn('href="pdfmagicopener://preferences"', text)
-    self.assertIn("Browser PDF scanning and opening are not active", text)
-    self.assertNotIn("<script", text)
-    self.assertNotIn("onclick=", text)
-
-
-def verify_built_app(app):
-  with (app / "Contents/Info.plist").open("rb") as f:
-    info = plistlib.load(f)
-  assert info["CFBundleURLTypes"] == [{
-    "CFBundleURLName": "local.studio.pdfmagicopener.preferences",
-    "CFBundleURLSchemes": [SCHEME],
-  }]
-  assert "CFBundleDocumentTypes" not in info
-  popup = ROOT / "extensions/webextension/preferences.html"
-  safari = app / "Contents/PlugIns/PDFMagicOpenerSafari.appex/Contents/Resources/preferences.html"
-  assert safari.read_bytes() == popup.read_bytes(), "Safari popup resource diverges"
+  def test_existing_ci_inspects_compiled_app_and_native_url_types(self):
+    ci = (ROOT / ".github/workflows/ci.yml").read_text()
+    self.assertIn("python3 test-browser-preferences-deep-link.py -v", ci)
+    self.assertIn("python3 test-browser-preferences-deep-link.py --verify-built-app", ci)
 
 
 if __name__ == "__main__":

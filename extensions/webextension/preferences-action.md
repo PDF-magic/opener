@@ -1,26 +1,23 @@
 # Open PDF Magic Preferences action — opener-0577
 
-The extension toolbar's static `preferences.html` popup provides one explicit
-**Open PDF Magic Preferences** link. A click requests the fixed macOS URL
-`pdfmagicopener://preferences`, which the **installed native preferences app**
-registers as a URL handler. The app accepts exactly that URL and raises its
-existing preferences window; it does not read URL arguments, open a PDF, start
-a scanner, alter a default PDF handler, or change saved preferences.
+The shared browser toolbar popup contains one user-initiated link labeled
+**Open PDF Magic Preferences**. Selecting it requests
+`pdfmagicopener://preferences`, a local URL handled by the installed macOS
+PDF Magic Opener preferences application. The browser may ask for confirmation.
+If the native app is missing or the user declines, the extension does not
+claim success or bypass that decision.
 
-This is a local, user-initiated application launch, **not** a PDF safety
-verdict or a working browser-to-scanner integration. The popup explicitly
-states browser PDF scanning and opening are inactive. When the macOS app is
-missing, no application launch is guaranteed. Some browsers prompt before
-opening an external application; canceling the prompt has no side effects.
+The native application accepts **only that complete URL** and raises its
+existing preferences window. It never interprets URL parameters as PDF paths,
+starts a scanner, changes a PDF default handler or modifies preferences.
+The host app continues to have no PDF document association.
 
-No JavaScript runs in the popup. There is no background listener, tab
-injection, remote URL, content script, native messaging or new browser
-permissions. `scripts/build.mjs` and `scripts/build-firefox.mjs` package
-only the validated local HTML; Safari embeds the identical file as a resource
-of the existing sandboxed .appex.
+The popup remains **Not active** for PDF scanning and opening. This local
+link is not browser-to-native messaging, a ClamAV verdict, browser permission,
+or permission to open a document. The shared popup has no JavaScript, forms,
+remote URLs, document data, or background listeners. Chromium, Firefox and
+Safari use the same validated static popup assets; Safari includes them in
+the pre-existing app extension's Resources directory.
 
-Run `npm run build && node scripts/build-firefox.mjs && npm test` for shared
-and Firefox packaging tests, and
-`python3 test-browser-preferences-deep-link.py -v` for native metadata
-and closed/unknown-URL handling contract. CI checks the built macOS app's
-registered scheme and Safari .appex copy without launching either.
+CI verifies the macOS registered URL scheme and the actual built Safari
+popup bytes, and Node tests reject additional or unsafe popup links.

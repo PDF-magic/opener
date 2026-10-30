@@ -46,7 +46,7 @@ test("Firefox build includes the shared MV3 identity without new privileges", as
   assert.equal(built.background.service_worker, undefined);
   assert.deepEqual(built.action, source.action);
   assert.equal(built.action.default_title, "PDF Magic Opener (not active)");
-  assert.equal(built.action.default_popup, "preferences.html");
+  assert.equal(built.action.default_popup, "popup.html");
   for (const size of [16, 32, 48, 128]) {
     const path = built.action.default_icon[String(size)];
     assert.equal(path, `icons/icon-${size}.png`);

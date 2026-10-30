@@ -128,7 +128,7 @@ test("toolbar action uses only existing icons and cannot activate PDF opening", 
   assert.equal(source.action.default_title, "PDF Magic Opener (not active)");
   assert.deepEqual(source.action.default_icon, source.icons);
   assert.deepEqual(built.action, source.action);
-  assert.equal(source.action.default_popup, "preferences.html");
+  assert.equal(source.action.default_popup, "popup.html");
   assert.deepEqual(source.permissions, []);
   assert.deepEqual(source.host_permissions, []);
   assert.deepEqual(source.background, { service_worker: "background.js", type: "module" });

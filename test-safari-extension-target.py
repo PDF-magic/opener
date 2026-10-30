@@ -11,6 +11,11 @@ PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 SAFARI = ROOT / "extensions" / "safari"
 SHARED = ROOT / "extensions" / "webextension" / "manifest.json"
 BACKGROUND = ROOT / "extensions" / "webextension" / "src" / "background.js"
+ICONS = ROOT / "extensions" / "webextension" / "icons"
+TOOLBAR_TITLE = "PDF Magic Opener (not active)"
+POPUP_DIR = ROOT / "extensions" / "webextension" / "src"
+POPUP_FILES = ("popup.html", "popup.css")
+TOOLBAR_ICONS = {str(size): f"icons/icon-{size}.png" for size in (16, 32, 48, 128)}
 EXTENSION_ID = "local.studio.pdfmagicopener.swiftui.safari"
 TARGET_ID = "D56700000000000000000009"
 
@@ -38,7 +43,24 @@ def verify_built_app(app: Path) -> None:
   worker = extension / "Contents" / "Resources" / "background.js"
   assert worker.is_file(), f"Missing bundled inert background entry: {worker}"
   assert worker.read_bytes() == BACKGROUND.read_bytes(), "Safari worker differs from shared source"
-  for forbidden in ("action", "content_scripts", "externally_connectable"):
+  assert manifest["action"] == {
+    "default_title": TOOLBAR_TITLE,
+    "default_icon": TOOLBAR_ICONS,
+    "default_popup": "popup.html",
+  }
+  for filename in POPUP_FILES:
+    bundled_asset = extension / "Contents" / "Resources" / filename
+    source_asset = POPUP_DIR / filename
+    assert bundled_asset.is_file(), f"Missing bundled Safari popup: {filename}"
+    assert bundled_asset.read_bytes() == source_asset.read_bytes(), (
+      f"Safari popup asset diverges: {filename}"
+    )
+  for relative in TOOLBAR_ICONS.values():
+    source = ROOT / "extensions" / "webextension" / relative
+    bundled_icon = extension / "Contents" / "Resources" / relative
+    assert bundled_icon.is_file(), f"Missing bundled toolbar icon: {relative}"
+    assert bundled_icon.read_bytes() == source.read_bytes(), f"Toolbar icon diverges: {relative}"
+  for forbidden in ("content_scripts", "externally_connectable"):
     assert forbidden not in manifest
   with (app / "Contents" / "Info.plist").open("rb") as f:
     host = plistlib.load(f)
@@ -75,9 +97,13 @@ class SafariExtensionTargetTests(unittest.TestCase):
       'INFOPLIST_FILE = extensions/safari/Info.plist;',
       'PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;',
       'path = extensions/webextension/manifest.json;',
-      'files = (D56700000000000000000003, D56700000000000000000014, D57700000000000000000001,);',
+      'files = (D56700000000000000000003, D56700000000000000000014, D57500000000000000000001, D57600000000000000000001, D57600000000000000000003,);',
       'fileRef = D56700000000000000000015;',
       'path = extensions/webextension/src/background.js;',
+      'fileRef = D57500000000000000000002;',
+      'path = extensions/webextension/icons;',
+      'path = extensions/webextension/src/popup.html;',
+      'path = extensions/webextension/src/popup.css;',
     ):
       with self.subTest(expected=expected):
         self.assertIn(expected, project)
@@ -107,7 +133,19 @@ class SafariExtensionTargetTests(unittest.TestCase):
                      "// Inactive shared WebExtensions background entry point.\n"
                      "// Do not listen for messages, inspect PDFs or request native access here.\n"
                      "void 0;\n")
-    for forbidden in ("action", "content_scripts", "externally_connectable",
+    self.assertEqual(manifest["action"], {
+      "default_title": TOOLBAR_TITLE,
+      "default_icon": TOOLBAR_ICONS,
+      "default_popup": "popup.html",
+    })
+    for filename in POPUP_FILES:
+      with self.subTest(filename=filename):
+        self.assertTrue((POPUP_DIR / filename).is_file())
+    for size, path in TOOLBAR_ICONS.items():
+      with self.subTest(size=size):
+        self.assertEqual(path, f"icons/icon-{size}.png")
+        self.assertTrue((ICONS / f"icon-{size}.png").is_file())
+    for forbidden in ("content_scripts", "externally_connectable",
                       "web_accessible_resources", "optional_permissions"):
       self.assertNotIn(forbidden, manifest)
 

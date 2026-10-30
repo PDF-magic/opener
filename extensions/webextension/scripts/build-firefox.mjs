@@ -1,6 +1,7 @@
 import { copyFile, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { copyPopupAssets } from "./popup-assets.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const source = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -20,8 +21,8 @@ if (
   Array.isArray(source.action) ||
   JSON.stringify(Object.keys(source.action).sort()) !==
     JSON.stringify(["default_icon", "default_popup", "default_title"]) ||
+  source.action.default_popup !== "popup.html" ||
   source.action.default_title !== "PDF Magic Opener (not active)" ||
-  source.action.default_popup !== "preferences.html" ||
   JSON.stringify(source.action.default_icon) !== JSON.stringify(source.icons) ||
   ["content_scripts", "externally_connectable",
    "optional_permissions", "optional_host_permissions"].some(
@@ -64,22 +65,6 @@ if (workerSource !==
   throw new Error("Firefox background entry point must remain inert");
 }
 
-
-// Only package a bounded static action with an explicit user-initiated deep link.
-const popupPath = join(root, "preferences.html");
-const popupInfo = await lstat(popupPath);
-if (!popupInfo.isFile() || popupInfo.isSymbolicLink() || popupInfo.size > 2048) {
-  throw new Error("Invalid preferences popup asset");
-}
-const popupSource = await readFile(popupPath, "utf8");
-const actionMarkup =
-  '<a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a>';
-if (popupSource.split(actionMarkup).length !== 2 ||
-    !popupSource.includes("Browser PDF scanning and opening are not active.") ||
-    /<script|<iframe|<form|onload\s*=|onclick\s*=|javascript:|https?:\/\//i.test(popupSource)) {
-  throw new Error("Preferences popup must remain permission-free");
-}
-
 const output = join(root, "dist", "firefox");
 await mkdir(output, { recursive: true });
 await writeFile(
@@ -88,7 +73,8 @@ await writeFile(
   "utf8"
 );
 await copyFile(workerPath, join(output, "background.js"));
-await copyFile(popupPath, join(output, "preferences.html"));
+
+await copyPopupAssets(root, output);
 
 // Package the same local, allowlisted toolbar icons for the Firefox variant.
 // Do not follow symlinks or accept manifest-supplied file paths.

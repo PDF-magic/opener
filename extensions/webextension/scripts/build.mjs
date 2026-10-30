@@ -1,6 +1,7 @@
 import { copyFile, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { copyPopupAssets } from "./popup-assets.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -25,8 +26,8 @@ if (
   Array.isArray(manifest.action) ||
   JSON.stringify(Object.keys(manifest.action).sort()) !==
     JSON.stringify(["default_icon", "default_popup", "default_title"]) ||
+  manifest.action.default_popup !== "popup.html" ||
   manifest.action.default_title !== "PDF Magic Opener (not active)" ||
-  manifest.action.default_popup !== "preferences.html" ||
   JSON.stringify(manifest.action.default_icon) !== JSON.stringify(manifest.icons) ||
   !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
   !Array.isArray(manifest.permissions) || manifest.permissions.length !== 0 ||
@@ -84,27 +85,11 @@ if (backgroundSource !==
   throw new Error("Background entry point must remain inert");
 }
 
-
-// Only package a bounded static action with an explicit user-initiated deep link.
-const popupPath = join(root, "preferences.html");
-const popupInfo = await lstat(popupPath);
-if (!popupInfo.isFile() || popupInfo.isSymbolicLink() || popupInfo.size > 2048) {
-  throw new Error("Invalid preferences popup asset");
-}
-const popupSource = await readFile(popupPath, "utf8");
-const actionMarkup =
-  '<a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a>';
-if (popupSource.split(actionMarkup).length !== 2 ||
-    !popupSource.includes("Browser PDF scanning and opening are not active.") ||
-    /<script|<iframe|<form|onload\s*=|onclick\s*=|javascript:|https?:\/\//i.test(popupSource)) {
-  throw new Error("Preferences popup must remain permission-free");
-}
-
 const output = join(root, "dist");
 await mkdir(output, { recursive: true });
 await writeFile(join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 await copyFile(workerPath, join(output, "background.js"));
-await copyFile(popupPath, join(output, "preferences.html"));
+await copyPopupAssets(root, output);
 
 // Copy only validated static art for the inert toolbar action. The no-op
 // background has no permissions, toolbar handlers, event listeners or native PDF bridge.
