@@ -65,5 +65,5 @@ test("inactive background does not activate privileged browser integrations", as
   assert.match(audit, /minimum browser permissions/i);
   assert.match(audit, /downloadEventMonitoring|Download event monitoring/);
   assert.match(audit, /nativeMessaging/);
-  assert.match(audit, /not a malware-clean|not a malware|not.*malware-clean/i);
+  assert.match(audit, /Neither permission inventory nor manifest validation is a malware-clean/i);
 });
