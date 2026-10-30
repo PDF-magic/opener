@@ -40,5 +40,5 @@ review are **not** implemented by this checklist task.
 `tests/pdf-embed-element.test.mjs` covers positive and negative `<embed>`
 examples, relative resolution, MIME precedence, malformed/hostile metadata,
 no data leakage and unchanged extension permissions. `npm test` discovers
-this file in the required `scanner-tests` GitHub Actions suite, with an
-additional dedicated CI invocation.
+this file through the existing required `scanner-tests` GitHub Actions
+`npm test` step. No separate workflow edit is necessary.
