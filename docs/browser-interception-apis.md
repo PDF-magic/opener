@@ -88,6 +88,12 @@ WebExtension interception API here supplies the last guarantee.
    incomplete scans, disconnects, timeouts, canceled jobs, and changed
    files; never replay a scan automatically after an unknown outcome.
 
+For browsers without a reliable universal pre-open veto, the separately
+opted-in [managed download, scan and open action](../extensions/webextension/src/download-managed-open.md)
+provides a **future trusted-native route for the user's explicit request only**.
+Its native coordinator is not deployed, and it does not control browser-owned
+opening paths, alter download settings, or authorize opening on a queue receipt.
+
 ## Experiments required before promising stronger enforcement
 
 For each supported browser and installed version, use a disposable profile
