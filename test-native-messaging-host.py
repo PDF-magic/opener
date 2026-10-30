@@ -2,7 +2,6 @@
 """Exercise the actual compiled, unregistered native messaging host process."""
 import json
 import os
-import re
 from pathlib import Path
 import shutil
 import struct
