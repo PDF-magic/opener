@@ -38,10 +38,14 @@ def main() -> int:
         # macOS must be launched through the parent's sandbox-exec wrapper.
         return 2
 
+    from pathlib import Path
     from maximum_isolated_renderer import (
         MAGIC, MAX_DOCUMENT_PAGES, MAX_METADATA_BYTES, MAX_PDF_BYTES,
         MAX_PNG_BYTES, MAX_RENDER_PIXELS, MAX_RENDER_SIDE,
+        _renderer_sandbox_context, apply_renderer_sandbox,
     )
+    context = _renderer_sandbox_context(Path(__file__).resolve())
+    apply_renderer_sandbox(context)
 
     index = int(sys.argv[1])
     if not 0 <= index < MAX_DOCUMENT_PAGES:

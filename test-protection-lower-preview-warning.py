@@ -111,7 +111,7 @@ class LowerProtectionWarningTests(unittest.TestCase):
 
     def test_ci_runs_warning_regression_and_builds_actual_settings_ui(self):
         workflow = (
-            ROOT / ".github/workflows/ci.yml"
+            ROOT / ".github/workflows/consolidated-checks.yml"
         ).read_text(encoding="utf-8")
         self.assertIn("test-protection-lower-preview-warning.py -v", workflow)
         self.assertIn("pull_request:", workflow)

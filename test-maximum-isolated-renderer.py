@@ -9,6 +9,7 @@ from pathlib import Path
 import socket
 import struct
 import stat
+import signal
 import subprocess
 import sys
 import tempfile
@@ -53,22 +54,23 @@ def frame(png, **changes):
 
 def filesystem_sandbox_command(worker, *arguments):
     context = renderer._renderer_sandbox_context(worker)
-    command = [renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_FILESYSTEM_PROFILE]
-    for name, key in (
-        ("PYTHON", "python"),
-        ("PYTHON_APP", "python_app"),
-        ("WORKER", "worker"),
-        ("WORKER_SUPPORT", "worker_support"),
-        ("NETWORK_SUPPORT", "network_support"),
-        ("RENDERER_SUPPORT", "renderer_support"),
-        ("PYTHON_PREFIX", "python_prefix"),
-        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
-    ):
-        command.extend(("-D", name + "=" + context[key]))
-    for key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
-        command.extend(("-D", parameter + "=" + context[key]))
-    command.extend((context["python"], "-I", "-B", context["worker"], *arguments))
-    return command
+    return (context["python"], "-I", "-B", context["worker"], *arguments)
+
+
+def safe_process_diagnostic(outcome):
+    """Expose only exit/signal and byte counts; never emit stderr or PDF data."""
+    code = outcome.returncode
+    if code < 0:
+        try:
+            status = "signal=" + signal.Signals(-code).name
+        except ValueError:
+            status = "signal=" + str(-code)
+    else:
+        status = "exit=" + str(code)
+    return (
+        f"{status}, stdout_bytes={len(outcome.stdout or b'')}, "
+        f"stderr_bytes={len(outcome.stderr or b'')}"
+    )
 
 
 class MaximumRendererTests(unittest.TestCase):
@@ -175,7 +177,6 @@ class MaximumRendererTests(unittest.TestCase):
             document.close()
         context = {
             "python": str(Path(sys.executable).resolve()),
-            "python_app": str(Path(sys.executable).resolve()),
             "worker": str((ROOT / "maximum_render_worker.py").resolve()),
             "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
             "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
@@ -196,31 +197,20 @@ class MaximumRendererTests(unittest.TestCase):
         ):
             result = renderer.render_isolated_pdf_page(self.pdf, 0)
         command = tuple(run.call_args.args[0])
-        self.assertEqual(command.count("-D"), 8 + len(renderer.RENDERER_LIMIT_SUPPORT))
-        with patch.object(renderer, "_renderer_sandbox_context", return_value=context):
-            probe_command = filesystem_sandbox_command(
-                ROOT / "maximum_render_worker.py", "probe",
-            )
-        self.assertEqual(probe_command.count("-D"), len(renderer.RENDERER_LIMIT_SUPPORT) + 8)
-        for key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
-            self.assertIn(parameter + "=" + context[key], probe_command)
-        self.assertEqual(command[:3], (
-            renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_FILESYSTEM_PROFILE,
-        ))
-        self.assertIn("(deny default)", command[2])
-        self.assertIn("(deny network*)", command[2])
-        self.assertIn("(deny process-fork)", command[2])
-        self.assertIn('(literal (param "WORKER_SUPPORT"))', command[2])
-        self.assertNotIn('(subpath (param "WORKER_DIR"))', command[2])
-        self.assertNotIn("(allow file-write", command[2])
-        python_index = command.index(context["python"])
-        self.assertEqual(command[python_index:python_index + 3],
-                         (context["python"], "-I", "-B"))
-        self.assertEqual(command[-2:], (context["worker"], "0"))
-        self.assertEqual(command.count("-D"), 8 + len(renderer.RENDERER_LIMIT_SUPPORT))
-        for key, parameter, filename in renderer.RENDERER_LIMIT_SUPPORT:
-            self.assertIn(parameter + "=" + context[key], command)
-            self.assertIn('(literal (param "' + parameter + '"))', command[2])
+        self.assertEqual(command, (context["python"], "-I", "-B", context["worker"], "0"))
+        self.assertIn("(deny default)", renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertIn("(deny network*)", renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertIn("(deny process-fork)", renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertIn('(literal (param "WORKER_SUPPORT"))', renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertNotIn('(subpath (param "WORKER_DIR"))', renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertNotIn("(allow file-write", renderer.RENDERER_FILESYSTEM_PROFILE)
+        worker_source = (ROOT / "maximum_render_worker.py").read_text()
+        self.assertLess(worker_source.index("_apply_limits()"),
+                        worker_source.index("apply_renderer_sandbox(context)"))
+        self.assertLess(worker_source.index("apply_renderer_sandbox(context)"),
+                        worker_source.index("document_bytes = sys.stdin.buffer.read"))
+        self.assertLess(worker_source.index("apply_renderer_sandbox(context)"),
+                        worker_source.index("import pymupdf"))
         self.assertFalse(result.permits_open)
 
     @unittest.skipUnless(sys.platform == "linux", "Linux seccomp enforcement test")
@@ -287,14 +277,13 @@ class MaximumRendererTests(unittest.TestCase):
             renderer.render_isolated_pdf_page(self.pdf, 0)
         command, opts = calls[0]
         self.assertEqual(command[:3], (
-            renderer.SANDBOX_EXEC, "-p", renderer.RENDERER_FILESYSTEM_PROFILE,
+            str(Path(sys.executable).resolve()), "-I", "-B",
         ))
-        self.assertIn("(deny default)", command[2])
-        python_index = command.index(str(Path(sys.executable).resolve()))
-        self.assertEqual(command[python_index:python_index + 3],
-                         (str(Path(sys.executable).resolve()), "-I", "-B"))
         self.assertTrue(command[-2].endswith("maximum_render_worker.py"))
         self.assertEqual(command[-1], "0")
+        self.assertNotIn("sandbox-exec", command)
+        self.assertIn("(deny default)", renderer.RENDERER_FILESYSTEM_PROFILE)
+        self.assertIn("(deny process-fork)", renderer.RENDERER_FILESYSTEM_PROFILE)
         self.assertIs(opts["input"], self.pdf)
         self.assertEqual(opts["cwd"], "/")
         self.assertTrue(opts["close_fds"])
@@ -441,30 +430,71 @@ class MaximumRendererTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "darwin", "Late SIGALRM is macOS-only")
     def test_worker_alarm_is_disarmed_before_process_shutdown(self):
         # Regression: the worker used to emit a complete PNG and then die
-        # from SIGALRM during Python interpreter teardown.
-        for i in range(16):
-            with self.subTest(attempt=i):
-                page = renderer.render_isolated_pdf_page(self.pdf, 0)
-                self.assertEqual(page.page_index, 0)
-                self.assertTrue(page.png_bytes.startswith(renderer.PNG_SIGNATURE))
+        # from SIGALRM during Python interpreter teardown. Diagnostics expose
+        # only process status and byte counts, never stderr or document data.
+        real_run = subprocess.run
+        outcomes = []
+
+        def observe(command, **kwargs):
+            try:
+                outcome = real_run(command, **kwargs)
+            except subprocess.TimeoutExpired:
+                outcomes.append("timeout")
+                raise
+            except OSError as error:
+                outcomes.append("launch_error=" + type(error).__name__)
+                raise
+            outcomes.append(safe_process_diagnostic(outcome))
+            return outcome
+
+        with patch.object(renderer.subprocess, "run", side_effect=observe):
+            for i in range(16):
+                with self.subTest(attempt=i):
+                    try:
+                        page = renderer.render_isolated_pdf_page(self.pdf, 0)
+                    except renderer.MaximumPDFRenderError:
+                        detail = outcomes[-1] if outcomes else "launch_not_observed"
+                        self.fail("renderer failed closed; safe test diagnostic: " + detail)
+                    self.assertEqual(page.page_index, 0)
+                    self.assertTrue(page.png_bytes.startswith(renderer.PNG_SIGNATURE))
 
     def test_ci_checks_renderer_filesystem_confinement(self):
-        ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("ubuntu-latest", ci)
-        self.assertIn("macos-latest", ci)
-        self.assertIn("test-maximum-isolated-renderer.py -v", ci)
-        self.assertIn("pymupdf==2.0", ci)
-        self.assertIn("macos-maximum-isolation:", ci)
+        ci = (ROOT / ".github/workflows/consolidated-checks.yml").read_text()
+        portable = ci.split("  macos-native-tests:", 1)[0]
+        native = ci.split("  macos-native-tests:", 1)[1]
+        self.assertIn("runs-on: ubuntu-latest", portable)
+        self.assertIn("test-maximum-isolated-renderer.py -v", portable)
+        self.assertIn("runs-on: macos-latest", native)
+        self.assertIn("test-maximum-isolated-renderer.py -v", native)
+        self.assertIn("pymupdf==2.0", portable)
+        self.assertIn("pymupdf==2.0", native)
         self.assertTrue((ROOT / "maximum_render_filesystem_probe.py").is_file())
+
+    def test_framework_python_launcher_uses_real_trusted_interpreter(self):
+        version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        framework_binary = (
+            f"/Library/Frameworks/Python.framework/Versions/{version}/"
+            "Resources/Python.app/Contents/MacOS/Python"
+        )
+        with patch.object(renderer.sys, "_base_executable", framework_binary, create=True):
+            self.assertEqual(renderer._sandbox_python_executable(), framework_binary)
+        for candidate in (
+            framework_binary.replace(f"/Versions/{version}/", "/Versions/9.9/"),
+            "/tmp/Python.app/Contents/MacOS/Python",
+            None,
+        ):
+            with self.subTest(candidate=candidate), patch.object(
+                renderer.sys, "_base_executable", candidate, create=True
+            ):
+                self.assertEqual(renderer._sandbox_python_executable(), sys.executable)
 
     def test_filesystem_policy_is_deny_by_default_and_read_only(self):
         profile = renderer.RENDERER_FILESYSTEM_PROFILE
         self.assertIn("(deny default)", profile)
         self.assertIn("(allow file-map-executable", profile)
+        # Root-directory lookup is not permission to read its children.
+        self.assertIn('(literal "/")', profile)
         self.assertIn('(literal (param "PYTHON"))', profile)
-        self.assertIn('(literal (param "PYTHON_APP"))', profile)
-        self.assertIn('(allow process-exec\n', profile)
-        self.assertNotIn('(allow process-exec (subpath', profile)
         self.assertIn('(literal (param "WORKER_SUPPORT"))', profile)
         self.assertIn('(literal (param "NETWORK_SUPPORT"))', profile)
         self.assertIn('(literal (param "RENDERER_SUPPORT"))', profile)
@@ -476,7 +506,6 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("(deny process-fork)", profile)
         self.assertNotIn("(allow default)", profile)
         self.assertNotIn("(allow file-write", profile)
-        self.assertIn('(literal "/")', profile)
         self.assertNotIn('(subpath "/Users")', profile)
         self.assertNotIn('(subpath "/private/tmp")', profile)
         self.assertNotIn('(subpath "/private/var")', profile)
@@ -509,17 +538,9 @@ class MaximumRendererTests(unittest.TestCase):
         python = str(Path(sys.executable).resolve(strict=True))
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
-        app_path = Path(base_prefix) / "Resources/Python.app/Contents/MacOS/Python"
-        python_app = str(app_path.resolve(strict=True)) if app_path.exists() else python
         checks = {
-            "sandbox executable": renderer._trusted_regular_file(
-                renderer.SANDBOX_EXEC, executable=True
-            ),
             "python executable": renderer._trusted_regular_file(
                 python, executable=True
-            ),
-            "framework executable": renderer._trusted_regular_file(
-                python_app, executable=True
             ),
             "worker": renderer._trusted_regular_file(str(worker.resolve(strict=True))),
             "source root": renderer._trusted_directory(str(source_root)),
@@ -548,9 +569,7 @@ class MaximumRendererTests(unittest.TestCase):
             except OSError as exc:
                 return {"error": type(exc).__name__}
         details_by_path = {
-            "sandbox executable": details(renderer.SANDBOX_EXEC),
             "python executable": details(python),
-            "framework executable": details(python_app),
             "worker": details(str(worker.resolve(strict=True))),
             "source root": details(str(source_root)),
             "python prefix": details(prefix),
@@ -564,9 +583,8 @@ class MaximumRendererTests(unittest.TestCase):
         )
         context = renderer._renderer_sandbox_context(worker)
         self.assertEqual(context["worker"], str(worker.resolve(strict=True)))
-        self.assertEqual(context["python_app"], python_app)
-        self.assertTrue(Path(context["python_app"]).is_relative_to(Path(base_prefix))
-                        or context["python_app"] == context["python"])
+        for key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT:
+            self.assertEqual(context[key], str((source_root / filename).resolve(strict=True)))
 
     def test_renderer_rejects_worker_outside_trusted_directory(self):
         with tempfile.TemporaryDirectory(prefix="opener-render-outside-") as directory:
@@ -601,10 +619,7 @@ class MaximumRendererTests(unittest.TestCase):
                     "PYTHONNOUSERSITE": "1",
                 },
             )
-            self.assertEqual(
-                outcome.returncode, 0,
-                outcome.stderr.decode("utf-8", "replace"),
-            )
+            self.assertEqual(outcome.returncode, 0, safe_process_diagnostic(outcome))
             self.assertEqual(private.read_bytes(), b"private marker")
             self.assertFalse(write_target.exists())
 

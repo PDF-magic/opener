@@ -244,7 +244,7 @@ class PDFAutomaticExternalRequestTests(unittest.TestCase):
     def test_no_change_to_installed_scanner_or_preferences(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         source = (ROOT / "pdf_automatic_external_requests.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("pdf_automatic_external_requests", scanner)
         self.assertIn("test-pdf-automatic-external-requests.py -v", workflow)

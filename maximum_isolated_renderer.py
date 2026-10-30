@@ -5,6 +5,7 @@ Maximum protection. The PDF never becomes a worker pathname (opener-0314).
 """
 
 from dataclasses import dataclass
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -12,8 +13,6 @@ import stat
 import struct
 import subprocess
 import sys
-
-from maximum_network_isolation import RENDERER_SANDBOX_PROFILE, SANDBOX_EXEC
 
 MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
@@ -28,9 +27,7 @@ _HEADER = struct.Struct(">8sII")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
 
-# The renderer's resource-limit bootstrap imports these exact trusted modules.
-# Keep file access bounded to individual canonical files, never the source
-# directory or an untrusted PDF-controlled path.
+# Explicit allowlist for trusted resource-limit bootstrap imports.
 RENDERER_LIMIT_SUPPORT = (
     ("analysis_support", "ANALYSIS_SUPPORT", "maximum_isolated_analysis.py"),
     ("process_support", "PROCESS_SUPPORT", "maximum_process_termination.py"),
@@ -42,12 +39,9 @@ RENDERER_LIMIT_SUPPORT = (
 )
 RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
-(allow process-exec
-    (literal (param "PYTHON"))
-    (literal (param "PYTHON_APP")))
+(allow process-exec (literal (param "PYTHON")))
 (allow file-map-executable
     (literal (param "PYTHON"))
-    (literal (param "PYTHON_APP"))
     (subpath (param "PYTHON_PREFIX"))
     (subpath (param "PYTHON_BASE_PREFIX"))
     (subpath "/System")
@@ -58,7 +52,6 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (allow file-read*
     (literal "/")
     (literal (param "PYTHON"))
-    (literal (param "PYTHON_APP"))
     (literal (param "WORKER"))
     (literal (param "WORKER_SUPPORT"))
     (literal (param "NETWORK_SUPPORT"))
@@ -128,12 +121,31 @@ def _trusted_directory(path: str, *, runtime: bool = False) -> bool:
         return False
 
 
+def _sandbox_python_executable() -> str:
+    """Avoid the Python.org macOS framework shim that tries to spawn again.
+
+    The framework's command-line shim starts the real Python.app executable
+    with posix_spawn. A deny-process-fork sandbox must execute that exact
+    trusted interpreter directly instead of loosening the process policy.
+    Any other installation continues through its original interpreter.
+    """
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    framework_binary = (
+        f"/Library/Frameworks/Python.framework/Versions/{version}/"
+        "Resources/Python.app/Contents/MacOS/Python"
+    )
+    base_executable = getattr(sys, "_base_executable", None)
+    if type(base_executable) is str and base_executable == framework_binary:
+        return framework_binary
+    return sys.executable
+
+
 def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
     """Resolve and validate the only paths the renderer process may read."""
     if sys.platform != "darwin":
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     try:
-        python = str(Path(sys.executable).resolve(strict=True))
+        python = str(Path(_sandbox_python_executable()).resolve(strict=True))
         worker = str(Path(worker_path).resolve(strict=True))
         source_root = Path(__file__).resolve(strict=True).parent
         worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
@@ -141,28 +153,20 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         renderer_support = Path(__file__).resolve(strict=True)
         limit_support = {
             key: (source_root / filename).resolve(strict=True)
-            for key, _param, filename in RENDERER_LIMIT_SUPPORT
+            for key, _parameter, filename in RENDERER_LIMIT_SUPPORT
         }
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
-        # CPython framework launchers re-exec this exact, bundled Python.app binary.
-        app_path = Path(base_prefix) / "Resources/Python.app/Contents/MacOS/Python"
-        python_app = str(app_path.resolve(strict=True)) if app_path.exists() else python
     except (OSError, RuntimeError, TypeError):
         raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
 
     support_files = (worker_support, network_support, renderer_support)
     if (Path(worker).parent != source_root or
             any(path.parent != source_root for path in support_files) or
-            not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
             not _trusted_regular_file(python, executable=True) or
-            not _trusted_regular_file(python_app, executable=True) or
-            (python_app != python and
-             not Path(python_app).is_relative_to(Path(base_prefix))) or
             not _trusted_regular_file(worker) or
             not all(_trusted_regular_file(str(path)) for path in support_files) or
-            any(path.parent != source_root or
-                not _trusted_regular_file(str(path))
+            any(path.parent != source_root or not _trusted_regular_file(str(path))
                 for path in limit_support.values()) or
             not _trusted_directory(str(source_root)) or
             not _trusted_directory(prefix, runtime=True) or
@@ -170,7 +174,6 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     context = {
         "python": python,
-        "python_app": python_app,
         "worker": worker,
         "worker_support": str(worker_support),
         "network_support": str(network_support),
@@ -180,6 +183,70 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
     }
     context.update({key: str(path) for key, path in limit_support.items()})
     return context
+
+
+def _sbpl_path_literal(path: str) -> str:
+    """Encode a canonical path as an SBPL string; unsupported paths fail closed."""
+    if (type(path) is not str or not path.startswith("/") or "\x00" in path or
+            '"' in path or "\\" in path or any(ord(character) < 32 for character in path) or
+            os.path.normpath(path) != path or os.path.realpath(path) != path):
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    return '"' + path + '"'
+
+
+def apply_renderer_sandbox(context: dict[str, str]) -> None:
+    """Install the deny-by-default Seatbelt policy inside the trusted worker.
+
+    The profile is applied before the worker reads PDF bytes or imports PyMuPDF.
+    Any missing API, malformed path, or sandbox setup failure remains fail-closed.
+    """
+    expected_keys = {
+        "python", "worker", "worker_support", "network_support",
+        "renderer_support", "python_prefix", "python_base_prefix",
+    } | {key for key, _parameter, _filename in RENDERER_LIMIT_SUPPORT}
+    if sys.platform != "darwin" or type(context) is not dict or set(context) != expected_keys:
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+
+    profile = RENDERER_FILESYSTEM_PROFILE
+    for name, key in (
+        ("PYTHON", "python"),
+        ("WORKER", "worker"),
+        ("WORKER_SUPPORT", "worker_support"),
+        ("NETWORK_SUPPORT", "network_support"),
+        ("RENDERER_SUPPORT", "renderer_support"),
+        ("PYTHON_PREFIX", "python_prefix"),
+        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
+    ):
+        profile = profile.replace(f'(param "{name}")', _sbpl_path_literal(context[key]))
+    for key, parameter, _filename in RENDERER_LIMIT_SUPPORT:
+        profile = profile.replace(f'(param "{parameter}")', _sbpl_path_literal(context[key]))
+    if '(param "' in profile:
+        raise MaximumPDFRenderError(BLOCK_MESSAGE)
+
+    library = None
+    error_buffer = ctypes.c_char_p()
+    try:
+        library = ctypes.CDLL("/usr/lib/libsandbox.dylib", use_errno=True)
+        initialize = library.sandbox_init
+        initialize.argtypes = [ctypes.c_char_p, ctypes.c_uint64, ctypes.POINTER(ctypes.c_char_p)]
+        initialize.restype = ctypes.c_int
+        result = initialize(profile.encode("utf-8"), 0, ctypes.byref(error_buffer))
+        if result != 0:
+            raise MaximumPDFRenderError(BLOCK_MESSAGE)
+    except MaximumPDFRenderError:
+        raise
+    except Exception:
+        raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
+    finally:
+        if library is not None and error_buffer.value:
+            try:
+                release_error = library.sandbox_free_error
+                release_error.argtypes = [ctypes.c_char_p]
+                release_error.restype = None
+                release_error(error_buffer)
+            except Exception:
+                # Error details are deliberately not surfaced to callers/tests.
+                pass
 
 
 @dataclass(frozen=True)
@@ -264,24 +331,9 @@ def _decode_response(stdout: bytes, expected_index: int) -> RenderedPDFPage:
 
 
 def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
-    """Build a deny-by-default macOS command; never launch without filesystem confinement."""
+    """Build the minimal worker command after validating every trusted path."""
     context = _renderer_sandbox_context(worker)
-    command = [SANDBOX_EXEC, "-p", RENDERER_FILESYSTEM_PROFILE]
-    for name, key in (
-        ("PYTHON", "python"),
-        ("PYTHON_APP", "python_app"),
-        ("WORKER", "worker"),
-        ("WORKER_SUPPORT", "worker_support"),
-        ("NETWORK_SUPPORT", "network_support"),
-        ("RENDERER_SUPPORT", "renderer_support"),
-        ("PYTHON_PREFIX", "python_prefix"),
-        ("PYTHON_BASE_PREFIX", "python_base_prefix"),
-    ):
-        command.extend(("-D", name + "=" + context[key]))
-    for key, parameter, _filename in RENDERER_LIMIT_SUPPORT:
-        command.extend(("-D", parameter + "=" + context[key]))
-    command.extend((context["python"], "-I", "-B", context["worker"], str(page_index)))
-    return tuple(command)
+    return (context["python"], "-I", "-B", context["worker"], str(page_index))
 
 
 def render_isolated_pdf_page(pdf_bytes: bytes, page_index: int) -> RenderedPDFPage:

@@ -78,8 +78,9 @@ if __name__ == "__main__":
         # stdout/stderr; the parent always reports a fixed blocked outcome.
         exit_code = 2
     finally:
-        # Keep the memory watchdog active until inspection finishes, then
-        # disarm it before interpreter teardown can receive a late SIGALRM.
+        # Keep the mandatory macOS memory watchdog armed during all untrusted
+        # parsing, but disarm it before Python interpreter teardown. A late
+        # SIGALRM after a complete result must not corrupt the worker exit.
         if sys.platform == "darwin":
             try:
                 import signal

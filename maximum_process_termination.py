@@ -9,9 +9,14 @@ import sys
 import selectors
 import signal
 import subprocess
+import sys
 import time
 
-from maximum_sanitizer_process import _process_has_exited_without_reaping
+from maximum_sanitizer_process import (
+    _darwin_group_has_only_zombies,
+    _process_has_exited_without_reaping,
+    SanitizerProcessExecutionError,
+)
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 4096
@@ -34,31 +39,24 @@ class MaximumProcessTerminationError(RuntimeError):
 
 
 def _macos_group_is_zombie_only(pgid):
-    """Prove the unreaped group leader and all group members are zombies."""
-    if sys.platform != "darwin" or type(pgid) is not int or pgid <= 0:
+    """Verify that an EPERM process group has no live members."""
+    if sys.platform != "darwin":
         return False
     try:
         result = subprocess.run(
-            ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+            ("/bin/ps", "-A", "-o", "pgid=,stat="),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, close_fds=True, cwd="/",
             env={"PATH": "/usr/bin:/bin", "LANG": "C"},
             timeout=2, check=True,
         )
-        found_leader = False
         for line in result.stdout.decode("ascii").splitlines():
             fields = line.split()
-            if (len(fields) != 3 or not fields[0].isdecimal()
-                    or not fields[1].isdecimal() or not fields[2][0].isalpha()):
+            if len(fields) != 2 or not fields[0].isdecimal() or not fields[1]:
                 return False
-            pid, group, state = int(fields[0]), int(fields[1]), fields[2]
-            if group != pgid:
-                continue
-            if state[0].upper() != "Z":
+            if int(fields[0]) == pgid and fields[1][0].upper() != "Z":
                 return False
-            if pid == pgid:
-                found_leader = True
-        return found_leader
+        return True
     except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
         return False
 
@@ -71,8 +69,15 @@ def _stop_group(process):
         if process.poll() is None:
             process.kill()
     except OSError as error:
-        if error.errno == errno.EPERM and _macos_group_is_zombie_only(process.pid):
-            return
+        # An EPERM group is safe only after its owned leader exited and
+        # a complete process snapshot proves no live descendants remain.
+        if sys.platform == "darwin" and error.errno == errno.EPERM:
+            try:
+                if (_process_has_exited_without_reaping(process) and
+                        _darwin_group_has_only_zombies(process.pid)):
+                    return
+            except SanitizerProcessExecutionError:
+                pass
         try:
             process.kill()
         except ProcessLookupError:
@@ -171,17 +176,17 @@ def run_limited_worker(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+        # Wait without reaping so the group ID cannot be reassigned before
+        # cleanup. Stop every descendant even after the leader exits.
+        while not _process_has_exited_without_reaping(process):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise MaximumProcessTerminationError(
+                    BLOCK_MESSAGE, category="timeout",
+                )
+            time.sleep(min(remaining, 0.025))
+        _stop_group(process)
         try:
-            # Retain the exited group leader until every descendant is killed.
-            # Otherwise reaping can allow PID reuse before group cleanup.
-            while not _process_has_exited_without_reaping(process):
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise MaximumProcessTerminationError(
-                        BLOCK_MESSAGE, category="timeout",
-                    )
-                time.sleep(min(remaining, 0.025))
-            _stop_group(process)
             return_code = process.wait(timeout=REAP_SECONDS)
         except subprocess.TimeoutExpired:
             raise MaximumProcessTerminationError(

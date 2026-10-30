@@ -206,14 +206,49 @@ class NativeGeneratedPDFRescanTests(unittest.TestCase):
     def test_real_rasterized_pdf_must_reenter_clamav_before_launch(self):
         from io import BytesIO
         from pypdf import PdfWriter
-        from maximum_sanitized_copy import offer_sanitized_pdf_copy
+        from maximum_sanitized_copy import attempt_sanitized_pdf_copy
 
         writer = PdfWriter()
         writer.add_blank_page(width=180, height=240)
         stream = BytesIO()
         writer.write(stream)
-        offer = offer_sanitized_pdf_copy(stream.getvalue())
-        self.assertIsNotNone(offer)
+        # Test-only supervisor diagnostics: fixed stage names only, never PDF
+        # bytes, worker output, file paths, or exception messages.
+        import maximum_sanitizer_process as supervisor
+        failed_stages = []
+
+        def observe(stage, handler):
+            def traced(*args, **kwargs):
+                try:
+                    return handler(*args, **kwargs)
+                except Exception:
+                    failed_stages.append(stage)
+                    raise
+            return traced
+
+        with patch.object(
+            supervisor, "_process_has_exited_without_reaping",
+            side_effect=observe("exit-check", supervisor._process_has_exited_without_reaping),
+        ), patch.object(
+            supervisor, "_stop_process_group",
+            side_effect=observe("group-cleanup", supervisor._stop_process_group),
+        ), patch.object(
+            supervisor, "_reap_process",
+            side_effect=observe("reap", supervisor._reap_process),
+        ):
+            attempt = attempt_sanitized_pdf_copy(stream.getvalue())
+        # Test-only diagnostic is a fixed enum, never raw worker output, paths,
+        # source bytes, or parser messages. Production remains fail-closed.
+        diagnostic = (
+            attempt.failure.kind.value if attempt.failure is not None
+            else "no_failure_report"
+        )
+        self.assertIsNotNone(
+            attempt.offer,
+            "safe sanitizer failure category: " + diagnostic
+            + "; supervisor stage: " + (",".join(failed_stages) or "unclassified"),
+        )
+        offer = attempt.offer
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "output.pdf"
             path.write_bytes(offer.pdf_bytes)

@@ -178,7 +178,7 @@ class ScannedDocumentFixtureTests(unittest.TestCase):
 
     def test_only_checks_optional_output_not_clamav_or_user_preferences(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("maximum-scanned-documents", scanner)

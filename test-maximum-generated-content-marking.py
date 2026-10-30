@@ -100,7 +100,7 @@ class GeneratedCopyOriginTests(unittest.TestCase):
         source = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
         rescan = (root / "maximum_generated_rescan.py").read_text(encoding="utf-8")
         route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
-        workflow = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = (root / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertNotIn("maximum_generated_content_marking", scanner)
         self.assertIn("force_rescan=True", scanner)
         self.assertIn("GENERATED_CONTENT_ORIGIN", source)

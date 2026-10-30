@@ -88,7 +88,7 @@ class FindingObjectReferenceTests(unittest.TestCase):
         output["objectReference"]["generationNumber"] = 65535
         self.assertEqual(finding.to_dict()["objectReference"]["generationNumber"], 0)
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("enhanced_finding_object_references", scanner)

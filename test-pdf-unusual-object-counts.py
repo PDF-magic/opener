@@ -168,7 +168,7 @@ class PDFUnusualObjectCountTests(unittest.TestCase):
     def test_isolated_from_scanner_preferences_and_network(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         source = (ROOT / "pdf_unusual_object_counts.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("pdf_unusual_object_counts", scanner)
         self.assertIn("test-pdf-unusual-object-counts.py -v", workflow)

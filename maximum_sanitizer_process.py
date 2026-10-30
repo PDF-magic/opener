@@ -296,13 +296,9 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
         return False
 
 
-def _darwin_group_is_gone_or_zombie_only(process_group_id: int) -> bool:
-    """Compatibility helper for consolidated CI and safe process cleanup."""
-    return _darwin_group_has_only_zombies(process_group_id)
-
 
 def _stop_process_group(process):
-    """Kill the complete isolated group; fail closed if any live process remains."""
+    """Kill the whole isolated process group, including surviving descendants."""
     try:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
@@ -313,15 +309,14 @@ def _stop_process_group(process):
                 pass
             except OSError:
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
-    except OSError as exc:
-        # Zombie-only groups have nothing left to signal. Never accept an
-        # ambiguous EPERM or leave surviving descendants unsupervised.
-        if (
-            sys.platform == "darwin" and exc.errno == errno.EPERM
-            and _process_has_exited_without_reaping(process)
-            and _darwin_group_is_gone_or_zombie_only(process.pid)
-        ):
-            return
+    except OSError as error:
+        if error.errno == errno.EPERM and sys.platform == "darwin":
+            try:
+                if (_process_has_exited_without_reaping(process)
+                        and _darwin_group_has_only_zombies(process.pid)):
+                    return
+            except SanitizerProcessExecutionError:
+                pass
         try:
             process.kill()
         except (ProcessLookupError, OSError):

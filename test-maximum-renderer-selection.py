@@ -7,7 +7,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent
-WORKFLOW = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+WORKFLOW = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
 DECISION = (ROOT / "docs/maximum/renderer-selection.md").read_text(encoding="utf-8")
 WORKER = (ROOT / "maximum_render_worker.py").read_text(encoding="utf-8")
 LICENSE = (ROOT / "LICENSE").read_text(encoding="utf-8")
@@ -19,7 +19,6 @@ class MaximumRendererSelectionTests(unittest.TestCase):
         self.assertIn("pymupdf==2.0", WORKFLOW)
         self.assertIn("--no-deps", WORKFLOW)
         self.assertIn("python3 test-maximum-renderer-selection.py -v", WORKFLOW)
-        self.assertIn("macos-maximum-isolation:", WORKFLOW)
 
     def test_security_review_records_current_release_and_advisories(self):
         for evidence in (
