@@ -44,11 +44,13 @@ test("known non-PDF MIME vetoes misleading extension and query strings", () => {
     { url: "https://test.invalid/report.pdf/preview?file=another.pdf" },
     { url: "https://test.invalid/view?filename=document.pdf#report.pdf" },
     { filename: ".pdf" }, { filename: "path/report.pdf" },
-    { url: "data:application/pdf,content" },
     { url: "javascript:alert('report.pdf')" },
     { url: "https://test.invalid/report%00.pdf" },
     { url: "https://test.invalid/report%ZZ.pdf" }
   ]) assert.deepEqual(detect(metadata), expected("none"));
+  assert.deepEqual(detect({ url: "data:application/pdf,content" }), {
+    isPdfCandidate: false, evidence: "unsupported-data-url", authorizesOpen: false
+  });
 });
 
 test("invalid or oversized inputs fail closed without executing property getters", () => {
