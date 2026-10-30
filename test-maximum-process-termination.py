@@ -183,7 +183,8 @@ class MaximumProcessTerminationTests(unittest.TestCase):
               patch.object(guard, "_process_has_exited_without_reaping",
                            return_value=True),
               patch.object(guard, "_darwin_group_has_only_zombies",
-                           side_effect=(True, False))):
+                           side_effect=(True, False, False, False, False)),
+              patch.object(guard.time, "sleep")): 
             guard._stop_group(process)
             with self.assertRaises(guard.MaximumProcessTerminationError):
                 guard._stop_group(process)
@@ -207,6 +208,7 @@ class MaximumProcessTerminationTests(unittest.TestCase):
                              return_value=leader_exited),
                 patch.object(guard, "_darwin_group_has_only_zombies",
                              return_value=zombies) as check,
+                patch.object(guard.time, "sleep"),
             ):
                 if accepted:
                     guard._stop_group(leader)
