@@ -121,8 +121,10 @@ try {
   assert.equal(response?.status(), 200, "Opera must serve the actual extension popup");
   assert.equal(await popup.$eval("#popup-title", (el) => el.textContent.trim()),
     "PDF Magic Opener");
-  assert.equal(await popup.$eval('[role="status"]', (el) => el.textContent.trim()),
+  assert.equal(await popup.$eval(".heading .status", (el) => el.textContent.trim()),
     "Not active");
+  assert.equal(await popup.$eval("#explicitPdfScanResult", (el) => el.textContent.trim()),
+    "No verified scan result is available.");
   assert.match(await popup.$eval("#availability-title", (el) => el.textContent),
     /Browser integration is not enabled/);
   assert.equal(await popup.$eval("#scanPDF", (el) => el.disabled), true);

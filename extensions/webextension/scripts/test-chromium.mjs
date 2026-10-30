@@ -91,7 +91,9 @@ try {
   );
   assert.equal(response?.status(), 200, "Chromium must render the local popup");
   assert.equal(await popup.locator("#popup-title").innerText(), "PDF Magic Opener");
-  assert.match(await popup.locator('[role="status"]').innerText(), /Not active/);
+  assert.match(await popup.locator(".heading .status").innerText(), /Not active/);
+  assert.equal(await popup.locator("#explicitPdfScanResult").innerText(),
+    "No verified scan result is available.");
   assert.match(await popup.locator("body").innerText(),
     /cannot scan, sanitize, or open PDF files yet/);
   assert.equal(await popup.locator("#scanPDF").isDisabled(), true);

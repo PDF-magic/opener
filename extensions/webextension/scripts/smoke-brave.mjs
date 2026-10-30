@@ -65,7 +65,9 @@ try {
   );
   assert.equal(response?.status(), 200, "Brave must render the bundled popup");
   assert.equal(await popup.locator("#popup-title").innerText(), "PDF Magic Opener");
-  assert.equal(await popup.locator('[role="status"]').innerText(), "Not active");
+  assert.equal(await popup.locator(".heading .status").innerText(), "Not active");
+  assert.equal(await popup.locator("#explicitPdfScanResult").innerText(),
+    "No verified scan result is available.");
   assert.match(await popup.locator("#availability-title").innerText(),
     /Browser integration is not enabled/);
   const scanButton = popup.locator("#scanPDF");

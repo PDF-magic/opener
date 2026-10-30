@@ -14,11 +14,14 @@ const request = (patch = {}) => ({
   tabId: 10, frameId: 2, selectionId: "selection_1",
   userInitiated: true, ...patch
 });
+// Keep both trusted selection reads at the exact same default expiry.
+// A fresh Date.now() on each read makes this consent test race at ms boundaries.
+const stableExpiryMs = Date.now() + 300_000;
 const selected = (patch = {}) => ({
   requestId: "attempt_1", tabId: 10, frameId: 2,
   selectionId: "selection_1", resourceId: "signed_resource_1",
   url: signedUrl, siteOrigin: "https://cdn.example.test",
-  expiresAtMs: Date.now() + 300_000,
+  expiresAtMs: stableExpiryMs,
   verified: true, signatureVerified: true, permissionGranted: true,
   ...patch
 });
