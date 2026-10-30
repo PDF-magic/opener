@@ -121,10 +121,11 @@ export function createExpiredPdfUrlHandler(coordinator = null) {
       });
       const source = expiredSource(read.call(coordinator, reference), event);
       if (!source) return UNAVAILABLE;
+      // An earlier verified expiration permanently vetoes this attempt.
+      // A later ambiguous 403/404 cannot overwrite or remove the block.
+      if (blocked.has(event.requestId)) return blocked.get(event.requestId);
       const reason = failureReason(event, source);
       if (!reason) return UNAVAILABLE;
-
-      if (blocked.has(event.requestId)) return blocked.get(event.requestId);
       if (blocked.size >= 256) return UNAVAILABLE;
 
       const response = Object.freeze({
