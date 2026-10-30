@@ -137,9 +137,13 @@ class NativeMessagingHostTests(unittest.TestCase):
       raise unittest.SkipTest("Swift compiler is required")
     # Typecheck the production path, then run the same host with an isolated,
     # compile-time-only home override. No test writes to the CI user's home.
-    subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
-                    "-typecheck", str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE)],
-                   capture_output=True, text=True, check=True, timeout=120)
+    typecheck = subprocess.run(
+      [compiler, "-parse-as-library", "-warnings-as-errors", "-typecheck",
+       str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE)],
+      capture_output=True, text=True, check=False, timeout=120)
+    if typecheck.returncode != 0:
+      raise AssertionError("Production Swift host typecheck failed:\n" +
+                           typecheck.stderr[-8000:])
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     "-D", "NATIVE_HOST_CONNECTION_TESTING",
                     str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE), "-o", str(cls.binary)],
