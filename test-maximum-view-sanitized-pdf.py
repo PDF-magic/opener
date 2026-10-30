@@ -58,7 +58,7 @@ class SanitizedPDFViewTests(unittest.TestCase):
             visited.append((path, path.read_bytes(), offer))
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
             self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
-            self.assertRegex(path.name, r"^safe-copy-[0-9a-f]{32}\\.pdf$")
+            self.assertRegex(path.name, r"^safe-copy-[0-9a-f]{32}\.pdf$")
             return self.clean()
 
         with patch("maximum_sanitized_copy._passive_pages", return_value=True), \
