@@ -6,6 +6,9 @@ Scan PDFs locally with ClamAV before opening them in a configurable application 
 
 For technical reference material, see the [organized documentation index](docs/README.md).
 
+Python regression tests are grouped by topic in [`tests/`](tests/README.md). Run one using
+`python3 scripts/run-test.py tests/pdf/structure-parser.py -v` from the repository root.
+
 ## SwiftUI application target (opener-0163)
 
 The repository includes a standalone macOS SwiftUI application target in
@@ -374,11 +377,11 @@ Opening a file explicitly through another app bypasses this opener. Scanner deta
 Verify the scan gate with:
 
 ```sh
-python3 test-scan-and-open.py
-python3 test-target-app.py
-python3 test-launch-results.py
-python3 test-scan-concurrency.py
-python3 test-brave-pdf-opener.py
+python3 scripts/run-test.py tests/scan/and-open.py
+python3 scripts/run-test.py tests/target/app.py
+python3 scripts/run-test.py tests/launch/results.py
+python3 scripts/run-test.py tests/scan/concurrency.py
+python3 scripts/run-test.py tests/general/brave-pdf-opener.py
 ```
 
 ## Restore the previous macOS PDF handler
@@ -415,7 +418,7 @@ default PDF handler**, first choose a **known-clean, non-sensitive local test
 PDF**. Run this optional interactive integration check:
 
 ```sh
-python3 test-finder-open.py --live "/absolute/path/to/harmless-test.pdf"
+python3 scripts/run-test.py tests/general/finder-open.py --live "/absolute/path/to/harmless-test.pdf"
 ```
 
 This test invokes Finder's actual **Open** command via the separately bundled
@@ -900,10 +903,10 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 | `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
 | `set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
-| `test-scan-and-open.py` | Verify scan-gate behavior with a substitute scanner |
-| `test-target-app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
-| `test-scan-concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
-| `test-brave-pdf-opener.py` | Verify native progress visibility and duplicate-open handling |
+| `tests/scan/and-open.py` | Verify scan-gate behavior with a substitute scanner |
+| `tests/target/app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
+| `tests/scan/concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
+| `tests/general/brave-pdf-opener.py` | Verify native progress visibility and duplicate-open handling |
 
 The installer requires an existing **Allow and Open** Quick Action at `~/Library/Services/Allow and Open.workflow`; Brave Browser is needed when using the default target. Run the commands above from this repository's root.
 

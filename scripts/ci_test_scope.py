@@ -5,9 +5,15 @@ Unknown paths and shared scanner/security infrastructure deliberately select
 the full suite. This is a group-level dependency map, not filename-only
 workflow triggers; central workflows always start and retain a final gate.
 """
+import json
 from pathlib import Path
 import subprocess
 import sys
+
+# Keep dependency classification compatible with the moved Python suites.
+TEST_LEGACY_PATHS = {new: old for old, new in json.loads(
+    (Path(__file__).resolve().parent.parent / "tests/manifest.json").read_text()
+).items()}
 
 GROUPS = ("pdf", "policy", "maximum", "macos")
 ALL_GROUPS = frozenset(GROUPS)
@@ -77,7 +83,8 @@ def _documentation_only(path):
 
 def select_groups(paths):
     """Return affected suites; unknown/shared changes conservatively run all."""
-    normalized = {str(path).replace("\\", "/") for path in paths}
+    normalized = {TEST_LEGACY_PATHS.get(str(path).replace("\\", "/"),
+                                        str(path).replace("\\", "/")) for path in paths}
     if not normalized:
         return ALL_GROUPS
 

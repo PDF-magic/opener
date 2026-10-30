@@ -22,6 +22,11 @@ class CITestScopeTests(unittest.TestCase):
         self.assertEqual(select_groups(["test-enhanced-analysis-findings.py"]), {"pdf", "policy"})
         self.assertEqual(select_groups(["test-protection-exception-reason.py"]), {"policy"})
 
+    def test_relocated_python_tests_select_original_dependency_groups(self):
+        self.assertEqual(select_groups(["tests/pdf/form-actions.py"]), {"pdf"})
+        self.assertEqual(select_groups(["tests/enhanced/analysis-findings.py"]), {"pdf", "policy"})
+        self.assertEqual(select_groups(["tests/maximum/isolated-renderer.py"]), {"maximum", "macos"})
+
     def test_native_maximum_changes_select_portable_and_macos_tests(self):
         self.assertEqual(select_groups(["maximum_sanitized_copy.py"]), {"maximum", "macos"})
         self.assertEqual(select_groups(["test-maximum-isolated-renderer.py"]), {"maximum", "macos"})
