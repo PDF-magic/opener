@@ -320,13 +320,21 @@ jobs:
         run: |
           npm run build
           npm run package:chrome
-          node scripts/build-firefox.mjs
+          npm run package:firefox
+          unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
       - name: Upload validated Chrome extension package
         uses: actions/upload-artifact@v4
         with:
           name: pdf-magic-opener-chrome
           path: extensions/webextension/dist/chrome/*.zip
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload validated unsigned Firefox extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-magic-opener-firefox-unsigned
+          path: extensions/webextension/dist/firefox-packages/*.zip
           if-no-files-found: error
           retention-days: 7
       - name: Verify sandboxed Safari Web Extension target configuration
