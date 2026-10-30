@@ -141,7 +141,7 @@ class ProtectionCardsTests(unittest.TestCase):
     # handler, but the installed Settings page cannot invent a verified PDF.
     self.assertIn("struct MaximumSanitizedPDFSaveControl: View {", self.source)
     control = self.source.split("struct MaximumSanitizedPDFSaveControl: View {", 1)[1].split(
-        "\nstruct ProtectionSettingsView: View {", 1)[0]
+        "\nprivate struct MaximumOriginalSafeCopyComparison: View {", 1)[0]
     for marker in (
         "let verifiedOfferAvailable: Bool",
         "let onSaveRequested: (() -> Void)?",

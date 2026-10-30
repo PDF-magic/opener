@@ -242,6 +242,36 @@ private enum ExactEffectiveScanPolicy {
 // explanatory, not per-document scan results or a safe-copy save/launch action.
 // The sanitizer's trusted generatedContent/isUntouchedOriginal=false metadata
 // remains the authority for future document-specific presentation.
+// Maximum UI contract for a future verified generated-copy offer. The
+// installed preferences page has no document offer or coordinator and therefore
+// presents the action disabled. This component invokes only a trusted caller's
+// handler; it never performs file I/O or bypasses the installed scan gate.
+struct MaximumSanitizedPDFSaveControl: View {
+  let verifiedOfferAvailable: Bool
+  let onSaveRequested: (() -> Void)?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Button("Save Sanitized PDF") {
+        guard verifiedOfferAvailable, let onSaveRequested else { return }
+        onSaveRequested()
+      }
+      .disabled(!verifiedOfferAvailable || onSaveRequested == nil)
+      .accessibilityIdentifier("maximumSaveSanitizedPDFAction")
+      .accessibilityHint("Available only for a verified generated PDF. Requires choosing a destination and a fresh malware scan; does not open the file.")
+
+      Text(verifiedOfferAvailable && onSaveRequested != nil
+           ? "Choose where to save the verified generated PDF. The copy requires a separate fresh scan and is not the original."
+           : "Save is unavailable: Maximum has not produced a verified sanitized PDF. Previewing this tier does not create or save a document.")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("maximumSaveSanitizedPDFAvailability")
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
 private struct MaximumOriginalSafeCopyComparison: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -287,36 +317,6 @@ private struct MaximumOriginalSafeCopyComparison: View {
     .background(Color(nsColor: .controlBackgroundColor),
                 in: RoundedRectangle(cornerRadius: 10))
     .accessibilityIdentifier("maximumOriginalSafeCopyComparison")
-  }
-}
-
-// Maximum UI contract for a future verified generated-copy offer. The
-// installed preferences page has no document offer or coordinator and therefore
-// presents the action disabled. This component invokes only a trusted caller's
-// handler; it never performs file I/O or bypasses the installed scan gate.
-struct MaximumSanitizedPDFSaveControl: View {
-  let verifiedOfferAvailable: Bool
-  let onSaveRequested: (() -> Void)?
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Button("Save Sanitized PDF") {
-        guard verifiedOfferAvailable, let onSaveRequested else { return }
-        onSaveRequested()
-      }
-      .disabled(!verifiedOfferAvailable || onSaveRequested == nil)
-      .accessibilityIdentifier("maximumSaveSanitizedPDFAction")
-      .accessibilityHint("Available only for a verified generated PDF. Requires choosing a destination and a fresh malware scan; does not open the file.")
-
-      Text(verifiedOfferAvailable && onSaveRequested != nil
-           ? "Choose where to save the verified generated PDF. The copy requires a separate fresh scan and is not the original."
-           : "Save is unavailable: Maximum has not produced a verified sanitized PDF. Previewing this tier does not create or save a document.")
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-        .accessibilityIdentifier("maximumSaveSanitizedPDFAvailability")
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
