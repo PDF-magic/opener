@@ -87,6 +87,55 @@ class ProtectionCardsTests(unittest.TestCase):
     stored = (ROOT / "test-selected-protection-profile.swift").read_text(encoding="utf-8")
     self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn", stored)
 
+  def test_maximum_preview_distinguishes_original_from_safe_copy_without_activation(self):
+    # The current interface has a real, accessible comparison, but it is
+    # exclusively a read-only preview of the unavailable Maximum tier.
+    self.assertRegex(
+        self.source,
+        r"if selectedPreview == \.maximum \{\s*MaximumOriginalSafeCopyComparison\(\)")
+    self.assertEqual(self.source.count("MaximumOriginalSafeCopyComparison()"), 1)
+    comparison = self.source.split(
+        "private struct MaximumOriginalSafeCopyComparison: View {", 1)[1].split(
+        "\nstruct ProtectionSettingsView: View {", 1)[0]
+    for label in (
+        'Text("Original versus generated safe copy")',
+        'Text("Original PDF")',
+        'Text("Generated safe copy")',
+        'maximumOriginalPDFIdentity',
+        'maximumGeneratedSafeCopyIdentity',
+        'maximumOriginalSafeCopyComparison',
+        "not the untouched original",
+        "requires its own fresh scan before opening",
+        "Maximum remains unavailable",
+        ".accessibilityElement(children: .combine)",
+        ".fixedSize(horizontal: false, vertical: true)",
+    ):
+      with self.subTest(label=label):
+        self.assertIn(label, comparison)
+    for forbidden in (
+        "Button(", "Toggle(", "onOpenURL", "FileManager", "UserDefaults",
+        "URLSession", "Process(", "launch_clean_file", "scan_and_open",
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, comparison)
+
+  def test_origin_comparison_does_not_replace_verified_generated_copy_identity(self):
+    root = Path(__file__).resolve().parent
+    offer = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
+    route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
+    for source in (offer, route):
+      self.assertIn('"contentOrigin": GENERATED_CONTENT_ORIGIN', source)
+      self.assertIn('"isUntouchedOriginal": False', source)
+    self.assertIn('GENERATED_CONTENT_ORIGIN = "generatedContent"', offer)
+    self.assertIn('Active protection: Built-in ClamAV', self.source)
+    explanation = (root / "docs/maximum/original-safe-copy-interface.md").read_text(
+        encoding="utf-8")
+    self.assertIn("read-only", explanation)
+    self.assertIn("original", explanation)
+    self.assertIn("generated", explanation)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+
   def test_maximum_preview_explains_capability_loss_without_enabling_it(self):
     # A visible, labelled explanation belongs only to the Maximum preview.
     tier = self.source.split("private enum PlannedProtectionTier:", 1)[1].split(

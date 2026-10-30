@@ -243,7 +243,8 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
             self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
             self.assertEqual(probe.call_count, 2)
 
-        # Repeated unparseable states must never be mistaken for zombie exit.
+        # Four inconclusive targeted probes trigger one independent process-
+        # table snapshot; even that cannot authorize an unverifiable exit.
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
             sanitizer.subprocess, "run", return_value=(
                 subprocess.CompletedProcess(("/bin/ps",), 0, b"?\n")
@@ -251,7 +252,10 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         ) as probe:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._process_has_exited_without_reaping(process)
-            self.assertEqual(probe.call_count, 4)
+            self.assertEqual(probe.call_count, 5)
+            self.assertEqual(
+                probe.call_args.args[0], ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+            )
 
         # A live state is never interpreted as a successfully exited worker.
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
