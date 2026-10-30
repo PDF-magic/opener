@@ -157,6 +157,56 @@ class NativeMessagingHostTests(unittest.TestCase):
     self.assertEqual(completed.stdout, b"")
     self.assertEqual(completed.stderr, b"")
 
+  def test_native_request_rate_limit_closes_burst_without_responding_to_overflow(self):
+    # A successful handshake consumes a slot just like a read-only ping.
+    # The 65th request must never receive a response, even when well-formed.
+    burst = [handshake()] + [ping(f"burst_{index}") for index in range(63)]
+    overflow = scan_request("overflow_scan")
+    run = self.run_host(b"".join(frame(request) for request in burst + [overflow]))
+    self.assertNotEqual(run.returncode, 0)
+    self.assertEqual(run.stderr, b"")
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 64)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual([item["requestId"] for item in replies[1:]],
+                     [f"burst_{index}" for index in range(63)])
+    self.assertTrue(all(item["payload"].get("scanAvailable") is False
+                        for item in replies))
+    self.assertTrue(all(item["requestId"] != "overflow_scan" for item in replies))
+
+  def test_request_rate_budget_expires_after_sliding_window(self):
+    # Exercise the compiled host with the *same* process and handshake.
+    # A temporary output file avoids unrelated stdout pipe backpressure.
+    with tempfile.TemporaryFile() as output:
+      with subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
+                            stdout=output, stderr=subprocess.PIPE) as process:
+        first = [handshake()] + [ping(f"early_{i}") for i in range(63)]
+        process.stdin.write(b"".join(frame(message) for message in first))
+        process.stdin.flush()
+        time.sleep(2.2)
+        process.stdin.write(frame(health("after_window")))
+        process.stdin.close()
+        process.stdin = None
+        self.assertEqual(process.wait(timeout=6), 0)
+        self.assertEqual(process.stderr.read(), b"")
+        output.seek(0)
+        replies = responses(output.read())
+        self.assertEqual(len(replies), 65)
+        self.assert_handshake_response(replies[0])
+        self.assertEqual(replies[-1], health_reply("after_window"))
+
+  def test_new_host_process_has_independent_request_rate_budget(self):
+    # Exhaustion stops the offending stream; new processes start anew.
+    burst = b"".join(frame(ping(f"ping_{i}")) for i in range(65))
+    for _ in range(2):
+      exhausted = self.run_host(burst)
+      self.assertNotEqual(exhausted.returncode, 0)
+      self.assertEqual(len(responses(exhausted.stdout)), 64)
+      self.assertEqual(exhausted.stderr, b"")
+    recovered = self.run_host(frame(handshake()) + frame(health()))
+    self.assertEqual(recovered.returncode, 0)
+    self.assertEqual(responses(recovered.stdout)[1], health_reply())
+
   def test_liveness_is_explicitly_transport_only(self):
     result = self.run_host(frame(ping()))
     self.assertEqual(result.returncode, 0)

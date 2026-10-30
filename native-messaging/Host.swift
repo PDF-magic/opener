@@ -7,6 +7,23 @@ import Glibc
 #endif
 
 
+// Bound request volume before JSON parsing and response generation. Every
+// complete frame consumes a slot, including ping and handshake requests.
+// A burst over budget terminates only this process without a protocol reply.
+private struct NativeRequestRateLimiter {
+  static let maximumRequests = 64
+  static let windowSeconds: TimeInterval = 2
+  private var acceptedAt: [TimeInterval] = []
+
+  mutating func allow(now: TimeInterval) -> Bool {
+    // A bounded sliding window prevents edge-of-window double bursts.
+    acceptedAt.removeAll { now - $0 >= Self.windowSeconds }
+    guard acceptedAt.count < Self.maximumRequests else { return false }
+    acceptedAt.append(now)
+    return true
+  }
+}
+
 // A standalone, transport-only WebExtensions native messaging process.
 // It must never scan, open, or authorize a document.
 private enum HostError: Error {
@@ -301,10 +318,14 @@ struct PDFMagicNativeMessagingHost {
     do {
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
+      var rateLimiter = NativeRequestRateLimiter()
       while true {
         let requestDeadline = ProcessInfo.processInfo.systemUptime +
           requestTimeoutSeconds
         guard let request = try readFrame(requestDeadline: requestDeadline) else { break }
+        guard rateLimiter.allow(now: ProcessInfo.processInfo.systemUptime) else {
+          throw HostError.invalidMessage
+        }
         let reply = try response(for: request, handshakeComplete: &handshakeComplete)
         // Expiration is fatal even if a future handler performs slow work.
         guard ProcessInfo.processInfo.systemUptime < requestDeadline else {
