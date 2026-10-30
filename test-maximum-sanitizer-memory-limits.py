@@ -189,8 +189,10 @@ raise SystemExit(3)
         verified = subprocess.CompletedProcess(
             ("ps",), 0, b"101 101 Z+\n202 202 S+\n", None
         )
+        # A verified live leader is not an exit; missing or malformed
+        # identity remains an error, never a clean shutdown.
         untrusted = (b"102 101 Z+\n", b"101 202 Z+\n",
-                     b"101 101 S+\n", b"invalid-data\n")
+                     b"invalid-data\n")
         with patch.object(sanitizer.sys, "platform", "darwin"), \
                 patch.object(sanitizer.time, "sleep"), patch.object(
                     sanitizer.subprocess, "run",
@@ -211,6 +213,16 @@ raise SystemExit(3)
                     ):
                 with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                     sanitizer._process_has_exited_without_reaping(process)
+        # The fallback may identify a still-running group leader. This must
+        # return False, not treat the process as exited or permit cleanup.
+        live = subprocess.CompletedProcess(("ps",), 0, b"101 101 S+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), patch.object(
+                    sanitizer.subprocess, "run",
+                    side_effect=(empty, empty, empty, empty, live),
+                ) as probe:
+            self.assertIs(sanitizer._process_has_exited_without_reaping(process), False)
+            self.assertEqual(probe.call_count, 5)
         self.assertIsNone(process.returncode)
 
     def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):

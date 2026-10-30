@@ -203,6 +203,8 @@ jobs:
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: maximum / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
         run: python3 test-maximum-temporary-output.py -v
+      - name: maximum / maximum-overwrite-warning / Require explicit consent before replacing user PDF destinations
+        run: python3 test-maximum-overwrite-warning.py -v
       - name: maximum / maximum-sanitized-copy / Install strict PDF validation dependency
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0' 'cryptography==46.0.4'
       - name: maximum / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
