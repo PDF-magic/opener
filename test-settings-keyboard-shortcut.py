@@ -29,9 +29,14 @@ class SettingsShortcutTests(unittest.TestCase):
                      "Both main window and Settings command use the same view")
     self.assertIn("struct MainPreferencesView: View", view)
     self.assertIn("NavigationSplitView", view)
+    # The only incoming URL may raise this same preferences window. It is
+    # never a PDF document handler, scanner shortcut, or arbitrary URL launcher.
+    self.assertEqual(source.count(".onOpenURL { url in"), 1)
+    self.assertIn('guard url.absoluteString == "pdfmagicopener://preferences" else { return }',
+                  source)
     for forbidden in (
       "CommandGroup(replacing: .appSettings)", "NSEvent", "NSWorkspace", "openURL(",
-      "onOpenURL", "Process(", "clamscan", "target-app.txt",
+      "Process(", "clamscan", "target-app.txt",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
