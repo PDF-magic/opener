@@ -335,6 +335,30 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
 
 
 
+def _darwin_verified_zombie_cleanup(
+    process, *, exited_check=None, group_check=None,
+) -> bool:
+    """Retry transient Darwin process-table gaps, never unknown or live groups.
+
+    Retain the unreaped leader's PID throughout four bounded observations.
+    Each success must independently prove leader exit and a complete,
+    zombie-only process-group snapshot. No unverified status is success.
+    """
+    if exited_check is None:
+        exited_check = _process_has_exited_without_reaping
+    if group_check is None:
+        group_check = _darwin_group_has_only_zombies
+    for attempt in range(4):
+        try:
+            if exited_check(process) and group_check(process.pid):
+                return True
+        except SanitizerProcessExecutionError:
+            pass
+        if attempt < 3:
+            time.sleep(0.05)
+    return False
+
+
 def _stop_process_group(process):
     """Kill the whole isolated process group, including surviving descendants."""
     try:
@@ -349,12 +373,8 @@ def _stop_process_group(process):
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
     except OSError as error:
         if error.errno == errno.EPERM and sys.platform == "darwin":
-            try:
-                if (_process_has_exited_without_reaping(process)
-                        and _darwin_group_has_only_zombies(process.pid)):
-                    return
-            except SanitizerProcessExecutionError:
-                pass
+            if _darwin_verified_zombie_cleanup(process):
+                return
         try:
             process.kill()
         except (ProcessLookupError, OSError):

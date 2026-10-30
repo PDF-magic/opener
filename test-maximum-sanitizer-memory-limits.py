@@ -247,6 +247,7 @@ raise SystemExit(3)
             ("ps",), 0, b"102 101 Z+\n", None
         )
         with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), \
                 patch.object(sanitizer.os, "killpg",
                              side_effect=PermissionError(errno.EPERM, "denied")), \
                 patch.object(process, "kill", return_value=None, create=True) as kill:
@@ -258,10 +259,10 @@ raise SystemExit(3)
             for group in (living, missing_leader):
                 with self.subTest(group=group.stdout), \
                         patch.object(sanitizer.subprocess, "run",
-                                     side_effect=(leader, group)) as probe:
+                                     side_effect=(leader, group) * 4) as probe:
                     with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                         sanitizer._stop_process_group(process)
-                    self.assertEqual(probe.call_count, 2)
+                    self.assertEqual(probe.call_count, 8)
                     kill.assert_called()
                     kill.reset_mock()
 
