@@ -17,6 +17,23 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  @State private var scanOtherSupportedFiles = false
+  @State private var scanOtherFilesStatus: String?
+
+  private func loadOtherFilePreference() {
+    scanOtherSupportedFiles = ScanOtherSupportedFilesPreference.isEnabled()
+  }
+
+  private func updateOtherFilePreference(_ enabled: Bool) {
+    if ScanOtherSupportedFilesPreference.save(enabled) {
+      scanOtherSupportedFiles = enabled
+      scanOtherFilesStatus = "Download scan scope preference saved."
+    } else {
+      scanOtherSupportedFiles = ScanOtherSupportedFilesPreference.isEnabled()
+      scanOtherFilesStatus = "Could not save this preference. Your previous choice is unchanged."
+    }
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -45,14 +62,30 @@ struct BrowsersSettingsView: View {
         }
         .accessibilityIdentifier("preferredBrowserSection")
 
-        GroupBox("Additional applications") {
-          browserSettingDetail(
-            "Custom choices",
-            "Manually added applications remain managed by the existing browser preference tools. This page does not overwrite those customizations.",
-            helpText: "A custom application is a saved destination choice, not a security exception; the installed opener still verifies files before handoff."
-          )
+        GroupBox("Download scanning") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Scan Other Supported Files", isOn: Binding(
+              get: { scanOtherSupportedFiles },
+              set: { updateOtherFilePreference($0) }
+            ))
+            .accessibilityIdentifier("scanOtherSupportedFilesToggle")
+
+            Text("Opt in to including non-PDF files supported by the native scanner if a verified browser download integration becomes available. This does not enable download monitoring, request browser permissions, change PDF scanning, or bypass safety checks. Non-PDF browser download scanning is not currently connected.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let scanOtherFilesStatus {
+              Text(scanOtherFilesStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("scanOtherSupportedFilesStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
         }
-        .accessibilityIdentifier("customBrowserSection")
+        .accessibilityIdentifier("downloadScanningSettingsSection")
+        .onAppear(perform: loadOtherFilePreference)
 
         GroupBox("Browser downloads") {
           VStack(alignment: .leading, spacing: 8) {
@@ -77,6 +110,15 @@ struct BrowsersSettingsView: View {
           .padding(8)
         }
         .accessibilityIdentifier("browserDownloadsSection")
+
+        GroupBox("Additional applications") {
+          browserSettingDetail(
+            "Custom choices",
+            "Manually added applications remain managed by the existing browser preference tools. This page does not overwrite those customizations.",
+            helpText: "A custom application is a saved destination choice, not a security exception; the installed opener still verifies files before handoff."
+          )
+        }
+        .accessibilityIdentifier("customBrowserSection")
       }
       .padding(28)
       .frame(maxWidth: .infinity, alignment: .leading)

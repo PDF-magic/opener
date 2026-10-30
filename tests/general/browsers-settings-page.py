@@ -50,6 +50,7 @@ class BrowsersSettingsPageTests(unittest.TestCase):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
 
+
   def test_browser_download_monitoring_toggle_is_explicit_and_inert(self):
     source = BROWSERS.read_text(encoding="utf-8")
     store = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text(
