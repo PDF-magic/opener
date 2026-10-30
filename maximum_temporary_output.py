@@ -25,8 +25,8 @@ _FILE_SUFFIX = ".pdf"
 # One private, application-owned namespace. Never sweep the shared system temp.
 _PRIVATE_ROOT = Path(tempfile.gettempdir()) / f"pdf-magic-owned-copies-{os.geteuid()}"
 _ABANDONED_AFTER_SECONDS = 7 * 24 * 60 * 60
-_ORPHAN_DIRECTORY = re.compile(r"pdf-magic-safe-copy-([1-9][0-9]*)-[a-z0-9_]{8}\\Z")
-_OWNED_FILENAME = re.compile(r"safe-copy-[0-9a-f]{32}\\.pdf\\Z")
+_ORPHAN_DIRECTORY = re.compile(r"pdf-magic-safe-copy-([1-9][0-9]*)-[a-z0-9_]{8}")
+_OWNED_FILENAME = re.compile(r"safe-copy-[0-9a-f]{32}\.pdf")
 _LEASES = WeakKeyDictionary()
 _RELEASED = WeakSet()
 _LOCK = threading.RLock()
