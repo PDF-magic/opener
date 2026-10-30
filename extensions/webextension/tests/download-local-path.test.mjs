@@ -15,7 +15,8 @@ function eventSource() {
 
 const completed = (id = 7) => Object.freeze({ kind: "completed", id });
 
-function fixture(filename = "/Users/alice/Downloads/document.pdf") {
+function fixture(...args) {
+  const filename = args.length === 0 ? "/Users/alice/Downloads/document.pdf" : args[0];
   const searches = [];
   const checks = [];
   const onRemoved = eventSource();
