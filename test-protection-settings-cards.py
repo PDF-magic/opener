@@ -87,6 +87,42 @@ class ProtectionCardsTests(unittest.TestCase):
     stored = (ROOT / "test-selected-protection-profile.swift").read_text(encoding="utf-8")
     self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn", stored)
 
+  def test_maximum_preview_explains_capability_loss_without_enabling_it(self):
+    # A visible, labelled explanation belongs only to the Maximum preview.
+    tier = self.source.split("private enum PlannedProtectionTier:", 1)[1].split(
+        "struct ProtectionSettingsView: View {", 1)[0]
+    self.assertIn("var capabilityLossExplanation: String?", tier)
+    self.assertIn("guard self == .maximum else { return nil }", tier)
+    notice = tier.split("var capabilityLossExplanation: String?", 1)[1].split(
+        "\\n  }", 1)[0]
+    for phrase in (
+        "flattened page images", "selectable and searchable text",
+        "clickable links", "interactive form fields",
+        "annotations and comments", "embedded attachments",
+        "document metadata", "scripts or other active PDF actions",
+        "Digital signatures may be invalidated", "visual details can change",
+        "OCR is not restored", "untouched original",
+        "not a malware-clean verdict", "separate fresh scan",
+    ):
+      with self.subTest(phrase=phrase):
+        self.assertIn(phrase, notice)
+
+    self.assertIn(
+        "if let capabilityLoss = selectedPreview.capabilityLossExplanation {",
+        self.source)
+    self.assertEqual(
+        self.source.count("if let capabilityLoss = selectedPreview.capabilityLossExplanation {"), 1)
+    self.assertIn('Text("PDF capabilities that may be removed")', self.source)
+    self.assertIn("Text(capabilityLoss)", self.source)
+    self.assertIn('.accessibilityIdentifier("maximumCapabilityLossExplanation")',
+                  self.source)
+    self.assertIn(".accessibilityAddTraits(.isHeader)", self.source)
+    self.assertIn(".fixedSize(horizontal: false, vertical: true)", self.source)
+    # Existing scanner CI and the native macOS build exercise the new display.
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+    self.assertIn("macos-build:", ci)
+
   def test_existing_preferences_and_native_target_remain_wired(self):
     nav = NAVIGATION.read_text(encoding="utf-8")
     project = PROJECT.read_text(encoding="utf-8")
