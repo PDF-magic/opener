@@ -10,9 +10,12 @@ export const EXTENSION_CONFIG_VERSION = 1;
 
 // Every capability that could observe a download, request native processing,
 // open a file, or display an unsolicited notification defaults to disabled.
+// scanPdfsOnly is a passive candidate-scope preference, not a capability.
 // A setting alone NEVER overrides the installed app's scanner safety gates.
 export const DEFAULT_EXTENSION_CONFIG = Object.freeze({
   downloadMonitoringEnabled: false,
+  // Scope-only: true never activates disabled scanning capabilities.
+  scanPdfsOnly: true,
   automaticScanRequestsEnabled: false,
   nativeMessagingEnabled: false,
   automaticOpenEnabled: false,

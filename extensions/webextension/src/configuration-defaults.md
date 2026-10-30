@@ -8,6 +8,7 @@ the baseline or another caller's settings. Current version: `1`.
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `downloadMonitoringEnabled` | `false` | Do not register download monitoring automatically |
+| `scanPdfsOnly` | `true` | Passive PDF-only candidate-scope preference; does not turn scanning on |
 | `automaticScanRequestsEnabled` | `false` | Do not submit automatic download scan requests |
 | `nativeMessagingEnabled` | `false` | Do not connect to a native messaging host automatically |
 | `automaticOpenEnabled` | `false` | Do not launch PDFs automatically |
@@ -30,3 +31,7 @@ CI discovers `tests/configuration-defaults.test.mjs` through the existing
 WebExtensions `npm test` command inside the repository's `scanner-tests`
 workflow. Tests enforce safe defaults, immutability, fresh copies, unchanged
 browser permissions and the absence of storage/browser/native side effects.
+
+The Scan PDFs Only checkbox and its passive candidate filter are documented in
+[`download-scan-pdfs-only.md`](download-scan-pdfs-only.md). No existing
+configuration is rewritten on import or by the default snapshot.
