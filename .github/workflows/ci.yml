@@ -323,8 +323,8 @@ jobs:
           npm run package:firefox
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
-      - name: Audit distribution-channel package and signing prerequisites
-        run: python3 test-extension-distribution.py -v
+      - name: Verify versioned native JSON message contract
+        run: python3 test-native-message-format.py -v
       - name: Upload validated Chrome extension package
         uses: actions/upload-artifact@v4
         with:
@@ -342,6 +342,7 @@ jobs:
       - name: Verify sandboxed Safari Web Extension target configuration
         run: |
           python3 test-safari-extension-target.py -v
+          python3 test-safari-extension-permissions.py -v
           python3 test-browser-preferences-deep-link.py -v
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
@@ -594,6 +595,7 @@ jobs:
       - name: Verify built Safari extension is embedded and permission-free
         run: |
           python3 test-safari-extension-target.py -v
+          python3 test-safari-extension-permissions.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           python3 test-safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           python3 test-browser-preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
       - name: Exercise SwiftUI preferences at increased text sizes

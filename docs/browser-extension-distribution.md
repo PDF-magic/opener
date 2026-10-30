@@ -44,9 +44,8 @@ python3 test-safari-extension-target.py -v
 The audit checks the **actual** generated ZIP entries and byte-for-byte built
 assets, both target manifests, the Firefox development-only ID, the embedded
 Safari target, its minimal sandbox entitlement, and the continued unsigned
-macOS CI build. Its checks are wired into required PR CI before artifacts are
-uploaded. Existing browser runtime tests and macOS embedded-bundle checks
-remain separate. Neither tests nor unsigned artifacts prove publisher identity,
+macOS CI build. Its checks run in a dedicated PR CI job. Existing browser package, runtime,
+artifact-upload and macOS embedded-bundle checks remain separate. Neither tests nor unsigned artifacts prove publisher identity,
 store acceptance, Apple code signatures, notarization, or end-user installation.
 Those require approved accounts, human review, and production-channel checks
 **outside** this source-only task. Do not add credentials to the repository or

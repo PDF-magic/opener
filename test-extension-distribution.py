@@ -107,14 +107,15 @@ class DistributionReadinessTests(unittest.TestCase):
       with self.subTest(required=required):
         self.assertIn(required, doc)
 
-  def test_ci_audits_both_packages_before_upload(self):
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    check = "python3 test-extension-distribution.py -v"
-    self.assertEqual(ci.count(check), 1)
-    self.assertLess(ci.index("npm run package:chrome"), ci.index(check))
-    self.assertLess(ci.index("npm run package:firefox"), ci.index(check))
-    self.assertLess(ci.index(check), ci.index("Upload validated Chrome extension package"))
-    self.assertLess(ci.index(check), ci.index("Upload validated unsigned Firefox extension package"))
+  def test_dedicated_ci_audits_both_packages(self):
+    workflow = (ROOT / ".github" / "workflows" / "distribution-readiness.yml").read_text(encoding="utf-8")
+    for trigger in ("pull_request:", "merge_group:", "push:"):
+      self.assertIn(trigger, workflow)
+    self.assertLess(workflow.index("npm run package:chrome"), workflow.index("python3 test-extension-distribution.py -v"))
+    self.assertLess(workflow.index("npm run package:firefox"), workflow.index("python3 test-extension-distribution.py -v"))
+    self.assertIn("python3 test-safari-extension-target.py -v", workflow)
+    self.assertNotIn("CODE_SIGNING_ALLOWED=YES", workflow)
+
 
 
 if __name__ == "__main__":
