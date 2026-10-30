@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "currentManifestRequirements": {
+    "permissions": [],
+    "host_permissions": [],
+    "optional_permissions": [],
+    "optional_host_permissions": []
+  },
+  "futureFeaturesOnly": {
+    "downloadEventMonitoring": ["downloads"],
+    "nativeAppMessaging": ["nativeMessaging"],
+    "userNotifications": ["notifications"],
+    "persistentSettings": ["storage"]
+  }
+}
