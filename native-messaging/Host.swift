@@ -38,6 +38,13 @@ struct PDFMagicNativeMessagingHost {
   private static let idleTimeoutSeconds: TimeInterval = 10
   private static let frameTimeoutSeconds: TimeInterval = 5
   private static let responseTimeoutSeconds: TimeInterval = 5
+  // Keep a separate allowlist for native message operations. A new switch
+  // handler is unusable until its topic passes an explicit security review.
+  // No message topic can select an executable, process or shell.
+  private static let approvedTopics: Set<String> = [
+    "host.handshake", "host.health", "host.ping",
+    "scan.cancel", "scan.request", "scan.result", "scan.status"
+  ]
   private static let expectedFields: Set<String> = [
     "version", "kind", "topic", "requestId", "payload"
   ]
@@ -122,6 +129,7 @@ struct PDFMagicNativeMessagingHost {
           version.intValue == 1 && version.doubleValue == 1,
           let kind = message["kind"] as? String, kind == "request",
           let topic = message["topic"] as? String,
+          approvedTopics.contains(topic),
           let requestId = message["requestId"] as? String,
           isValidRequestId(requestId) else {
       throw HostError.invalidMessage

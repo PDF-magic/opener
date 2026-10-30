@@ -76,6 +76,23 @@ test("refuses nonexistent, nonexecutable, directory, relative and symlink host p
   await assert.rejects(firefoxHostManifest(symlinkPath), /symlink/);
 });
 
+test("rejects unsafe host paths and symlinked home ancestors", async t => {
+  const { home, hostPath } = await fixture(t);
+  const parent = join(home, "real-folder");
+  await mkdir(parent);
+  const nested = join(parent, "host");
+  await writeFile(nested, "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  const alias = join(home, "alias");
+  await symlink(parent, alias, "dir");
+  for (const path of [join(alias, "host"), home + "/../host",
+                      home + "/bad\nhost", home + "/bad\u0000host"]) {
+    await assert.rejects(firefoxHostManifest(path));
+  }
+  await assert.rejects(registerFirefoxHost({
+    hostPath, home: alias, platform: "linux", development: true
+  }), /symlink/);
+});
+
 test("refuses a symlinked registration directory without changing its target", async (t) => {
   const { home, hostPath } = await fixture(t);
   const folder = firefoxRegistrationPath({ home, platform: "linux" });
