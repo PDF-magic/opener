@@ -437,6 +437,24 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("pymupdf==2.0", ci)
         self.assertTrue((ROOT / "maximum_render_filesystem_probe.py").is_file())
 
+    def test_framework_python_launcher_uses_real_trusted_interpreter(self):
+        version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        framework_binary = (
+            f"/Library/Frameworks/Python.framework/Versions/{version}/"
+            "Resources/Python.app/Contents/MacOS/Python"
+        )
+        with patch.object(renderer.sys, "_base_executable", framework_binary, create=True):
+            self.assertEqual(renderer._sandbox_python_executable(), framework_binary)
+        for candidate in (
+            framework_binary.replace(f"/Versions/{version}/", "/Versions/9.9/"),
+            "/tmp/Python.app/Contents/MacOS/Python",
+            None,
+        ):
+            with self.subTest(candidate=candidate), patch.object(
+                renderer.sys, "_base_executable", candidate, create=True
+            ):
+                self.assertEqual(renderer._sandbox_python_executable(), sys.executable)
+
     def test_filesystem_policy_is_deny_by_default_and_read_only(self):
         profile = renderer.RENDERER_FILESYSTEM_PROFILE
         self.assertIn("(deny default)", profile)
