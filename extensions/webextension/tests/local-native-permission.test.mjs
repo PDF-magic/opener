@@ -34,7 +34,8 @@ test("the current inactive extension does not declare native messaging", async (
   for (const deployed of [source, built, firefox]) {
     assert.deepEqual(deployed.permissions, []);
     assert.deepEqual(deployed.host_permissions, []);
-    assert.equal(deployed.optional_permissions, undefined);
+    assert.deepEqual(deployed.optional_permissions, ["downloads"]);
+    assert.equal(deployed.optional_permissions.includes("nativeMessaging"), false);
     const { permissionsApi, calls } = mockApi();
     assert.deepEqual(await request({ manifest: deployed, permissionsApi }), {
       granted: false, reason: "optional-permission-unavailable"

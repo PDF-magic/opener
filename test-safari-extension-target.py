@@ -39,6 +39,8 @@ def verify_built_app(app: Path) -> None:
   assert bundled.read_bytes() == SHARED.read_bytes(), "Safari manifest diverges from shared source"
   manifest = json.loads(bundled.read_text(encoding="utf-8"))
   assert manifest["permissions"] == [] and manifest["host_permissions"] == []
+  assert manifest["optional_permissions"] == ["downloads"]
+  assert "optional_host_permissions" not in manifest
   assert manifest["background"] == {"service_worker": "background.js", "type": "module"}
   worker = extension / "Contents" / "Resources" / "background.js"
   assert worker.is_file(), f"Missing bundled inert background entry: {worker}"
@@ -126,6 +128,8 @@ class SafariExtensionTargetTests(unittest.TestCase):
     self.assertEqual(manifest["name"], "PDF Magic Opener")
     self.assertEqual(manifest["permissions"], [])
     self.assertEqual(manifest["host_permissions"], [])
+    self.assertEqual(manifest["optional_permissions"], ["downloads"])
+    self.assertNotIn("optional_host_permissions", manifest)
     self.assertEqual(manifest["background"], {
       "service_worker": "background.js", "type": "module"
     })
@@ -146,7 +150,7 @@ class SafariExtensionTargetTests(unittest.TestCase):
         self.assertEqual(path, f"icons/icon-{size}.png")
         self.assertTrue((ICONS / f"icon-{size}.png").is_file())
     for forbidden in ("content_scripts", "externally_connectable",
-                      "web_accessible_resources", "optional_permissions"):
+                      "web_accessible_resources"):
       self.assertNotIn(forbidden, manifest)
 
   def test_ci_builds_and_inspects_embedded_extension(self):

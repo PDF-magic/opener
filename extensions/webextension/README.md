@@ -57,3 +57,15 @@ request permission to launch an external app. A missing app cannot be launched.
 The extension itself cannot scan, open or approve PDFs, and no website, native
 messaging, tab or browser permission is required. See
 [`preferences-action.md`](preferences-action.md).
+
+## Conditional download monitoring permission (opener-0583)
+
+The manifest declares only `optional_permissions: ["downloads"]`, not a
+required grant. The pure `src/download-permission.js` helper may request that
+single permission **only** when a trusted user-initiated monitoring action
+passes both explicit gating flags. Denied, rejected or unsupported requests
+return false and do not register event listeners. There is no automatic
+request on installation, extension startup, toolbar open or import; the
+background script remains inert, and the existing disabled configuration
+baseline is unchanged. This permission never enables native messaging,
+PDF scanning, content access or automatic opening.

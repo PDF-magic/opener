@@ -10,11 +10,14 @@ const permissionFields = [
   "permissions", "host_permissions", "optional_permissions", "optional_host_permissions"
 ];
 
-test("permission audit identifies zero current grants and future-only minimal APIs", async () => {
+test("permission audit declares only an optional download grant and no required API access", async () => {
   const audit = await load("permissions-audit.json");
   assert.deepEqual(audit, {
     schemaVersion: 1,
-    currentManifestRequirements: Object.fromEntries(permissionFields.map((key) => [key, []])),
+    currentManifestRequirements: {
+      permissions: [], host_permissions: [], optional_permissions: ["downloads"],
+      optional_host_permissions: []
+    },
     futureFeaturesOnly: {
       downloadEventMonitoring: ["downloads"],
       nativeAppMessaging: ["nativeMessaging"],
@@ -32,9 +35,9 @@ test("source and both built WebExtensions manifests request no browser or host a
     for (const field of ["permissions", "host_permissions"]) {
       assert.deepEqual(manifest[field], audit.currentManifestRequirements[field], `${path}: ${field}`);
     }
-    for (const field of ["optional_permissions", "optional_host_permissions"]) {
-      assert.equal(Object.hasOwn(manifest, field), false, `${path}: ${field} not requested`);
-    }
+    assert.deepEqual(manifest.optional_permissions, ["downloads"], `${path}: only conditional download access`);
+    assert.equal(Object.hasOwn(manifest, "optional_host_permissions"), false,
+      `${path}: optional host access must not be declared`);
     for (const privileged of [
       "content_scripts", "externally_connectable", "web_accessible_resources",
       "devtools_page", "content_security_policy"
@@ -50,6 +53,7 @@ test("Firefox declares no data collection and preserves the same permissions", a
   const firefox = await load("dist/firefox/manifest.json");
   assert.deepEqual(firefox.permissions, chromium.permissions);
   assert.deepEqual(firefox.host_permissions, chromium.host_permissions);
+  assert.deepEqual(firefox.optional_permissions, chromium.optional_permissions);
   assert.deepEqual(firefox.browser_specific_settings.gecko.data_collection_permissions, {
     required: ["none"]
   });
