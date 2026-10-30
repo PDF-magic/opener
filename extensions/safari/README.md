@@ -34,3 +34,12 @@ The fixed script registers no listeners or messaging, reads no PDFs, and has
 no browser privileges or native scanner access. Its bundle presence and exact
 source bytes are verified by the Safari CI checks. This scaffolding does not
 make the extension functional or grant a PDF opening verdict.
+
+## Inactive toolbar popup (opener-0576)
+
+The toolbar opens a local, read-only **Not active** panel supplied by the
+shared `src/popup.html` and `src/popup.css`. Safari's app-extension Resources
+bundle packages both files beside the shared manifest. Xcode and portable
+CI check the exact source bytes; no scripts, browser APIs, remote resources,
+scanner commands or native messaging are permitted. This popup does not
+activate the browser integration or change the user's selected PDF handler.
