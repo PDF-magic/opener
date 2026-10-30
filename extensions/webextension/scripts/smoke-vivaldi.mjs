@@ -1,6 +1,8 @@
-// Real Vivaldi Stable extension smoke (opener-0602). No real PDFs, native
-// scanner, personal browser profile, permission requests or browsing data.
+// Real Vivaldi Stable extension smoke (opener-0602).
+// Launch the official browser directly, rather than via Playwright's generic
+// Chromium launch flags, in a disposable isolated CI-only profile.
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -11,11 +13,14 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const extensionPath = resolve(root, "dist");
 const executablePath = process.env.VIVALDI_BROWSER_PATH || "/usr/bin/vivaldi-stable";
 const profile = await mkdtemp(join(tmpdir(), "pdf-magic-vivaldi-"));
-let context;
+const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+let browser;
+let processHandle;
+let processError = "";
 try {
   const source = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
   const packaged = JSON.parse(await readFile(join(extensionPath, "manifest.json"), "utf8"));
-  assert.deepEqual(packaged, source, "Vivaldi must load the reviewed Chromium manifest");
+  assert.deepEqual(packaged, source);
   assert.equal(packaged.manifest_version, 3);
   assert.equal(packaged.incognito, "not_allowed");
   assert.deepEqual(packaged.permissions, []);
@@ -25,45 +30,53 @@ try {
   assert.deepEqual(packaged.background,
     { service_worker: "background.js", type: "module" });
 
-  // Target the actual installed Vivaldi binary, NOT bundled Chromium.
-  // Xvfb permits headed extension loading even when headless flags change.
-  const launchOptions = {
-    executablePath,
-    headless: false,
-    // Playwright disables all extensions by default. Vivaldi's own UI and
-    // the unpacked MV3 worker both require this single flag to be omitted.
-    ignoreDefaultArgs: ["--disable-extensions"],
-    args: [
-      "--disable-extensions-except=" + extensionPath,
-      "--load-extension=" + extensionPath,
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-dev-shm-usage"
-    ],
-    timeout: 45000
-  };
-  context = await chromium.launchPersistentContext(profile, launchOptions);
+  // Vivaldi is not stock Chromium: Chromium launch defaults can disable its
+  // extension engine or crash the Vivaldi UI. Start the actual binary with
+  // only the arguments this isolated smoke test needs, then attach via CDP.
+  // The debug port listens on loopback only; nothing is exposed externally.
+  processHandle = spawn(executablePath, [
+    "--user-data-dir=" + profile,
+    "--remote-debugging-port=0",
+    "--remote-debugging-address=127.0.0.1",
+    "--disable-extensions-except=" + extensionPath,
+    "--load-extension=" + extensionPath,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--no-sandbox",
+    "about:blank"
+  ], { stdio: ["ignore", "ignore", "pipe"] });
+  processHandle.on("error", (error) => { processError = error.message; });
+  processHandle.stderr.on("data", (data) => {
+    processError = (processError + data.toString("utf8")).slice(-5000);
+  });
 
-  // Vivaldi may require Developer Mode before accepting local unpacked
-  // extensions. Change it only in the temporary test profile.
-  const manager = await context.newPage();
-  await manager.goto("vivaldi://extensions", { waitUntil: "domcontentloaded" });
-  const developerMode = manager.locator("#devMode");
-  console.log("Vivaldi extension manager:", manager.url(),
-    "developer mode toggle:", await developerMode.count(),
-    "extension workers:", context.serviceWorkers().length);
-  if (await developerMode.count() !== 1) {
-    throw new Error("Vivaldi's extension Developer Mode toggle is unavailable");
+  let port;
+  for (let i = 0; i < 160; i++) {
+    if (processHandle.exitCode !== null || processHandle.signalCode !== null) {
+      throw new Error("Vivaldi exited before debugging started: " +
+        processHandle.exitCode + " / " + processHandle.signalCode +
+        " / " + processError.slice(-1500));
+    }
+    try {
+      const data = await readFile(join(profile, "DevToolsActivePort"), "utf8");
+      const candidate = Number(data.split("\n")[0]);
+      if (Number.isInteger(candidate) && candidate > 0 && candidate < 65536) {
+        port = candidate;
+        break;
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    await pause(200);
   }
-  const wasEnabled = await developerMode.evaluate((element) =>
-    element.checked === true || element.hasAttribute("checked") ||
-    element.getAttribute("aria-pressed") === "true");
-  if (!wasEnabled) {
-    await developerMode.click();
-    await context.close();
-    context = await chromium.launchPersistentContext(profile, launchOptions);
-  }
+  if (!port) throw new Error("Vivaldi did not expose its localhost debug port");
+  browser = await chromium.connectOverCDP("http://127.0.0.1:" + port,
+    { timeout: 20000 });
+  const context = browser.contexts()[0];
+  assert.ok(context, "Vivaldi must provide a real persistent profile");
 
   const worker = context.serviceWorkers().find((entry) =>
     entry.url().startsWith("chrome-extension://")) ??
@@ -73,7 +86,7 @@ try {
     });
   const extensionId = new URL(worker.url()).host;
   assert.match(extensionId, /^[a-p]{32}$/,
-    "Vivaldi must actually register the Manifest V3 extension worker");
+    "Vivaldi must register the unpacked Manifest V3 extension worker");
 
   const effective = await worker.evaluate(() => chrome.runtime.getManifest());
   assert.equal(effective.name, "PDF Magic Opener");
@@ -97,8 +110,7 @@ try {
   assert.match(await popup.locator("#availability-title").innerText(),
     /Browser integration is not enabled/);
   const scanButton = popup.locator("#scanPDF");
-  assert.equal(await scanButton.isDisabled(), true,
-    "Vivaldi must not enable an unverified scan action");
+  assert.equal(await scanButton.isDisabled(), true);
   assert.equal(await scanButton.getAttribute("aria-disabled"), "true");
   assert.equal(await scanButton.getAttribute("aria-describedby"), "scanPDFUnavailable");
   assert.match(await popup.locator("#scanPDFUnavailable").innerText(),
@@ -111,16 +123,26 @@ try {
     [...document.styleSheets].some((sheet) => sheet.href?.endsWith("/popup.css"))), true);
   assert.deepEqual(javascriptErrors, []);
 
-  // An optional manifest permission is NOT a silent effective grant.
+  // The optional download permission must not be silently granted.
   const downloadsGranted = await worker.evaluate(async () =>
     chrome.permissions.contains({ permissions: ["downloads"] })
   );
   assert.equal(downloadsGranted, false,
-    "Vivaldi must not grant optional downloads access at installation");
-
-  console.log("Vivaldi Stable smoke passed: real MV3 worker, inert popup, no grants.");
+    "Vivaldi must not silently grant optional downloads access");
+  console.log("Vivaldi Stable smoke passed: real MV3 worker, inactive popup, no grants.");
 } finally {
-  try { await context?.close(); } finally {
+  try {
+    await browser?.close();
+  } finally {
+    if (processHandle && processHandle.exitCode === null &&
+        processHandle.signalCode === null) {
+      processHandle.kill("SIGTERM");
+      for (let i = 0; i < 20 && processHandle.exitCode === null &&
+           processHandle.signalCode === null; i++) await pause(100);
+      if (processHandle.exitCode === null && processHandle.signalCode === null) {
+        processHandle.kill("SIGKILL");
+      }
+    }
     await rm(profile, { recursive: true, force: true });
   }
 }

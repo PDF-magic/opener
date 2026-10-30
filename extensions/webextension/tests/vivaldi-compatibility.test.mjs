@@ -74,7 +74,7 @@ test("Vivaldi workflow uses the real installed browser with disposable profile",
   ]) assert.ok(workflow.includes(phrase), phrase);
   const smoke = await text("scripts/smoke-vivaldi.mjs");
   for (const phrase of [
-    "playwright-core", "/usr/bin/vivaldi-stable", "launchPersistentContext",
+    "playwright-core", "/usr/bin/vivaldi-stable", "connectOverCDP",
     "--load-extension=", "serviceWorkers()", "chrome.runtime.getManifest",
     "chrome.permissions.contains", "isDisabled()", "mkdtemp(", "context?.close()",
     "rm(profile"
