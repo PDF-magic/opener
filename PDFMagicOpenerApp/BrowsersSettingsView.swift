@@ -34,6 +34,20 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  @State private var showOnlyWarnings = false
+  @State private var warningPreferenceStatus: String?
+
+  private func updateShowOnlyWarnings(_ enabled: Bool) {
+    if DownloadWarningOnlyPreference.save(enabled) {
+      showOnlyWarnings = enabled
+      warningPreferenceStatus = "Warning display preference saved."
+    } else {
+      // On persistence failure, display the confirmed effective value.
+      showOnlyWarnings = DownloadWarningOnlyPreference.isEnabled()
+      warningPreferenceStatus = "Could not save the warning preference. Your previous choice is unchanged."
+    }
+  }
+
   @State private var showScanResults = true
   @State private var showScanResultsStatus: String?
 
@@ -160,6 +174,34 @@ struct BrowsersSettingsView: View {
           )
         }
         .accessibilityIdentifier("customBrowserSection")
+
+        GroupBox("Download warning display") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Show Only Warnings", isOn: Binding(
+              get: { showOnlyWarnings },
+              set: { updateShowOnlyWarnings($0) }
+            ))
+            .accessibilityIdentifier("showOnlyDownloadWarningsToggle")
+
+            Text("When verified download-scan results become available, hide optional clean and informational summaries. Malware detections, scan failures, incomplete checks, blocked results, and other security warnings must always remain visible. This does not activate browser scanning or change the Show Scan Results preference.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let warningPreferenceStatus {
+              Text(warningPreferenceStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("showOnlyDownloadWarningsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadWarningDisplaySection")
+        .onAppear {
+          // Display-only: never request downloads permission or start scanning.
+          showOnlyWarnings = DownloadWarningOnlyPreference.isEnabled()
+        }
       }
       .padding(28)
       .frame(maxWidth: .infinity, alignment: .leading)
