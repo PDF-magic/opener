@@ -33,8 +33,13 @@ class NativeQuitActionTests(unittest.TestCase):
     self.assertIn("MainPreferencesView()", app)
     self.assertIn("local.studio.pdfmagicopener.swiftui", project)
     self.assertNotIn("CFBundleDocumentTypes", project)
+    # The exact preferences URL may activate this window, but never launch
+    # documents or replace the native Quit command.
+    self.assertEqual(app.count(".onOpenURL { url in"), 1)
+    self.assertIn('guard url.absoluteString == "pdfmagicopener://preferences" else { return }',
+                  app)
     for forbidden in (
-        "Process(", "NSWorkspace", "DocumentGroup", "onOpenURL",
+        "Process(", "NSWorkspace", "DocumentGroup",
         "target-app.txt", "clamscan", "LSSetDefault",
     ):
       with self.subTest(forbidden=forbidden):

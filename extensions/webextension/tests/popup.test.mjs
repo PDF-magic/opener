@@ -23,6 +23,7 @@ test("toolbar popup is local, accessible and explicitly inactive in both builds"
   assert.match(html, /Not active/);
   assert.match(html, /cannot scan, sanitize, or open PDF files yet/);
   assert.match(html, /<meta name="viewport"/);
+  assert.match(html, /id="openPDFMagicPreferences" href="pdfmagicopener:\/\/preferences"/);
   assert.match(css, /prefers-color-scheme: dark/);
   for (const target of ["dist", "dist/firefox"]) {
     const built = JSON.parse(await readFile(join(root, target, "manifest.json"), "utf8"));
@@ -35,7 +36,7 @@ test("toolbar popup is local, accessible and explicitly inactive in both builds"
 });
 
 test("popup validator rejects active controls, remote resources and injection", () => {
-  const baseline = '<!doctype html>\n<html lang="en">\n<link rel="stylesheet" href="popup.css"><p role="status">Not active</p><p>cannot scan, sanitize, or open PDF files yet.</p></html>';
+  const baseline = '<!doctype html>\n<html lang="en">\n<link rel="stylesheet" href="popup.css"><p role="status">Not active</p><p>cannot scan, sanitize, or open PDF files yet.</p><a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a></html>';
   assert.doesNotThrow(() => validatePopupAsset("popup.html", baseline));
   for (const injected of [
     '<script>alert(1)</script>', '<button>Scan</button>', '<form></form>',

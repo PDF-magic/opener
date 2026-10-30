@@ -47,3 +47,13 @@ Future integrations must use the established ClamAV freshness and file-integrity
 gates and verified application handoff, preserve quarantine protections, and
 respect the user's selected PDF destination. No browser extension can claim
 that a PDF was verified merely because this project builds successfully.
+
+## Open native preferences (opener-0577)
+
+The inactive toolbar popup now contains one user-initiated **Open PDF Magic
+Preferences** link. It requests the local macOS `pdfmagicopener://preferences`
+URL, registered by the separate installed native preferences app. Browsers may
+request permission to launch an external app. A missing app cannot be launched.
+The extension itself cannot scan, open or approve PDFs, and no website, native
+messaging, tab or browser permission is required. See
+[`preferences-action.md`](preferences-action.md).

@@ -4,11 +4,17 @@ import { join } from "node:path";
 // This is informational UI only. Deny executable, interactive and remotely
 // loaded content until a separately reviewed browser-to-native integration.
 const assets = Object.freeze(["popup.html", "popup.css"]);
+const preferencesAction =
+  '<a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a>';
 const disallowed = /<\s*(?:script|iframe|frame|object|embed|form|input|button|a|video|audio)\b|\bon[a-z]+\s*=|https?:\/\/|javascript\s*:|data\s*:|(?:@import|url\s*\(|expression\s*\()/i;
 
 export function validatePopupAsset(name, content) {
   if (!assets.includes(name) || typeof content !== "string" ||
-      !content || content.length > 8192 || disallowed.test(content)) {
+      !content || content.length > 8192 ||
+      (name === "popup.html"
+        ? (content.split(preferencesAction).length !== 2 ||
+           disallowed.test(content.replace(preferencesAction, "")))
+        : disallowed.test(content))) {
     throw new Error("Unsafe WebExtensions popup asset");
   }
   if (name === "popup.html" && (
