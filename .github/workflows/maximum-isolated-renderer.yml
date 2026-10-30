@@ -76,7 +76,7 @@ jobs:
                   )
                   print("isolated_import_passed=" + str(
                       completed.returncode == 0 and
-                      completed.stdout == b"import-ok\\n").lower())
+                      completed.stdout == b"import-ok\n").lower())
                   print("isolated_import_exit_code=" + str(completed.returncode))
               except (OSError, subprocess.SubprocessError):
                   print("isolated_import_probe=failed")
