@@ -146,6 +146,35 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                     patch.object(sanitizer.subprocess, "run", return_value=table):
                 sanitizer._stop_process_group(process)
 
+    def test_macos_eperm_needs_verified_zombie_group_leader(self):
+        process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
+        # A missing leader, malformed output or living descendant is
+        # insufficient evidence to accept an EPERM cleanup failure.
+        unverified_tables = (
+            b"",
+            b"202 202 Z\\n",
+            b"102 101 Z\\n",
+            b"101 202 Z\\n102 101 Z\\n",
+            b"101 101 S\\n",
+            b"101 101 Z\\n102 101 S\\n",
+            b"not-a-process-record\\n",
+        )
+        for output in unverified_tables:
+            with (
+                self.subTest(record=output),
+                patch.object(sanitizer.sys, "platform", "darwin"),
+                patch.object(sanitizer.os, "killpg",
+                             side_effect=PermissionError(errno.EPERM, "unverified")),
+                patch.object(sanitizer, "_process_has_exited_without_reaping",
+                             return_value=True),
+                patch.object(sanitizer.subprocess, "run",
+                             return_value=subprocess.CompletedProcess(
+                                 ("/bin/ps",), 0, output,
+                             )),
+            ):
+                with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                    sanitizer._stop_process_group(process)
+
     def test_non_eperm_cleanup_error_never_uses_zombie_exception(self):
         process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
         with patch.object(sanitizer.sys, "platform", "darwin"), \

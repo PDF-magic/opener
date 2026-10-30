@@ -298,14 +298,22 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
             timeout=0.5,
             check=True,
         )
+        # An incomplete process snapshot cannot prove the group is dead.
+        # The original group leader is still unreaped at this point.
+        found_leader = False
         for line in completed.stdout.decode("ascii").splitlines():
             fields = line.split()
             if (len(fields) != 3 or not fields[0].isdecimal()
                     or not fields[1].isdecimal() or not fields[2][0].isalpha()):
                 return False
-            if int(fields[1]) == process_group_id and fields[2][0].upper() != "Z":
+            pid, group_id, state = int(fields[0]), int(fields[1]), fields[2]
+            if group_id != process_group_id:
+                continue
+            if state[0].upper() != "Z":
                 return False
-        return True
+            if pid == process_group_id:
+                found_leader = True
+        return found_leader
     except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
         return False
 
