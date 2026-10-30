@@ -108,7 +108,7 @@ test("the shared Manifest V3 declares a packaged no-op background module", async
   assert.equal(workerSource,
     "// Inactive shared WebExtensions background entry point.\n" +
     "// Do not listen for messages, inspect PDFs or request native access here.\n" +
-    "export {};\n"
+    "void 0;\n"
   );
 
   // Importing the packaged module has no side effects, registrations,

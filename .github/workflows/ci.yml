@@ -288,6 +288,7 @@ jobs:
         working-directory: extensions/webextension
         run: |
           npm run build
+          node scripts/build-firefox.mjs
           npm test
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
