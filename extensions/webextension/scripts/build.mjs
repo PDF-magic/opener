@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const allowed = [
-  "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+  "action", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
 ];
 
 // The initial shared project must not accidentally acquire runtime privileges.
@@ -20,7 +20,13 @@ if (
   !Array.isArray(manifest.host_permissions) || manifest.host_permissions.length !== 0 ||
   !manifest.icons || typeof manifest.icons !== "object" ||
   Array.isArray(manifest.icons) ||
-  JSON.stringify(Object.keys(manifest.icons)) !== JSON.stringify(["16", "32", "48", "128"])
+  JSON.stringify(Object.keys(manifest.icons)) !== JSON.stringify(["16", "32", "48", "128"]) ||
+  !manifest.action || typeof manifest.action !== "object" ||
+  Array.isArray(manifest.action) ||
+  JSON.stringify(Object.keys(manifest.action).sort()) !==
+    JSON.stringify(["default_icon", "default_title"]) ||
+  manifest.action.default_title !== "PDF Magic Opener (not active)" ||
+  JSON.stringify(manifest.action.default_icon) !== JSON.stringify(manifest.icons)
 ) {
   throw new Error("Shared WebExtensions scaffold must remain permission-free");
 }
@@ -58,8 +64,9 @@ const output = join(root, "dist");
 await mkdir(output, { recursive: true });
 await writeFile(join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-// Copy only validated static art. The shared extension still has no runtime
-// permissions, content scripts, background worker or native PDF bridge.
+// Copy only validated static art for the extension and its inert toolbar action.
+// The shared extension still has no runtime permissions, content scripts,
+// background worker, toolbar handlers or native PDF bridge.
 await mkdir(join(output, "icons"), { recursive: true });
 for (const size of iconSizes) {
   const name = `icon-${size}.png`;

@@ -18,6 +18,12 @@ npm run build
 npm test
 ```
 
+The shared Manifest V3 `action` displays the existing icon in the browser
+toolbar with the truthful title **PDF Magic Opener (not active)**. It deliberately
+has no popup, click handler or scanning/launch behavior; future interaction
+requires separate security review. The Chromium and Firefox builds package
+the same local toolbar icons without adding permissions or host access.
+
 The build writes `dist/manifest.json` and copies the four source PNG icons
 (16, 32, 48, 128 pixels) into `dist/icons/`. These are original local artwork:
 a violet rounded tile, white folded PDF page, and gold sparkle. The manifest

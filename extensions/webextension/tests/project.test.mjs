@@ -23,7 +23,7 @@ test("the shared project is a private dependency-free Node package", async () =>
 test("the common Manifest V3 scaffold has no browser or host privileges", async () => {
   const manifest = await load("manifest.json");
   assert.deepEqual(Object.keys(manifest).sort(), [
-    "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+    "action", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
   ]);
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
@@ -35,7 +35,7 @@ test("the common Manifest V3 scaffold has no browser or host privileges", async 
   assert.deepEqual(manifest.host_permissions, []);
   for (const forbidden of [
     "background", "content_scripts", "externally_connectable", "nativeMessaging",
-    "web_accessible_resources", "action", "optional_permissions", "optional_host_permissions"
+    "web_accessible_resources", "optional_permissions", "optional_host_permissions"
   ]) {
     assert.equal(manifest[forbidden], undefined);
   }
@@ -93,5 +93,23 @@ test("the manifest identifies four actual portable PNG icon sizes", async () => 
       }
     }
     assert.ok(colors.size >= 3, "icons contain distinguishable artwork colors");
+  }
+});
+
+test("toolbar action is discoverable, uses only packaged icons and never activates PDF opening", async () => {
+  const source = await load("manifest.json");
+  const built = await load("dist/manifest.json");
+  assert.deepEqual(Object.keys(source.action).sort(), ["default_icon", "default_title"]);
+  assert.equal(source.action.default_title, "PDF Magic Opener (not active)");
+  assert.deepEqual(source.action.default_icon, source.icons);
+  assert.deepEqual(built.action, source.action);
+  assert.equal(source.action.default_popup, undefined, "popup implementation is a separate task");
+  assert.deepEqual(source.permissions, []);
+  assert.deepEqual(source.host_permissions, []);
+  for (const size of [16, 32, 48, 128]) {
+    const path = source.action.default_icon[String(size)];
+    assert.equal(path, `icons/icon-${size}.png`);
+    assert.deepEqual(await readFile(join(root, "dist", path)),
+      await readFile(join(root, path)));
   }
 });

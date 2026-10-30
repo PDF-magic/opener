@@ -33,9 +33,18 @@ test("Firefox build includes the shared MV3 identity without new privileges", as
   assert.equal(built.manifest_version, 3);
   assert.deepEqual(built.permissions, []);
   assert.deepEqual(built.host_permissions, []);
+  assert.deepEqual(built.action, source.action);
+  assert.equal(built.action.default_title, "PDF Magic Opener (not active)");
+  assert.equal(built.action.default_popup, undefined);
+  for (const size of [16, 32, 48, 128]) {
+    const path = built.action.default_icon[String(size)];
+    assert.equal(path, `icons/icon-${size}.png`);
+    assert.deepEqual(await readFile(join(root, "dist", "firefox", path)),
+      await readFile(join(root, path)));
+  }
   for (const forbidden of [
     "background", "content_scripts", "externally_connectable",
-    "optional_permissions", "optional_host_permissions", "action"
+    "optional_permissions", "optional_host_permissions"
   ]) {
     assert.equal(built[forbidden], undefined);
   }
