@@ -94,7 +94,7 @@ class ProtectionCardsTests(unittest.TestCase):
     self.assertIn("var capabilityLossExplanation: String?", tier)
     self.assertIn("guard self == .maximum else { return nil }", tier)
     notice = tier.split("var capabilityLossExplanation: String?", 1)[1].split(
-        "\\n  }", 1)[0]
+        "\n  }", 1)[0]
     for phrase in (
         "flattened page images", "selectable and searchable text",
         "clickable links", "interactive form fields",
