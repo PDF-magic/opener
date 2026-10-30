@@ -102,7 +102,11 @@ class UnsupportedSanitizationTests(unittest.TestCase):
         document = result.to_dict()
         self.assertEqual(document, {
             "action": "block", "reason": reason.value,
-            "offerAvailable": False, "pageCount": None,
+            "offerAvailable": False,
+            "sanitizationComplete": False,
+            "sanitizationStatus": "notCompleted",
+            "sanitizationStatusLabel": sanitizer.SANITIZATION_NOT_COMPLETE_LABEL,
+            "pageCount": None,
             "permitsOpen": False, "allowFallback": False,
             "allowCleanCache": False, "preserveQuarantine": True,
             "requiresSeparateScan": True,

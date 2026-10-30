@@ -13,6 +13,8 @@ if (
   JSON.stringify(Object.keys(manifest).sort()) !== JSON.stringify(allowed) ||
   manifest.manifest_version !== 3 ||
   manifest.name !== "PDF Magic Opener" ||
+  typeof manifest.description !== "string" ||
+  !manifest.description.trim() || manifest.description.length > 132 ||
   !manifest.background || typeof manifest.background !== "object" ||
   Array.isArray(manifest.background) ||
   JSON.stringify(Object.keys(manifest.background).sort()) !==
