@@ -288,6 +288,37 @@ struct EnhancedFindingsProgressSnapshot {
     }
 }
 
+
+// Future Maximum-only presentation: fixed sanitizer-owned failure reports,
+// never PDF-controlled diagnostics, scan verdicts or opening authorization.
+struct MaximumSanitizationFailureSnapshot {
+    let message: String
+
+    private static let failureMessages: [String: String] = [
+        "unsupportedInput": "This PDF cannot be converted to a sanitized copy; no copy was offered.",
+        "sanitizerUnavailable": "The PDF sanitizer is unavailable; no copy was offered.",
+        "sanitizerCrashed": "The PDF sanitizer crashed; conversion stopped. This is not a malware detection.",
+        "sanitizerTimedOut": "The PDF sanitizer timed out; conversion stopped. This is not a malware detection.",
+        "sanitizerMemoryLimitFailed": "The PDF sanitizer exceeded or could not verify its memory limit; conversion stopped. This is not a malware detection.",
+        "sanitizerLaunchFailed": "The PDF sanitizer could not start; conversion stopped. This is not a malware detection.",
+        "sanitizerProcessFailed": "The PDF sanitizer failed during conversion. This is not a malware detection.",
+        "sanitizerInvalidOutput": "The PDF sanitizer did not produce a verified copy. This is not a malware detection.",
+    ]
+
+    static func decode(_ data: Data) -> MaximumSanitizationFailureSnapshot? {
+        guard !data.isEmpty, data.count <= 4096,
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              Set(payload.keys) == Set(["status", "kind", "message", "scanVerdict", "permitsOpen"]),
+              payload["status"] as? String == "sanitizerFailure",
+              let kind = payload["kind"] as? String,
+              let fixedMessage = failureMessages[kind],
+              payload["message"] as? String == fixedMessage,
+              payload["scanVerdict"] as? String == "notAssessed",
+              payload["permitsOpen"] as? Bool == false else { return nil }
+        return MaximumSanitizationFailureSnapshot(message: fixedMessage)
+    }
+}
+
 final class ScanProgressPanel: NSPanel {
     let filenameLabel = NSTextField(labelWithString: "")
     let destinationBrowserLabel = NSTextField(labelWithString: "Destination browser: Unavailable")
@@ -298,6 +329,7 @@ final class ScanProgressPanel: NSPanel {
     let protectionProfileDetailsLabel = NSTextField(
         labelWithString: BuiltInProtectionProfile.details)
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
+    let maximumSanitizationFailureLabel = NSTextField(wrappingLabelWithString: "")
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
     // Hidden for the deployed Built-in scanner: Enhanced is not selectable.
@@ -312,6 +344,7 @@ final class ScanProgressPanel: NSPanel {
     private static let originalHeight: CGFloat = 458
     private static let collapsedFindingsHeight: CGFloat = 500
     private static let findingsHeight: CGFloat = 650
+    private static let maximumFailureHeight: CGFloat = 110
 
     init(cancelTarget: AnyObject, cancelAction: Selector) {
         cancelButton = NSButton(title: "Cancel", target: cancelTarget, action: cancelAction)
@@ -407,6 +440,13 @@ final class ScanProgressPanel: NSPanel {
         enhancedFindingsScrollView.drawsBackground = false
         enhancedFindingsScrollView.isHidden = true
         contentView?.addSubview(enhancedFindingsScrollView)
+        maximumSanitizationFailureLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        maximumSanitizationFailureLabel.textColor = .systemRed
+        maximumSanitizationFailureLabel.lineBreakMode = .byWordWrapping
+        maximumSanitizationFailureLabel.isSelectable = true
+        maximumSanitizationFailureLabel.setAccessibilityIdentifier("maximumSanitizationFailure")
+        maximumSanitizationFailureLabel.isHidden = true
+        contentView?.addSubview(maximumSanitizationFailureLabel)
         center()
     }
 
@@ -432,9 +472,16 @@ final class ScanProgressPanel: NSPanel {
             x: 100, y: expanded ? 578 : 432, width: 160, height: 24)
         enhancedFindingsScrollView.frame = NSRect(x: 20, y: 435, width: 320, height: 139)
         enhancedFindingsScrollView.isHidden = !expanded
+        // The failure notice sits above Enhanced evidence and its controls.
+        let baseHeight = enhancedFindingsLabel.isHidden
+            ? Self.originalHeight
+            : (expanded ? Self.findingsHeight : Self.collapsedFindingsHeight)
+        maximumSanitizationFailureLabel.frame = NSRect(
+            x: 20, y: baseHeight + 6, width: 320, height: 96)
         setContentSize(NSSize(
             width: 360,
-            height: expanded ? Self.findingsHeight : Self.collapsedFindingsHeight))
+            height: baseHeight + (maximumSanitizationFailureLabel.isHidden
+                ? 0 : Self.maximumFailureHeight)))
     }
 
     // Presentation only: callers must supply validated v2 analysis evidence
@@ -448,7 +495,6 @@ final class ScanProgressPanel: NSPanel {
             enhancedFindingsLabel.isHidden = true
             enhancedFindingsDetailsButton.isHidden = true
             setEnhancedFindingsDetailsExpanded(false)
-            setContentSize(NSSize(width: 360, height: Self.originalHeight))
             return
         }
         let snapshot = EnhancedFindingsProgressSnapshot.decode(report)
@@ -460,6 +506,26 @@ final class ScanProgressPanel: NSPanel {
         enhancedFindingsLabel.isHidden = false
         enhancedFindingsDetailsButton.isHidden = false
         setEnhancedFindingsDetailsExpanded(false)
+    }
+
+    // Reject forged, oversized or noncanonical reports without disclosing
+    // their contents. An invalid report still blocks the visible handoff.
+    func updateMaximumSanitizationFailure(from report: Data?) {
+        guard let report else {
+            maximumSanitizationFailureLabel.stringValue = ""
+            maximumSanitizationFailureLabel.setAccessibilityLabel("")
+            maximumSanitizationFailureLabel.isHidden = true
+            setEnhancedFindingsDetailsExpanded(enhancedFindingsDetailsExpanded)
+            return
+        }
+        let message = MaximumSanitizationFailureSnapshot.decode(report)?.message
+            ?? "Sanitization failure details could not be verified; opening was stopped. This is not a malware detection."
+        let display = "Sanitization failed — opening stopped\n\(message)\nMalware scan verdict: not assessed."
+        maximumSanitizationFailureLabel.stringValue = display
+        maximumSanitizationFailureLabel.setAccessibilityLabel(display)
+        maximumSanitizationFailureLabel.isHidden = false
+        showAttentionRequired(documentDescription: filenameLabel.stringValue)
+        setEnhancedFindingsDetailsExpanded(enhancedFindingsDetailsExpanded)
     }
 
     // An individual scan has no trustworthy percentage. For a batch, only
@@ -512,6 +578,7 @@ final class ScanProgressPanel: NSPanel {
     // Set only display state. Callers own the scan lifecycle and Cancel action.
     func show(documentDescription: String, stage: ScanProgressStage = .queued,
               queuedDocumentCount: Int = 0, activeScans: Int = 0) {
+        updateMaximumSanitizationFailure(from: nil)
         progressIndicator.isHidden = false
         cancelButton.title = "Cancel"
         filenameLabel.stringValue = documentDescription
