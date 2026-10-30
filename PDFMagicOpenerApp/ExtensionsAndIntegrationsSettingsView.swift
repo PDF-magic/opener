@@ -30,6 +30,31 @@ struct ExtensionsAndIntegrationsSettingsView: View {
         }
         .accessibilityIdentifier("browserIntegrationSection")
 
+        // No authenticated browser-to-app bridge is implemented. Do not infer
+        // connection or scanner protection merely from an installed extension.
+        GroupBox("Extension connection") {
+          HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "circle.fill")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 6) {
+              Text("Not connected")
+                .font(.headline)
+              Text("No verified browser-to-app connection is available. This status is not a malware scan result or permission to open a PDF.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+          }
+          .padding(12)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .accessibilityElement(children: .combine)
+          .accessibilityLabel("Extension connection: Not connected")
+          .accessibilityIdentifier("extensionConnectionStatus")
+        }
+        .accessibilityIdentifier("extensionConnectionSection")
+
         GroupBox("Extensions") {
           integrationDetail(
             "Extension management",

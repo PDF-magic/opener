@@ -42,6 +42,28 @@ class ExtensionsAndIntegrationsSettingsTests(unittest.TestCase):
       with self.subTest(expected=expected):
         self.assertIn(expected, page)
 
+  def test_extension_connection_indicator_is_visible_accessible_and_fail_closed(self):
+    page = PAGE.read_text(encoding="utf-8")
+    for expected in (
+        'GroupBox("Extension connection")',
+        'Image(systemName: "circle.fill")',
+        'Text("Not connected")',
+        'accessibilityElement(children: .combine)',
+        'accessibilityLabel("Extension connection: Not connected")',
+        'accessibilityIdentifier("extensionConnectionStatus")',
+        'accessibilityIdentifier("extensionConnectionSection")',
+        "No verified browser-to-app connection is available",
+        "not a malware scan result or permission to open a PDF",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, page)
+    self.assertNotIn('Text("Connected")', page)
+    self.assertNotIn('accessibilityLabel("Extension connection: Connected")', page)
+    # The indicator is explicitly read-only until an authenticated browser
+    # connection exists. Keep existing scanner and preference safety tests.
+    self.assertNotIn("connectNative(", page)
+    self.assertNotIn("sendNativeMessage(", page)
+
   def test_page_is_compiled_with_other_native_views(self):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn("path = ExtensionsAndIntegrationsSettingsView.swift;", project)
