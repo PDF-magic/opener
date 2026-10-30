@@ -133,6 +133,27 @@ test("symlinked manifest or directory is unsafe and leaves targets untouched", a
   assert.equal((await lstat(join(env.home, "host"))).isFile(), true);
 });
 
+test("discovery rejects supplied executable traversal, controls and ancestor symlinks", async t => {
+  const env = await fixture(t);
+  const { path, manifest } = await installFixture("chrome", env);
+  const parent = join(env.home, "real");
+  await mkdir(parent);
+  await writeFile(join(parent, "native-host"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  const alias = join(env.home, "alias");
+  await symlink(parent, alias, "dir");
+  for (const supplied of [join(alias, "native-host"), env.home + "/../host",
+                         env.home + "/bad\nhost", env.home + "/bad\u0000host"]) {
+    await writeFile(path, JSON.stringify({ ...manifest, path: supplied }));
+    assert.equal((await verifyHostDiscovery({
+      browser: "chrome", home: env.home, platform: "darwin"
+    })).status, "invalid");
+  }
+  await writeFile(path, JSON.stringify(manifest));
+  assert.equal((await verifyHostDiscovery({
+    browser: "chrome", home: env.home, platform: "darwin"
+  })).status, "registration-valid");
+});
+
 test("verification never enables nativeMessaging or claims runtime handshake", async t => {
   const env = await fixture(t);
   const { path } = await installFixture("chrome", env);
