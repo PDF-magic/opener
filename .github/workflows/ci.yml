@@ -291,6 +291,13 @@ jobs:
           npm run package:chrome
           node scripts/build-firefox.mjs
           npm test
+      - name: Upload validated Chrome extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-magic-opener-chrome
+          path: extensions/webextension/dist/chrome/*.zip
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify sandboxed Safari Web Extension target configuration
         run: |
           python3 test-safari-extension-target.py -v
