@@ -56,7 +56,8 @@ test("Arc real-browser smoke cannot substitute Chrome or mutate user state", asy
   assert.ok(smoke.includes("--load-extension="));
   assert.ok(smoke.includes('chrome.permissions.contains({ permissions: ["downloads"] })'));
   assert.ok(smoke.includes("assert.equal(optionalGranted, false"));
-  assert.ok(smoke.includes('popup.locator("#scanPDF").isDisabled()'));
+  assert.ok(smoke.includes('fetch(chrome.runtime.getURL("popup.html"))')); 
+  assert.ok(smoke.includes('assert.match(resources.html, /<button id="scanPDF"'));
   assert.ok(smoke.includes("await rm(profile"));
   for (const forbidden of [
     "sendNativeMessage(", "connectNative(", "permissions.request(",

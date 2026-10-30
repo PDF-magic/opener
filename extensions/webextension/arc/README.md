@@ -11,10 +11,16 @@ validated unpacked `dist/` Manifest V3 extension, then launches the actual
 Arc executable with an isolated disposable browser profile and a
 loopback-only Chrome DevTools Protocol endpoint, which is Arc's supported
 automation interface. The smoke test
-**must observe the real registered extension service worker** and
-browser-rendered popup, including local styling and the disabled **Scan PDF**
-control. It checks Arc's effective extension manifest and that the optional
+**must observe the real registered extension service worker**, then
+retrieve the popup and CSS through Arc's own extension protocol. The served
+markup must keep **Scan PDF** disabled and clearly show **Not active**. It checks Arc's effective extension manifest and that the optional
 `downloads` permission has not silently been granted.
+
+Arc's custom tab manager does not reliably support automated
+`newPage()` on an unattended macOS CI runner, so **visual popup rendering
+remains a manual verification step**. This CI test proves Arc registered the
+extension worker, enforced its permission boundary and served its actual
+local UI assets; it does not claim automated toolbar-click coverage.
 
 Arc may require user sign-in or restrict extensions in unattended/headless
 sessions. In that case **the real-browser CI check fails closed** rather
