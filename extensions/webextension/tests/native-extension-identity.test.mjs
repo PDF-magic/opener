@@ -105,7 +105,8 @@ test("reconnection rechecks the current runtime identity and never widens approv
   const approvedExtensionIds = [CHROME_ID];
   let calls = 0;
   let onDisconnect;
-  const tasks = [];
+  const tasks = new Map();
+  let nextTimer = 0;
   const controller = createNativeReconnectController({
     browserKind: "chromium", browserRuntime, approvedExtensionIds,
     connectNative() {
@@ -118,8 +119,8 @@ test("reconnection rechecks the current runtime identity and never widens approv
       };
     },
     nonceFactory: () => "Nonce_12345678901234567890",
-    schedule(callback) { tasks.push(callback); return tasks.length; },
-    cancel() {}
+    schedule(callback) { const id = ++nextTimer; tasks.set(id, callback); return id; },
+    cancel(id) { tasks.delete(id); }
   });
   const consent = {
     registrationVerified: true, nativePermissionGranted: true, userApproved: true
@@ -130,7 +131,10 @@ test("reconnection rechecks the current runtime identity and never widens approv
   assert.equal(controller.state, "reconnecting");
   browserRuntime.id = OTHER_CHROME_ID;
   approvedExtensionIds[0] = OTHER_CHROME_ID; // cannot silently widen admission
-  tasks.shift()();
+  assert.equal(tasks.size, 1, "only the scheduled reconnect remains after cancellation");
+  const reconnect = [...tasks.values()][0];
+  tasks.clear();
+  reconnect();
   assert.equal(controller.state, "unavailable");
   assert.equal(calls, 1, "no new native process for a changed identity");
 });
