@@ -62,3 +62,32 @@ the manifest flag alone is not a claim that Safari will block every
 user-authorized private window on every release. The extension remains inert,
 without page access, native messaging or PDF opening. Future activated Safari
 integrations must separately review and test private-context exclusion.
+
+## Unsigned Safari extension package (opener-0608)
+
+The Xcode host application embeds the Safari Web Extension as a native
+`.appex`. Unlike a Chromium or Firefox submission ZIP, a Safari Web
+Extension is installed through a macOS host application. The CI macOS build
+packages the verified `PDFMagicOpener.app` with its embedded extension as
+`pdf-magic-opener-safari-<version>-unsigned.zip` and uploads it as a
+short-lived GitHub Actions artifact.
+
+This is an **unsigned development artifact**, not a signed, notarized,
+installable production release or Mac App Store submission. Distribution
+requires a separate signing and notarization workflow, an Apple developer
+identity, and user-controlled installation and extension enabling. None of
+those release credentials or operations are part of this task.
+
+To package an existing unsigned Xcode Debug app from the repository root:
+
+```sh
+python3 scripts/package_safari_extension.py --app "/path/to/PDFMagicOpener.app" --output-dir "/path/to/artifacts"
+python3 scripts/package_safari_extension.py --verify "/path/to/artifacts/pdf-magic-opener-safari-0.1.0-unsigned.zip"
+```
+
+The package builder rejects unknown files, symlinks, missing or nonexecutable
+binaries, broadened browser privileges, mismatched source assets and unsafe
+archive paths. CI validates the archive, extracts it without installation,
+and rechecks the embedded Safari extension. No PDF scanning, native messaging,
+Safari activation, native scanner changes, quarantine changes, or user
+configuration changes are introduced.
