@@ -105,6 +105,62 @@ enum BlockedFileNotificationPreference {
   }
 }
 
+// Optional browser-download *scope* preference only. It cannot grant browser
+// permissions, enable monitoring, authorize an open, or alter the mandatory
+// installed ClamAV scanner. Native Finder/file scans are never filtered here.
+// The browser download coordinator currently supports PDF candidates only;
+// this opt-in is saved for a future independently verified non-PDF integration.
+enum ScanOtherSupportedFilesPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "scanOtherSupportedFiles"
+
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    _ = defaults?.synchronize()
+    // Malformed, missing or non-Boolean values do not constitute consent.
+    guard let defaults, let raw = defaults.object(forKey: key) as? NSNumber,
+          CFGetTypeID(raw) == CFBooleanGetTypeID() else { return false }
+    return raw.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    func restorePrevious() {
+      if let previous { defaults.set(previous, forKey: key) }
+      else { defaults.removeObject(forKey: key) }
+      _ = defaults.synchronize()
+    }
+
+    // UserDefaults can compare numeric 1/0 and Boolean true/false as equal,
+    // leaving an existing malformed integer on disk after set(Bool).
+    // Only an explicit save may normalize this key; flush its removal first.
+    let previousWasBoolean = (previous as? NSNumber).map {
+      CFGetTypeID($0) == CFBooleanGetTypeID()
+    } ?? false
+    if previous != nil && !previousWasBoolean {
+      defaults.removeObject(forKey: key)
+      guard defaults.synchronize() else {
+        restorePrevious()
+        return false
+      }
+    }
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    // Never discard an earlier explicit choice on a failed save.
+    restorePrevious()
+    return false
+  }
+}
+
 // The installed scanner currently has only one mandatory policy. Persist its
 // identifier separately from scanner controls; unsupported future identifiers
 // remain intact and are not silently treated as the Built-in selection.
@@ -429,6 +485,195 @@ enum PDFMagicPolicySettingsUpgrade {
 }
 
 
+// Optional browser-download notification *preference* only. The installed
+// opener retains independent blocking and safety messages even when disabled.
+// No browser or native delivery integration currently consumes this setting.
+enum DownloadScanNotificationOutcome {
+  case failed
+  case incomplete
+  case clean
+  case blocked
+  case cancelled
+  case unknown
+}
+
+enum DownloadFailedScanNotificationPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "notifyOnFailedScan"
+
+  // Explicit opt-in. Missing, malformed or unavailable settings are disabled.
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    guard let raw = defaults.object(forKey: key) as? NSNumber,
+          CFGetTypeID(raw) == CFBooleanGetTypeID() else { return false }
+    return raw.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    func restore() {
+      if let previous { defaults.set(previous, forKey: key) }
+      else { defaults.removeObject(forKey: key) }
+      _ = defaults.synchronize()
+    }
+    // Remove a malformed numeric/string entry first: UserDefaults can
+    // otherwise preserve a numeric 1/0 when setting a Boolean equivalent.
+    if let previous {
+      let valid = (previous as? NSNumber).map {
+        CFGetTypeID($0) == CFBooleanGetTypeID()
+      } ?? false
+      if !valid {
+        defaults.removeObject(forKey: key)
+        guard defaults.synchronize() else {
+          restore()
+          return false
+        }
+      }
+    }
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    restore()
+    return false
+  }
+
+  // Must only be called with a result independently classified by an
+  // authenticated native coordinator. Download metadata is not scan evidence.
+  // This controls optional extra notifications, never required warning UI.
+  static func shouldNotify(
+    _ outcome: DownloadScanNotificationOutcome,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    switch outcome {
+    case .failed, .incomplete:
+      return isEnabled(defaults: defaults)
+    case .clean, .blocked, .cancelled, .unknown:
+      return false
+    }
+  }
+}
+
+// This app has no authenticated live browser-to-native connection observer yet.
+// A transport-only host handshake never proves that scanning is available.
+// The read-only indicator must not treat saved opt-in or installed apps as health.
+enum BrowserNativeConnectionHealth: Equatable {
+  case notConnected
+  case transportOnly
+
+  // No live observer is installed. Change this only when a separately reviewed
+  // authenticated coordinator supplies a current, session-bound status.
+  static var current: BrowserNativeConnectionHealth { .notConnected }
+
+  // Future integration boundary: input must come from independently verified
+  // host registration, exact extension identity and an authenticated session.
+  // The existing v1 handshake explicitly advertises scanAvailable = false.
+  // Unrecognized or privileged claims remain unverified.
+  static func fromVerifiedHandshake(
+    authenticatedSession: Bool,
+    protocolVersion: Int,
+    hostStatus: String,
+    scanAvailable: Bool
+  ) -> BrowserNativeConnectionHealth {
+    guard authenticatedSession, protocolVersion == 1,
+          hostStatus == "transport-only", !scanAvailable else {
+      return .notConnected
+    }
+    return .transportOnly
+  }
+
+  var statusLabel: String {
+    switch self {
+    case .notConnected: return "Not connected"
+    case .transportOnly: return "Host reachable — scanning unavailable"
+    }
+  }
+
+  var detail: String {
+    switch self {
+    case .notConnected:
+      return "No authenticated browser-to-native connection is active. Browser download scanning is not available."
+    case .transportOnly:
+      return "Native messaging transport is verified, but the scanner is not connected to browser downloads."
+    }
+  }
+
+  // Mandatory native scanner enforcement is never controlled by this display.
+  var scannerConnectionHealthy: Bool { false }
+}
+
+// Download scan-result presentation only. No native scanner, browser permission,
+// mandatory warning, blocked-file alert, or PDF destination depends
+// on this preference. Unverified/incomplete results must remain visible.
+enum DownloadWarningDisplayKind {
+  case verifiedCleanSummary
+  case verifiedInformationalSummary
+  case securityWarning
+  case scanIncompleteOrFailed
+  case unknown
+}
+
+enum DownloadWarningOnlyPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "showOnlyWarnings"
+
+  // Preserve existing summary visibility for users who have not opted in.
+  // Malformed settings cannot silently suppress any result.
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    guard let stored = defaults.object(forKey: key),
+          let value = stored as? NSNumber,
+          CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
+    return value.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize(), isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    if let previous { defaults.set(previous, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+
+  // Call ONLY after an authenticated native coordinator classifies the full
+  // canonical scan result. Browser MIME, filename and labels are not verdicts.
+  // Optional summaries may be hidden, but every potential warning remains.
+  static func shouldPresent(
+    _ kind: DownloadWarningDisplayKind,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    switch kind {
+    case .verifiedCleanSummary, .verifiedInformationalSummary:
+      return !isEnabled(defaults: defaults)
+    case .securityWarning, .scanIncompleteOrFailed, .unknown:
+      return true
+    }
+  }
+}
+
+
 // Only recognized optional scanner-limit override metadata is in scope.
 // The installed scanner never reads this key; it continues enforcing the
 // fixed two-slot gate and its other mandatory safety checks. Future editable
@@ -469,6 +714,160 @@ enum RecommendedScannerLimitsReset {
     defaults.set(previous, forKey: concurrencyOverrideKey)
     _ = defaults.synchronize()
     return .unavailable
+  }
+}
+
+// Opt-in *preference* for a future browser integration, not a runtime grant.
+// Do not use this value as a scanner verdict, verified browser permission,
+// or authorization to open, scan, or subscribe to downloads.
+enum BrowserDownloadMonitoringPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "downloadMonitoringEnabled"
+
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    // NSNumber bridging can otherwise mistake an integer for a Bool.
+    guard let value = defaults.object(forKey: key) as? NSNumber,
+          CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
+    return value.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let original = defaults.object(forKey: key)
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize() && isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    // Roll back only this one key when persistence cannot be confirmed.
+    if let original { defaults.set(original, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
+// Browser download scan-result *presentation* only. A missing or malformed
+// value preserves visible summaries. This must never change native scanning,
+// browser permissions, malware warnings, failures, or the opening decision.
+enum DownloadScanResultPresentation {
+  case optionalSummary
+  case securityWarning
+}
+
+enum DownloadScanResultsPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "showScanResults"
+
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return true }
+    _ = defaults.synchronize()
+    guard let stored = defaults.object(forKey: key) else { return true }
+    // An unexpected storage type must not silently suppress results.
+    guard let value = stored as? NSNumber,
+          CFGetTypeID(value) == CFBooleanGetTypeID() else { return true }
+    return value.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize() && isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    if let previous { defaults.set(previous, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+
+  // Only optional clean/informational summaries are suppressible. A caller
+  // MUST independently classify and continue to present security warnings.
+  // Neither this function nor the preference produces scanner authorization.
+  static func shouldPresent(
+    _ category: DownloadScanResultPresentation,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    switch category {
+    case .optionalSummary: return isEnabled(defaults: defaults)
+    case .securityWarning: return true
+    }
+  }
+}
+
+// An explicit, read-only local preflight for a future browser integration.
+// Browser installation never proves extension permission, native messaging,
+// scanner readiness, or enforcement of browser/OS download opening. Since no
+// authenticated live integration exists, this model cannot report success.
+struct BrowserIntegrationTestReport: Equatable {
+  let detectedCount: Int
+  let supportedCount: Int
+
+  var statusLabel: String { "Integration test unavailable" }
+
+  var detail: String {
+    "Detected \(detectedCount) of \(supportedCount) supported browsers. " +
+    "No authenticated browser-to-native scanner integration is active. " +
+    "This check cannot verify downloads, scanner connectivity, or safe opening."
+  }
+}
+
+enum BrowserIntegrationTest {
+  static func run(
+    supportedIDs: Set<String>,
+    detectedIDs: Set<String>
+  ) -> BrowserIntegrationTestReport {
+    let supported = supportedIDs.filter { !$0.isEmpty }
+    return BrowserIntegrationTestReport(
+      detectedCount: supported.filter { detectedIDs.contains($0) }.count,
+      supportedCount: supported.count
+    )
+  }
+}
+
+// Read-only presentation of browser download monitoring. Discovery of an
+// executable app is not evidence that any extension is authorized, connected,
+// listening for downloads, or enforcing the native scanner. No active state
+// can be constructed here; only an independently verified future coordinator
+// may introduce live monitoring status.
+struct BrowserMonitoringStatusRow: Identifiable, Equatable {
+  let id: String
+  let name: String
+  let detected: Bool
+
+  var statusLabel: String { detected ? "Not connected" : "Not detected" }
+}
+
+enum BrowserMonitoringStatusDisplay {
+  static func rows(
+    supported: [(id: String, name: String)],
+    detectedIDs: Set<String>
+  ) -> [BrowserMonitoringStatusRow] {
+    var seen = Set<String>()
+    return supported.compactMap { browser in
+      guard !browser.id.isEmpty, !browser.name.isEmpty,
+            seen.insert(browser.id).inserted else { return nil }
+      return BrowserMonitoringStatusRow(
+        id: browser.id, name: browser.name,
+        detected: detectedIDs.contains(browser.id)
+      )
+    }
   }
 }
 

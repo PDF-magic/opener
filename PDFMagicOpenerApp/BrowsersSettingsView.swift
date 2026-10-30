@@ -4,6 +4,100 @@ import SwiftUI
 // Browser discovery, selection and PDF launch remain in the installed tools;
 // displaying this page must not mutate user choices or scanning policy.
 struct BrowsersSettingsView: View {
+  @State private var downloadMonitoringEnabled = false
+  @State private var downloadMonitoringMessage: String?
+
+  private func setDownloadMonitoring(_ enabled: Bool) {
+    if BrowserDownloadMonitoringPreference.save(enabled) {
+      downloadMonitoringEnabled = enabled
+      downloadMonitoringMessage = "Preference saved. Browser download monitoring is not active."
+    } else {
+      downloadMonitoringEnabled = BrowserDownloadMonitoringPreference.isEnabled()
+      downloadMonitoringMessage = "Could not save the preference. The previous setting is unchanged."
+    }
+  }
+
+  @State private var scanOtherSupportedFiles = false
+  @State private var scanOtherFilesStatus: String?
+
+  private func loadOtherFilePreference() {
+    scanOtherSupportedFiles = ScanOtherSupportedFilesPreference.isEnabled()
+  }
+
+  private func updateOtherFilePreference(_ enabled: Bool) {
+    if ScanOtherSupportedFilesPreference.save(enabled) {
+      scanOtherSupportedFiles = enabled
+      scanOtherFilesStatus = "Download scan scope preference saved."
+    } else {
+      scanOtherSupportedFiles = ScanOtherSupportedFilesPreference.isEnabled()
+      scanOtherFilesStatus = "Could not save this preference. Your previous choice is unchanged."
+    }
+  }
+
+  @State private var showOnlyWarnings = false
+  @State private var warningPreferenceStatus: String?
+
+  private func updateShowOnlyWarnings(_ enabled: Bool) {
+    if DownloadWarningOnlyPreference.save(enabled) {
+      showOnlyWarnings = enabled
+      warningPreferenceStatus = "Warning display preference saved."
+    } else {
+      // On persistence failure, display the confirmed effective value.
+      showOnlyWarnings = DownloadWarningOnlyPreference.isEnabled()
+      warningPreferenceStatus = "Could not save the warning preference. Your previous choice is unchanged."
+    }
+  }
+
+  @State private var showScanResults = true
+  @State private var showScanResultsStatus: String?
+
+  private func updateShowScanResults(_ enabled: Bool) {
+    if DownloadScanResultsPreference.save(enabled) {
+      showScanResults = enabled
+      showScanResultsStatus = "Scan result display preference saved."
+    } else {
+      showScanResults = DownloadScanResultsPreference.isEnabled()
+      showScanResultsStatus = "Could not save the display preference. Your previous choice is unchanged."
+    }
+  }
+
+  @State private var notifyOnFailedScan = false
+  @State private var failedScanNotificationStatus: String?
+
+  private func updateNotifyOnFailedScan(_ enabled: Bool) {
+    if DownloadFailedScanNotificationPreference.save(enabled) {
+      notifyOnFailedScan = enabled
+      failedScanNotificationStatus = "Failed-scan notification preference saved."
+    } else {
+      notifyOnFailedScan = DownloadFailedScanNotificationPreference.isEnabled()
+      failedScanNotificationStatus = "Could not save this preference. Your previous choice is unchanged."
+    }
+  }
+
+  @State private var browserMonitoringRows: [BrowserMonitoringStatusRow] = []
+
+  private func refreshBrowserMonitoringStatus() {
+    // Read-only discovery: an opt-in preference is not extension permission or
+    // authenticated native scanner connectivity for any individual browser.
+    let detected = Set(DefaultPDFBrowserPreferences.discover().map(\.id))
+    browserMonitoringRows = BrowserMonitoringStatusDisplay.rows(
+      supported: DefaultPDFBrowserPreferences.monitoringBrowserCatalog,
+      detectedIDs: detected
+    )
+  }
+
+  @State private var browserIntegrationTestReport: BrowserIntegrationTestReport?
+
+  private func testBrowserIntegration() {
+    // An explicit local diagnostic only: discovery is read-only. Neither
+    // installed browsers nor saved opt-in prove native scanner connectivity.
+    let detected = Set(DefaultPDFBrowserPreferences.discover().map(\.id))
+    let supported = Set(DefaultPDFBrowserPreferences.monitoringBrowserCatalog.map(\.id))
+    browserIntegrationTestReport = BrowserIntegrationTest.run(
+      supportedIDs: supported, detectedIDs: detected
+    )
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -13,6 +107,34 @@ struct BrowsersSettingsView: View {
 
         Text("Browser settings for verified PDF opening.")
           .foregroundStyle(.secondary)
+
+        GroupBox("Download scan results") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Show Scan Results", isOn: Binding(
+              get: { showScanResults },
+              set: { updateShowScanResults($0) }
+            ))
+            .accessibilityIdentifier("showDownloadScanResultsToggle")
+
+            Text("Choose whether to show optional summaries of browser download scans when a verified integration becomes available. Browser download scanning is not currently active. Blocking decisions, malware warnings, failed-scan alerts and native scanner safeguards are never disabled or hidden by this setting.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let showScanResultsStatus {
+              Text(showScanResultsStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("showDownloadScanResultsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadScanResultsSection")
+        .onAppear {
+          // Display-only preference: never request downloads permission here.
+          showScanResults = DownloadScanResultsPreference.isEnabled()
+        }
 
         GroupBox("Installed browsers") {
           browserSettingDetail(
@@ -32,6 +154,157 @@ struct BrowsersSettingsView: View {
         }
         .accessibilityIdentifier("preferredBrowserSection")
 
+        GroupBox("Download scanning") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Scan Other Supported Files", isOn: Binding(
+              get: { scanOtherSupportedFiles },
+              set: { updateOtherFilePreference($0) }
+            ))
+            .accessibilityIdentifier("scanOtherSupportedFilesToggle")
+
+            Text("Opt in to including non-PDF files supported by the native scanner if a verified browser download integration becomes available. This does not enable download monitoring, request browser permissions, change PDF scanning, or bypass safety checks. Non-PDF browser download scanning is not currently connected.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let scanOtherFilesStatus {
+              Text(scanOtherFilesStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("scanOtherSupportedFilesStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadScanningSettingsSection")
+        .onAppear(perform: loadOtherFilePreference)
+
+        GroupBox("Per-browser monitoring status") {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Monitoring is not connected to a verified scanner in any browser. Your download monitoring opt-in does not activate monitoring, grant browser permissions, or change scan and opening safety checks.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(browserMonitoringRows) { browser in
+              HStack(spacing: 12) {
+                Text(browser.name)
+                Spacer(minLength: 12)
+                Text(browser.statusLabel)
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("browserMonitoringStatus-\(browser.id)")
+              }
+              .accessibilityElement(children: .combine)
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("perBrowserMonitoringStatusSection")
+        .onAppear(perform: refreshBrowserMonitoringStatus)
+
+        GroupBox("Connection health") {
+          VStack(alignment: .leading, spacing: 8) {
+            Label(
+              BrowserNativeConnectionHealth.current.statusLabel,
+              systemImage: "bolt.slash"
+            )
+            .font(.headline)
+            .accessibilityIdentifier("browserNativeConnectionHealthIndicator")
+
+            Text(BrowserNativeConnectionHealth.current.detail)
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("browserNativeConnectionHealthDetail")
+
+            Text("A saved monitoring preference, installed browser or native host, and a transport-only handshake do not establish a working scan connection. No permission is requested or scan started by this indicator.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("browserNativeConnectionHealthSection")
+
+        GroupBox("Browser integration test") {
+          VStack(alignment: .leading, spacing: 10) {
+            Button("Test Browser Integration") {
+              testBrowserIntegration()
+            }
+            .accessibilityIdentifier("testBrowserIntegrationButton")
+
+            Text("Check supported browser discovery locally. No authenticated browser-to-native scanner integration is active, so this cannot verify downloading or scan enforcement.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let report = browserIntegrationTestReport {
+              Text(report.statusLabel)
+                .font(.headline)
+                .accessibilityIdentifier("browserIntegrationTestStatus")
+              Text(report.detail)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("browserIntegrationTestDetails")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("browserIntegrationTestSection")
+
+        GroupBox("Browser downloads") {
+          VStack(alignment: .leading, spacing: 8) {
+            Toggle("Enable Browser Download Monitoring", isOn: Binding(
+              get: { downloadMonitoringEnabled },
+              set: { setDownloadMonitoring($0) }
+            ))
+            .accessibilityIdentifier("enableBrowserDownloadMonitoringToggle")
+
+            Text("This saves your opt-in preference only. Browser download monitoring is not active: the browser extension is not connected to a verified scanner and cannot monitor downloads yet. Browser permissions must be granted separately.")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let downloadMonitoringMessage {
+              Text(downloadMonitoringMessage)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("browserDownloadMonitoringStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("browserDownloadsSection")
+
+        GroupBox("What monitoring can and cannot prevent") {
+          VStack(alignment: .leading, spacing: 12) {
+            Text("What monitoring does today")
+              .font(.headline)
+            Text("Browser download monitoring is not active. Turning on the preference does not inspect downloaded files, block browser automatic opening, or stop a file opened through download history.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("What a verified integration could protect")
+              .font(.headline)
+            Text("With separate browser permission and an authenticated native scanner connection, supported and fully available downloads could be scanned before a PDF Magic Opener handoff. A detected threat, failed scan, or incomplete check must never authorize that handoff. Files opened through the installed PDF Magic Opener already have an independent scan-before-open gate.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            Text("What monitoring cannot guarantee")
+              .font(.headline)
+            Text("Monitoring cannot stop a browser's built-in PDF viewer, automatic download opening, Finder or another application from opening a file unless that opening path is separately integrated with verified scan enforcement. It cannot guarantee detection of every threat or retroactively protect a file already opened. An alert is not a block.")
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadMonitoringCapabilitiesAndLimitsSection")
+
         GroupBox("Additional applications") {
           browserSettingDetail(
             "Custom choices",
@@ -40,11 +313,71 @@ struct BrowsersSettingsView: View {
           )
         }
         .accessibilityIdentifier("customBrowserSection")
+
+        GroupBox("Download warning display") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Show Only Warnings", isOn: Binding(
+              get: { showOnlyWarnings },
+              set: { updateShowOnlyWarnings($0) }
+            ))
+            .accessibilityIdentifier("showOnlyDownloadWarningsToggle")
+
+            Text("When verified download-scan results become available, hide optional clean and informational summaries. Malware detections, scan failures, incomplete checks, blocked results, and other security warnings must always remain visible. This does not activate browser scanning or change the Show Scan Results preference.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let warningPreferenceStatus {
+              Text(warningPreferenceStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("showOnlyDownloadWarningsStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadWarningDisplaySection")
+        .onAppear {
+          // Display-only: never request downloads permission or start scanning.
+          showOnlyWarnings = DownloadWarningOnlyPreference.isEnabled()
+        }
+        GroupBox("Download failure notifications") {
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("Notify on Failed Scan", isOn: Binding(
+              get: { notifyOnFailedScan },
+              set: { updateNotifyOnFailedScan($0) }
+            ))
+            .accessibilityIdentifier("notifyOnFailedDownloadScanToggle")
+
+            Text("Opt in to an additional notification when an independently verified browser download scan fails or cannot finish. Required failure messages, blocked-opening alerts and security warnings remain visible regardless of this setting. Download scan notifications are not active until a separately authenticated native integration is available.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let failedScanNotificationStatus {
+              Text(failedScanNotificationStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("notifyOnFailedDownloadScanStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("downloadFailureNotificationsSection")
+        .onAppear {
+          // Read-only load: requesting notification permission is a separate task.
+          notifyOnFailedScan = DownloadFailedScanNotificationPreference.isEnabled()
+        }
+
       }
       .padding(28)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("browsersSettingsPage")
+    .onAppear {
+      // Reading is side-effect free; do not prompt for browser permissions.
+      downloadMonitoringEnabled = BrowserDownloadMonitoringPreference.isEnabled()
+    }
   }
 
   private func browserSettingDetail(_ title: String, _ description: String, helpText: String) -> some View {

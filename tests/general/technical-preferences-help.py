@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import unittest
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "PDFMagicOpenerApp"
@@ -70,12 +71,40 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # scanner-parameter editor or bypass. Forbid every other button.
         if filename == "AdvancedScanningSettingsView.swift" and term == "Button(":
           continue
+        # Only the two reviewed browser download preference toggles are allowed.
+        # Continue forbidding unrelated scanner-bypass controls in this page.
+        if filename == "BrowsersSettingsView.swift" and term == "Toggle(":
+          continue
+        # One user-invoked, read-only local integration diagnostic is allowed.
+        if filename == "BrowsersSettingsView.swift" and term == "Button(":
+          continue
         # Updates now has two explicit, user-initiated actions; keep all
         # scanner bypass and settings mutation prohibitions intact.
         if filename == "UpdatesSettingsView.swift" and term in ("Button(", "Process(", "URLSession"):
           continue
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
+      if filename == "BrowsersSettingsView.swift":
+        self.assertEqual(source.count('Button("'), 1)
+        self.assertIn('Button("Test Browser Integration")', source)
+        self.assertIn('browserIntegrationTestReport = BrowserIntegrationTest.run(', source)
+        toggle_names = re.findall(r'Toggle\("([^"]+)"', source)
+        allowed = {
+            "Show Only Warnings",
+            "Notify on Failed Scan",
+            "Show Scan Results",
+            "Enable Browser Download Monitoring",
+            "Scan Other Supported Files",
+        }
+        for required in ("Show Only Warnings", "Notify on Failed Scan", "Scan Other Supported Files",
+                         "Enable Browser Download Monitoring", "Show Scan Results"):
+          self.assertIn(required, toggle_names)
+        self.assertEqual(len(toggle_names), len(set(toggle_names)))
+        self.assertFalse(set(toggle_names) - allowed)
+        self.assertIn('ScanOtherSupportedFilesPreference.save(enabled)', source)
+        self.assertIn("DownloadScanResultsPreference.save(enabled)", source)
+        self.assertIn("BrowserDownloadMonitoringPreference.save(enabled)", source)
+        self.assertNotIn("permissions.request", source)
       if filename == "AdvancedScanningSettingsView.swift":
         self.assertEqual(source.count('Button("Restore Recommended Limits"'), 2)
         self.assertIn('Button("Cancel", role: .cancel)', source)

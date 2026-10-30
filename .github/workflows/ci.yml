@@ -320,8 +320,24 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/restore-previous-default.py -v
       - name: Verify Built-in scanner defaults appear before advanced explanations
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
+      - name: Verify native download connection-health indicator fails closed
+        run: PYTHONPATH=. python3 tests/general/download-connection-health.py -v
+      - name: Verify browser download monitoring protection and limits explanation
+        run: PYTHONPATH=. python3 tests/general/download-monitoring-limits.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
+      - name: Verify opt-in non-PDF download scan preference surface
+        run: PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v
+      - name: Verify opt-in browser download failed-scan notifications remain safety-neutral
+        run: PYTHONPATH=. python3 tests/download/notify-on-failed-scan.py -v
+      - name: Verify download Show Only Warnings option and mandatory warning visibility
+        run: PYTHONPATH=. python3 tests/download/show-only-warnings.py -v
+      - name: Verify Show Scan Results display preference remains optional and safe
+        run: PYTHONPATH=. python3 tests/general/download-scan-results.py -v
+      - name: Verify read-only per-browser monitoring status display
+        run: PYTHONPATH=. python3 tests/general/browser-monitoring-status.py -v
+      - name: Verify read-only Test Browser Integration action
+        run: PYTHONPATH=. python3 tests/general/browser-integration-test.py -v
       - name: Verify explanatory help for technical preferences
         run: PYTHONPATH=. python3 tests/general/technical-preferences-help.py -v
       - name: Verify Extensions and Integrations settings page
@@ -346,6 +362,15 @@ jobs:
           npm run package:firefox
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
+      - name: Verify passive top-frame PDF navigation detection contract
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-navigation.test.mjs
+      - name: Verify passive PDF navigation response MIME detection
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-response-mime.test.mjs
+      - name: Verify PDFs served from extensionless URLs using trusted response MIME
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-extensionless.test.mjs
       - name: Verify versioned native JSON message contract
         run: PYTHONPATH=. python3 tests/native/message-format.py -v
       - name: Upload validated Chrome extension package
@@ -691,6 +716,34 @@ jobs:
           assert "CFBundleDocumentTypes" not in info
           ABOUT_PLIST
           cmp LICENSE "$app/Contents/Resources/LICENSE"
+      - name: Verify per-browser monitoring status does not imply scanner connectivity
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-monitoring-status.swift -o "$RUNNER_TEMP/TestBrowserMonitoringStatus"
+          "$RUNNER_TEMP/TestBrowserMonitoringStatus"
+      - name: Verify browser integration preflight never claims scanner connectivity
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-integration.swift -o "$RUNNER_TEMP/TestBrowserIntegration"
+          "$RUNNER_TEMP/TestBrowserIntegration"
+      - name: Verify isolated browser download monitoring toggle preference
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
+          "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
+      - name: Verify browser failed-scan notification preference in isolated user defaults
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"
+          "$RUNNER_TEMP/TestNotifyOnFailedScan"
+      - name: Verify browser connection-health snapshots are never scanner authorization
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-connection-health.swift -o "$RUNNER_TEMP/TestDownloadConnectionHealth"
+          "$RUNNER_TEMP/TestDownloadConnectionHealth"
+      - name: Verify Show Only Warnings saved preference and fail-open warning visibility
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-only-warnings.swift -o "$RUNNER_TEMP/TestShowOnlyWarnings"
+          "$RUNNER_TEMP/TestShowOnlyWarnings"
+      - name: Verify isolated download scan-result display preference
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-scan-results.swift -o "$RUNNER_TEMP/TestDownloadScanResults"
+          "$RUNNER_TEMP/TestDownloadScanResults"
       - name: Verify opt-in successful scan notifications in isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
@@ -748,6 +801,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-protection-choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
           "$RUNNER_TEMP/TestProtectionChoiceRestart"
+      - name: Verify isolated opt-in download scan scope persistence
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-scan-other-supported-files.swift -o "$RUNNER_TEMP/TestScanOtherSupportedFiles"
+          "$RUNNER_TEMP/TestScanOtherSupportedFiles"
       - name: Verify settings survive app restart and replacement executable
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"

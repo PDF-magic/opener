@@ -63,7 +63,7 @@ class GeneralPDFHandlerIndicatorTests(unittest.TestCase):
     self.assertNotIn("Button(", status)
 
   def test_macos_ci_runs_real_swift_status_unit_tests(self):
-    self.assertIn("tests/general/pdf-handler-indicator.py -v", CI)
+    self.assertIn(f"{Path(__file__).resolve().relative_to(ROOT).as_posix()} -v", CI)
     self.assertIn("test-general-pdf-handler-indicator.swift", CI)
     self.assertIn("PDFMagicOpenerApp/GeneralSettingsView.swift", CI)
 
