@@ -226,6 +226,35 @@ cancellation/cleanup lifecycle handling, and preservation of mandatory
 ClamAV freshness, integrity, quarantine and verified-opening protections.
 The host handshake alone is not authorization.
 
+### Health-check message (opener-0632)
+
+After completing the version-1 `host.handshake` on the same native host
+process, a caller can perform a separate, read-only health check:
+
+```json
+{"version":1,"kind":"request","topic":"host.health","requestId":"health_1","payload":null}
+```
+
+The response correlates the same request ID and reports only facts the
+transport-only process can truthfully establish:
+
+```json
+{"version":1,"kind":"response","topic":"host.health","requestId":"health_1","payload":{"status":"transport-only","transportResponsive":true,"scannerHealth":null,"scanAvailable":false,"authorizesOpen":false}}
+```
+
+`transportResponsive:true` means this process successfully answered a
+framed request, **not** that ClamAV, its signatures, a scanner coordinator,
+an application installation, or document opening is healthy or available.
+`scannerHealth:null` means **not evaluated**, not healthy or clean.
+No scanner is started or inspected, no files or user settings are accessed,
+and no authorization is granted. Unlike the pre-handshake `host.ping`
+liveness probe, `host.health` requires a completed handshake, but the
+handshake itself is not browser authentication. Only a `null` payload is
+accepted; caller-supplied paths, verdicts, readiness flags and extra fields
+fail closed without a response for that message. Health checks can be
+repeated on the established connection and cannot mutate scan or cancellation
+state. The existing compiled-host macOS CI suite exercises these cases.
+
 ### Communication deadlines (opener-0634)
 
 The standalone host enforces cumulative monotonic deadlines on its native
