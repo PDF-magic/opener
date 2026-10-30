@@ -140,11 +140,11 @@ class NativeMessagingHostTests(unittest.TestCase):
     # compile-time-only home override. No test writes to the CI user's home.
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     "-typecheck", str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE)],
-                   capture_output=True, text=True, check=True, timeout=120)
+                   text=True, check=True, timeout=120)
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     "-D", "NATIVE_HOST_CONNECTION_TESTING",
                     str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE), "-o", str(cls.binary)],
-                   capture_output=True, text=True, check=True, timeout=120)
+                   text=True, check=True, timeout=120)
     cls.prior_test_home = os.environ.get("PDF_MAGIC_NATIVE_TEST_HOME")
     os.environ["PDF_MAGIC_NATIVE_TEST_HOME"] = cls.directory.name
     cls.status_binary = Path(cls.directory.name) / "native-host-status-tests"
