@@ -25,8 +25,14 @@ class AboutWindowTests(unittest.TestCase):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertIn('object(forInfoDictionaryKey: "CFBundleShortVersionString")', source)
     self.assertIn('Text("Version \\(version)")', source)
-    self.assertEqual(project.count("MARKETING_VERSION = 0.1.0;"), 2)
-    self.assertEqual(project.count("CURRENT_PROJECT_VERSION = 1;"), 2)
+    # Inspect the application's Debug and Release configurations, not every
+    # target: embedded Safari extensions have independent bundle versions.
+    for config_id in ("A1000000000000000000000E",
+                      "A1000000000000000000000F"):
+      with self.subTest(config_id=config_id):
+        block = project.split(f"{config_id} = {{", 1)[1].split("    };", 1)[0]
+        self.assertIn("MARKETING_VERSION = 0.1.0;", block)
+        self.assertIn("CURRENT_PROJECT_VERSION = 1;", block)
 
   def test_full_license_is_available_offline(self):
     source = ABOUT.read_text(encoding="utf-8")
