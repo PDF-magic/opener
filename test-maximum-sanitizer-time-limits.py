@@ -128,6 +128,35 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         self.assertEqual(result.returncode, 7)
         self.assertEqual(result.stdout, b"")
 
+    def test_macos_cleanup_recognizes_only_verified_zombie_groups(self):
+        # Darwin returns EPERM when a group contains only unreaped zombies.
+        # This must never permit a live descendant or an unverifiable group.
+        leader_pid = 31337
+        leader = unittest.mock.Mock(pid=leader_pid)
+        cases = (
+            (b"31337 31337 Z\\n31338 31337 Z\\n", True),
+            (b"31337 31337 Z\\n31338 31337 S\\n", False),
+            (b"31338 31337 Z\\n", False),
+            (b"invalid process table", False),
+        )
+        for stdout, allowed in cases:
+            with self.subTest(allowed=allowed, output=stdout), \\
+                    patch.object(sanitizer.sys, "platform", "darwin"), \\
+                    patch.object(sanitizer.os, "killpg",
+                                 side_effect=PermissionError(errno.EPERM, "denied")), \\
+                    patch.object(sanitizer, "_process_has_exited_without_reaping",
+                                 return_value=True), \\
+                    patch.object(sanitizer.subprocess, "run", return_value=
+                                 subprocess.CompletedProcess([], 0, stdout, b"")):
+                if allowed:
+                    sanitizer._stop_process_group(leader)
+                    leader.kill.assert_not_called()
+                else:
+                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                        sanitizer._stop_process_group(leader)
+                    leader.kill.assert_called()
+                    leader.kill.reset_mock()
+
     def test_invalid_limits_fail_before_process_launch(self):
         command = (sys.executable, "-I", "-B", "-c", "pass")
         with patch.object(sanitizer.subprocess, "Popen") as launch:
