@@ -13,7 +13,8 @@ function events() {
     get size() { return subscribers.size; }
   };
 }
-function fixture(danger = "safe") {
+function fixture(...values) {
+  const danger = values.length === 0 ? "safe" : values[0];
   const searches = [], grants = [];
   const downloads = {
     search(query) {
