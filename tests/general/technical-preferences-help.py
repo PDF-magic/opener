@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import unittest
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "PDFMagicOpenerApp"
@@ -81,9 +82,18 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
       if filename == "BrowsersSettingsView.swift":
-        self.assertEqual(source.count("Toggle("), 2)
-        self.assertEqual(source.count('Toggle("Scan Other Supported Files"'), 1)
-        self.assertEqual(source.count('Toggle("Enable Browser Download Monitoring"'), 1)
+        toggle_names = re.findall(r'Toggle\("([^"]+)"', source)
+        allowed = {
+            "Show Only Warnings",
+            "Show Scan Results",
+            "Enable Browser Download Monitoring",
+            "Scan Other Supported Files",
+        }
+        for required in ("Show Only Warnings", "Scan Other Supported Files",
+                         "Enable Browser Download Monitoring"):
+          self.assertIn(required, toggle_names)
+        self.assertEqual(len(toggle_names), len(set(toggle_names)))
+        self.assertFalse(set(toggle_names) - allowed)
         self.assertIn('ScanOtherSupportedFilesPreference.save(enabled)', source)
         self.assertIn("BrowserDownloadMonitoringPreference.save(enabled)", source)
         self.assertNotIn("permissions.request", source)
