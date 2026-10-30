@@ -127,11 +127,25 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
             sanitizer.subprocess, "run", side_effect=[
                 subprocess.CalledProcessError(1, "/bin/ps"),
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CalledProcessError(1, "/bin/ps"),
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
             ]
         ) as probe:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._process_has_exited_without_reaping(process)
-            self.assertEqual(probe.call_count, 2)
+            self.assertEqual(probe.call_count, 4)
+
+        # Transient process-table gaps must not hide a verified zombie.
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", side_effect=[
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CalledProcessError(1, "/bin/ps"),
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\\n"),
+            ]
+        ) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+            self.assertEqual(probe.call_count, 4)
 
         # A live state is never interpreted as a successfully exited worker.
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(

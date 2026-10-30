@@ -226,7 +226,7 @@ def _process_has_exited_without_reaping(process) -> bool:
         # occasionally be delayed on hosted runners; retry a transient probe
         # failure once, but accept exit only after an explicit zombie record.
         # An absent, malformed or repeatedly unavailable status fails closed.
-        for _ in range(2):
+        for attempt in range(4):
             try:
                 completed = subprocess.run(
                     ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
@@ -240,6 +240,10 @@ def _process_has_exited_without_reaping(process) -> bool:
                     check=True,
                 )
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                # A newly exited child may not yet be visible in macOS ps.
+                # Retry briefly; never interpret missing status as an exit.
+                if attempt < 3:
+                    time.sleep(0.04)
                 continue
             except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
