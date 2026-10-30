@@ -221,11 +221,13 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
             sanitizer.subprocess, "run", side_effect=[
                 subprocess.CalledProcessError(1, "/bin/ps"),
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CalledProcessError(1, "/bin/ps"),
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
             ]
         ) as probe:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._process_has_exited_without_reaping(process)
-            self.assertEqual(probe.call_count, 2)
+            self.assertEqual(probe.call_count, 4)
 
         # A live state is never interpreted as a successfully exited worker.
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
