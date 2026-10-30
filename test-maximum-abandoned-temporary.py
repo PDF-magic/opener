@@ -59,11 +59,16 @@ class AbandonedMaximumTemporaryTests(unittest.TestCase):
 
     def test_live_creator_preserved_even_when_old(self):
         lease = cleanup.stage_maximum_temporary_pdf(b"%PDF-1.7\nkeep")
+        self.abandon(lease)
         self.age(lease.path)
         self.age(lease.path.parent)
+        # A live PID protects even a lease forgotten by the in-memory registry.
         self.assertEqual(cleanup.cleanup_abandoned_temporary_pdfs(), 0)
         self.assertTrue(lease.path.is_file())
-        lease.release()
+        # The test deliberately changed its identity; do not bypass lease
+        # checks in production merely to dispose of this synthetic fixture.
+        lease.path.unlink()
+        lease.path.parent.rmdir()
 
     def test_recent_orphan_is_preserved(self):
         lease = cleanup.stage_maximum_temporary_pdf(b"%PDF-1.7\nkeep")
