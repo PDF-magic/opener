@@ -24,6 +24,37 @@ permissions:
 
 jobs:
 
+  chrome-package-smoke:
+    # Exercise the actual Chrome Web Store ZIP in a Chrome for Testing browser.
+    # Official branded Chrome 137+ disables --load-extension, so use CfT.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: Chrome package smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: Load the extracted ZIP as a real Chrome extension
+        working-directory: extensions/webextension
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          PACKAGE_DIR: ${{ runner.temp }}/pdfmagic-chrome-smoke
+          # Ubuntu hosted runners may not expose unprivileged user namespaces.
+          # This flag applies only to the disposable CI test browser/profile.
+          CHROME_TEST_NO_SANDBOX: "1"
+        run: |
+          npm run package:chrome
+          mkdir -p "$PACKAGE_DIR"
+          unzip -q "dist/chrome/pdf-magic-opener-chrome-$(node -p 'require("./manifest.json").version').zip" -d "$PACKAGE_DIR"
+          node scripts/test-chrome.mjs "$CHROME_PATH" "$PACKAGE_DIR"
+
+
   detect-scope:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Validate dependency map for native CI
