@@ -78,3 +78,24 @@ page order, media dimensions, rotation, JavaScript, and embedded attachments
 are handled correctly. The active scanner,
 signature updater, cached scan decisions, quarantine and user settings
 are unchanged.
+
+## Saved-copy identity contract (opener-0547)
+
+The optional future Maximum save dialog must clearly distinguish a generated
+copy from its original. For a verified `SanitizedCopyOffer`, call
+`offer.to_save_presentation(trusted_source_path)`: it returns a fixed
+**“Generated sanitized PDF copy (not the original)”** label, an explicit
+warning to retain the untouched original, `contentOrigin=generatedContent`,
+`isUntouchedOriginal=false`, and a basename ending in
+`-sanitized-copy.pdf`. This suggestion is derived only from the trusted
+source filename, never from PDF metadata, and cannot equal that original
+basename (including case-insensitive comparisons). Invalid source names
+fail closed. No source directory or document bytes are exposed in this
+presentation; ordinary public metadata stays path-free.
+
+This is a **save-dialog presentation contract, not a save operation**. It
+never writes a file or grants scanner/opening approval. The independently
+assigned optional Save action (opener-0544) must require explicit consent,
+create exclusively without overwriting the original or an existing file,
+and preserve the mandatory separate scan gate. Maximum remains unavailable
+in the installed Built-in application.
