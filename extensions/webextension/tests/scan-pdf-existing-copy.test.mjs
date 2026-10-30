@@ -3,10 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { findExistingDownloadedPdfCopy as findCopy } from "../src/scan-pdf-existing-copy.js";
 
-const URL = "https://example.test/private/document.pdf?token=secret";
-const selected = (url = URL) => ({ kind: "trusted-current-pdf-source", url });
+const SOURCE_URL = "https://example.test/private/document.pdf?token=secret";
+const selected = (url = SOURCE_URL) => ({ kind: "trusted-current-pdf-source", url });
 const row = (overrides = {}) => ({
-  id: 17, url: URL, state: "complete",
+  id: 17, url: SOURCE_URL, state: "complete",
   filename: "/Users/example/Downloads/document.pdf",
   exists: true, paused: false, canResume: false,
   bytesReceived: 512, totalBytes: 512, danger: "safe",
@@ -54,17 +54,17 @@ const expected = {
   scanVerified: false, authorizesScan: false, authorizesOpen: false
 };
 
-test("matches one existing completed copy with exact URL and final fresh preflight", async () => {
+test("matches one existing completed copy with exact SOURCE_URL and final fresh preflight", async () => {
   const f = fixture();
-  const result = await findCopy(f.downloads, f.permissions, selected(URL + "#page=3"));
+  const result = await findCopy(f.downloads, f.permissions, selected(SOURCE_URL + "#page=3"));
   assert.deepEqual(result, expected);
   assert.equal(Object.isFrozen(result), true);
   assert.deepEqual(f.calls.slice(1), [{ id: 17 }, { id: 17 }, { id: 17 }]);
   assert.equal(f.calls.length, 4);
   assert.equal(f.calls[0].limit, 16);
-  assert.equal(new RegExp(f.calls[0].url).test(URL), true);
-  assert.equal(new RegExp(f.calls[0].url).test(URL + "/other"), false);
-  assert.equal(new RegExp(f.calls[0].url).test(URL.replace("?", "X")), false);
+  assert.equal(new RegExp(f.calls[0].url).test(SOURCE_URL), true);
+  assert.equal(new RegExp(f.calls[0].url).test(SOURCE_URL + "/other"), false);
+  assert.equal(new RegExp(f.calls[0].url).test(SOURCE_URL.replace("?", "X")), false);
   assert.doesNotMatch(JSON.stringify(result), /secret|private|Users|example.test/);
   f.assertDetached();
 });
@@ -91,10 +91,10 @@ test("missing, ambiguous, incomplete or deleted browser history is unavailable",
 
 test("rejects unsupported, credential-bearing, hostile or page-authored selections before APIs", async () => {
   const invalid = [
-    undefined, null, [], {}, { url: URL },
+    undefined, null, [], {}, { url: SOURCE_URL },
     { kind: "trusted-current-pdf-source" },
-    { kind: "trusted-current-pdf-source", url: URL, isPdfCandidate: true },
-    Object.assign(Object.create({ kind: "trusted-current-pdf-source" }), { url: URL }),
+    { kind: "trusted-current-pdf-source", url: SOURCE_URL, isPdfCandidate: true },
+    Object.assign(Object.create({ kind: "trusted-current-pdf-source" }), { url: SOURCE_URL }),
     selected("blob:https://example.test/a.pdf"),
     selected("data:application/pdf,abc"),
     selected("file:///Users/private/document.pdf"),
@@ -178,7 +178,7 @@ test("hostile history records, accessors and browser exceptions fail privately",
   const bad = row();
   Object.defineProperty(bad, "url", { get() { throw Error("getter"); } });
   for (const records of [
-    [bad], [Object.create({ id: 17, url: URL })], Array(1),
+    [bad], [Object.create({ id: 17, url: SOURCE_URL })], Array(1),
     new Proxy([], { get(_, key) { if (key === "length") throw Error("secret"); } })
   ]) {
     const f = fixture(records);
@@ -191,7 +191,7 @@ test("hostile history records, accessors and browser exceptions fail privately",
   f.assertDetached();
 });
 
-test("rechecked source URL must still match the selected document", async () => {
+test("rechecked source SOURCE_URL must still match the selected document", async () => {
   let count = 0;
   const f = fixture(() => {
     count++;
