@@ -152,12 +152,12 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         # insufficient evidence to accept an EPERM cleanup failure.
         unverified_tables = (
             b"",
-            b"202 202 Z\\n",
-            b"102 101 Z\\n",
-            b"101 202 Z\\n102 101 Z\\n",
-            b"101 101 S\\n",
-            b"101 101 Z\\n102 101 S\\n",
-            b"not-a-process-record\\n",
+            b"202 202 Z\n",
+            b"102 101 Z\n",
+            b"101 202 Z\n102 101 Z\n",
+            b"101 101 S\n",
+            b"101 101 Z\n102 101 S\n",
+            b"not-a-process-record\n",
         )
         for output in unverified_tables:
             with (
