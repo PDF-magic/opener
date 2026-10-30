@@ -676,6 +676,10 @@ jobs:
           assert "CFBundleDocumentTypes" not in info
           ABOUT_PLIST
           cmp LICENSE "$app/Contents/Resources/LICENSE"
+      - name: Verify isolated browser download monitoring toggle preference
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
+          "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
       - name: Verify opt-in successful scan notifications in isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
