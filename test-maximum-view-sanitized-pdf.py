@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """opener-0553: view only a verified, freshly scanned generated PDF on request."""
-from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 import stat
@@ -33,18 +32,20 @@ class SanitizedPDFViewTests(unittest.TestCase):
         self.assertFalse(metadata["authorizesOpen"])
         self.assertTrue(metadata["requiresExplicitAction"])
         self.assertTrue(metadata["requiresFreshScan"])
-        for invalid in (None, self.offer.pdf_bytes, object(),
-                        replace(self.offer, content_origin="original"),
-                        replace(self.offer, needs_separate_scan=False)):
+        for invalid in (None, self.offer.pdf_bytes, object()):
             with self.subTest(invalid=type(invalid).__name__):
                 self.assertIsNone(view.available_view_sanitized_pdf_action(invalid))
+        for key, value in (("content_origin", "original"), ("needs_separate_scan", False)):
+            forged = SanitizedCopyOffer(self.offer.pdf_bytes, 1)
+            object.__setattr__(forged, key, value)
+            self.assertIsNone(view.available_view_sanitized_pdf_action(forged))
 
     def test_declining_never_stages_scans_or_launches(self):
-        with patch("maximum_sanitized_copy._passive_pages", return_value=True), \\
-                patch.object(view, "stage_maximum_temporary_pdf") as stage, \\
+        with patch("maximum_sanitized_copy._passive_pages", return_value=True), \
+                patch.object(view, "stage_maximum_temporary_pdf") as stage, \
                 patch.object(view, "_scan_staged_copy") as scan:
             for decision in (False, None, 1, "yes"):
-                with self.subTest(decision=decision), \\
+                with self.subTest(decision=decision), \
                         self.assertRaises(view.SanitizedPDFViewError):
                     view.view_sanitized_pdf(self.offer, user_requested=decision)
             stage.assert_not_called()
@@ -60,7 +61,7 @@ class SanitizedPDFViewTests(unittest.TestCase):
             self.assertRegex(path.name, r"^safe-copy-[0-9a-f]{32}\\.pdf$")
             return self.clean()
 
-        with patch("maximum_sanitized_copy._passive_pages", return_value=True), \\
+        with patch("maximum_sanitized_copy._passive_pages", return_value=True), \
                 patch.object(view, "_scan_staged_copy", side_effect=scan):
             session = view.view_sanitized_pdf(self.offer, user_requested=True)
         self.addCleanup(session.release_after_viewer_closes)
@@ -96,9 +97,9 @@ class SanitizedPDFViewTests(unittest.TestCase):
                 if isinstance(result, Exception):
                     raise result
                 return result
-            with self.subTest(result=type(result).__name__), \\
-                    patch("maximum_sanitized_copy._passive_pages", return_value=True), \\
-                    patch.object(view, "_scan_staged_copy", side_effect=attempt), \\
+            with self.subTest(result=type(result).__name__), \
+                    patch("maximum_sanitized_copy._passive_pages", return_value=True), \
+                    patch.object(view, "_scan_staged_copy", side_effect=attempt), \
                     self.assertRaisesRegex(view.SanitizedPDFViewError,
                                             "^The sanitized PDF could not be viewed safely\\.$") as caught:
                 view.view_sanitized_pdf(self.offer, user_requested=True)
@@ -107,14 +108,17 @@ class SanitizedPDFViewTests(unittest.TestCase):
             self.assertNotIn("secret", str(caught.exception))
 
     def test_unverified_or_forged_offers_cannot_stage_or_open(self):
-        with patch.object(view, "stage_maximum_temporary_pdf") as stage, \\
+        with patch.object(view, "stage_maximum_temporary_pdf") as stage, \
                 patch.object(view, "_scan_staged_copy") as scan:
-            for offer in (self.offer, None, object(),
-                          replace(self.offer, permits_open=True),
-                          replace(self.offer, rasterized=False)):
-                with self.subTest(offer=type(offer).__name__), \\
+            for offer in (self.offer, None, object()):
+                with self.subTest(offer=type(offer).__name__), \
                         self.assertRaises(view.SanitizedPDFViewError):
                     view.view_sanitized_pdf(offer, user_requested=True)
+            for key, value in (("permits_open", True), ("rasterized", False)):
+                forged = SanitizedCopyOffer(self.offer.pdf_bytes, 1)
+                object.__setattr__(forged, key, value)
+                with self.assertRaises(view.SanitizedPDFViewError):
+                    view.view_sanitized_pdf(forged, user_requested=True)
             stage.assert_not_called()
             scan.assert_not_called()
 
@@ -130,8 +134,8 @@ class SanitizedPDFViewTests(unittest.TestCase):
                 path.unlink()
                 path.symlink_to(victim)
                 return self.clean()
-            with patch("maximum_sanitized_copy._passive_pages", return_value=True), \\
-                    patch.object(view, "_scan_staged_copy", side_effect=swap), \\
+            with patch("maximum_sanitized_copy._passive_pages", return_value=True), \
+                    patch.object(view, "_scan_staged_copy", side_effect=swap), \
                     self.assertRaises(view.SanitizedPDFViewError):
                 view.view_sanitized_pdf(self.offer, user_requested=True)
             self.assertEqual(victim.read_bytes(), b"keep user data")
