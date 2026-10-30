@@ -341,6 +341,11 @@ jobs:
       - name: mac / maximum-password-fidelity / Verify real converter refuses password-protected PDFs
         run: python3 test-maximum-password-protected.py -v
 
+      - name: Verify optional sanitized-copy destination selection without saving
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: mac / maximum-safe-copy-handoff / Install pinned sanitization dependencies
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
