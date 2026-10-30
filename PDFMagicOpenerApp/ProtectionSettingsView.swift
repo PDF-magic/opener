@@ -170,6 +170,13 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
     }
   }
 
+  // Fixed, document-independent preview text. Only Maximum can rasterize
+  // into a generated copy; this does not claim that Maximum is active.
+  var capabilityLossExplanation: String? {
+    guard self == .maximum else { return nil }
+    return "A future Maximum-generated safe copy is rebuilt from flattened page images, not an editable original. Flattening may remove selectable and searchable text, clickable links, interactive form fields, annotations and comments, embedded attachments, document metadata, and scripts or other active PDF actions. Digital signatures may be invalidated, and visual details can change. OCR is not restored. Keep the untouched original if you need these capabilities. A generated copy is not a malware-clean verdict and still requires a separate fresh scan before opening."
+  }
+
   // This view may only preview named protection tiers. A complete,
   // separately verified engine-to-scan-gate integration is required before
   // any tier can become an effective selection.
@@ -236,6 +243,58 @@ private enum ExactEffectiveScanPolicy {
       "failure_disposition": "deny"
     }
     """
+}
+
+// A read-only comparison for the *planned* Maximum tier. These labels are
+// explanatory, not per-document scan results or a safe-copy save/launch action.
+// The sanitizer's trusted generatedContent/isUntouchedOriginal=false metadata
+// remains the authority for future document-specific presentation.
+private struct MaximumOriginalSafeCopyComparison: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("Original versus generated safe copy")
+        .font(.subheadline.weight(.semibold))
+        .accessibilityAddTraits(.isHeader)
+
+      HStack(alignment: .top, spacing: 10) {
+        Image(systemName: "doc")
+          .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Original PDF")
+            .font(.subheadline.weight(.semibold))
+          Text("Unmodified source document. It is not a generated safe copy; when Maximum requires sanitization, the original is never opened as a fallback.")
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .accessibilityElement(children: .combine)
+      .accessibilityIdentifier("maximumOriginalPDFIdentity")
+
+      HStack(alignment: .top, spacing: 10) {
+        Image(systemName: "doc.badge.gearshape")
+          .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Generated safe copy")
+            .font(.subheadline.weight(.semibold))
+          Text("A separate PDF reconstructed from rasterized pages, not the untouched original. Appearance may change; selectable text, links, forms and digital signatures may be lost. It requires its own fresh scan before opening.")
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .accessibilityElement(children: .combine)
+      .accessibilityIdentifier("maximumGeneratedSafeCopyIdentity")
+
+      Text("Planned Maximum preview only. No document was converted, scanned or opened here, and Maximum remains unavailable.")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(12)
+    .background(Color(nsColor: .controlBackgroundColor),
+                in: RoundedRectangle(cornerRadius: 10))
+    .accessibilityIdentifier("maximumOriginalSafeCopyComparison")
+  }
 }
 
 struct ProtectionSettingsView: View {
@@ -397,10 +456,24 @@ struct ProtectionSettingsView: View {
                 Text(selectedPreview.detail)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
+                if let capabilityLoss = selectedPreview.capabilityLossExplanation {
+                  VStack(alignment: .leading, spacing: 6) {
+                    Text("PDF capabilities that may be removed")
+                      .font(.subheadline.weight(.semibold))
+                      .accessibilityAddTraits(.isHeader)
+                    Text(capabilityLoss)
+                      .foregroundStyle(.secondary)
+                      .fixedSize(horizontal: false, vertical: true)
+                  }
+                  .accessibilityIdentifier("maximumCapabilityLossExplanation")
+                }
                 Text(selectedPreview.activationBlockReason)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
                   .accessibilityIdentifier("profileActivationBlockedReason")
+                if selectedPreview == .maximum {
+                  MaximumOriginalSafeCopyComparison()
+                }
                 if !selectedPreview.unavailableMandatoryChecks.isEmpty {
                   Text("Unavailable mandatory engines")
                     .font(.subheadline.weight(.semibold))

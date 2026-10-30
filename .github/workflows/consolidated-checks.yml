@@ -164,6 +164,10 @@ jobs:
         run: python3 test-maximum-generated-rescan.py -v
       - name: maximum / maximum-generated-content-marking / Preserve required safe-copy handoff
         run: python3 test-maximum-safe-copy-handoff.py -v
+      - name: maximum / maximum-view-sanitized-pdf / Verify explicit view action and fresh scan-only handoff
+        run: python3 test-maximum-view-sanitized-pdf.py -v
+      - name: maximum / save-sanitized-copy / Verify opt-in save and fresh scan without opening
+        run: python3 test-maximum-save-sanitized-copy.py -v
 
       - name: maximum / maximum-generated-rescan / Install strict PDF validator
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
@@ -198,7 +202,11 @@ jobs:
         if: runner.os == 'macOS'
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: maximum / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
-        run: python3 test-maximum-temporary-output.py -v
+        run: |
+          python3 test-maximum-temporary-output.py -v
+          python3 test-maximum-abandoned-temporary.py -v
+      - name: maximum / maximum-overwrite-warning / Require explicit consent before replacing user PDF destinations
+        run: python3 test-maximum-overwrite-warning.py -v
       - name: maximum / maximum-sanitized-copy / Install strict PDF validation dependency
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0' 'cryptography==46.0.4'
       - name: maximum / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
@@ -337,9 +345,13 @@ jobs:
       - name: mac / maximum-safe-copy-handoff / Install pinned sanitization dependencies
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
-        run: python3 test-maximum-temporary-output.py -v
+        run: |
+          python3 test-maximum-temporary-output.py -v
+          python3 test-maximum-abandoned-temporary.py -v
       - name: mac / maximum-safe-copy-handoff / Verify random filenames, source-request association and separately scanned handoff
         run: python3 test-maximum-safe-copy-handoff.py -v
+      - name: mac / maximum-view-sanitized-pdf / Verify view action, owned copy retention and fail-closed scanner path
+        run: python3 test-maximum-view-sanitized-pdf.py -v
 
       - name: mac / maximum-sanitized-copy / Install strict PDF validation dependency
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0' 'cryptography==46.0.4'

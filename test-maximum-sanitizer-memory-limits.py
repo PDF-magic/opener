@@ -189,8 +189,10 @@ raise SystemExit(3)
         verified = subprocess.CompletedProcess(
             ("ps",), 0, b"101 101 Z+\n202 202 S+\n", None
         )
+        # A verified live leader is not an exit; missing or malformed
+        # identity remains an error, never a clean shutdown.
         untrusted = (b"102 101 Z+\n", b"101 202 Z+\n",
-                     b"101 101 S+\n", b"invalid-data\n")
+                     b"invalid-data\n")
         with patch.object(sanitizer.sys, "platform", "darwin"), \
                 patch.object(sanitizer.time, "sleep"), patch.object(
                     sanitizer.subprocess, "run",
@@ -211,6 +213,16 @@ raise SystemExit(3)
                     ):
                 with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                     sanitizer._process_has_exited_without_reaping(process)
+        # The fallback may identify a still-running group leader. This must
+        # return False, not treat the process as exited or permit cleanup.
+        live = subprocess.CompletedProcess(("ps",), 0, b"101 101 S+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), patch.object(
+                    sanitizer.subprocess, "run",
+                    side_effect=(empty, empty, empty, empty, live),
+                ) as probe:
+            self.assertIs(sanitizer._process_has_exited_without_reaping(process), False)
+            self.assertEqual(probe.call_count, 5)
         self.assertIsNone(process.returncode)
 
     def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):
@@ -235,6 +247,7 @@ raise SystemExit(3)
             ("ps",), 0, b"102 101 Z+\n", None
         )
         with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), \
                 patch.object(sanitizer.os, "killpg",
                              side_effect=PermissionError(errno.EPERM, "denied")), \
                 patch.object(process, "kill", return_value=None, create=True) as kill:
@@ -246,10 +259,10 @@ raise SystemExit(3)
             for group in (living, missing_leader):
                 with self.subTest(group=group.stdout), \
                         patch.object(sanitizer.subprocess, "run",
-                                     side_effect=(leader, group)) as probe:
+                                     side_effect=(leader, group) * 4) as probe:
                     with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                         sanitizer._stop_process_group(process)
-                    self.assertEqual(probe.call_count, 2)
+                    self.assertEqual(probe.call_count, 8)
                     kill.assert_called()
                     kill.reset_mock()
 

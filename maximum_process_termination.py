@@ -14,6 +14,7 @@ import time
 
 from maximum_sanitizer_process import (
     _darwin_group_has_only_zombies,
+    _darwin_verified_zombie_cleanup,
     _process_has_exited_without_reaping,
     SanitizerProcessExecutionError,
 )
@@ -72,12 +73,12 @@ def _stop_group(process):
         # An EPERM group is safe only after its owned leader exited and
         # a complete process snapshot proves no live descendants remain.
         if sys.platform == "darwin" and error.errno == errno.EPERM:
-            try:
-                if (_process_has_exited_without_reaping(process) and
-                        _darwin_group_has_only_zombies(process.pid)):
-                    return
-            except SanitizerProcessExecutionError:
-                pass
+            if _darwin_verified_zombie_cleanup(
+                process,
+                exited_check=_process_has_exited_without_reaping,
+                group_check=_darwin_group_has_only_zombies,
+            ):
+                return
         try:
             process.kill()
         except ProcessLookupError:

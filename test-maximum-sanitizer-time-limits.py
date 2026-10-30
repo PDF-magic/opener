@@ -318,6 +318,42 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                     leader.kill.assert_called()
                     leader.kill.reset_mock()
 
+    def test_macos_cleanup_retries_only_until_zombie_group_is_proven(self):
+        leader = unittest.mock.Mock(pid=31337)
+        with (
+            patch.object(sanitizer.sys, "platform", "darwin"),
+            patch.object(sanitizer.os, "killpg",
+                         side_effect=PermissionError(errno.EPERM, "denied")),
+            patch.object(sanitizer, "_process_has_exited_without_reaping",
+                         return_value=True) as exited,
+            patch.object(sanitizer, "_darwin_group_has_only_zombies",
+                         side_effect=(False, False, True)) as group,
+            patch.object(sanitizer.time, "sleep") as delay,
+        ):
+            sanitizer._stop_process_group(leader)
+            self.assertEqual(exited.call_count, 3)
+            self.assertEqual(group.call_count, 3)
+            self.assertEqual(delay.call_count, 2)
+            leader.kill.assert_not_called()
+
+        leader.kill.reset_mock()
+        with (
+            patch.object(sanitizer.sys, "platform", "darwin"),
+            patch.object(sanitizer.os, "killpg",
+                         side_effect=PermissionError(errno.EPERM, "denied")),
+            patch.object(sanitizer, "_process_has_exited_without_reaping",
+                         return_value=True) as exited,
+            patch.object(sanitizer, "_darwin_group_has_only_zombies",
+                         return_value=False) as group,
+            patch.object(sanitizer.time, "sleep") as delay,
+        ):
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._stop_process_group(leader)
+            self.assertEqual(exited.call_count, 4)
+            self.assertEqual(group.call_count, 4)
+            self.assertEqual(delay.call_count, 3)
+            leader.kill.assert_called_once()
+
     def test_invalid_limits_fail_before_process_launch(self):
         command = (sys.executable, "-I", "-B", "-c", "pass")
         with patch.object(sanitizer.subprocess, "Popen") as launch:
