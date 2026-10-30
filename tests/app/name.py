@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = (ROOT / "install-allow-and-open.sh").read_text()
 APP_NAME = "PDF Magic Opener"
 BUNDLE_ID = "local.studio.brave-pdf-opener"

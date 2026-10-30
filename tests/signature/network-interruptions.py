@@ -8,7 +8,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 CANDIDATES = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 FAKE = r"""#!/bin/bash
 set -euo pipefail
@@ -154,7 +154,7 @@ class NetworkInterruptionTests(unittest.TestCase):
         self.assertIn("'StartInterval': 14400", installer)
         self.assertIn("'RunAtLoad': True", installer)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/signature/network-interruptions.py -v", ci)
+        self.assertIn("python3 tests/signature/network-interruptions.py -v", ci)
 
 
 if __name__ == "__main__":

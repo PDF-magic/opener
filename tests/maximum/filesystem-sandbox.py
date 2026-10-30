@@ -78,7 +78,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
             sandbox.MaximumFilesystemWorkerExit(0, permits_open=True)
 
     def test_active_scanner_remains_unaffected(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scan_gate = (root / "scan-and-open.py").read_text()
         native = (root / "brave-pdf-opener.swift").read_text()
         self.assertNotIn("maximum_filesystem_sandbox", scan_gate)

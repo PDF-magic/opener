@@ -42,7 +42,7 @@ class AbandonedMaximumTemporaryTests(unittest.TestCase):
         )
         child = subprocess.run(
             [sys.executable, "-c", script, str(self.root)],
-            cwd=Path(__file__).resolve().parent,
+            cwd=Path(__file__).resolve().parents[2],
             capture_output=True, text=True, check=True,
         )
         old_file = Path(child.stdout.strip())

@@ -22,7 +22,7 @@ from pdf_xfa_forms import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 _FAILURE = "PDF XFA forms could not be fully inspected; opening was stopped."
 
 
@@ -201,7 +201,7 @@ class PDFXFAFormTests(unittest.TestCase):
         docs = (ROOT / "docs/pdf/xfa-forms.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_xfa_forms", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/xfa-forms.py -v", ci)
+        self.assertIn("python3 tests/pdf/xfa-forms.py -v", ci)
         self.assertIn("/AcroForm", docs)
         self.assertIn("/XFA", docs)
         for forbidden in ("get_data(", "decompress(", "open(", "subprocess.",

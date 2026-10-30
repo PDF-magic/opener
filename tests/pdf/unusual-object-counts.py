@@ -18,7 +18,7 @@ from pdf_unusual_object_counts import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 _ERROR = "PDF object counts could not be fully inspected; opening was stopped."
 
 

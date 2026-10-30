@@ -156,7 +156,7 @@ class OCRBoundaryTests(unittest.TestCase):
         self.assertEqual(verified_generated_pdf_bytes(offer), offer.pdf_bytes)
 
     def test_installed_scanner_and_user_settings_untouched(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("maximum_sanitized_copy", scanner)

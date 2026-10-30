@@ -24,7 +24,7 @@ from protection_policy_definitions import (
 )
 from scan_results import ScanResultStatus
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
     "missing_dependency_gate", ROOT / "scan-and-open.py"
@@ -169,8 +169,8 @@ class MissingDependencyPolicyTests(unittest.TestCase):
         self.assertIn("if not cached_clean(cache_id):", installed_gate)
         self.assertIn("verify_file_integrity(path, before, identity)", installed_gate)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/general/missing-dependency-policy.py -v", ci)
-        self.assertIn("python3 scripts/run-test.py tests/scan/and-open.py", ci)
+        self.assertIn("python3 tests/general/missing-dependency-policy.py -v", ci)
+        self.assertIn("python3 tests/scan/and-open.py", ci)
         self.assertIn("macos-build:", ci)
 
 

@@ -22,7 +22,7 @@ from enhanced_analysis_findings import (
 from scan_results import ScanResult, ScanResultStatus
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def structural_report(

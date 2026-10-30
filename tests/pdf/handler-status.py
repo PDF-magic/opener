@@ -9,7 +9,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
     "pdf_handler_status", ROOT / "pdf-handler-status.py")
 status = importlib.util.module_from_spec(spec)
@@ -90,7 +90,7 @@ class PDFHandlerStatusTests(unittest.TestCase):
         self.assertIn("only reads", readme)
         self.assertIn("pdf-handler-status.py", readme)
         self.assertIn("identify-pdf-handler", readme)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/handler-status.py -v", ci)
+        self.assertIn("python3 tests/pdf/handler-status.py -v", ci)
 
 
 if __name__ == "__main__":

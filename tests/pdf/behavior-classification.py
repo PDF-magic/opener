@@ -192,7 +192,7 @@ class PDFBehaviorClassificationTests(unittest.TestCase):
             analysis.findings[0].disposition = PDFBehaviorDisposition.LEGITIMATE_FEATURE
 
     def test_built_in_gate_and_saved_preferences_remain_untouched(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_behavior_classification", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

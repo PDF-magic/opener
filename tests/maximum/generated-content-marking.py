@@ -100,7 +100,7 @@ class GeneratedCopyOriginTests(unittest.TestCase):
             self.assertEqual(verify.call_count, 1)
 
     def test_provenance_does_not_change_installed_scan_or_pdf_metadata(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         source = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
         rescan = (root / "maximum_generated_rescan.py").read_text(encoding="utf-8")

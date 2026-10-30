@@ -22,7 +22,7 @@ from pdf_automatic_external_requests import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 _ERROR = "Automatic PDF external requests could not be fully inspected; opening was stopped."
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 NEW_NAME = "set-pdf-default-handler.swift"
 OLD_NAME = "set-brave-pdf-default.swift"
 
@@ -33,7 +33,7 @@ class DefaultPDFHandlerNameTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn('xcrun swiftc ' + NEW_NAME + ' -o "$RUNNER_TEMP/SetPDFHandler"', workflow)
-        self.assertIn('python3 scripts/run-test.py tests/pdf/default-handler-name.py -v', workflow)
+        self.assertIn('python3 tests/pdf/default-handler-name.py -v', workflow)
         self.assertIn('swift ' + NEW_NAME, readme)
         self.assertIn('|' + ' `' + NEW_NAME + '`' + ' |', readme)
         self.assertNotIn(OLD_NAME, workflow)

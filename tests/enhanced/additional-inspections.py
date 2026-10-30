@@ -209,7 +209,7 @@ class AdditionalInspectionPolicyTests(unittest.TestCase):
         self.assertFalse(plan.to_dict()["authorizesOpen"])
 
     def test_deployed_scanner_profiles_and_preferences_remain_separate(self):
-        root = Path(__file__).parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         self.assertNotIn("enhanced_additional_inspections", scanner)
         self.assertIn("check_database()", scanner)

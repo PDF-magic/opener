@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import uuid
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 native = (ROOT / "brave-pdf-opener.swift").read_text().split(
     "@main\nstruct PDFMagicOpenerEntry {", 1)[0]
 preference = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text()

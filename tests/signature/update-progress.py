@@ -8,7 +8,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SCANNER_PATHS = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 
 
@@ -137,7 +137,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
             self.assertNotIn(forbidden, reader)
         self.assertEqual(project.count("path = SignatureUpdateProgress.swift;"), 1)
         self.assertIn("test-signature-update-progress.swift", ci)
-        self.assertIn("python3 scripts/run-test.py tests/signature/update-progress.py -v", ci)
+        self.assertIn("python3 tests/signature/update-progress.py -v", ci)
 
     def test_active_marker_is_only_display_metadata(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()

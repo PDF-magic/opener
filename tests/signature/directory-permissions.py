@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 FRESHCLAM_CANDIDATES = (
     "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam "
     "/usr/local/clamav/bin/freshclam"
@@ -132,7 +132,7 @@ class SignatureDirectoryPermissionTests(unittest.TestCase):
     def test_ci_runs_real_permission_denials_on_linux_and_macos(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertEqual(
-            workflow.count("python3 test-signature-directory-permissions.py -v"),
+            workflow.count("python3 tests/signature/directory-permissions.py -v"),
             2,
         )
         script = (ROOT / "update-malware-signatures.sh").read_text()

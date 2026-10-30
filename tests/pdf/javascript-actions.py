@@ -21,7 +21,7 @@ from pdf_javascript_actions import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def document(writer):
@@ -252,8 +252,8 @@ class PDFJavaScriptActionTests(unittest.TestCase):
         for forbidden in ("subprocess.", "launch_clean_file(", "remove_quarantine(",
                           "UserDefaults", "os.environ", "write_text(", "eval(", "exec("):
             self.assertNotIn(forbidden, module)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/javascript-actions.py -v", workflow)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/automatic-actions.py -v", workflow)
+        self.assertIn("python3 tests/pdf/javascript-actions.py -v", workflow)
+        self.assertIn("python3 tests/pdf/automatic-actions.py -v", workflow)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ from pypdf.generic import DecodedStreamObject, NameObject
 import maximum_sanitized_copy as copies
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PASSWORD_CASES = (
     ("rc4_40_user_password", "RC4-40", "synthetic-user-40", "synthetic-owner-40"),
     ("rc4_128_user_password", "RC4-128", "synthetic-user-128", "synthetic-owner-128"),
@@ -141,7 +141,7 @@ class PasswordProtectedDocumentFidelityTests(unittest.TestCase):
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("selectable: bool = False", profiles)
         self.assertEqual(
-            workflow.count("python3 test-maximum-password-protected.py -v"), 2
+            workflow.count("python3 tests/maximum/password-protected.py -v"), 2
         )
 
 

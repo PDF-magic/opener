@@ -11,7 +11,7 @@ from scanner_argument_validation import (
     validate_scanner_version_arguments,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("fixed_safety_scan_gate", ROOT / "scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
@@ -136,8 +136,8 @@ class ScannerFixedSafetyParameterTests(unittest.TestCase):
         self.assertIn("check_database()", scanner)
         self.assertIn("_exact_arguments(command, expected)", validator)
         for test_name in (
-            "test-scanner-fixed-safety-parameters.py",
-            "test-scanner-arguments.py", "test-scan-policy-snapshot.py",
+            "tests/scanner/fixed-safety-parameters.py",
+            "tests/scanner/arguments.py", "tests/scan/policy-snapshot.py",
         ):
             self.assertIn("python3 " + test_name + " -v", workflow)
 

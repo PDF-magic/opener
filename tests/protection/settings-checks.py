@@ -11,7 +11,7 @@ from protection_policy_definitions import (
     ProtectionProfileID,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 
@@ -139,7 +139,7 @@ class ProtectionLevelCheckDisplayTests(unittest.TestCase):
             self.assertIn(name, self.swift)
         self.assertIn("macos-build:", CI.read_text(encoding="utf-8"))
         self.assertIn(
-            "python3 test-protection-settings-checks.py -v",
+            "python3 tests/protection/settings-checks.py -v",
             CI.read_text(encoding="utf-8"),
         )
         self.assertIn(

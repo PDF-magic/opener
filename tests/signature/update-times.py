@@ -12,7 +12,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("signature_update_status", ROOT / "signature_update_status.py")
 status = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(status)
@@ -126,7 +126,7 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         self.assertIn("'StartInterval': 14400", installer)
         self.assertIn("'RunAtLoad': True", installer)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/signature/update-times.py -v", ci)
+        self.assertIn("python3 tests/signature/update-times.py -v", ci)
 
 
 if __name__ == "__main__":

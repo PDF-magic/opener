@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 NAV = ROOT / "PDFMagicOpenerApp" / "MainPreferencesView.swift"
 APP = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"
 README = ROOT / "README.md"

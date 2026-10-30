@@ -185,7 +185,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
         self.assertNotIn("payload", repr(result).lower())
 
     def test_installed_gate_and_profile_selection_unchanged(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scan = (root / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_isolated_analysis", scan)
         self.assertNotIn("maximum_isolated_worker", scan)

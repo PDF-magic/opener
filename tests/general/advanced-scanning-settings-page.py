@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 NAV = ROOT / "PDFMagicOpenerApp" / "MainPreferencesView.swift"
 PAGE = ROOT / "PDFMagicOpenerApp" / "AdvancedScanningSettingsView.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
@@ -80,7 +80,7 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"
     )
-    self.assertIn("python3 scripts/run-test.py tests/general/advanced-scanning-settings-page.py -v", ci)
+    self.assertIn("python3 tests/general/advanced-scanning-settings-page.py -v", ci)
     self.assertIn("macos-build:", ci)
 
   def test_restore_recommended_limits_is_confirmed_scoped_and_accessible(self):

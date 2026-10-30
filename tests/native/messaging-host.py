@@ -12,7 +12,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "native-messaging" / "Host.swift"
 STATUS_SOURCE = ROOT / "native-messaging" / "HostStatus.swift"
 CALLER_SOURCE = ROOT / "native-messaging" / "CallerOrigin.swift"

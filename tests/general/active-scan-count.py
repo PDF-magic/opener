@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class ActiveScanCountTests(unittest.TestCase):
@@ -36,11 +36,11 @@ class ActiveScanCountTests(unittest.TestCase):
 
   def test_required_ci_retains_native_integration_coverage(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    native = (ROOT / "test-native-cancellation.py").read_text(encoding="utf-8")
-    component = (ROOT / "test-scan-progress-component.py").read_text(encoding="utf-8")
-    self.assertIn("python3 scripts/run-test.py tests/general/active-scan-count.py -v", ci)
-    self.assertIn("python3 scripts/run-test.py tests/native/cancellation.py", ci)
-    self.assertIn("python3 scripts/run-test.py tests/scan/progress-component.py -v", ci)
+    native = (ROOT / "tests/native/cancellation.py").read_text(encoding="utf-8")
+    component = (ROOT / "tests/scan/progress-component.py").read_text(encoding="utf-8")
+    self.assertIn("python3 tests/general/active-scan-count.py -v", ci)
+    self.assertIn("python3 tests/native/cancellation.py", ci)
+    self.assertIn("python3 tests/scan/progress-component.py -v", ci)
     self.assertIn('progress.activeScansLabel.stringValue == "Active scans: 2"', native)
     for count in (0, 1, 2):
       self.assertIn(f'panel.activeScansLabel.stringValue == "Active scans: {count}"', component)

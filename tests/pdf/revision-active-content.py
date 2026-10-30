@@ -15,7 +15,7 @@ from pdf_revision_active_content import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def append_revision(original, number, data):
@@ -134,7 +134,7 @@ class PDFHistoricalActiveTests(unittest.TestCase):
 
     def test_ci_and_installed_scan_gate_are_unchanged(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/pdf/revision-active-content.py -v", ci)
+        self.assertIn("python3 tests/pdf/revision-active-content.py -v", ci)
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_revision_active_content", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

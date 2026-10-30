@@ -133,7 +133,7 @@ class SaveSanitizedPDFInterfaceTests(unittest.TestCase):
     def test_preview_does_not_activate_maximum_or_open_original(self):
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         source = (root / "maximum_save_sanitized_pdf_action.py").read_text()
         self.assertIn("return save_sanitized_copy(offer, destination, user_confirmed=True)", source)
         self.assertNotIn("launch_clean_file", source)

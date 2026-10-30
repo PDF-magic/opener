@@ -14,7 +14,7 @@ from pdf_structure_parser import (
     parse_pdf_structure,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 ERROR = "PDF structure could not be verified; opening was stopped."
 
 
@@ -134,7 +134,7 @@ class PDFRecursionDepthTests(unittest.TestCase):
         self.assertLess(parser.index("_validate_page_tree_depth(root)"),
                         parser.index("pages = reader.pages"))
         self.assertNotIn("pdf_structure_parser", gate)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/recursion-depth.py -v", workflow)
+        self.assertIn("python3 tests/pdf/recursion-depth.py -v", workflow)
         self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
 
 

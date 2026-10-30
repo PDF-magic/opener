@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("signature_batch_gate", ROOT / "scan-and-open.py")
 scanner = importlib.util.module_from_spec(spec)
@@ -112,7 +112,7 @@ class MandatorySignatureGateTests(unittest.TestCase):
         self.assertIn("remove_quarantine(path)", source)
         self.assertIn("verify_launch_target(path", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/general/mandatory-signature-gate.py -v", ci)
+        self.assertIn("python3 tests/general/mandatory-signature-gate.py -v", ci)
 
 
 if __name__ == "__main__":

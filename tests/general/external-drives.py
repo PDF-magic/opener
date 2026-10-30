@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location(
-    "external_volume_scan", Path(__file__).with_name("scan-and-open.py"))
+    "external_volume_scan", (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py"))
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 

@@ -210,7 +210,7 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
             cleanup.MaximumTemporaryOutput(Path(self.parent.name) / "fake.pdf").release()
 
     def test_active_scanner_and_profile_settings_unchanged(self):
-        code = (Path(__file__).resolve().parent / "scan-and-open.py").read_text()
+        code = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_temporary_output", code)
         self.assertIn("if not cached_clean(cache_id):", code)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID

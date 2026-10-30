@@ -10,7 +10,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 CANDIDATES = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 FAKE = r"""#!/bin/bash
 set -euo pipefail
@@ -201,7 +201,7 @@ class SignatureAgentRestartTests(unittest.TestCase):
         scan = (ROOT / "scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scan)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/signature/agent-restart.py -v", ci)
+        self.assertIn("python3 tests/signature/agent-restart.py -v", ci)
 
 
 if __name__ == "__main__":

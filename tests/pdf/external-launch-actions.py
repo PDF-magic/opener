@@ -164,7 +164,7 @@ class PDFExternalLaunchTests(unittest.TestCase):
             inspect_pdf_external_launch_actions(pdf[:-15])
 
     def test_no_changes_to_built_in_scanning_or_preferences(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_external_launch_actions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 FRESH_PATHS = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 SCAN_PATHS = "/opt/homebrew/bin/clamscan /usr/local/bin/clamscan /usr/local/clamav/bin/clamscan"
 
@@ -123,7 +123,7 @@ class SignatureValidationTests(unittest.TestCase):
     def test_ci_and_updater_ordering(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/general/validate-signature-database.py -v", ci)
+        self.assertIn("python3 tests/general/validate-signature-database.py -v", ci)
         self.assertLess(script.index("if ! scan_output="), script.index("success_tmp="))
         self.assertLess(script.index("success_tmp="), script.index('backup_dir="$(/usr/bin/mktemp'))
         self.assertIn('if [ -n "$validation_probe" ]', script)

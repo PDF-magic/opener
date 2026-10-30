@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "MainPreferencesView.swift"
 APP = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"
 

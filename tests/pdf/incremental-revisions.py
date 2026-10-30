@@ -106,7 +106,7 @@ class IncrementalRevisionTests(unittest.TestCase):
         )
 
     def test_scanner_and_preference_noninterference(self):
-        scanner = (Path(__file__).resolve().parent / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_incremental_revisions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID

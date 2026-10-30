@@ -117,7 +117,7 @@ class MalformedStructureTests(unittest.TestCase):
             self.assert_rejected(sample_pdf())
 
     def test_scanner_and_user_customizations_are_unchanged(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_malformed_structures", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

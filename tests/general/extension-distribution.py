@@ -6,7 +6,7 @@ import plistlib
 import unittest
 from zipfile import ZIP_STORED, ZipFile
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "extensions" / "webextension"
 DIST = WEB / "dist"
 DOC = ROOT / "docs" / "browser-extension-distribution.md"
@@ -87,7 +87,7 @@ class DistributionReadinessTests(unittest.TestCase):
       self.assertEqual(plistlib.load(file), {"com.apple.security.app-sandbox": True})
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     self.assertIn("CODE_SIGNING_ALLOWED=NO build", ci)
-    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-target.py --verify-built-app", ci)
+    self.assertIn("python3 tests/general/safari-extension-target.py --verify-built-app", ci)
 
   def test_each_channel_documents_signing_and_release_blockers(self):
     doc = DOC.read_text(encoding="utf-8")
@@ -111,9 +111,9 @@ class DistributionReadinessTests(unittest.TestCase):
     workflow = (ROOT / ".github" / "workflows" / "distribution-readiness.yml").read_text(encoding="utf-8")
     for trigger in ("pull_request:", "merge_group:", "push:"):
       self.assertIn(trigger, workflow)
-    self.assertLess(workflow.index("npm run package:chrome"), workflow.index("python3 scripts/run-test.py tests/general/extension-distribution.py -v"))
-    self.assertLess(workflow.index("npm run package:firefox"), workflow.index("python3 scripts/run-test.py tests/general/extension-distribution.py -v"))
-    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-target.py -v", workflow)
+    self.assertLess(workflow.index("npm run package:chrome"), workflow.index("python3 tests/general/extension-distribution.py -v"))
+    self.assertLess(workflow.index("npm run package:firefox"), workflow.index("python3 tests/general/extension-distribution.py -v"))
+    self.assertIn("python3 tests/general/safari-extension-target.py -v", workflow)
     self.assertNotIn("CODE_SIGNING_ALLOWED=YES", workflow)
 
 

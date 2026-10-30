@@ -17,7 +17,7 @@ from file_launcher import NATIVE_LAUNCHER
 
 sys.dont_write_bytecode = True
 
-spec = importlib.util.spec_from_file_location('scan_and_open', Path(__file__).with_name('scan-and-open.py'))
+spec = importlib.util.spec_from_file_location('scan_and_open', (Path(__file__).resolve().parents[2]s[2] / 'scan-and-open.py'))
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
@@ -153,7 +153,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         digest = opener.cache_key(opener.fingerprint(self.file), True)
         with opener.active_scan_lock(digest):
             process = subprocess.Popen(
-                [sys.executable, '-c', child, str(Path(__file__).with_name('scan-and-open.py')),
+                [sys.executable, '-c', child, str((Path(__file__).resolve().parents[2]s[2] / 'scan-and-open.py')),
                  str(opener.CACHE_DB), digest.hex(), str(marker)],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             try:

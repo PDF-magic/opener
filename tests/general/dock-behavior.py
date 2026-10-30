@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 ENTRY = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"
 SCANNER = ROOT / "brave-pdf-opener.swift"

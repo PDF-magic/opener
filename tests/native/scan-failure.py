@@ -9,7 +9,7 @@ import os
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 native = (ROOT / "brave-pdf-opener.swift").read_text()
 assert native.count("alert.runModal()") == 1, "Production must present an actual modal warning"
 assert native.count("if let failure = failure {") == 1

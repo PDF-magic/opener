@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 class CrossProcessConfigurationTests(unittest.TestCase):
   def test_shared_domain_is_refreshed_on_each_live_read(self):

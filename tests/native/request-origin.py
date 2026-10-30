@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-source = Path(__file__).with_name('brave-pdf-opener.swift').read_text()
+source = (Path(__file__).resolve().parents[2]s[2] / 'brave-pdf-opener.swift').read_text()
 classes = source.split('final class PDFOpener: NSObject, NSApplicationDelegate {')[0]
 assert 'func requestSource(forBundleIdentifier' in classes
 with tempfile.TemporaryDirectory(prefix='pdf-origin-test-') as directory:

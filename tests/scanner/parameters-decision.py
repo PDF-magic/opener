@@ -10,7 +10,7 @@ from scanner_argument_validation import (
     validated_file_size_options,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class ScannerParameterDecisionTests(unittest.TestCase):
@@ -100,8 +100,8 @@ class ScannerParameterDecisionTests(unittest.TestCase):
         ):
             self.assertIn(term, doc)
         self.assertIn("docs/scanner/parameters-decision.md", readme)
-        self.assertIn("python3 scripts/run-test.py tests/scanner/parameters-decision.py -v", ci)
-        self.assertIn("python3 scripts/run-test.py tests/scanner/arguments.py -v", ci)
+        self.assertIn("python3 tests/scanner/parameters-decision.py -v", ci)
+        self.assertIn("python3 tests/scanner/arguments.py -v", ci)
 
 
 if __name__ == "__main__":

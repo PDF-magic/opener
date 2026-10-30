@@ -145,7 +145,7 @@ class SanitizedPDFViewTests(unittest.TestCase):
             paths[0].parent.rmdir()
 
     def test_installed_handler_unchanged_and_real_gate_is_reused(self):
-        root = Path(__file__).parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         handoff = (root / "maximum_safe_copy_handoff.py").read_text()
         self.assertIn("def scan_and_open_generated_copy(item, offer):", scanner)

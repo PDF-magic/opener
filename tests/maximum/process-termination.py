@@ -223,7 +223,7 @@ class MaximumProcessTerminationTests(unittest.TestCase):
 
     def test_only_opt_in_maximum_uses_new_supervisor(self):
         from pathlib import Path
-        source = (Path(__file__).parent / "scan-and-open.py").read_text()
+        source = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_process_termination", source)
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)

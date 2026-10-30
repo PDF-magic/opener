@@ -14,7 +14,7 @@ from maximum_sanitized_copy import SanitizedCopyOffer
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "maximum_generated_rescan_test_gate", Path(__file__).with_name("scan-and-open.py")
+    "maximum_generated_rescan_test_gate", (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py")
 )
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
@@ -216,7 +216,7 @@ class GeneratedPDFRescanTests(unittest.TestCase):
         self.assertTrue(result.from_cache)
 
     def test_unavailable_native_converter_or_optional_parser_never_affects_builtin(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")

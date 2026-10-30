@@ -19,7 +19,7 @@ selected = os.environ.get("PDF_MAGIC_TEST_BROWSER")
 if selected not in BROWSERS:
     raise SystemExit("Select one PDF_MAGIC_TEST_BROWSER: " + ", ".join(BROWSERS))
 
-source = Path(__file__).with_name("scan-and-open.py")
+source = (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py")
 spec = importlib.util.spec_from_file_location("browser_pdf_scan", source)
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)

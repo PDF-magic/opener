@@ -19,7 +19,7 @@ from pypdf.generic import (
 
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 WIDTH, HEIGHT, SCALE = 300, 220, 2
 RED = (212, 38, 38)
 BLUE = (37, 66, 209)
@@ -240,8 +240,8 @@ class InteractiveFormFixtureTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertNotIn("test-maximum-interactive-forms.py", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/maximum/interactive-forms.py -v", workflow)
+        self.assertNotIn("tests/maximum/interactive-forms.py", scanner)
+        self.assertIn("python3 tests/maximum/interactive-forms.py -v", workflow)
         self.assertIn("forms", copies.OFFER_EXPLANATION)
         offer = copies.SanitizedCopyOffer(_source_pdf(), 2)
         self.assertTrue(offer.rasterized)

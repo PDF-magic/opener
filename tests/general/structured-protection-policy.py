@@ -19,7 +19,7 @@ from protection_policy_definitions import (
     protection_policy_definition,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class StructuredProtectionPolicyTests(unittest.TestCase):
@@ -121,7 +121,7 @@ class StructuredProtectionPolicyTests(unittest.TestCase):
 
     def test_required_ci_step(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/general/structured-protection-policy.py -v", workflow)
+        self.assertIn("python3 tests/general/structured-protection-policy.py -v", workflow)
 
 
 if __name__ == "__main__":

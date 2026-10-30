@@ -300,7 +300,7 @@ raise SystemExit(3)
 
     def test_ci_runs_memory_checks_on_ubuntu_and_macos(self):
         from pathlib import Path
-        workflow = (Path(__file__).parent / ".github/workflows/consolidated-checks.yml").read_text()
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/consolidated-checks.yml").read_text()
         portable = workflow.split("  macos-native-tests:", 1)[0]
         native = workflow.split("  macos-native-tests:", 1)[1]
         self.assertIn("runs-on: ubuntu-latest", portable)

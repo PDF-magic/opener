@@ -22,7 +22,7 @@ from pdf_declared_metadata import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 _ERROR = "PDF declared metadata could not be fully extracted; opening was stopped."
 
 
@@ -241,7 +241,7 @@ class PDFDeclaredMetadataTests(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         docs = (ROOT / "docs/pdf/declared-metadata.md").read_text()
         self.assertNotIn("pdf_declared_metadata", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/declared-metadata.py -v", ci)
+        self.assertIn("python3 tests/pdf/declared-metadata.py -v", ci)
         self.assertIn("/Info", docs)
         self.assertIn("/Metadata", docs)
         for forbidden in ("subprocess.", "launch_clean_file(",

@@ -13,7 +13,7 @@ from file_launcher import (NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BU
                            verify_launch_target, verify_local_file_available)
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class FileLauncherTests(unittest.TestCase):

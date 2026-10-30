@@ -13,7 +13,7 @@ from enhanced_analysis_findings import (
 from enhanced_finding_explanations import explain_analysis_findings
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class FindingObjectReferenceTests(unittest.TestCase):

@@ -201,7 +201,7 @@ class SanitizedStructureTests(unittest.TestCase):
     def test_immutable_evidence_and_scanner_configuration_remain_unchanged(self):
         with self.assertRaises(ValueError):
             SanitizedPDFStructure(1, 1, permits_open=True)
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_sanitized_structure", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

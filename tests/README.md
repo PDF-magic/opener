@@ -1,13 +1,19 @@
-# Python test organization
+# Python regression tests
 
-The Python regression suites live in `tests/<topic>/`, with lowercase kebab-case filenames that omit their directory prefix. For example:
+The Python regression tests are grouped by subsystem in `tests/<topic>/`. All
+test filenames use lowercase hyphen-separated names without repeating their
+folder prefix; for example `tests/pdf/structure-parser.py`.
 
-- `tests/pdf/structure-parser.py` (previously `test-pdf-structure-parser.py`)
-- `tests/maximum/sanitized-copy.py` (previously `test-maximum-sanitized-copy.py`)
-- `tests/browser/registry.py` (previously `test-browser-registry.py`)
+Run tests directly from the repository root:
 
-Use `python3 scripts/run-test.py tests/pdf/structure-parser.py -v` to run a suite from the repository root. Existing suites assume that their Python `__file__` is at the repository root and inspect adjacent scanner tools. The runner temporarily stages copies of the original scripts under their legacy root names, runs the selected test, then removes only the copies it created. It refuses to overwrite existing root files; this preserves the behavior of the tests without weakening scanner runtime paths.
+```sh
+PYTHONPATH=. python3 tests/pdf/structure-parser.py -v
+PYTHONPATH=. python3 tests/configuration/loading.py -v
+```
 
-`tests/manifest.json` is the checked-in, explicit old-to-new mapping. Add new suites directly to their topic folders and register them in the manifest until the compatibility runner is retired. CI runs `scripts/check-test-layout.py` to enforce naming, folder grouping, and absence of the legacy root files.
+Setting `PYTHONPATH=.` keeps imports of the root-level production modules
+available while each test locates fixtures and source files from the repository
+root. No temporary copies of tests are written into the root.
 
-Swift tests remain separate: their source compilation and Xcode path assumptions require a distinct migration.
+CI checks the test layout and runs the tests using their actual paths.
+Swift/Xcode regression tests remain in their existing locations.

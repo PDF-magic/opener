@@ -15,7 +15,7 @@ import tempfile
 import time
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "brave-pdf-opener.swift"
 PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
 PREFERENCE_SOURCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"

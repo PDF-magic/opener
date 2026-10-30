@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PREF = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text()
 GENERAL = (ROOT / "PDFMagicOpenerApp" / "GeneralSettingsView.swift").read_text()
 OPENER = (ROOT / "brave-pdf-opener.swift").read_text()

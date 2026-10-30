@@ -7,7 +7,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 CANDIDATES = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 FAKE = """#!/bin/bash
 set -euo pipefail
@@ -125,7 +125,7 @@ class IncompleteDownloadTests(unittest.TestCase):
         self.assertIn("trap cleanup EXIT", source)
         self.assertIn("cleanup_progress", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/general/incomplete-signature-downloads.py -v", ci)
+        self.assertIn("python3 tests/general/incomplete-signature-downloads.py -v", ci)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from protection_performance_evidence import (
     PerformanceSampleGroup, build_report, encode_report,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def measured_sample(duration_ns, *, complete=True, stage=AnalysisStage.pdfStructure):
@@ -100,7 +100,7 @@ class PerformanceImplicationsTests(unittest.TestCase):
         project = (ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj").read_text()
         self.assertIn("protection-performance.json", project)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/protection/performance-implications.py -v", ci)
+        self.assertIn("python3 tests/protection/performance-implications.py -v", ci)
 
 
 if __name__ == "__main__":

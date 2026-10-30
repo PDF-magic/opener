@@ -24,7 +24,7 @@ from protection_failure_exception_boundary import (
     report_protection_block,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class ProtectionFailureExceptionBoundaryTests(unittest.TestCase):
@@ -159,7 +159,7 @@ class ProtectionFailureExceptionBoundaryTests(unittest.TestCase):
         self.assertNotIn("report_protection_block(", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/protection/failure-exception-boundary.py -v", ci)
+        self.assertIn("python3 tests/protection/failure-exception-boundary.py -v", ci)
 
 
 if __name__ == "__main__":

@@ -191,7 +191,7 @@ class SanitizerReportingTests(unittest.TestCase):
     def test_current_clamav_status_path_and_user_preferences_unchanged(self):
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
-        scanner = (Path(__file__).parent / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("attempt_sanitized_pdf_copy", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIs(ScanResultStatus.malwareDetected.permits_open, False)

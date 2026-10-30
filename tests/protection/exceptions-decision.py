@@ -24,7 +24,7 @@ from protection_exception_policy import (
 from protection_policy_definitions import BASELINE_CONTROLS, PROTECTION_POLICIES
 from protection_profiles import PROTECTION_PROFILES
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
 
@@ -156,7 +156,7 @@ class ProtectionExceptionDecisionTests(unittest.TestCase):
             self.assertNotIn(forbidden, section)
 
     def test_ci_and_documented_policy(self):
-        self.assertIn("python3 scripts/run-test.py tests/protection/exceptions-decision.py -v", CI)
+        self.assertIn("python3 tests/protection/exceptions-decision.py -v", CI)
         self.assertIn("macos-build:", CI)
         document = (ROOT / "docs/protection/exceptions-decision.md").read_text()
         for phrase in ("Exceptions: unsupported", "cache", "fallback", "Built-in"):

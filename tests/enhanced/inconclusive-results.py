@@ -198,7 +198,7 @@ class InconclusiveOpeningTests(unittest.TestCase):
         self.assertEqual(assessment.to_dict()["evidence"][0]["stage"], "pdfStructure")
 
     def test_scanner_quarantine_preferences_and_enhanced_activation_remain_untouched(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         module = (root / "enhanced_inconclusive_results.py").read_text()
         self.assertNotIn("enhanced_inconclusive_results", scanner)

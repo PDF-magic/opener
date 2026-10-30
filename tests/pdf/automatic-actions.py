@@ -19,7 +19,7 @@ from pdf_automatic_actions import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def pdf(writer):
@@ -242,8 +242,8 @@ class PDFAutomaticActionTests(unittest.TestCase):
             "UserDefaults", "os.environ", "get_data(", "write_text(", "open(",
         ):
             self.assertNotIn(forbidden, module)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/automatic-actions.py -v", workflow)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/structure-parser.py -v", workflow)
+        self.assertIn("python3 tests/pdf/automatic-actions.py -v", workflow)
+        self.assertIn("python3 tests/pdf/structure-parser.py -v", workflow)
 
 
 if __name__ == "__main__":

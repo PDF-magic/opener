@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class AttentionRequiredTests(unittest.TestCase):
@@ -98,9 +98,9 @@ app.run()
         self.assertIn("guard ScanProgressPreference.isEnabled() else {", source)
         self.assertIn("attentionRequired = false\n            panel?.orderOut(nil)", source)
         self.assertIn("self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired", source)
-        self.assertIn("python3 scripts/run-test.py tests/native/attention-required.py -v", ci)
-        self.assertIn("python3 scripts/run-test.py tests/native/hidden-scan-progress.py", ci)
-        self.assertIn("python3 scripts/run-test.py tests/native/cancellation.py", ci)
+        self.assertIn("python3 tests/native/attention-required.py -v", ci)
+        self.assertIn("python3 tests/native/hidden-scan-progress.py", ci)
+        self.assertIn("python3 tests/native/cancellation.py", ci)
 
 
 if __name__ == "__main__":

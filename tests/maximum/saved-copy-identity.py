@@ -84,12 +84,12 @@ class SavedCopyIdentityTests(unittest.TestCase):
         self.assertTrue(self.offer.needs_separate_scan)
 
     def test_ci_includes_identity_test_and_installed_scanner_stays_independent(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         workflow = (root / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/maximum/saved-copy-identity.py -v", workflow)
+        self.assertIn("python3 tests/maximum/saved-copy-identity.py -v", workflow)
         self.assertNotIn("maximum_saved_copy_identity", scanner)
 
 

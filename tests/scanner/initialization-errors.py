@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 OPENER = ROOT / "brave-pdf-opener.swift"
 PROGRESS = ROOT / "scan-progress-view.swift"
 PREFERENCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"

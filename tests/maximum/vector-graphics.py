@@ -16,7 +16,7 @@ from pypdf.generic import DecodedStreamObject, NameObject
 
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PAGE_WIDTH, PAGE_HEIGHT, SCALE = 320, 240, 2
 RED, GREEN, BLUE = (210, 30, 35), (35, 168, 53), (30, 85, 220)
 PURPLE, ORANGE, TEAL = (169, 53, 190), (231, 126, 25), (24, 163, 175)
@@ -221,7 +221,7 @@ class VectorFixtureTests(unittest.TestCase):
         self.assertNotIn("maximum-vector-graphics", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertEqual(
-            workflow.count("python3 test-maximum-vector-graphics.py -v"), 2)
+            workflow.count("python3 tests/maximum/vector-graphics.py -v"), 2)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         offer = copies.SanitizedCopyOffer(_pdf(), 2)

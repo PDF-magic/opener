@@ -157,8 +157,8 @@ class EmbeddedFileInspectionTests(unittest.TestCase):
             self.inspect(many, max_attachments=1)
 
     def test_no_weakening_or_side_effects_in_installed_scan_gate(self):
-        scan_gate = (Path(__file__).parent / "scan-and-open.py").read_text()
-        preferences = (Path(__file__).parent / "PDFMagicOpenerApp" /
+        scan_gate = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        preferences = (Path(__file__).resolve().parents[2] / "PDFMagicOpenerApp" /
                        "ScanProgressPreference.swift").read_text()
         self.assertNotIn("enhanced_embedded_files", scan_gate)
         self.assertNotIn("enhanced_embedded_files", preferences)

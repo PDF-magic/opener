@@ -7,7 +7,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PATHS = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 
 
@@ -102,7 +102,7 @@ class UpdateFailureTests(unittest.TestCase):
     self.assertNotIn("Process(", model)
     self.assertNotIn("URLSession", model)
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    self.assertIn("python3 scripts/run-test.py tests/signature/update-failures.py -v", ci)
+    self.assertIn("python3 tests/signature/update-failures.py -v", ci)
     self.assertIn("test-signature-update-failures.swift", ci)
 
 

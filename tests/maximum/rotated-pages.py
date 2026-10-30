@@ -16,7 +16,7 @@ from pypdf.generic import DecodedStreamObject, NameObject, NumberObject
 
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SCALE = 2
 # Include 0/90/180/270, negative and inherited right-angle rotations.
 # Each page is nonsquare so an accidental width/height exchange is observable.

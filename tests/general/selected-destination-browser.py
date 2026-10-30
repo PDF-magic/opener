@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PANEL = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
 OPENER = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
 PREFERENCES = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text(encoding="utf-8")

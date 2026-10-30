@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 
 sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
     "scanner_executable_gate", ROOT / "scan-and-open.py"
 )
@@ -101,8 +101,8 @@ class ScannerExecutableAccessTests(unittest.TestCase):
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         scanners, macos = ci.split("  macos-build:", maxsplit=1)
         self.assertIn("  scanner-tests:", scanners)
-        self.assertIn("python3 scripts/run-test.py tests/scanner/executable-access.py -v", scanners)
-        self.assertIn("python3 scripts/run-test.py tests/general/brave-pdf-opener.py", macos)
+        self.assertIn("python3 tests/scanner/executable-access.py -v", scanners)
+        self.assertIn("python3 tests/general/brave-pdf-opener.py", macos)
 
 
 if __name__ == "__main__":

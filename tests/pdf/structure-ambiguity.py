@@ -132,10 +132,10 @@ class AmbiguityTests(unittest.TestCase):
         self.assertNotIn("/private", str(error))
         self.assertNotIn("secret", str(error))
 
-    @unittest.skipUnless((Path(__file__).resolve().parent / "scan-and-open.py").is_file(),
+    @unittest.skipUnless((Path(__file__).resolve().parents[2] / "scan-and-open.py").is_file(),
                          "Requires repository checkout")
     def test_not_wired_into_deployed_gate_or_preferences(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         profiles = (root / "protection_profiles.py").read_text()
         self.assertNotIn("pdf_structure_ambiguity", scanner)

@@ -21,7 +21,7 @@ from pdf_rich_media import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def create_pdf(*, annotation=True, orphan=False, assets=True,
@@ -167,7 +167,7 @@ class PDFRichMediaTests(unittest.TestCase):
     module = (ROOT / "pdf_rich_media.py").read_text(encoding="utf-8")
     self.assertNotIn("pdf_rich_media", scan)
     self.assertIn("if not cached_clean(cache_id):", scan)
-    self.assertIn("python3 scripts/run-test.py tests/pdf/rich-media.py -v", workflow)
+    self.assertIn("python3 tests/pdf/rich-media.py -v", workflow)
     self.assertNotIn("get_data(", module)
     self.assertNotIn("remove_quarantine(", module)
     self.assertNotIn("launch_clean_file(", module)

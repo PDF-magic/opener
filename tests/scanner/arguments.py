@@ -14,7 +14,7 @@ from scanner_argument_validation import (
     validate_scanner_version_arguments,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("arg_validation_gate", ROOT / "scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
@@ -204,7 +204,7 @@ class ScannerArgumentTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("validate_scanner_arguments(command,", source)
         self.assertIn("validate_scanner_version_arguments(version_command,", source)
-        self.assertIn("python3 scripts/run-test.py tests/scanner/arguments.py -v", workflow)
+        self.assertIn("python3 tests/scanner/arguments.py -v", workflow)
 
 
 if __name__ == "__main__":

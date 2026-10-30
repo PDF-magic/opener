@@ -13,7 +13,7 @@ from effective_protection_policy import (
 from protection_policy_definitions import BASELINE_CONTROLS, FailureDisposition
 from protection_profiles import PROTECTION_PROFILES
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift"
 SOURCE = VIEW.read_text(encoding="utf-8")
 

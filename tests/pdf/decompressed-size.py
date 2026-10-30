@@ -13,7 +13,7 @@ from pypdf.generic import DecodedStreamObject
 import pdf_structure_parser as parser
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 LIMIT_MESSAGE = "The PDF exceeds the structure inspection limit; opening was stopped."
 
 
@@ -60,7 +60,7 @@ class PDFDecodedSizeTests(unittest.TestCase):
         self.assertIs(get_configuration(), initial)
 
     def test_xref_and_object_streams_are_bounded_before_implicit_decode(self):
-        fixture = run_path(str(ROOT / "test-pdf-cross-reference-parsing.py"))["make_xref_stream_pdf"]
+        fixture = run_path(str(ROOT / "tests/pdf/cross-reference-parsing.py"))["make_xref_stream_pdf"]
         document = fixture(object_stream=True, compressed_xref=True)
         self.assertEqual(parser.parse_pdf_structure(document).page_count, 1)
         # Implicit Flate decompression in PdfReader must use the same per-stream
@@ -89,7 +89,7 @@ class PDFDecodedSizeTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("verify_file_integrity", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/decompressed-size.py -v", workflow)
+        self.assertIn("python3 tests/pdf/decompressed-size.py -v", workflow)
         self.assertEqual(parser.MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES, 8 * 1024 * 1024)
         self.assertEqual(parser.MAX_STRUCTURE_TOTAL_DECOMPRESSED_BYTES, 32 * 1024 * 1024)
 

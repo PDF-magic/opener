@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp/UpdatesSettingsView.swift"
 READER = ROOT / "PDFMagicOpenerApp/SignatureUpdateStatus.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj"
@@ -57,7 +57,7 @@ class SignatureStatusDisplayTests(unittest.TestCase):
         self.assertIn("B38000000000000000000001,", project)
         self.assertIn("B38000000000000000000002,", project)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/signature/update-status-display.py -v", ci)
+        self.assertIn("python3 tests/signature/update-status-display.py -v", ci)
         self.assertIn("test-signature-update-status.swift", ci)
         self.assertIn("PDFMagicOpenerApp/SignatureUpdateStatus.swift", ci)
         self.assertIn("xcrun swiftc -parse-as-library -warnings-as-errors", ci)

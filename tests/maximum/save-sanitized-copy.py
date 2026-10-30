@@ -127,7 +127,7 @@ class SaveSanitizedCopyTests(unittest.TestCase):
     def test_installed_maximum_profile_remains_unselectable(self):
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
-        scanner = Path(__file__).with_name("scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2]s[2] / "scan-and-open.py").read_text()
         self.assertIn("force_rescan=True, expected_fingerprint=expected, scan_only=True",
                       scanner)
         self.assertIn("if scan_only:", scanner)

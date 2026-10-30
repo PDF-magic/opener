@@ -190,7 +190,7 @@ class FindingExplanationsTests(unittest.TestCase):
             self.assertNotIn("confirmed malware", result["explanation"].lower())
 
         # The native panel displays uncertainty and rejects unknown assessment values.
-        native = (Path(__file__).with_name("scan-progress-view.swift")
+        native = ((Path(__file__).resolve().parents[2]s[2] / "scan-progress-view.swift")
                   .read_text(encoding="utf-8"))
         self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
         self.assertIn('guard let value = rawAssessment as? String,', native)
@@ -199,7 +199,7 @@ class FindingExplanationsTests(unittest.TestCase):
         self.assertIn('— \\(resultLabel) · \\(malwareAssessmentLabel)', native)
 
     def test_scanner_and_profile_remain_untouched(self):
-        scanner = (Path(__file__).parent / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("enhanced_finding_explanations", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

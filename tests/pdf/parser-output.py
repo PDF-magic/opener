@@ -16,7 +16,7 @@ from pdf_structure_parser import (
     parse_pdf_structure,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_KEYS = {"schemaVersion", "pdfVersion", "pageCount", "authorizesOpen"}
 
 
@@ -85,7 +85,7 @@ class PDFParserOutputTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/structure-parser.md").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/pdf/parser-output.py -v", ci)
+        self.assertIn("python3 tests/pdf/parser-output.py -v", ci)
         self.assertIn("schemaVersion", docs)
         self.assertIn("authorizesOpen", docs)
         self.assertIn("MAX_STRUCTURE_PAGES", source)

@@ -26,7 +26,7 @@ from unsupported_pdf_features import (
     UnsupportedPDFAction,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def make_pdf(*, user=None, owner=None, use_128bit=True):
@@ -136,7 +136,7 @@ class PDFEncryptionPolicyTests(unittest.TestCase):
         self.assertNotIn("pdf_encryption_policy", gate)
         self.assertNotIn("pdf_encryption_policy", native)
         self.assertIn("--alert-encrypted=yes", gate)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/encryption-policy.py -v", ci)
+        self.assertIn("python3 tests/pdf/encryption-policy.py -v", ci)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ from pdf_embedded_filenames import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def document(writer):
@@ -195,7 +195,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         source = (ROOT / "pdf_embedded_filenames.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/pdf/embedded-filenames.py -v", ci)
+        self.assertIn("python3 tests/pdf/embedded-filenames.py -v", ci)
         self.assertNotIn("pdf_embedded_filenames", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)
         for forbidden in ("subprocess.run(", "get_data(", "remove_quarantine(",

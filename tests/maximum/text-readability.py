@@ -17,7 +17,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PAGE_WIDTH = 360
 PAGE_HEIGHT = 260
 RENDER_SCALE = 2

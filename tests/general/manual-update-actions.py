@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "UpdatesSettingsView.swift"
 UPDATE = ROOT / "update-malware-signatures.sh"
 SCAN = ROOT / "scan-and-open.py"
@@ -49,7 +49,7 @@ class ManualActionTests(unittest.TestCase):
 
   def test_ci_executes_both_action_tests(self):
     ci = CI.read_text()
-    self.assertIn("python3 scripts/run-test.py tests/general/manual-update-actions.py -v", ci)
+    self.assertIn("python3 tests/general/manual-update-actions.py -v", ci)
     self.assertIn("test-manual-update-actions.swift", ci)
 
 if __name__ == "__main__":

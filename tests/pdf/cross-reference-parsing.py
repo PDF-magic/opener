@@ -13,7 +13,7 @@ from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def make_xref_stream_pdf(*, object_stream=False, compressed_xref=False,
@@ -133,7 +133,7 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
     self.assertIn("raise PDFObjectRelationshipError(_UNSUPPORTED)", relationships)
     self.assertIn("strict=True", module)
     self.assertIn("MAX_STRUCTURE_INPUT_BYTES", module)
-    self.assertIn("python3 scripts/run-test.py tests/pdf/cross-reference-parsing.py -v", workflow)
+    self.assertIn("python3 tests/pdf/cross-reference-parsing.py -v", workflow)
     self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
 
 

@@ -267,7 +267,7 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         self.assertFalse(copies._passive_pages(source, 2))
 
     def test_installed_scan_gate_and_profile_remain_unchanged(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_sanitized_copy", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

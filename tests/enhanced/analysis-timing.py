@@ -155,7 +155,7 @@ class AdditionalAnalysisTimingTests(unittest.TestCase):
             AdditionalAnalysisTimer((first,), clock=17)
 
     def test_installed_scanner_and_profile_configuration_remain_unchanged(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("enhanced_analysis_timing", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

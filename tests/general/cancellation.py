@@ -36,7 +36,7 @@ class CancellationTests(unittest.TestCase):
             other.write_bytes(b"%PDF-1.4\nQueued")
             scanner_pid_file = root / "scanner-pid"
             side_effect = root / "unexpected-open-or-quarantine"
-            repo_root = Path(__file__).resolve().parent
+            repo_root = Path(__file__).resolve().parents[2]
 
             driver = root / "driver.py"
             driver.write_text(f"""

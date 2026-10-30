@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 SAFARI = ROOT / "extensions" / "safari"
 SHARED = ROOT / "extensions" / "webextension" / "manifest.json"
@@ -196,8 +196,8 @@ class SafariExtensionTargetTests(unittest.TestCase):
   def test_ci_builds_and_inspects_embedded_extension(self):
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     self.assertIn("xcodebuild -project PDFMagicOpener.xcodeproj", ci)
-    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-target.py -v", ci)
-    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-target.py --verify-built-app", ci)
+    self.assertIn("python3 tests/general/safari-extension-target.py -v", ci)
+    self.assertIn("python3 tests/general/safari-extension-target.py --verify-built-app", ci)
     self.assertIn("CODE_SIGNING_ALLOWED=NO build", ci)
 
 

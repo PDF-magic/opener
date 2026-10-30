@@ -21,7 +21,7 @@ from protection_exception_policy import (
     request_protection_exception,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class ExceptionReasonTests(unittest.TestCase):

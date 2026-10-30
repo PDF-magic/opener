@@ -5,7 +5,7 @@ import plistlib
 import sys
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PREFERENCES_URL = "pdfmagicopener://preferences"
 EXPECTED_URL_TYPES = [{
   "CFBundleURLName": "local.studio.pdfmagicopener.preferences",
@@ -56,8 +56,8 @@ class NativePreferencesLinkTests(unittest.TestCase):
 
   def test_existing_ci_inspects_compiled_app_and_native_url_types(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    self.assertIn("python3 scripts/run-test.py tests/browser/preferences-deep-link.py -v", ci)
-    self.assertIn("python3 scripts/run-test.py tests/browser/preferences-deep-link.py --verify-built-app", ci)
+    self.assertIn("python3 tests/browser/preferences-deep-link.py -v", ci)
+    self.assertIn("python3 tests/browser/preferences-deep-link.py --verify-built-app", ci)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import tempfile
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 CANDIDATES = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
 
 FAKE = """#!/bin/bash
@@ -160,7 +160,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", source)
         self.assertIn("check_database()", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/run-test.py tests/general/preserve-signature-database.py -v", ci)
+        self.assertIn("python3 tests/general/preserve-signature-database.py -v", ci)
         self.assertIn("bash -n install-allow-and-open.sh", ci)
 
 

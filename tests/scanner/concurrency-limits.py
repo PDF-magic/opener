@@ -13,7 +13,7 @@ from scanner_concurrency_validation import (
     validate_scanner_concurrency_limit,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
@@ -93,7 +93,7 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
 
     def test_ci_runs_the_regression(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/scanner/concurrency-limits.py -v", ci)
+        self.assertIn("python3 tests/scanner/concurrency-limits.py -v", ci)
 
 
 if __name__ == "__main__":

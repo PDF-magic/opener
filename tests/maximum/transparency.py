@@ -18,7 +18,7 @@ from pypdf.generic import (
 
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 WIDTH, HEIGHT, SCALE = 240, 180, 2
 BLUE = (30, 90, 210)
 RED = (230, 40, 40)
@@ -240,7 +240,7 @@ class TransparencyFixtureTests(unittest.TestCase):
         self.assertNotIn("maximum-transparency", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertEqual(workflow.count(
-            "python3 test-maximum-transparency.py -v"
+            "python3 tests/maximum/transparency.py -v"
         ), 2)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)

@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class GeneralResetTests(unittest.TestCase):
@@ -32,7 +32,7 @@ class GeneralResetTests(unittest.TestCase):
 
   def test_ci_includes_native_and_structural_regressions(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    self.assertIn("python3 scripts/run-test.py tests/general/reset-general-preferences.py -v", ci)
+    self.assertIn("python3 tests/general/reset-general-preferences.py -v", ci)
     self.assertIn("test-reset-general-preferences.swift", ci)
 
 

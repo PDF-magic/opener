@@ -23,7 +23,7 @@ from protection_stage_time_limits import (
 )
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class StageLimitTests(unittest.TestCase):
@@ -156,7 +156,7 @@ class StageLimitTests(unittest.TestCase):
 
     def test_ci_runs_stage_limit_regression(self):
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/protection/stage-time-limits.py -v", ci)
+        self.assertIn("python3 tests/protection/stage-time-limits.py -v", ci)
 
 
 if __name__ == "__main__":

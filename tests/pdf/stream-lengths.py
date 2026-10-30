@@ -13,7 +13,7 @@ from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def pdf_with_stream(data=b"hello", *, declared=None, indirect=False,
@@ -98,7 +98,7 @@ class PDFStreamLengthTests(unittest.TestCase):
 
   def test_pdf_15_xref_and_object_streams_have_matching_boundaries(self):
     make_fixture = run_path(
-      str(ROOT / "test-pdf-cross-reference-parsing.py")
+      str(ROOT / "tests/pdf/cross-reference-parsing.py")
     )["make_xref_stream_pdf"]
     for objstream in (False, True):
       for compressed in (False, True):
@@ -122,7 +122,7 @@ class PDFStreamLengthTests(unittest.TestCase):
     self.assertNotIn("launch_clean_file(", module)
     self.assertNotIn("get_data(", module)
     self.assertIn("strict=True", (ROOT / "pdf_structure_parser.py").read_text())
-    self.assertIn("python3 scripts/run-test.py tests/pdf/stream-lengths.py -v", workflow)
+    self.assertIn("python3 tests/pdf/stream-lengths.py -v", workflow)
     self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt",
                   workflow)
 

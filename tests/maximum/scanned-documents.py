@@ -17,7 +17,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject, Num
 
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PAGE_WIDTH, PAGE_HEIGHT = 240, 320
 RENDER_SCALE = 2
 PAPER = (244, 244, 244)
@@ -184,7 +184,7 @@ class ScannedDocumentFixtureTests(unittest.TestCase):
         self.assertNotIn("maximum-scanned-documents", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertEqual(workflow.count(
-            "python3 test-maximum-scanned-documents.py -v"), 2)
+            "python3 tests/maximum/scanned-documents.py -v"), 2)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         offer = copies.SanitizedCopyOffer(_source_pdf(), 2)

@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 sys.dont_write_bytecode = True
-root = Path(__file__).resolve().parent
+root = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
     "opened_document_origin_test_scanner", root / "scan-and-open.py"
 )

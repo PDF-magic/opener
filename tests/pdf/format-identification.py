@@ -14,7 +14,7 @@ from pdf_format_identification import (
 )
 from reference_pdf_collection import REFERENCE_PDFS
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class PDFFormatIdentificationTests(unittest.TestCase):
@@ -124,7 +124,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
         policy = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", policy)
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/pdf/format-identification.py -v", workflow)
+        self.assertIn("python3 tests/pdf/format-identification.py -v", workflow)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ from unsupported_pdf_features import (
     response_for_unsupported_pdf_feature,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("native_scan_gate", ROOT / "scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)

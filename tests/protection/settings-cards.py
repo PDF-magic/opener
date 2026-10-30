@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift"
 NAVIGATION = ROOT / "PDFMagicOpenerApp" / "MainPreferencesView.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
@@ -120,7 +120,7 @@ class ProtectionCardsTests(unittest.TestCase):
         self.assertNotIn(forbidden, comparison)
 
   def test_origin_comparison_does_not_replace_verified_generated_copy_identity(self):
-    root = Path(__file__).resolve().parent
+    root = Path(__file__).resolve().parents[2]
     offer = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
     route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
     for source in (offer, route):
@@ -134,7 +134,7 @@ class ProtectionCardsTests(unittest.TestCase):
     self.assertIn("original", explanation)
     self.assertIn("generated", explanation)
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
+    self.assertIn("python3 tests/protection/settings-cards.py -v", ci)
 
   def test_maximum_preview_explains_capability_loss_without_enabling_it(self):
     # A visible, labelled explanation belongs only to the Maximum preview.
@@ -169,7 +169,7 @@ class ProtectionCardsTests(unittest.TestCase):
     self.assertIn(".fixedSize(horizontal: false, vertical: true)", self.source)
     # Existing scanner CI and the native macOS build exercise the new display.
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
+    self.assertIn("python3 tests/protection/settings-cards.py -v", ci)
     self.assertIn("macos-build:", ci)
 
   def test_maximum_save_action_is_gated_and_never_activates_unavailable_policy(self):
@@ -217,7 +217,7 @@ class ProtectionCardsTests(unittest.TestCase):
 
   def test_ci_runs_cards_and_full_native_build(self):
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
+    self.assertIn("python3 tests/protection/settings-cards.py -v", ci)
     self.assertIn("macos-build:", ci)
     self.assertIn("tests/general/main-preferences-window.py -v", ci)
     self.assertIn("tests/general/technical-preferences-help.py -v", ci)

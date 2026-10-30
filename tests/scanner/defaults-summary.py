@@ -5,7 +5,7 @@ import unittest
 
 from scanner_argument_validation import validated_file_size_options
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PAGE = ROOT / "PDFMagicOpenerApp" / "AdvancedScanningSettingsView.swift"
 
 
@@ -79,7 +79,7 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
 
   def test_both_ci_jobs_verify_the_defaults_summary(self):
     source = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    command = "python3 test-scanner-defaults-summary.py -v"
+    command = "python3 tests/scanner/defaults-summary.py -v"
     self.assertEqual(source.count(command), 2)
     self.assertLess(source.index(command), source.index("  macos-build:"))
     self.assertGreater(source.rindex(command), source.index("  macos-build:"))

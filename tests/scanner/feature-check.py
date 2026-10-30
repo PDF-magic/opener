@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import scanner_feature_check as features
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def help_text(options):
@@ -107,8 +107,8 @@ class ScannerFeatureCheckTests(unittest.TestCase):
         self.assertIn("verify_file_integrity(path, before, identity)", gate)
         self.assertIn("launch_clean_file(path, target_app=", gate)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/scanner/feature-check.py -v", ci)
-        self.assertIn("python3 scripts/run-test.py tests/scan/and-open.py -v", ci)
+        self.assertIn("python3 tests/scanner/feature-check.py -v", ci)
+        self.assertIn("python3 tests/scan/and-open.py -v", ci)
         self.assertIn("macos-build:", ci)
 
 

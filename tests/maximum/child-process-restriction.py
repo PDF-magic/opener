@@ -13,7 +13,7 @@ import maximum_isolated_renderer as renderer
 import maximum_network_isolation as isolation
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 ENV = {
     "PATH": "/usr/bin:/bin",
     "HOME": "/nonexistent",

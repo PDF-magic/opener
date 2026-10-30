@@ -4,7 +4,7 @@ import plistlib
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SAFARI = ROOT / "extensions" / "safari"
 PROBE = ROOT / "test-safari-extension-activation.swift"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
@@ -60,7 +60,7 @@ class SafariExtensionActivationTests(unittest.TestCase):
 
   def test_ci_compiles_and_self_tests_the_probe_without_enabling_safari(self):
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 scripts/run-test.py tests/general/safari-extension-activation.py -v", ci)
+    self.assertIn("python3 tests/general/safari-extension-activation.py -v", ci)
     self.assertIn(
       "swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift",
       ci

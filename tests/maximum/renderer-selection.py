@@ -6,7 +6,7 @@ from pathlib import Path
 import unittest
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
 DECISION = (ROOT / "docs/maximum/renderer-selection.md").read_text(encoding="utf-8")
 WORKER = (ROOT / "maximum_render_worker.py").read_text(encoding="utf-8")
@@ -18,7 +18,7 @@ class MaximumRendererSelectionTests(unittest.TestCase):
         self.assertEqual(version("PyMuPDF"), "2.0")
         self.assertIn("pymupdf==2.0", WORKFLOW)
         self.assertIn("--no-deps", WORKFLOW)
-        self.assertIn("python3 scripts/run-test.py tests/maximum/renderer-selection.py -v", WORKFLOW)
+        self.assertIn("python3 tests/maximum/renderer-selection.py -v", WORKFLOW)
 
     def test_security_review_records_current_release_and_advisories(self):
         for evidence in (

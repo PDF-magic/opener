@@ -139,7 +139,7 @@ class PDFFormActionTests(unittest.TestCase):
             inspect_pdf_form_actions(pdf[:-15])
 
     def test_existing_built_in_scanner_is_unchanged(self):
-        scanner = (Path(__file__).resolve().parent / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_form_actions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("remove_quarantine(path)", scanner)

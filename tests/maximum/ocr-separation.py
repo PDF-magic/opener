@@ -17,7 +17,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 import maximum_sanitized_copy as copies
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def _vector_text_pdf():

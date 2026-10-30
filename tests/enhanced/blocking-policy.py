@@ -227,7 +227,7 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
         })
 
     def test_scanner_user_preferences_and_protection_levels_unchanged(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         policy = (root / "enhanced_blocking_policy.py").read_text()
         self.assertNotIn("enhanced_blocking_policy", scanner)

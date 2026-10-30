@@ -7,7 +7,7 @@ import plistlib
 import sys
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SAFARI = ROOT / "extensions" / "safari"
 SOURCE_MANIFEST = ROOT / "extensions" / "webextension" / "manifest.json"
 SAFARI_MANIFEST = SAFARI / "manifest.json"

@@ -190,7 +190,7 @@ class PDFSuspiciousURLTests(unittest.TestCase):
             inspect_pdf_suspicious_urls(fixture("https://example.org")[:-15])
 
     def test_current_scanner_and_preferences_are_not_modified(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_suspicious_urls", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

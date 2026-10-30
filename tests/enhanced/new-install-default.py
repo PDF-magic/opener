@@ -18,7 +18,7 @@ from protection_policy_definitions import (
 )
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift"
 SCANNER = ROOT / "scan-and-open.py"
 
@@ -114,7 +114,7 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
         native = workflow.split("  macos-native-tests:", 1)[1]
         self.assertIn("tests/enhanced/new-install-default.py -v", portable)
         self.assertIn("ubuntu-latest", portable)
-        self.assertNotIn("test-enhanced-new-install-default.py -v", native)
+        self.assertNotIn("tests/enhanced/new-install-default.py -v", native)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("macos-build:", ci)
 

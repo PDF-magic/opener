@@ -15,7 +15,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 APP_ID = "local.studio.brave-pdf-opener"
 SCRIPT = ROOT / "test-finder-open.applescript"
 RUNTIME = (Path.home() / "Library/Application Support/Studio/allow-and-open")
@@ -165,9 +165,9 @@ class FinderOpenTests(unittest.TestCase):
     def test_manual_instructions_and_ci_do_not_modify_default_association(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/general/finder-open.py --live", readme)
+        self.assertIn("python3 tests/general/finder-open.py --live", readme)
         self.assertIn("osacompile", ci)
-        self.assertIn("python3 scripts/run-test.py tests/general/finder-open.py -v", ci)
+        self.assertIn("python3 tests/general/finder-open.py -v", ci)
         self.assertIn("Automation consent", readme)
         self.assertNotIn("osascript", ci)
 
@@ -175,7 +175,7 @@ class FinderOpenTests(unittest.TestCase):
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--live":
         if len(sys.argv) != 3:
-            sys.exit("Usage: python3 test-finder-open.py --live /path/to/harmless.pdf")
+            sys.exit("Usage: python3 tests/general/finder-open.py --live /path/to/harmless.pdf")
         try:
             live_finder_open(sys.argv[2])
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:

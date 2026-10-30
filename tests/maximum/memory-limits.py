@@ -15,7 +15,7 @@ import maximum_memory_limits as limits
 from maximum_isolated_analysis import WORKER_MEMORY_MIB
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class MaximumMemoryLimitsTests(unittest.TestCase):
@@ -159,7 +159,7 @@ except BaseException as error:
         native = ci.split("  macos-native-tests:", 1)[1]
         self.assertIn("runs-on: ubuntu-latest", portable)
         self.assertIn("tests/maximum/memory-limits.py -v", portable)
-        self.assertNotIn("test-maximum-memory-limits.py -v", native)
+        self.assertNotIn("tests/maximum/memory-limits.py -v", native)
         self.assertIn("tests/maximum/isolated-analysis.py -v", ci)
         self.assertIn("pypdf==5.9.0", ci)
 

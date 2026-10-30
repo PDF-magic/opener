@@ -8,7 +8,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("browser_preference_selector",
                                                ROOT / "browser_preference_selector.py")
 selector = importlib.util.module_from_spec(spec)

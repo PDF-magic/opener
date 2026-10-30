@@ -17,7 +17,7 @@ from pdf_embedded_file_types import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 _FAILURE = "Embedded PDF file types could not be fully inspected; opening was stopped."
 
 
@@ -202,7 +202,7 @@ class PDFEmbeddedFileTypeTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/embedded-file-types.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_embedded_file_types", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/embedded-file-types.py -v", workflow)
+        self.assertIn("python3 tests/pdf/embedded-file-types.py -v", workflow)
         self.assertIn("/EmbeddedFiles", docs)
         self.assertIn("ClamAV", docs)
         self.assertIn("if not cached_clean(cache_id):", scanner)

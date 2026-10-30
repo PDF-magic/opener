@@ -26,7 +26,7 @@ from protection_policy_definitions import (
 from protection_profiles import ProtectionProfileID
 
 sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("parity_scanner", ROOT / "scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)

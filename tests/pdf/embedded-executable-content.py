@@ -139,7 +139,7 @@ class EmbeddedExecutableInspectionTests(unittest.TestCase):
             inspector.PDFEmbeddedExecutableInspection(1, 1, ("user-payload",))
 
     def test_installed_scanner_and_preferences_remain_separate(self):
-        original = Path(__file__).resolve().parent
+        original = Path(__file__).resolve().parents[2]
         scanner = original / "scan-and-open.py"
         if not scanner.exists():
             self.skipTest("Full repository unavailable in local fixture")

@@ -18,7 +18,7 @@ from pdf_object_relationships import (
 )
 from reference_pdf_collection import REFERENCE_PDFS
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def generated_pdf(pages=1):
@@ -149,7 +149,7 @@ class ObjectRelationshipInspectionTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_object_relationships", scanner)
         self.assertNotIn("pdf_object_relationships", resolver)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/object-relationships.py -v", workflow)
+        self.assertIn("python3 tests/pdf/object-relationships.py -v", workflow)
         self.assertIn("from pdf_structure_parser import", source)
         for forbidden in ("subprocess", "remove_quarantine(", "launch_clean_file(",
                           "UserDefaults", "os.system("):

@@ -4,7 +4,7 @@
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "PDFMagicOpenerApp"
 PREF = APP / "ScanProgressPreference.swift"
 GENERAL = APP / "GeneralSettingsView.swift"

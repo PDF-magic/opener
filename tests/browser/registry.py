@@ -8,7 +8,7 @@ import unittest
 import browser_registry as registry
 import file_launcher as launcher
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 EXPECTED_BROWSERS = {
     "brave": "com.brave.Browser",

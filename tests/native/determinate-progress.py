@@ -7,7 +7,7 @@ import tempfile
 import unittest
 import uuid
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class NativeDeterminateProgressTests(unittest.TestCase):

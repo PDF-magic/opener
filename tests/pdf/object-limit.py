@@ -11,7 +11,7 @@ from pdf_structure_parser import (
     parse_pdf_structure,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 LIMIT_MESSAGE = "The PDF exceeds the structure inspection limit; opening was stopped."
 
 
@@ -70,7 +70,7 @@ class PDFObjectLimitTests(unittest.TestCase):
 
     def test_compressed_object_stream_entries_are_included(self):
         fixture = runpy.run_path(
-            str(ROOT / "test-pdf-cross-reference-parsing.py")
+            str(ROOT / "tests/pdf/cross-reference-parsing.py")
         )["make_xref_stream_pdf"]
         content = fixture(object_stream=True)
         self.assertEqual(parse_pdf_structure(content), PDFStructure("1.5", 1))
@@ -86,7 +86,7 @@ class PDFObjectLimitTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         parser = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
-        self.assertIn("python3 scripts/run-test.py tests/pdf/object-limit.py -v", workflow)
+        self.assertIn("python3 tests/pdf/object-limit.py -v", workflow)
         self.assertIn("total_objects += len(reader.xref_objStm)", parser)
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

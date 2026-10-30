@@ -7,7 +7,7 @@ Scan PDFs locally with ClamAV before opening them in a configurable application 
 For technical reference material, see the [organized documentation index](docs/README.md).
 
 Python regression tests are grouped by topic in [`tests/`](tests/README.md). Run one using
-`python3 scripts/run-test.py tests/pdf/structure-parser.py -v` from the repository root.
+`PYTHONPATH=. python3 tests/pdf/structure-parser.py -v` from the repository root.
 
 ## SwiftUI application target (opener-0163)
 
@@ -377,11 +377,11 @@ Opening a file explicitly through another app bypasses this opener. Scanner deta
 Verify the scan gate with:
 
 ```sh
-python3 scripts/run-test.py tests/scan/and-open.py
-python3 scripts/run-test.py tests/target/app.py
-python3 scripts/run-test.py tests/launch/results.py
-python3 scripts/run-test.py tests/scan/concurrency.py
-python3 scripts/run-test.py tests/general/brave-pdf-opener.py
+PYTHONPATH=. python3 tests/scan/and-open.py
+PYTHONPATH=. python3 tests/target/app.py
+PYTHONPATH=. python3 tests/launch/results.py
+PYTHONPATH=. python3 tests/scan/concurrency.py
+PYTHONPATH=. python3 tests/general/brave-pdf-opener.py
 ```
 
 ## Restore the previous macOS PDF handler
@@ -418,7 +418,7 @@ default PDF handler**, first choose a **known-clean, non-sensitive local test
 PDF**. Run this optional interactive integration check:
 
 ```sh
-python3 scripts/run-test.py tests/general/finder-open.py --live "/absolute/path/to/harmless-test.pdf"
+PYTHONPATH=. python3 tests/general/finder-open.py --live "/absolute/path/to/harmless-test.pdf"
 ```
 
 This test invokes Finder's actual **Open** command via the separately bundled

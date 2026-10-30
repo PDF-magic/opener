@@ -12,7 +12,7 @@ from protection_exception_policy import (
 )
 from protection_profiles import PROTECTION_PROFILES
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text(
     encoding="utf-8"
 )

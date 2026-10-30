@@ -12,7 +12,7 @@ from protection_exception_policy import (
     request_protection_exception,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text(
     encoding="utf-8"
 )
@@ -71,7 +71,7 @@ class ProtectionExceptionReviewTests(unittest.TestCase):
         self.assertIn("verify_file_integrity(path, before, identity)", scanner)
         self.assertNotIn("showExistingExceptions", scanner)
         self.assertNotIn("reviewExistingProtectionExceptions", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/protection/exceptions-review.py -v", CI)
+        self.assertIn("python3 tests/protection/exceptions-review.py -v", CI)
         self.assertIn("macos-build:", CI)
 
 

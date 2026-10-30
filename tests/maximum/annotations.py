@@ -17,7 +17,7 @@ from pypdf.generic import (
 )
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 WIDTH, HEIGHT, SCALE = 240, 180, 2
 RED = (214, 35, 42)
 BLUE = (28, 78, 216)
@@ -212,7 +212,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
         )
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("maximum-annotations", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/maximum/annotations.py -v", workflow)
+        self.assertIn("python3 tests/maximum/annotations.py -v", workflow)
         self.assertFalse(copies.SanitizedCopyOffer(_pdf(), 2).permits_open)
         self.assertTrue(copies.SanitizedCopyOffer(_pdf(), 2).needs_separate_scan)
         self.assertIn("other interactive features are not preserved", copies.OFFER_EXPLANATION)

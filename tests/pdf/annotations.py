@@ -162,7 +162,7 @@ class PDFAnnotationTests(unittest.TestCase):
                 self.assertEqual(str(error.exception), BLOCK_MESSAGE)
 
     def test_no_scanner_policy_or_preference_change(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         source = (root / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_annotations", source)
         self.assertIn("if not cached_clean(cache_id):", source)

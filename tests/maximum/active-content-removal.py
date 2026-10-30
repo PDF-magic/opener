@@ -332,7 +332,7 @@ class ActiveRemovalTests(unittest.TestCase):
         self.assertIsNone(removal.remove_active_pdf_functionality(missing.getvalue(), 1))
 
     def test_scanner_and_maximum_profile_remain_untouched(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parents[2]
         scan = (root / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_active_content_removal", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)

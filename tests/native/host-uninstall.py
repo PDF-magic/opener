@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "native-messaging/unregister-hosts.py"
 spec = importlib.util.spec_from_file_location("unregister_native_hosts", SOURCE)
 cleanup = importlib.util.module_from_spec(spec)

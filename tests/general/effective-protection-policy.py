@@ -22,7 +22,7 @@ from protection_policy_definitions import (
 )
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class EffectivePolicyResolutionTests(unittest.TestCase):

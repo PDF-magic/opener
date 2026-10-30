@@ -8,7 +8,7 @@ import stat
 import tempfile
 import unittest
 
-SOURCE = Path(__file__).parent / "native-messaging" / "register-chrome-host.py"
+SOURCE = Path(__file__).resolve().parents[2] / "native-messaging" / "register-chrome-host.py"
 spec = importlib.util.spec_from_file_location("chrome_host_registration", SOURCE)
 registration = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(registration)

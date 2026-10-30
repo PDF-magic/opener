@@ -9,7 +9,7 @@ from native_message_format import (
   decode_native_message, encode_native_message,
 )
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SHARED_CODEC = ROOT / "extensions/webextension/src/messaging.js"
 
 

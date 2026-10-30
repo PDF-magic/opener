@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-COMPONENT = Path(__file__).with_name("scan-progress-view.swift")
+COMPONENT = (Path(__file__).resolve().parents[2]s[2] / "scan-progress-view.swift")
 
 
 class ScanProgressComponentTests(unittest.TestCase):
@@ -59,7 +59,7 @@ class ScanProgressComponentTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="opener-scan-progress-") as directory:
             root = Path(directory)
             (root / "twilight-reading.png").write_bytes(
-                Path(__file__).with_name("twilight-reading.png").read_bytes())
+                (Path(__file__).resolve().parents[2]s[2] / "twilight-reading.png").read_bytes())
             harness = root / "test.swift"
             harness.write_text(source + """
 let app = NSApplication.shared

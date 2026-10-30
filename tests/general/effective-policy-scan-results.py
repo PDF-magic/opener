@@ -20,7 +20,7 @@ from effective_protection_policy import (
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 
 sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
@@ -162,7 +162,7 @@ class EffectivePolicyScanResultsTests(unittest.TestCase):
         self.assertIn("scan_result = (CleanScanResult(", source)
         self.assertIn("failure.scan_result = ScanResult(decision.detection_names)", source)
         self.assertNotIn("effective_policy_id TEXT", source)
-        self.assertIn("python3 scripts/run-test.py tests/general/effective-policy-scan-results.py -v",
+        self.assertIn("python3 tests/general/effective-policy-scan-results.py -v",
                       (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
 
 

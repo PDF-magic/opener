@@ -21,7 +21,7 @@ import pymupdf
 import maximum_isolated_renderer as renderer
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def sample_pdf(*, oversized_page=False):
@@ -526,7 +526,7 @@ class MaximumRendererTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_renderer_sandbox_context_trusts_only_valid_runtime_paths(self):
-        source_root = Path(__file__).resolve().parent
+        source_root = Path(__file__).resolve().parents[2]
         worker = source_root / "maximum_render_worker.py"
         support_files = (
             source_root / "maximum_isolated_worker.py",

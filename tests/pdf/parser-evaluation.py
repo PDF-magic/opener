@@ -11,7 +11,7 @@ import unittest
 from pdf_parser_memory_benchmark import MAX_PAGES, MAX_STREAM_BYTES, synthetic_pdf
 from pdf_structure_parser import parse_pdf_structure, PDFStructure
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class PDFParserEvaluationTests(unittest.TestCase):
@@ -66,8 +66,8 @@ class PDFParserEvaluationTests(unittest.TestCase):
     self.assertIn("PdfReader(BytesIO(contents), strict=True)", parser)
     self.assertNotIn("pdf_structure_parser", scanner)
     self.assertNotIn("pypdf", scanner)
-    self.assertIn("python3 scripts/run-test.py tests/pdf/parser-evaluation.py -v", ci)
-    self.assertIn("python3 scripts/run-test.py tests/pdf/structure-parser.py -v", ci)
+    self.assertIn("python3 tests/pdf/parser-evaluation.py -v", ci)
+    self.assertIn("python3 tests/pdf/structure-parser.py -v", ci)
     self.assertIn("python3 pdf_parser_memory_benchmark.py --parser pypdf", ci)
     self.assertNotIn("pypdf==5.9.0", ci)
     self.assertEqual(ci.count("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt"), 2)

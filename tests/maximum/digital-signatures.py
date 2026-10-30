@@ -20,7 +20,7 @@ from pypdf.generic import (
 )
 import maximum_sanitized_copy as copies
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 RESERVE = 4096
 RANGE_MARKER = b"/ByteRange [ 0 9999999999 9999999999 9999999999 ]"
 
@@ -207,9 +207,9 @@ class SignedPDFFidelityTests(unittest.TestCase):
         )
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertEqual(workflow.count(
-            "python3 test-maximum-digital-signatures.py -v"), 2)
+            "python3 tests/maximum/digital-signatures.py -v"), 2)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertNotIn("test-maximum-digital-signatures.py", scanner)
+        self.assertNotIn("tests/maximum/digital-signatures.py", scanner)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         offer = copies.SanitizedCopyOffer(b"synthetic-output", 1)

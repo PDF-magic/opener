@@ -21,7 +21,7 @@ from pdf_action_chains import (
 from reference_pdf_collection import REFERENCE_PDFS
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 _ERROR = "PDF action chains could not be fully inspected; opening was stopped."
 
 
@@ -214,7 +214,7 @@ class PDFActionChainTests(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_action_chains", scanner)
         self.assertNotIn("pdf_action_chains", policy)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/action-chains.py -v", ci)
+        self.assertIn("python3 tests/pdf/action-chains.py -v", ci)
         for forbidden in ("subprocess.", "launch_clean_file(",
                           "remove_quarantine(", "write_text(", "get_data(",
                           "UserDefaults", "os.environ", "eval(", "exec("):

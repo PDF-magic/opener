@@ -20,7 +20,7 @@ from pdf_document_permissions import (
 )
 from reference_pdf_collection import REFERENCE_PDFS
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def make_writer():
@@ -170,7 +170,7 @@ class PDFPermissionTests(unittest.TestCase):
         source = (ROOT / "pdf_document_permissions.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_document_permissions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertIn("python3 scripts/run-test.py tests/pdf/document-permissions.py -v", ci)
+        self.assertIn("python3 tests/pdf/document-permissions.py -v", ci)
         for forbidden in ("decrypt(", "subprocess.", "get_data(", "launch_clean_file(",
                           "remove_quarantine(", "write_text(", "UserDefaults", "os.environ"):
             self.assertNotIn(forbidden, source)

@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 SCHEME = ROOT / "PDFMagicOpener.xcodeproj" / "xcshareddata" / "xcschemes" / "PDFMagicOpener.xcscheme"
 SOURCE = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"

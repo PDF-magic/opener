@@ -17,7 +17,7 @@ from scanner_argument_validation import (
 )
 
 sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
     "scanner_configuration_boundary_gate", ROOT / "scan-and-open.py"
 )

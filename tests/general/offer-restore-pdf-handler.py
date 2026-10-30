@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import unittest
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "offer_pdf_restoration", ROOT / "offer-restore-pdf-handler.py")
 offer = importlib.util.module_from_spec(SPEC)
