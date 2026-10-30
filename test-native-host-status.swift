@@ -52,7 +52,7 @@ struct NativeHostStatusTests {
 
     precondition(NativeHostStatus.effectiveProfile(from: nil) == "built-in")
     precondition(NativeHostStatus.effectiveProfile(from: "built-in") == "built-in")
-    for unsupported: Any in ["standard", "enhanced", "maximum", "custom", 1, true] {
+    for unsupported in ["standard" as Any, "enhanced", "maximum", "custom", 1, true] {
       precondition(NativeHostStatus.effectiveProfile(from: unsupported) == nil)
     }
 
