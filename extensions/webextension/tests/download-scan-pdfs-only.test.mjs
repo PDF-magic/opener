@@ -182,12 +182,12 @@ test("save refusal, rejection and unconfirmed persistence restore previous choic
 
 test("pending saves disable repeated changes and use a fresh authoritative read", async () => {
   const f = fixture();
-  await f.option.load();
   let release;
   f.store.saveScanPdfsOnly = next => new Promise(resolve => {
     f.writes.push(next);
     release = () => resolve(true);
   });
+  await f.option.load();
   f.input().checked = false;
   const pending = f.input().fire("change", { isTrusted: true, target: f.input() });
   assert.equal(f.input().disabled, true);
