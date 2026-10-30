@@ -58,6 +58,18 @@ try {
   const extensionId = new URL(worker.url()).host;
   assert.match(extensionId, /^[a-p]{32}$/);
 
+  // The worker event can precede extension API initialization on busy runners.
+  // Wait briefly for the real runtime and permission APIs, never skipping checks.
+  let runtimeReady = false;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    runtimeReady = await worker.evaluate(() =>
+      typeof globalThis.chrome?.runtime?.getManifest === "function" &&
+      typeof globalThis.chrome?.permissions?.contains === "function"
+    );
+    if (runtimeReady) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.ok(runtimeReady, "Chromium extension APIs must be initialized");
   const effectiveManifest = await worker.evaluate(() => chrome.runtime.getManifest());
   assert.equal(effectiveManifest.name, "PDF Magic Opener");
   assert.equal(effectiveManifest.incognito, "not_allowed");
