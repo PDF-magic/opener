@@ -37,7 +37,7 @@ class BrowserIntegrationTestActionTests(unittest.TestCase):
   def test_local_report_cannot_claim_a_verified_scanner_connection(self):
     source = PREF.read_text()
     model = source.split("struct BrowserIntegrationTestReport: Equatable {", 1)[1].split(
-        "// Versioned, opt-in representation for settings shared", 1
+        "// Read-only presentation of browser download monitoring.", 1
     )[0]
     for expected in (
         'var statusLabel: String { "Integration test unavailable" }',

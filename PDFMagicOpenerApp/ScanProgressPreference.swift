@@ -763,36 +763,6 @@ enum DownloadScanResultsPreference {
   }
 }
 
-// Read-only presentation of browser download monitoring. Discovery of an
-// executable app is not evidence that any extension is authorized, connected,
-// listening for downloads, or enforcing the native scanner. No active state
-// can be constructed here; only an independently verified future coordinator
-// may introduce live monitoring status.
-struct BrowserMonitoringStatusRow: Identifiable, Equatable {
-  let id: String
-  let name: String
-  let detected: Bool
-
-  var statusLabel: String { detected ? "Not connected" : "Not detected" }
-}
-
-enum BrowserMonitoringStatusDisplay {
-  static func rows(
-    supported: [(id: String, name: String)],
-    detectedIDs: Set<String>
-  ) -> [BrowserMonitoringStatusRow] {
-    var seen = Set<String>()
-    return supported.compactMap { browser in
-      guard !browser.id.isEmpty, !browser.name.isEmpty,
-            seen.insert(browser.id).inserted else { return nil }
-      return BrowserMonitoringStatusRow(
-        id: browser.id, name: browser.name,
-        detected: detectedIDs.contains(browser.id)
-      )
-    }
-  }
-}
-
 // An explicit, read-only local preflight for a future browser integration.
 // Browser installation never proves extension permission, native messaging,
 // scanner readiness, or enforcement of browser/OS download opening. Since no
@@ -820,6 +790,36 @@ enum BrowserIntegrationTest {
       detectedCount: supported.filter { detectedIDs.contains($0) }.count,
       supportedCount: supported.count
     )
+  }
+}
+
+// Read-only presentation of browser download monitoring. Discovery of an
+// executable app is not evidence that any extension is authorized, connected,
+// listening for downloads, or enforcing the native scanner. No active state
+// can be constructed here; only an independently verified future coordinator
+// may introduce live monitoring status.
+struct BrowserMonitoringStatusRow: Identifiable, Equatable {
+  let id: String
+  let name: String
+  let detected: Bool
+
+  var statusLabel: String { detected ? "Not connected" : "Not detected" }
+}
+
+enum BrowserMonitoringStatusDisplay {
+  static func rows(
+    supported: [(id: String, name: String)],
+    detectedIDs: Set<String>
+  ) -> [BrowserMonitoringStatusRow] {
+    var seen = Set<String>()
+    return supported.compactMap { browser in
+      guard !browser.id.isEmpty, !browser.name.isEmpty,
+            seen.insert(browser.id).inserted else { return nil }
+      return BrowserMonitoringStatusRow(
+        id: browser.id, name: browser.name,
+        detected: detectedIDs.contains(browser.id)
+      )
+    }
   }
 }
 
