@@ -20,6 +20,7 @@ class SavedCopyIdentityTests(unittest.TestCase):
         for source, expected in (
             ("/Users/example/Quarterly Report.pdf", "Quarterly Report-sanitized-copy.pdf"),
             ("report.PDF", "report-sanitized-copy.pdf"),
+            (Path("report.PDF"), "report-sanitized-copy.pdf"),
             ("report-sanitized-copy.pdf", "report-sanitized-copy-sanitized-copy.pdf"),
             ("Échéancier.pdf", "Échéancier-sanitized-copy.pdf"),
             ("...pdf", "document-sanitized-copy.pdf"),

@@ -68,7 +68,7 @@ def suggested_saved_copy_filename(source_path: str | Path) -> str:
     """
     import re
 
-    if (not (type(source_path) is str or type(source_path) is Path) or
+    if (not (type(source_path) is str or isinstance(source_path, Path)) or
             not str(source_path) or "\x00" in str(source_path)):
         raise ValueError("A source PDF filename is required")
     name = Path(source_path).name
