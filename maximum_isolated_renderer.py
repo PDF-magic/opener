@@ -27,6 +27,19 @@ MAGIC = b"MAXPNG01"
 _HEADER = struct.Struct(">8sII")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
+
+# The renderer's resource-limit bootstrap imports these exact trusted modules.
+# Keep file access bounded to individual canonical files, never the source
+# directory or an untrusted PDF-controlled path.
+RENDERER_LIMIT_SUPPORT = (
+    ("analysis_support", "ANALYSIS_SUPPORT", "maximum_isolated_analysis.py"),
+    ("process_support", "PROCESS_SUPPORT", "maximum_process_termination.py"),
+    ("sanitizer_support", "SANITIZER_SUPPORT", "maximum_sanitizer_process.py"),
+    ("memory_support", "MEMORY_SUPPORT", "maximum_memory_limits.py"),
+    ("policy_support", "POLICY_SUPPORT", "protection_policy_definitions.py"),
+    ("budget_support", "BUDGET_SUPPORT", "protection_stage_resource_budgets.py"),
+    ("profile_support", "PROFILE_SUPPORT", "protection_profiles.py"),
+)
 RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
 (allow process-exec
@@ -50,6 +63,13 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
     (literal (param "WORKER_SUPPORT"))
     (literal (param "NETWORK_SUPPORT"))
     (literal (param "RENDERER_SUPPORT"))
+    (literal (param "ANALYSIS_SUPPORT"))
+    (literal (param "PROCESS_SUPPORT"))
+    (literal (param "SANITIZER_SUPPORT"))
+    (literal (param "MEMORY_SUPPORT"))
+    (literal (param "POLICY_SUPPORT"))
+    (literal (param "BUDGET_SUPPORT"))
+    (literal (param "PROFILE_SUPPORT"))
     (subpath (param "PYTHON_PREFIX"))
     (subpath (param "PYTHON_BASE_PREFIX"))
     (subpath "/System")
@@ -119,6 +139,10 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
         network_support = (source_root / "maximum_network_isolation.py").resolve(strict=True)
         renderer_support = Path(__file__).resolve(strict=True)
+        limit_support = {
+            key: (source_root / filename).resolve(strict=True)
+            for key, _param, filename in RENDERER_LIMIT_SUPPORT
+        }
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
         # CPython framework launchers re-exec this exact, bundled Python.app binary.
@@ -137,11 +161,14 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
              not Path(python_app).is_relative_to(Path(base_prefix))) or
             not _trusted_regular_file(worker) or
             not all(_trusted_regular_file(str(path)) for path in support_files) or
+            any(path.parent != source_root or
+                not _trusted_regular_file(str(path))
+                for path in limit_support.values()) or
             not _trusted_directory(str(source_root)) or
             not _trusted_directory(prefix, runtime=True) or
             not _trusted_directory(base_prefix, runtime=True)):
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
-    return {
+    context = {
         "python": python,
         "python_app": python_app,
         "worker": worker,
@@ -151,6 +178,8 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         "python_prefix": prefix,
         "python_base_prefix": base_prefix,
     }
+    context.update({key: str(path) for key, path in limit_support.items()})
+    return context
 
 
 @dataclass(frozen=True)
@@ -249,6 +278,8 @@ def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
         ("PYTHON_BASE_PREFIX", "python_base_prefix"),
     ):
         command.extend(("-D", name + "=" + context[key]))
+    for key, parameter, _filename in RENDERER_LIMIT_SUPPORT:
+        command.extend(("-D", parameter + "=" + context[key]))
     command.extend((context["python"], "-I", "-B", context["worker"], str(page_index)))
     return tuple(command)
 

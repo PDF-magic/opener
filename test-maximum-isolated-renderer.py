@@ -181,6 +181,10 @@ class MaximumRendererTests(unittest.TestCase):
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
+        context.update({
+            key: str((ROOT / filename).resolve())
+            for key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT
+        })
         with (
             patch.object(renderer.sys, "platform", "darwin"),
             patch.object(renderer, "_renderer_sandbox_context", return_value=context),
@@ -203,7 +207,10 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual(command[python_index:python_index + 3],
                          (context["python"], "-I", "-B"))
         self.assertEqual(command[-2:], (context["worker"], "0"))
-        self.assertEqual(command.count("-D"), 8)
+        self.assertEqual(command.count("-D"), 8 + len(renderer.RENDERER_LIMIT_SUPPORT))
+        for key, parameter, filename in renderer.RENDERER_LIMIT_SUPPORT:
+            self.assertIn(parameter + "=" + context[key], command)
+            self.assertIn('(literal (param "' + parameter + '"))', command[2])
         self.assertFalse(result.permits_open)
 
     @unittest.skipUnless(sys.platform == "linux", "Linux seccomp enforcement test")
@@ -451,6 +458,8 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn('(literal (param "WORKER_SUPPORT"))', profile)
         self.assertIn('(literal (param "NETWORK_SUPPORT"))', profile)
         self.assertIn('(literal (param "RENDERER_SUPPORT"))', profile)
+        for _key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
+            self.assertIn('(literal (param "' + parameter + '"))', profile)
         self.assertNotIn('(subpath (param "WORKER_DIR"))', profile)
         self.assertIn('(subpath (param "PYTHON_PREFIX"))', profile)
         self.assertIn("(deny network*)", profile)
@@ -484,6 +493,8 @@ class MaximumRendererTests(unittest.TestCase):
             source_root / "maximum_isolated_worker.py",
             source_root / "maximum_network_isolation.py",
             source_root / "maximum_isolated_renderer.py",
+            *(source_root / filename
+              for _key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT),
         )
         python = str(Path(sys.executable).resolve(strict=True))
         prefix = str(Path(sys.prefix).resolve(strict=True))
