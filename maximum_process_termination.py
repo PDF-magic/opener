@@ -5,6 +5,7 @@ not a new inspector, user-selectable command, or file-opening verdict.
 """
 import errno
 import os
+import sys
 import selectors
 import signal
 import subprocess
@@ -18,24 +19,56 @@ BLOCK_MESSAGE = "Isolated PDF analysis exceeded process limits; opening was stop
 
 
 class MaximumProcessTerminationError(RuntimeError):
-    """A bounded worker was interrupted or could not be securely supervised."""
+    """Always fixed, path-free error; optional safe category for tests only."""
+
+    _CATEGORIES = frozenset((
+        "unknown", "timeout", "worker-exit", "output-limit",
+        "transport", "cleanup",
+    ))
+
+    def __init__(self, message=BLOCK_MESSAGE, *, category="unknown"):
+        super().__init__(BLOCK_MESSAGE)
+        self.category = category if category in self._CATEGORIES else "unknown"
+
+
+def _macos_group_is_zombie_only(pgid):
+    """Verify that an EPERM process group has no live members."""
+    if sys.platform != "darwin":
+        return False
+    try:
+        result = subprocess.run(
+            ("/bin/ps", "-A", "-o", "pgid=,stat="),
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, close_fds=True, cwd="/",
+            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+            timeout=2, check=True,
+        )
+        for line in result.stdout.decode("ascii").splitlines():
+            fields = line.split()
+            if len(fields) != 2 or not fields[0].isdecimal() or not fields[1]:
+                return False
+            if int(fields[0]) == pgid and fields[1][0].upper() != "Z":
+                return False
+        return True
+    except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+        return False
 
 
 def _stop_group(process):
-    """Kill the entire dedicated POSIX session, not only the original child."""
+    """Stop the isolated process group without ignoring live descendants."""
     try:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
-        # ESRCH is expected if the worker exited without any descendants.
         if process.poll() is None:
             process.kill()
-    except OSError:
-        # Do not mistake a failed group teardown for a successful inspection.
+    except OSError as error:
+        if error.errno == errno.EPERM and _macos_group_is_zombie_only(process.pid):
+            return
         try:
             process.kill()
         except ProcessLookupError:
             pass
-        raise MaximumProcessTerminationError(BLOCK_MESSAGE) from None
+        raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="cleanup") from None
 
 
 def _reap(process):
@@ -95,18 +128,21 @@ def run_limited_worker(
             while events.get_map():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+                    raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="timeout")
                 for key, _ in events.select(timeout=min(remaining, 0.5)):
                     if key.fileobj is process.stdout:
                         # Only consume one byte beyond remaining cumulative
                         # capacity: earlier chunks already occupy the budget.
                         remaining_capacity = MAX_OUTPUT_BYTES - len(output)
-                        chunk = os.read(process.stdout.fileno(), remaining_capacity + 1)
+                        try:
+                            chunk = os.read(process.stdout.fileno(), remaining_capacity + 1)
+                        except BlockingIOError:
+                            continue
                         if not chunk:
                             events.unregister(process.stdout)
                             process.stdout.close()
                         elif len(output) + len(chunk) > MAX_OUTPUT_BYTES:
-                            raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+                            raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="output-limit")
                         else:
                             output.extend(chunk)
                     else:
@@ -116,6 +152,8 @@ def run_limited_worker(
                                 memoryview(contents)[position:position + 65536],
                             )
                             position += written
+                        except BlockingIOError:
+                            continue
                         except BrokenPipeError:
                             position = len(contents)
                         if position == len(contents):
@@ -124,11 +162,21 @@ def run_limited_worker(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
-        if process.wait(timeout=remaining) != 0:
-            raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+        try:
+            return_code = process.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            raise MaximumProcessTerminationError(
+                BLOCK_MESSAGE, category="timeout",
+            ) from None
+        if return_code != 0:
+            raise MaximumProcessTerminationError(
+                BLOCK_MESSAGE, category="worker-exit",
+            )
         return bytes(output)
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
-        raise MaximumProcessTerminationError(BLOCK_MESSAGE) from None
+    except MaximumProcessTerminationError:
+        raise
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        raise MaximumProcessTerminationError(BLOCK_MESSAGE, category="transport") from None
     finally:
         if process is not None:
             try:
