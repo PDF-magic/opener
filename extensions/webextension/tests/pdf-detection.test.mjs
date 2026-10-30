@@ -45,7 +45,6 @@ test("known non-PDF MIME vetoes misleading extension and query strings", () => {
     { url: "https://test.invalid/view?filename=document.pdf#report.pdf" },
     { filename: ".pdf" }, { filename: "path/report.pdf" },
     { url: "data:application/pdf,content" },
-    { url: "blob:https://test.invalid/id.pdf" },
     { url: "javascript:alert('report.pdf')" },
     { url: "https://test.invalid/report%00.pdf" },
     { url: "https://test.invalid/report%ZZ.pdf" }
@@ -82,4 +81,52 @@ test("the shared module has no browser, native transport, filesystem or network 
     "fetch(", "XMLHttpRequest", "WebSocket", "window.open", "file_launcher",
     "scan-and-open", "node:fs", "ClamAV", "localStorage"
   ]) assert.equal(source.includes(forbidden), false, forbidden);
+});
+
+test("recognizes unsupported blob URLs rather than silently treating them as ordinary non-PDFs", () => {
+  const unsupported = {
+    isPdfCandidate: false, evidence: "unsupported-blob-url", authorizesOpen: false
+  };
+  for (const url of [
+    "blob:https://example.test/id",
+    "blob:null/opaque-id",
+    "blob:file:///private/statement.pdf",
+    "BLOB:https://example.test/document.pdf",
+    "blob:https://other.invalid/id?filename=report.pdf#page=1",
+    "blob:invalid-payload"
+  ]) assert.deepEqual(detect({ url }), unsupported, url);
+});
+
+test("blob URL recognition takes precedence over MIME and filename hints", () => {
+  const url = "blob:https://example.test/secret.pdf";
+  const expectedBlob = {
+    isPdfCandidate: false, evidence: "unsupported-blob-url", authorizesOpen: false
+  };
+  for (const metadata of [
+    { url, mimeType: "application/pdf" },
+    { url, mimeType: "application/x-pdf", filename: "statement.pdf" },
+    { url, mimeType: "application/octet-stream", filename: "statement.pdf" },
+    { url, mimeType: "text/html", filename: "statement.pdf" },
+    { url: "blob:null/opaque", filename: "statement.PDF" }
+  ]) assert.deepEqual(detect(metadata), expectedBlob);
+
+  // Ordinary HTTP(S) MIME/path hints and standalone filename hints still work.
+  assert.deepEqual(detect({ url: "https://example.test/report.pdf" }), expected("url-path"));
+  assert.deepEqual(detect({ url: "https://example.test/view", mimeType: "application/pdf" }),
+    expected("mime-type"));
+  assert.deepEqual(detect({ filename: "statement.pdf" }), expected("filename"));
+});
+
+test("unsupported blob results are frozen, contain no private identifier, and never grant opening", () => {
+  const result = detect({
+    url: "blob:https://private.test/secret-identifier",
+    mimeType: "application/pdf",
+    filename: "private.pdf"
+  });
+  assert.equal(Object.isFrozen(result), true);
+  assert.deepEqual(Object.keys(result).sort(), ["authorizesOpen", "evidence", "isPdfCandidate"]);
+  assert.equal(result.authorizesOpen, false);
+  assert.equal(result.isPdfCandidate, false);
+  assert.equal(JSON.stringify(result).includes("private"), false);
+  assert.equal(JSON.stringify(result).includes("secret-identifier"), false);
 });
