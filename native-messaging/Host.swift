@@ -36,6 +36,17 @@ private enum HostError: Error {
 @main
 struct PDFMagicNativeMessagingHost {
   private static let maximumFrameBytes = 16 * 1024
+  // CoreFoundation and Glibc both export these mode constants on Linux.
+  // Qualify the platform source to keep strict Swift builds unambiguous.
+  #if canImport(Darwin)
+  private static let fileTypeMask = mode_t(Darwin.S_IFMT)
+  private static let directoryType = mode_t(Darwin.S_IFDIR)
+  private static let regularFileType = mode_t(Darwin.S_IFREG)
+  #else
+  private static let fileTypeMask = mode_t(Glibc.S_IFMT)
+  private static let directoryType = mode_t(Glibc.S_IFDIR)
+  private static let regularFileType = mode_t(Glibc.S_IFREG)
+  #endif
   private enum Diagnostic: String {
     case invalidFrame = "invalid-frame"
     case invalidMessage = "invalid-message"
@@ -90,7 +101,7 @@ struct PDFMagicNativeMessagingHost {
     defer { close(homeFD) }
     var info = stat()
     guard fstat(homeFD, &info) == 0,
-          (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFDIR),
+          (info.st_mode & fileTypeMask) == directoryType,
           info.st_uid == getuid() else { throw HostError.invalidMessage }
 
     // The lock directory and slots are user-owned and not accessible by
@@ -102,7 +113,7 @@ struct PDFMagicNativeMessagingHost {
     guard directoryFD >= 0 else { throw HostError.invalidMessage }
     defer { close(directoryFD) }
     guard fstat(directoryFD, &info) == 0,
-          (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFDIR),
+          (info.st_mode & fileTypeMask) == directoryType,
           info.st_uid == getuid(),
           (info.st_mode & mode_t(0o077)) == 0 else {
       throw HostError.invalidMessage
@@ -117,7 +128,7 @@ struct PDFMagicNativeMessagingHost {
       )
       guard descriptor >= 0 else { throw HostError.invalidMessage }
       guard fstat(descriptor, &info) == 0,
-            (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+            (info.st_mode & fileTypeMask) == regularFileType,
             info.st_uid == getuid(), info.st_nlink == 1,
             (info.st_mode & mode_t(0o077)) == 0 else {
         close(descriptor)
