@@ -221,11 +221,37 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
             sanitizer.subprocess, "run", side_effect=[
                 subprocess.CalledProcessError(1, "/bin/ps"),
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CalledProcessError(1, "/bin/ps"),
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CompletedProcess(
+                    ("/bin/ps",), 0, b"202 202 S+\n",
+                ),
             ]
         ) as probe:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._process_has_exited_without_reaping(process)
+            self.assertEqual(probe.call_count, 5)
+
+        # An initially malformed status may be retried only until a trusted
+        # kernel snapshot explicitly confirms the worker has exited.
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", side_effect=[
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"?\n"),
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
+            ]
+        ) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
             self.assertEqual(probe.call_count, 2)
+
+        # Repeated unparseable states must never be mistaken for zombie exit.
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", return_value=(
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"?\n")
+            )
+        ) as probe:
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._process_has_exited_without_reaping(process)
+            self.assertEqual(probe.call_count, 4)
 
         # A live state is never interpreted as a successfully exited worker.
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(

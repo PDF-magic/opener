@@ -261,7 +261,36 @@ def _process_has_exited_without_reaping(process) -> bool:
                     raise ValueError
                 return states[0][0].upper() == "Z"
             except (ValueError, UnicodeDecodeError):
-                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+                # Transiently malformed ps snapshots are not proof of exit.
+                # Retry briefly, then fail closed if no valid status appears.
+                if attempt < 3:
+                    time.sleep(0.02)
+                continue
+        # If targeted ps remains inconclusive, cross-check a separate
+        # bounded all-process snapshot. Accept only a positively identified,
+        # unreaped session leader whose group ID matches its PID.
+        try:
+            completed = subprocess.run(
+                ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, close_fds=True, cwd="/",
+                env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+                timeout=0.5, check=True,
+            )
+            found = None
+            for line in completed.stdout.decode("ascii").splitlines():
+                fields = line.split()
+                if (len(fields) != 3 or not fields[0].isdecimal()
+                        or not fields[1].isdecimal() or not fields[2][0].isalpha()):
+                    raise ValueError
+                if int(fields[0]) == process.pid:
+                    if int(fields[1]) != process.pid or found is not None:
+                        raise ValueError
+                    found = fields[2][0].upper() == "Z"
+            if found is not None:
+                return found
+        except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+            pass
         raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 

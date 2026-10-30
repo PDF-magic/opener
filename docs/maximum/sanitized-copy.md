@@ -63,6 +63,25 @@ the fixed 'Save rasterized PDF copy' action only for a verified offer;
 it must solicit explicit user save intent and route the resulting file
 through the existing mandatory scan and file-integrity gate.
 
+## Future Maximum UI activity indicator (opener-0548)
+
+A future Maximum interface can pass an optional `on_activity` callback to
+`attempt_sanitized_pdf_copy`, `assess_sanitized_pdf_copy`, or
+`offer_sanitized_pdf_copy`. Only after the input and converter have passed
+preflight, the callback receives a fixed, path-free payload with
+`phase="sanitizing"`, `isRunning=true` and the display label
+**“Sanitizing document…”**. The activity remains running while the isolated
+converter executes **and** while its output is rebuilt and verified.
+
+A `phase="idle"`, `isRunning=false` event always clears the indicator
+after an attempted conversion, whether it succeeded, crashed, timed out or
+failed verification. Rejected preflight requests never claim sanitization
+started. This is not a percent-complete estimate: both payloads explicitly
+set `scanVerdict="notAssessed"` and `authorizesOpen=false`.
+Presentation callback exceptions are ignored so they cannot change a
+sanitizer outcome. No status is wired into the deployed Built-in-only panel
+and this interface does not activate Maximum or bypass scanner safety.
+
 The installed application currently offers only Built-in protection.
 Maximum is not selectable and has no complete end-to-end sanitized-copy
 UI or coordinated isolated conversion orchestrator. This scoped task
@@ -78,3 +97,24 @@ page order, media dimensions, rotation, JavaScript, and embedded attachments
 are handled correctly. The active scanner,
 signature updater, cached scan decisions, quarantine and user settings
 are unchanged.
+
+## Saved-copy identity contract (opener-0547)
+
+The optional future Maximum save dialog must clearly distinguish a generated
+copy from its original. For a verified `SanitizedCopyOffer`, call
+`offer.to_save_presentation(trusted_source_path)`: it returns a fixed
+**“Generated sanitized PDF copy (not the original)”** label, an explicit
+warning to retain the untouched original, `contentOrigin=generatedContent`,
+`isUntouchedOriginal=false`, and a basename ending in
+`-sanitized-copy.pdf`. This suggestion is derived only from the trusted
+source filename, never from PDF metadata, and cannot equal that original
+basename (including case-insensitive comparisons). Invalid source names
+fail closed. No source directory or document bytes are exposed in this
+presentation; ordinary public metadata stays path-free.
+
+This is a **save-dialog presentation contract, not a save operation**. It
+never writes a file or grants scanner/opening approval. The independently
+assigned optional Save action (opener-0544) must require explicit consent,
+create exclusively without overwriting the original or an existing file,
+and preserve the mandatory separate scan gate. Maximum remains unavailable
+in the installed Built-in application.

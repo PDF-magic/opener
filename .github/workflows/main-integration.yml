@@ -25,7 +25,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Each main push must retain its own run, including while another is pending.
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.run_id || github.ref }}
   cancel-in-progress: false
 
 jobs:
