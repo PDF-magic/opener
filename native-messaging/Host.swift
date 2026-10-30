@@ -66,6 +66,20 @@ struct PDFMagicNativeMessagingHost {
       // Preserve the existing read-only liveness probe before and after hello.
       guard message["payload"] is NSNull else { throw HostError.invalidMessage }
       payload = ["status": "transport-only", "scanAvailable": false]
+    case "host.health":
+      // Health is a read-only, post-handshake transport check. No scanner is
+      // connected or inspected here; an acknowledged frame cannot establish
+      // ClamAV health, a verified scan verdict, or permission to open a PDF.
+      guard handshakeComplete, message["payload"] is NSNull else {
+        throw HostError.invalidMessage
+      }
+      payload = [
+        "status": "transport-only",
+        "transportResponsive": true,
+        "scannerHealth": NSNull(),
+        "scanAvailable": false,
+        "authorizesOpen": false
+      ]
     case "host.handshake":
       // One version-1 handshake per process. Echoing a bounded challenge proves
       // correlation only: it does NOT authenticate the browser or host.
