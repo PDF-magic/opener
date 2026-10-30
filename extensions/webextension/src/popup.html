@@ -18,6 +18,11 @@
       <p>This extension cannot scan, sanitize, or open PDF files yet.</p>
       <p>PDF protection still depends on the separate PDF Magic Opener application and its verified scanner checks.</p>
     </section>
+    <section class="unsupported-action" aria-labelledby="manual-scan-title">
+      <h2 id="manual-scan-title">Manual PDF scanning</h2>
+      <button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button>
+      <p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p>
+    </section>
     <footer>
       <p><a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a></p>
       <p>Opens the installed macOS preferences app. Your browser may ask for confirmation.</p>

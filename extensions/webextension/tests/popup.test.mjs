@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { validatePopupAsset } from "../scripts/popup-assets.mjs";
+import { createScanPdfAction, SCAN_PDF_UNAVAILABLE_MESSAGE } from "../src/scan-pdf-action.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -23,6 +24,12 @@ test("toolbar popup is local, accessible and explicitly inactive in both builds"
   assert.match(html, /Not active/);
   assert.match(html, /cannot scan, sanitize, or open PDF files yet/);
   assert.match(html, /<meta name="viewport"/);
+  assert.ok(html.includes('<button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button>'));
+  assert.ok(html.includes('<p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p>'));
+  assert.match(css, /button:disabled/);
+  assert.equal(createScanPdfAction().state().enabled, false);
+  assert.equal(SCAN_PDF_UNAVAILABLE_MESSAGE,
+    "Scan PDF is unavailable until a verified native scanner is connected.");
   assert.match(html, /id="openPDFMagicPreferences" href="pdfmagicopener:\/\/preferences"/);
   assert.match(css, /prefers-color-scheme: dark/);
   for (const target of ["dist", "dist/firefox"]) {
@@ -36,7 +43,7 @@ test("toolbar popup is local, accessible and explicitly inactive in both builds"
 });
 
 test("popup validator rejects active controls, remote resources and injection", () => {
-  const baseline = '<!doctype html>\n<html lang="en">\n<link rel="stylesheet" href="popup.css"><p role="status">Not active</p><p>cannot scan, sanitize, or open PDF files yet.</p><a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a></html>';
+  const baseline = '<!doctype html>\n<html lang="en">\n<link rel="stylesheet" href="popup.css"><p role="status">Not active</p><p>cannot scan, sanitize, or open PDF files yet.</p><a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a><button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button><p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p></html>';
   assert.doesNotThrow(() => validatePopupAsset("popup.html", baseline));
   for (const injected of [
     '<script>alert(1)</script>', '<button>Scan</button>', '<form></form>',
@@ -50,4 +57,25 @@ test("popup validator rejects active controls, remote resources and injection", 
   }
   assert.throws(() => validatePopupAsset("../popup.html", baseline));
   assert.throws(() => validatePopupAsset("popup.html", "<div>Active</div>"));
+});
+
+test("unsupported Scan PDF cannot be enabled, rewired or stripped of its reason", async () => {
+  const html = await readFile(join(root, "src", "popup.html"), "utf8");
+  const button = '<button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button>';
+  const reason = '<p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p>';
+  assert.doesNotThrow(() => validatePopupAsset("popup.html", html));
+  for (const mutation of [
+    html.replace(" disabled aria-disabled", " aria-disabled"),
+    html.replace('aria-disabled="true"', 'aria-disabled="false"'),
+    html.replace('type="button" disabled', 'type="submit" disabled'),
+    html.replace('aria-describedby="scanPDFUnavailable"', 'aria-describedby="missing"'),
+    html.replace(button, ""),
+    html.replace(reason, ""),
+    html.replace("verified native scanner", "browser scanner"),
+    html.replace(button, button + button),
+    html.replace("</section>", '<button id="unsafeScan">Scan now</button></section>'),
+    html.replace("</section>", '<script>openPdf()</script></section>'),
+    html.replace("</section>", '<select><option>Open</option></select></section>'),
+    html.replace("</section>", '<div contenteditable="true">Open</div></section>')
+  ]) assert.throws(() => validatePopupAsset("popup.html", mutation), /Unsafe WebExtensions popup asset/);
 });
