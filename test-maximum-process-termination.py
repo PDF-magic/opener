@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """opener-0312: actually kill runaway Maximum worker process groups."""
+import errno
 import os
 import signal
 import subprocess
@@ -159,6 +160,30 @@ class MaximumProcessTerminationTests(unittest.TestCase):
         with patch.object(guard.os, "killpg", side_effect=PermissionError("private")):
             with self.assertRaises(guard.MaximumProcessTerminationError):
                 run_script("import sys; sys.stdin.buffer.read(); print('ok')")
+
+    def test_test_diagnostics_have_only_fixed_non_payload_categories(self):
+        from maximum_process_termination import MaximumProcessTerminationError
+        secret = "Private PDF text and local /Users/name"
+        opaque = MaximumProcessTerminationError(secret, category=secret)
+        self.assertEqual(str(opaque), guard.BLOCK_MESSAGE)
+        self.assertEqual(opaque.category, "unknown")
+        with self.assertRaises(MaximumProcessTerminationError) as result:
+            run_script("import sys; sys.exit(7)")
+        self.assertEqual(result.exception.category, "worker-exit")
+        self.assertNotIn("Users", str(result.exception))
+
+    def test_macos_eperm_never_ignores_live_worker_descendants(self):
+        process = type("FakeWorker", (), {"pid": 101, "returncode": 0})()
+        zombie = subprocess.CompletedProcess(("ps",), 0, b"101 Z+\\n202 S+\\n", None)
+        living = subprocess.CompletedProcess(("ps",), 0, b"101 S+\\n", None)
+        with patch.object(guard.sys, "platform", "darwin"), \\
+                patch.object(guard.os, "killpg",
+                             side_effect=PermissionError(errno.EPERM, "private")):
+            with patch.object(guard.subprocess, "run", return_value=zombie):
+                guard._stop_group(process)
+            with patch.object(guard.subprocess, "run", return_value=living):
+                with self.assertRaises(guard.MaximumProcessTerminationError):
+                    guard._stop_group(process)
 
     def test_only_opt_in_maximum_uses_new_supervisor(self):
         from pathlib import Path
