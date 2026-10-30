@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-10-30",
+  "purpose": "Research only; no interception or scan-before-open guarantee",
+  "interceptionEnabled": false,
+  "allPathPreOpenVetoProven": false,
+  "browsers": [
+    {
+      "id": "brave",
+      "name": "Brave",
+      "bundleId": "com.brave.Browser",
+      "family": "chromium",
+      "declarativeRules": "conditional",
+      "blockingWebRequest": "conditional-policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "conditional",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://brave.com/learn/using-chrome-extensions-in-brave/",
+        "https://developer.chrome.com/docs/extensions/reference/api/webRequest"
+      ]
+    },
+    {
+      "id": "chrome",
+      "name": "Google Chrome",
+      "bundleId": "com.google.Chrome",
+      "family": "chromium",
+      "declarativeRules": "documented",
+      "blockingWebRequest": "policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "documented",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest",
+        "https://developer.chrome.com/docs/extensions/reference/api/webRequest"
+      ]
+    },
+    {
+      "id": "chromium",
+      "name": "Chromium",
+      "bundleId": "org.chromium.Chromium",
+      "family": "chromium",
+      "declarativeRules": "conditional",
+      "blockingWebRequest": "conditional-policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "conditional",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest",
+        "https://developer.chrome.com/docs/extensions/reference/api/webRequest"
+      ]
+    },
+    {
+      "id": "edge",
+      "name": "Microsoft Edge",
+      "bundleId": "com.microsoft.edgemac",
+      "family": "chromium",
+      "declarativeRules": "documented",
+      "blockingWebRequest": "policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "documented",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support",
+        "https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/migrate-your-extension-from-manifest-v2-to-v3"
+      ]
+    },
+    {
+      "id": "vivaldi",
+      "name": "Vivaldi",
+      "bundleId": "com.vivaldi.Vivaldi",
+      "family": "chromium",
+      "declarativeRules": "conditional",
+      "blockingWebRequest": "conditional-policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "conditional",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://help.vivaldi.com/desktop/appearance-customization/extensions/",
+        "https://developer.chrome.com/docs/extensions/reference/api/webRequest"
+      ]
+    },
+    {
+      "id": "opera",
+      "name": "Opera",
+      "bundleId": "com.operasoftware.Opera",
+      "family": "chromium",
+      "declarativeRules": "conditional",
+      "blockingWebRequest": "conditional-policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "conditional",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://help.opera.com/en/extensions/apis/",
+        "https://help.opera.com/en/extensions/architecture-overview/"
+      ]
+    },
+    {
+      "id": "arc",
+      "name": "Arc",
+      "bundleId": "company.thebrowser.Browser",
+      "family": "chromium",
+      "declarativeRules": "conditional",
+      "blockingWebRequest": "conditional-policy-installed-only",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "conditional",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://arc.net/faq",
+        "https://developer.chrome.com/docs/extensions/reference/api/webRequest"
+      ]
+    },
+    {
+      "id": "firefox",
+      "name": "Mozilla Firefox",
+      "bundleId": "org.mozilla.firefox",
+      "family": "gecko",
+      "declarativeRules": "documented",
+      "blockingWebRequest": "documented",
+      "responseBodyFilter": "documented-firefox-only",
+      "downloadEvents": "documented",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/filterResponseData",
+        "https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/permissions"
+      ]
+    },
+    {
+      "id": "safari",
+      "name": "Apple Safari",
+      "bundleId": "com.apple.Safari",
+      "family": "webkit",
+      "declarativeRules": "documented",
+      "blockingWebRequest": "not-established",
+      "responseBodyFilter": "not-established",
+      "downloadEvents": "not-established",
+      "allPathPreOpenVetoProven": false,
+      "liveBrowserSecurityValidationRequired": true,
+      "primarySources": [
+        "https://developer.apple.com/documentation/safariservices/blocking-content-with-your-safari-web-extension",
+        "https://developer.apple.com/videos/play/wwdc2026/216/"
+      ]
+    }
+  ]
+}
