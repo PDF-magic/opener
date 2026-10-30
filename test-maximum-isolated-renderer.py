@@ -441,6 +441,8 @@ class MaximumRendererTests(unittest.TestCase):
         profile = renderer.RENDERER_FILESYSTEM_PROFILE
         self.assertIn("(deny default)", profile)
         self.assertIn("(allow file-map-executable", profile)
+        # Root-directory lookup is not permission to read its children.
+        self.assertIn('(literal "/")', profile)
         self.assertIn('(literal (param "PYTHON"))', profile)
         self.assertIn('(literal (param "WORKER_SUPPORT"))', profile)
         self.assertIn('(literal (param "NETWORK_SUPPORT"))', profile)
