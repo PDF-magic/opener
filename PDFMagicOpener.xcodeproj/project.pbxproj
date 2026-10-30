@@ -418,7 +418,7 @@
     D56700000000000000000004 = {
       isa = PBXFileReference;
       lastKnownFileType = text.json;
-      path = extensions/webextension/manifest.json;
+      path = extensions/safari/manifest.json;
       sourceTree = SOURCE_ROOT;
     };
     D56700000000000000000005 = {

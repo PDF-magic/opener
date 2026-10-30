@@ -11,6 +11,7 @@ import tempfile
 import zipfile
 
 SOURCE = Path(__file__).resolve().parents[1] / "extensions" / "webextension"
+SAFARI_MANIFEST = Path(__file__).resolve().parents[1] / "extensions" / "safari" / "manifest.json"
 HOST = "PDFMagicOpener.app/"
 APPEX = "Contents/PlugIns/PDFMagicOpenerSafari.appex/Contents/"
 RESOURCES = ("manifest.json", "background.js", "popup.html", "popup.css",
@@ -65,12 +66,15 @@ def validate(files):
       != "com.apple.Safari.web-extension"):
     raise ValueError("Unexpected Safari extension identity")
   manifest_bytes = files[APPEX + "Resources/manifest.json"]
-  if manifest_bytes != (SOURCE / "manifest.json").read_bytes():
-    raise ValueError("Safari manifest differs from shared source")
+  if manifest_bytes != SAFARI_MANIFEST.read_bytes():
+    raise ValueError("Safari manifest differs from reviewed Safari source")
   manifest = json.loads(manifest_bytes)
+  shared = json.loads((SOURCE / "manifest.json").read_text(encoding="utf-8"))
+  if shared.get("permissions") != [] or {**manifest, "permissions": []} != shared:
+    raise ValueError("Safari manifest adds unapproved browser privileges")
   if (manifest.get("manifest_version") != 3
       or manifest.get("incognito") != "not_allowed"
-      or manifest.get("permissions") != []
+      or manifest.get("permissions") != ["nativeMessaging"]
       or manifest.get("host_permissions") != []
       or manifest.get("optional_permissions") != ["downloads"]
       or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", manifest.get("version", ""))
@@ -80,8 +84,8 @@ def validate(files):
       != "PDF Magic Opener (not active)"):
     raise ValueError("Unsafe Safari package manifest")
   for name in RESOURCES:
-    src = SOURCE / (name if name == "manifest.json" or name.startswith("icons/")
-                    else "src/" + name)
+    src = (SAFARI_MANIFEST if name == "manifest.json" else
+           SOURCE / (name if name.startswith("icons/") else "src/" + name))
     if files[APPEX + "Resources/" + name] != src.read_bytes():
       raise ValueError("Modified Safari extension asset: " + name)
   return manifest["version"]

@@ -10,15 +10,18 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 SAFARI = ROOT / "extensions" / "safari"
 SOURCE_MANIFEST = ROOT / "extensions" / "webextension" / "manifest.json"
+SAFARI_MANIFEST = SAFARI / "manifest.json"
 ENTITLEMENTS = SAFARI / "SafariExtension.entitlements"
 HANDLER = SAFARI / "SafariWebExtensionHandler.swift"
 
 
-def validate_safari_permissions(manifest, entitlements):
+def validate_safari_permissions(manifest, entitlements, safari_only=False):
   """Reject unexpected privileges; this is not a Safari runtime grant check."""
   assert manifest["manifest_version"] == 3
   assert manifest["incognito"] == "not_allowed"
-  assert manifest["permissions"] == [], "No installation-time browser API grants"
+  assert manifest["permissions"] == (["nativeMessaging"] if safari_only else []), (
+    "Only the contained Safari extension may declare native messaging"
+  )
   assert manifest["host_permissions"] == [], "No installation-time website grants"
   assert manifest["optional_permissions"] == ["downloads"], "Only optional download consent"
   for forbidden in (
@@ -39,12 +42,13 @@ def verify_built_app(app):
   assert info["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui.safari"
   assert info["NSExtension"]["NSExtensionPointIdentifier"] == "com.apple.Safari.web-extension"
   bundled = extension / "Contents" / "Resources" / "manifest.json"
-  assert bundled.read_bytes() == SOURCE_MANIFEST.read_bytes(), (
-    "Packaged Safari permission policy differs from reviewed shared manifest"
+  assert bundled.read_bytes() == SAFARI_MANIFEST.read_bytes(), (
+    "Packaged Safari permission policy differs from reviewed Safari manifest"
   )
   with ENTITLEMENTS.open("rb") as file:
     entitlements = plistlib.load(file)
-  validate_safari_permissions(json.loads(bundled.read_text(encoding="utf-8")), entitlements)
+  validate_safari_permissions(json.loads(bundled.read_text(encoding="utf-8")),
+                              entitlements, safari_only=True)
 
 
 class SafariPermissionTests(unittest.TestCase):
@@ -60,6 +64,26 @@ class SafariPermissionTests(unittest.TestCase):
       info = plistlib.load(file)
     self.assertEqual(info["NSExtension"]["NSExtensionPointIdentifier"],
                      "com.apple.Safari.web-extension")
+
+  def test_safari_containing_app_native_permission_is_scoped(self):
+    safari = json.loads(SAFARI_MANIFEST.read_text(encoding="utf-8"))
+    validate_safari_permissions(safari, self.entitlements, safari_only=True)
+    self.assertEqual({**safari, "permissions": []}, self.manifest)
+    for value in ([], ["tabs"], ["nativeMessaging", "tabs"],
+                  ["nativeMessaging", "nativeMessaging"]):
+      with self.subTest(value=value):
+        altered = copy.deepcopy(safari)
+        altered["permissions"] = value
+        with self.assertRaises(AssertionError):
+          validate_safari_permissions(altered, self.entitlements, safari_only=True)
+    for field, value in (
+      ("host_permissions", ["<all_urls>"]),
+      ("optional_permissions", ["downloads", "nativeMessaging"]),
+    ):
+      altered = copy.deepcopy(safari)
+      altered[field] = value
+      with self.assertRaises(AssertionError):
+        validate_safari_permissions(altered, self.entitlements, safari_only=True)
 
   def test_extra_browser_permissions_and_website_grants_are_rejected(self):
     changes = (
