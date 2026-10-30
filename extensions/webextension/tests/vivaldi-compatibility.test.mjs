@@ -75,8 +75,8 @@ test("Vivaldi workflow uses the real installed browser with disposable profile",
   const smoke = await text("scripts/smoke-vivaldi.mjs");
   for (const phrase of [
     "Extensions.loadUnpacked", "/usr/bin/vivaldi-stable", "--remote-debugging-pipe",
-    "--enable-unsafe-extension-debugging", "Target.createTarget", "chrome.runtime.getManifest",
-    "chrome.permissions.contains", "scan.disabled", "mkdtemp(", "browser.kill",
+    "--enable-unsafe-extension-debugging", "Target.createTarget", "Target.getTargets",
+    "Extensions.getExtensions", "bundledHtml", "mkdtemp(", "browser.kill",
     "rm(profile"
   ]) assert.ok(smoke.includes(phrase), phrase);
   for (const forbidden of [

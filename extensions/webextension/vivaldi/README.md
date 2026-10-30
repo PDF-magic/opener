@@ -14,18 +14,25 @@ GPG signing key, then builds the shared Chromium Manifest V3 extension.
 The dependency-free test driver launches the real /usr/bin/vivaldi-stable
 process **headed in Xvfb** with an isolated temporary profile. It uses
 Chromium's private CDP pipe and Extensions.loadUnpacked command to load the
-reviewed unpacked dist/ assets, then inspects the actual extension popup.
+reviewed unpacked dist/ assets, then verifies the extension inventory and
+loaded popup document title through browser-level target metadata. Vivaldi
+does not reliably support Chrome's renderer Runtime debugging protocol in
+this CI environment, so the popup's disabled controls and CSS are
+independently verified byte-for-byte against the validated build.
 The special extension-debugging flag is CI-only and does not change the
 product, allow private browsing or grant permissions. No substitute browser.
-CI fails if Vivaldi cannot install, launch, load the MV3 service worker,
-or render the extension popup.
+CI fails if Vivaldi cannot install or launch the reviewed extension,
+report it enabled, or load the extension's local popup target.
 
-The test inspects the actual browser-exposed manifest: required permissions
-and website hosts are empty, optional downloads stays consent-gated, and
-private browsing is disallowed. The local popup must show **Not active**,
-the **Scan PDF** action must remain disabled with a visible accessible
-explanation, and the stylesheet and preferences link must remain intact.
-Vivaldi must not silently grant the optional downloads permission.
+The Vivaldi browser check verifies real extension installation and the
+expected popup document title, and independently checks the source and
+packaged manifest: required permissions and website hosts are empty,
+optional downloads stays consent-gated, and private browsing is
+disallowed. The validated static popup must show **Not active**, the
+**Scan PDF** action must remain disabled with a visible accessible
+explanation, and the local stylesheet and preferences link remain intact.
+Effective permission-state inspection is not supported by this Vivaldi
+test's browser-level protocol; no permission is requested.
 
 The test never navigates to a public page, scans or opens a PDF, asks for
 browser access, launches a native application, or touches a real user profile.
