@@ -3,7 +3,9 @@
 import json
 from pathlib import Path
 import plistlib
+import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent
@@ -132,6 +134,18 @@ class SafariExtensionTargetTests(unittest.TestCase):
                       "SFSafariApplication.dispatchMessage", "connectNative"):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
+
+  @unittest.skipUnless(sys.platform == "darwin", "Safari native messaging tests require macOS")
+  def test_native_adapter_swift_behavior_on_macos(self):
+    with tempfile.TemporaryDirectory(prefix="pdfmagic-safari-messaging-") as directory:
+      binary = Path(directory) / "TestSafariNativeMessaging"
+      subprocess.run([
+        "xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors",
+        str(SAFARI / "SafariWebExtensionHandler.swift"),
+        str(ROOT / "test-safari-native-messaging.swift"),
+        "-o", str(binary)
+      ], check=True)
+      subprocess.run([str(binary)], check=True)
 
   def test_shared_manifest_is_permission_free(self):
     manifest = json.loads(SHARED.read_text(encoding="utf-8"))

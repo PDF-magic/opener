@@ -8,10 +8,9 @@ to `Contents/Resources/manifest.json` inside the .appex.
 
 This adds a target and build packaging, **not** an active PDF integration.
 The shared Manifest V3 contains no permissions, host access, actions, content
-scripts or background worker. The Swift request handler accepts only a bounded, versioned `native.status`
-request and returns `status: inactive` with both `scanVerified` and
-`authorizesOpen` false. All other requests return no items. It cannot scan,
-sanitize, launch, or approve PDFs, or message the parent app.
+scripts or background worker. The Swift request handler responds only to validated, inactive status requests;
+it cannot scan, sanitize, launch, or approve PDFs, or message the parent app.
+See [native messaging adapter](native-messaging.md) for the strict boundary.
 Embedding does not automatically enable the extension in Safari. An installed
 host app may make the extension visible in Safari's extension preferences;
 the user controls enabling it.
@@ -53,7 +52,7 @@ The static shared popup now includes a single opt-in
 preferences URL, which may trigger a browser confirmation. The source and
 bundled Safari popup are byte-identical and retain their explicit inactive
 PDF scanning status. This is not an extension-to-scanner message or PDF
-opening capability; the native handler cannot invoke the scanner or approve a PDF.
+opening capability; the existing native handler remains inert.
 
 ## Exclude private windows by default (opener-0593)
 
@@ -80,8 +79,8 @@ injected Safari-like WebExtensions permission APIs to test opt-in-only
 `downloads` requests, explicit denials, rejected or unavailable APIs,
 revocation and non-restoration, and rejection of undeclared website/native
 permissions. A positive download grant is **not** a PDF scan verdict or
-authorization to open a document. The real extension background remains inert; the native handler replies
-only to safe status requests. These tests do not request Safari privileges,
+authorization to open a document. The real extension background and native
+request handler remain inert; these tests do not request Safari privileges,
 activate monitoring, read browser history, or change native user preferences.
 
 Run `python3 test-safari-extension-permissions.py -v` and
@@ -92,26 +91,73 @@ Safari Settings authorization prompts and live browser behavior require a
 separate interactive Safari test after activation/native messaging integration
 is implemented; no headless unit test can certify a real user's Safari grants.
 
-## Native message adapter (opener-0610)
+## Unsigned Safari extension package (opener-0608)
 
-The native `SafariWebExtensionHandler` now reads Safari's
-`SFExtensionMessageKey` from the first `NSExtensionItem`, validates a
-single version-1 shared envelope (`request`, `native.status`, ASCII
-`requestId`, null payload, no extra fields, at most 16 KiB), and returns a
-matching envelope inside a new `NSExtensionItem`. The only possible payload
-reports `{status: "inactive", scanVerified: false, authorizesOpen: false}`.
-Invalid or unsupported requests get no response items; no error details,
-file paths, URL, profile data, or input payload are forwarded.
+The Xcode host application embeds the Safari Web Extension as a native
+`.appex`. Unlike a Chromium or Firefox submission ZIP, a Safari Web
+Extension is installed through a macOS host application. The CI macOS build
+packages the verified `PDFMagicOpener.app` with its embedded extension as
+`pdf-magic-opener-safari-<version>-unsigned.zip` and uploads it as a
+short-lived GitHub Actions artifact.
 
-This is a **dormant, read-only adapter**, not a browser-to-scanner bridge:
-the shared manifest intentionally does not declare Safari's required
-`nativeMessaging` permission; the background script registers no
-listeners or senders. Enabling native messages and authenticating privileged
-actions are separate, reviewed tasks. No file, app group, network or scanner
-privilege was added, and user preferences and all native scan gates are intact.
+This is an **unsigned development artifact**, not a signed, notarized,
+installable production release or Mac App Store submission. Distribution
+requires a separate signing and notarization workflow, an Apple developer
+identity, and user-controlled installation and extension enabling. None of
+those release credentials or operations are part of this task.
 
-Run `swiftc -parse-as-library -warnings-as-errors
-extensions/safari/SafariWebExtensionHandler.swift
-test-safari-native-messaging.swift -o /tmp/test-safari-native-messaging`
-and execute that temporary binary for functional request/rejection coverage.
-The macOS CI job runs this test and builds the real Safari .appex.
+To package an existing unsigned Xcode Debug app from the repository root:
+
+```sh
+python3 scripts/package_safari_extension.py --app "/path/to/PDFMagicOpener.app" --output-dir "/path/to/artifacts"
+python3 scripts/package_safari_extension.py --verify "/path/to/artifacts/pdf-magic-opener-safari-0.1.0-unsigned.zip"
+```
+
+The package builder rejects unknown files, symlinks, missing or nonexecutable
+binaries, broadened browser privileges, mismatched source assets and unsafe
+archive paths. CI validates the archive, extracts it without installation,
+and rechecks the embedded Safari extension. No PDF scanning, native messaging,
+Safari activation, native scanner changes, quarantine changes, or user
+configuration changes are introduced.
+
+## Safari activation acceptance test (opener-0611)
+
+**Activation is controlled by the Safari user, not CI or the host app.**
+Run the native build and bundled-extension verification in CI first.
+On a disposable macOS Safari profile with the **installed, launched**
+PDF Magic Opener host app, open **Safari > Settings > Extensions**.
+Verify that **PDF Magic Opener Safari Extension** is listed. A development
+build must be properly signed, or the tester must explicitly allow unsigned
+extensions under Safari > Settings > Developer for that Safari session.
+Never modify a user's existing Safari extension preferences for this test.
+
+Compile the read-only probe on macOS:
+
+```sh
+xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o /tmp/TestSafariExtensionActivation
+/tmp/TestSafariExtensionActivation --self-test
+```
+
+1. Leave the extension unchecked in Safari > Settings > Extensions and run
+   `/tmp/TestSafariExtensionActivation --expect disabled`. This must exit
+   successfully **only** when Safari reports the registered extension disabled.
+2. Explicitly enable the extension in Safari's Extensions settings, then run
+   `/tmp/TestSafariExtensionActivation --expect enabled`. Check the Safari
+   toolbar popup: it must still say **Not active**, and explain that it
+   **cannot scan, sanitize, or open PDF** files. Enabling the scaffold is not
+   a malware-scan verdict or an authorization to open documents.
+3. Uncheck the extension again and rerun
+   `/tmp/TestSafariExtensionActivation --expect disabled`. The test must
+   report disabled, with no change to existing PDF application preferences.
+4. If the probe reports **not registered**, a SafariServices error, or a
+   timeout, record an **inconclusive/failed test**, not a disabled or enabled
+   result. Verify the installed host app, Safari profile and signing before
+   retrying. The state query is designed for an extension embedded in its
+   containing application; a standalone diagnostic process may not have
+   the same registration context.
+
+The probe only reads SafariServices activation state. It never enables
+an extension, opens settings, changes permissions, scans PDFs, or modifies
+ClamAV/quarantine checks. CI compiles the probe and exercises its state
+decision matrix without installing the app or approving a Safari extension;
+**actual end-to-end enable/disable is a manual macOS acceptance test**.
