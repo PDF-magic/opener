@@ -472,6 +472,45 @@ enum RecommendedScannerLimitsReset {
   }
 }
 
+
+// Opt-in *preference* for a future browser integration, not a runtime grant.
+// Do not use this value as a scanner verdict, verified browser permission,
+// or authorization to open, scan, or subscribe to downloads.
+enum BrowserDownloadMonitoringPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "downloadMonitoringEnabled"
+
+  static func isEnabled(
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    // NSNumber bridging can otherwise mistake an integer for a Bool.
+    guard let value = defaults.object(forKey: key) as? NSNumber,
+          CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
+    return value.boolValue
+  }
+
+  @discardableResult
+  static func save(
+    _ enabled: Bool,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard let defaults else { return false }
+    _ = defaults.synchronize()
+    let original = defaults.object(forKey: key)
+    defaults.set(enabled, forKey: key)
+    if defaults.synchronize() && isEnabled(defaults: defaults) == enabled {
+      return true
+    }
+    // Roll back only this one key when persistence cannot be confirmed.
+    if let original { defaults.set(original, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.
@@ -656,44 +695,5 @@ enum MalformedConfigurationRecovery {
     guard let number = value as? NSNumber,
           CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }
     return number.boolValue
-  }
-}
-
-
-// Opt-in *preference* for a future browser integration, not a runtime grant.
-// Do not use this value as a scanner verdict, verified browser permission,
-// or authorization to open, scan, or subscribe to downloads.
-enum BrowserDownloadMonitoringPreference {
-  static let suiteName = ScanProgressPreference.suiteName
-  static let key = "downloadMonitoringEnabled"
-
-  static func isEnabled(
-    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
-  ) -> Bool {
-    guard let defaults else { return false }
-    _ = defaults.synchronize()
-    // NSNumber bridging can otherwise mistake an integer for a Bool.
-    guard let value = defaults.object(forKey: key) as? NSNumber,
-          CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
-    return value.boolValue
-  }
-
-  @discardableResult
-  static func save(
-    _ enabled: Bool,
-    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
-  ) -> Bool {
-    guard let defaults else { return false }
-    _ = defaults.synchronize()
-    let original = defaults.object(forKey: key)
-    defaults.set(enabled, forKey: key)
-    if defaults.synchronize() && isEnabled(defaults: defaults) == enabled {
-      return true
-    }
-    // Roll back only this one key when persistence cannot be confirmed.
-    if let original { defaults.set(original, forKey: key) }
-    else { defaults.removeObject(forKey: key) }
-    _ = defaults.synchronize()
-    return false
   }
 }
