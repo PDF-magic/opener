@@ -46,6 +46,101 @@ def color_space_pdf():
     return output.getvalue()
 
 
+class SanitizationActivityTests(unittest.TestCase):
+    """The future Maximum UI sees truthful, verdict-free activity only."""
+
+    def test_sanitizing_is_visible_through_verification_then_cleared(self):
+        source = sample_pdf()
+        converted = sample_pdf(with_actions=True)
+        events = []
+
+        def run_converter(*args, **kwargs):
+            self.assertEqual(events[-1]["phase"], "sanitizing")
+            self.assertTrue(events[-1]["isRunning"])
+            self.assertFalse(events[-1]["authorizesOpen"])
+            self.assertEqual(events[-1]["scanVerdict"], "notAssessed")
+            return subprocess.CompletedProcess([], 0, converted)
+
+        def verify(*args, **kwargs):
+            self.assertTrue(events[-1]["isRunning"])
+            return type("Structure", (), {"page_count": 1})()
+
+        with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
+                patch.object(copies, "run_limited_converter", side_effect=run_converter), \
+                patch.object(copies, "remove_active_pdf_functionality", return_value=converted), \
+                patch.object(copies, "_passive_pages", return_value=True), \
+                patch.object(copies, "verify_sanitized_pdf_structure", side_effect=verify):
+            attempt = copies.attempt_sanitized_pdf_copy(source, on_activity=events.append)
+
+        self.assertIsNotNone(attempt.offer)
+        self.assertEqual([event["phase"] for event in events], ["sanitizing", "idle"])
+        self.assertEqual(events[0]["label"], "Sanitizing document…")
+        self.assertEqual(events[1]["label"], "Sanitization stopped")
+        self.assertFalse(events[1]["isRunning"])
+        self.assertTrue(all(event["scanVerdict"] == "notAssessed" for event in events))
+        self.assertTrue(all(event["authorizesOpen"] is False for event in events))
+
+    def test_no_running_indication_for_preflight_rejection(self):
+        events = []
+        with patch.object(copies, "_trusted_converter", return_value=None):
+            self.assertIsNone(copies.offer_sanitized_pdf_copy(
+                sample_pdf(), on_activity=events.append,
+            ))
+        self.assertEqual(events, [])
+        self.assertIsNone(copies.offer_sanitized_pdf_copy(
+            b"invalid PDF", on_activity=events.append,
+        ))
+        self.assertEqual(events, [])
+
+    def test_crash_timeout_and_invalid_output_always_clear_activity(self):
+        for outcome in (
+            copies.SanitizerProcessTimedOut("private worker path"),
+            subprocess.CompletedProcess([], -9, b""),
+            subprocess.CompletedProcess([], 0, b"invalid"),
+        ):
+            with self.subTest(outcome=type(outcome).__name__), \
+                    patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
+                    patch.object(copies, "run_limited_converter",
+                                 side_effect=outcome if isinstance(outcome, Exception) else None,
+                                 return_value=outcome if not isinstance(outcome, Exception) else None):
+                events = []
+                result = copies.attempt_sanitized_pdf_copy(
+                    sample_pdf(), on_activity=events.append,
+                )
+                self.assertIsNone(result.offer)
+                self.assertEqual([event["isRunning"] for event in events], [True, False])
+                self.assertFalse(result.permits_open)
+
+    def test_observer_failure_cannot_change_conversion_result(self):
+        events = []
+
+        def broken_observer(status):
+            events.append(status["phase"])
+            raise RuntimeError("UI unavailable")
+
+        with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
+                patch.object(copies, "run_limited_converter",
+                             return_value=subprocess.CompletedProcess([], 9, b"")):
+            result = copies.assess_sanitized_pdf_copy(
+                sample_pdf(), on_activity=broken_observer,
+            )
+        self.assertEqual(events, ["sanitizing", "idle"])
+        self.assertIsNone(result.offer)
+        self.assertEqual(result.blocked_reason, copies.SanitizationBlockReason.conversionFailed)
+
+    def test_offer_and_assess_expose_same_activity_contract(self):
+        with patch.object(copies, "_trusted_converter", return_value=Path("/usr/bin/true")), \
+                patch.object(copies, "run_limited_converter",
+                             return_value=subprocess.CompletedProcess([], 7, b"")):
+            for call in (copies.offer_sanitized_pdf_copy, copies.assess_sanitized_pdf_copy):
+                with self.subTest(call=call.__name__):
+                    events = []
+                    call(sample_pdf(), on_activity=events.append)
+                    self.assertEqual(
+                        [event["phase"] for event in events], ["sanitizing", "idle"],
+                    )
+
+
 class SanitizedCopyOfferContractTests(unittest.TestCase):
     def test_invalid_source_never_invokes_converter(self):
         invalid = (b"", "not bytes", bytearray(sample_pdf()), b"not a PDF",
