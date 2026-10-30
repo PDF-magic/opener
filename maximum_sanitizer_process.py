@@ -261,7 +261,11 @@ def _process_has_exited_without_reaping(process) -> bool:
                     raise ValueError
                 return states[0][0].upper() == "Z"
             except (ValueError, UnicodeDecodeError):
-                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+                # Transiently malformed ps snapshots are not proof of exit.
+                # Retry briefly, then fail closed if no valid status appears.
+                if attempt < 3:
+                    time.sleep(0.02)
+                continue
         raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
