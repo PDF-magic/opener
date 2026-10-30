@@ -36,3 +36,21 @@ separate checklist tasks.
 The existing `npm test` script discovers `tests/pdf-detection.test.mjs`, and
 the required `scanner-tests` GitHub Actions workflow already runs the shared
 WebExtensions build and test scripts. No new CI workflow is required.
+
+## Unsupported inline data URLs (opener-0749)
+
+`recognizeUnsupportedDataUrl(rawUrl)` identifies the `data:` scheme (case
+insensitively), including PDF MIME declarations, generic or malformed data
+URLs, without reading or decoding their potentially large inline payloads.
+It returns a frozen, privacy-safe
+`{ isUnsupportedDataUrl: true, reason: "data-url-unsupported", authorizesOpen: false }`
+record, or the analogous `false`/`"none"` record for other inputs. This
+classification is **not** a PDF-content verdict. Inline data URLs cannot
+be treated as local files verified by the mandatory scanner.
+
+The shared `detectPdfCandidate` now rejects a data-URL source before
+considering PDF MIME or a filename hint. Unsupported inputs never authorize
+fetching, scanning, downloading, opening, or bypassing user preferences.
+No browser listener, permission, native integration, or scanner behavior is
+activated. The automatically discovered `tests/pdf-data-url.test.mjs` suite
+also runs explicitly in required GitHub CI.

@@ -10,6 +10,23 @@ const none = Object.freeze({
   isPdfCandidate: false, evidence: "none", authorizesOpen: false
 });
 
+const unsupportedDataUrl = Object.freeze({
+  isUnsupportedDataUrl: true, reason: "data-url-unsupported", authorizesOpen: false
+});
+const notDataUrl = Object.freeze({
+  isUnsupportedDataUrl: false, reason: "none", authorizesOpen: false
+});
+
+/**
+ * Recognize an unsupported data: URL from its scheme alone, without parsing,
+ * decoding or retaining its potentially large, private inline payload.
+ * Even PDF-typed data URLs cannot be verified as scanned local files here.
+ */
+export function recognizeUnsupportedDataUrl(rawUrl) {
+  return typeof rawUrl === "string" && /^data:/i.test(rawUrl) ?
+    unsupportedDataUrl : notDataUrl;
+}
+
 function candidate(evidence) {
   return Object.freeze({
     isPdfCandidate: true, evidence, authorizesOpen: false
@@ -64,6 +81,10 @@ function pdfUrlPath(rawUrl) {
 export function detectPdfCandidate(metadata) {
   const fields = safeMetadata(metadata);
   if (!fields) return none;
+
+  // An inline data: URL cannot be handled through the verified local-file
+  // scanner path, even if its accompanying MIME or filename claims PDF.
+  if (recognizeUnsupportedDataUrl(fields.url).isUnsupportedDataUrl) return none;
 
   const mime = fields.mimeType === undefined ? "" :
     fields.mimeType.split(";", 1)[0].trim().toLowerCase();
