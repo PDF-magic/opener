@@ -1,0 +1,55 @@
+name: Chromium WebExtension compatibility
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/chromium-webextension.yml"
+  push:
+    branches: [main]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/chromium-webextension.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chromium-extension-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  chromium-extension-smoke:
+    name: Chromium MV3 extension smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install unbranded Chromium snapshot
+        id: chromium
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: latest
+      - name: Build and verify Chromium unpacked assets
+        working-directory: extensions/webextension
+        run: |
+          npm run build
+          node --test tests/chromium-compatibility.test.mjs
+      - name: Install CI-only browser automation driver
+        working-directory: extensions/webextension
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
+      - name: Launch real Chromium and verify inactive MV3 extension
+        working-directory: extensions/webextension
+        env:
+          CHROMIUM_BINARY_PATH: ${{ steps.chromium.outputs.chrome-path }}
+        timeout-minutes: 3
+        run: node scripts/test-chromium.mjs
