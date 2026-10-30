@@ -685,6 +685,36 @@ enum DownloadScanResultsPreference {
   }
 }
 
+// Read-only presentation of browser download monitoring. Discovery of an
+// executable app is not evidence that any extension is authorized, connected,
+// listening for downloads, or enforcing the native scanner. No active state
+// can be constructed here; only an independently verified future coordinator
+// may introduce live monitoring status.
+struct BrowserMonitoringStatusRow: Identifiable, Equatable {
+  let id: String
+  let name: String
+  let detected: Bool
+
+  var statusLabel: String { detected ? "Not connected" : "Not detected" }
+}
+
+enum BrowserMonitoringStatusDisplay {
+  static func rows(
+    supported: [(id: String, name: String)],
+    detectedIDs: Set<String>
+  ) -> [BrowserMonitoringStatusRow] {
+    var seen = Set<String>()
+    return supported.compactMap { browser in
+      guard !browser.id.isEmpty, !browser.name.isEmpty,
+            seen.insert(browser.id).inserted else { return nil }
+      return BrowserMonitoringStatusRow(
+        id: browser.id, name: browser.name,
+        detected: detectedIDs.contains(browser.id)
+      )
+    }
+  }
+}
+
 // Versioned, opt-in representation for settings shared by the preferences app
 // and the installed opener. This defines a future persistence contract; it does
 // not migrate or overwrite the existing UserDefaults keys on its own.

@@ -61,6 +61,18 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  @State private var browserMonitoringRows: [BrowserMonitoringStatusRow] = []
+
+  private func refreshBrowserMonitoringStatus() {
+    // Read-only discovery: an opt-in preference is not extension permission or
+    // authenticated native scanner connectivity for any individual browser.
+    let detected = Set(DefaultPDFBrowserPreferences.discover().map(\.id))
+    browserMonitoringRows = BrowserMonitoringStatusDisplay.rows(
+      supported: DefaultPDFBrowserPreferences.monitoringBrowserCatalog,
+      detectedIDs: detected
+    )
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -141,6 +153,30 @@ struct BrowsersSettingsView: View {
         }
         .accessibilityIdentifier("downloadScanningSettingsSection")
         .onAppear(perform: loadOtherFilePreference)
+
+        GroupBox("Per-browser monitoring status") {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Monitoring is not connected to a verified scanner in any browser. Your download monitoring opt-in does not activate monitoring, grant browser permissions, or change scan and opening safety checks.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(browserMonitoringRows) { browser in
+              HStack(spacing: 12) {
+                Text(browser.name)
+                Spacer(minLength: 12)
+                Text(browser.statusLabel)
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("browserMonitoringStatus-\(browser.id)")
+              }
+              .accessibilityElement(children: .combine)
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("perBrowserMonitoringStatusSection")
+        .onAppear(perform: refreshBrowserMonitoringStatus)
 
         GroupBox("Browser downloads") {
           VStack(alignment: .leading, spacing: 8) {
