@@ -75,6 +75,9 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # Continue forbidding unrelated scanner-bypass controls in this page.
         if filename == "BrowsersSettingsView.swift" and term == "Toggle(":
           continue
+        # One user-invoked, read-only local integration diagnostic is allowed.
+        if filename == "BrowsersSettingsView.swift" and term == "Button(":
+          continue
         # Updates now has two explicit, user-initiated actions; keep all
         # scanner bypass and settings mutation prohibitions intact.
         if filename == "UpdatesSettingsView.swift" and term in ("Button(", "Process(", "URLSession"):
@@ -82,6 +85,9 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         with self.subTest(page=filename, forbidden=term):
           self.assertNotIn(term, source)
       if filename == "BrowsersSettingsView.swift":
+        self.assertEqual(source.count('Button("'), 1)
+        self.assertIn('Button("Test Browser Integration")', source)
+        self.assertIn('browserIntegrationTestReport = BrowserIntegrationTest.run(', source)
         toggle_names = re.findall(r'Toggle\("([^"]+)"', source)
         allowed = {
             "Show Only Warnings",

@@ -811,6 +811,36 @@ enum DownloadScanResultsPreference {
   }
 }
 
+// An explicit, read-only local preflight for a future browser integration.
+// Browser installation never proves extension permission, native messaging,
+// scanner readiness, or enforcement of browser/OS download opening. Since no
+// authenticated live integration exists, this model cannot report success.
+struct BrowserIntegrationTestReport: Equatable {
+  let detectedCount: Int
+  let supportedCount: Int
+
+  var statusLabel: String { "Integration test unavailable" }
+
+  var detail: String {
+    "Detected \(detectedCount) of \(supportedCount) supported browsers. " +
+    "No authenticated browser-to-native scanner integration is active. " +
+    "This check cannot verify downloads, scanner connectivity, or safe opening."
+  }
+}
+
+enum BrowserIntegrationTest {
+  static func run(
+    supportedIDs: Set<String>,
+    detectedIDs: Set<String>
+  ) -> BrowserIntegrationTestReport {
+    let supported = supportedIDs.filter { !$0.isEmpty }
+    return BrowserIntegrationTestReport(
+      detectedCount: supported.filter { detectedIDs.contains($0) }.count,
+      supportedCount: supported.count
+    )
+  }
+}
+
 // Read-only presentation of browser download monitoring. Discovery of an
 // executable app is not evidence that any extension is authorized, connected,
 // listening for downloads, or enforcing the native scanner. No active state

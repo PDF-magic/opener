@@ -86,6 +86,18 @@ struct BrowsersSettingsView: View {
     )
   }
 
+  @State private var browserIntegrationTestReport: BrowserIntegrationTestReport?
+
+  private func testBrowserIntegration() {
+    // An explicit local diagnostic only: discovery is read-only. Neither
+    // installed browsers nor saved opt-in prove native scanner connectivity.
+    let detected = Set(DefaultPDFBrowserPreferences.discover().map(\.id))
+    let supported = Set(DefaultPDFBrowserPreferences.monitoringBrowserCatalog.map(\.id))
+    browserIntegrationTestReport = BrowserIntegrationTest.run(
+      supportedIDs: supported, detectedIDs: detected
+    )
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -215,6 +227,34 @@ struct BrowsersSettingsView: View {
           .padding(8)
         }
         .accessibilityIdentifier("browserNativeConnectionHealthSection")
+
+        GroupBox("Browser integration test") {
+          VStack(alignment: .leading, spacing: 10) {
+            Button("Test Browser Integration") {
+              testBrowserIntegration()
+            }
+            .accessibilityIdentifier("testBrowserIntegrationButton")
+
+            Text("Check supported browser discovery locally. No authenticated browser-to-native scanner integration is active, so this cannot verify downloading or scan enforcement.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let report = browserIntegrationTestReport {
+              Text(report.statusLabel)
+                .font(.headline)
+                .accessibilityIdentifier("browserIntegrationTestStatus")
+              Text(report.detail)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("browserIntegrationTestDetails")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("browserIntegrationTestSection")
 
         GroupBox("Browser downloads") {
           VStack(alignment: .leading, spacing: 8) {
