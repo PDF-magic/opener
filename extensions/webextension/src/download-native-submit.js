@@ -50,21 +50,25 @@ function pdfCandidate(id, path, mimeRecord) {
  * interpret a coordinator acknowledgement as a scanner verdict.
  *
  * A future trusted integration must independently authenticate the native
- * session and expose nativeScannerReady only after verifying its scanner
+ * session, provide a session-owned createCompletedDownloadScanRequestGate()
+ * instance, and expose nativeScannerReady only after verifying its scanner
  * coordinator. The flag itself is NOT a security credential or attestation.
  * The receiving native coordinator must independently validate path identity,
  * file stability, signature freshness, full scanning and quarantine.
  */
 export async function submitCompletedPdfDownloadToNative({
-  downloadsApi, permissionsApi, completion, coordinator
+  downloadsApi, permissionsApi, completion, coordinator, scanGate
 } = {}) {
   let stopEvents = null;
   let revocations = null;
   try {
     const id = completedId(completion);
     const send = own(coordinator, "submitCompletedPdfDownload");
+    const reserve = own(scanGate, "submitOnce");
     if (id === null || own(coordinator, "nativeScannerReady") !== true ||
-        typeof send !== "function") return unavailable;
+        typeof send !== "function" || typeof reserve !== "function") {
+      return unavailable;
+    }
 
     // Watch revocations and ID reuse throughout all asynchronous browser
     // rechecks, rather than trusting an earlier completion notification.
@@ -108,10 +112,16 @@ export async function submitCompletedPdfDownloadToNative({
     // receives the untrusted browser path. No raw native messaging payload is
     // constructed; the existing transport-only host rejects file paths.
     const request = Object.freeze({ id, localPath: current.localPath });
-    const pending = send.call(coordinator, request);
-    if (!pending || typeof pending.then !== "function") return unavailable;
-    const response = await pending;
-    if (invalidated() || own(response, "accepted") !== true) return unavailable;
+    // The session-owned gate reserves this browser ID before calling native
+    // coordination; repeated completion events cannot start duplicate scans.
+    const result = await reserve.call(scanGate, after, () => {
+      const pending = send.call(coordinator, request);
+      return pending && typeof pending.then === "function"
+        ? pending : Promise.resolve({ accepted: false });
+    });
+    if (invalidated() || own(result, "status") !== "request-submitted") {
+      return unavailable;
+    }
     return Object.freeze({
       status: "submitted", id, scanSubmitted: true,
       scanVerified: false, authorizesOpen: false

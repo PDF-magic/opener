@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   submitCompletedPdfDownloadToNative as submit
 } from "../src/download-native-submit.js";
+import { createCompletedDownloadScanRequestGate } from "../src/download-scan-once.js";
 
 const notice = (id = 7) => Object.freeze({ kind: "completed", id });
 const unavailable = {
@@ -50,17 +51,19 @@ function fixture(options = {}) {
       return { accepted: true, scanVerified: true, authorizesOpen: true };
     }
   };
-  return { downloads, permissions, coordinator, lookups, grants, submitted };
+  const scanGate = createCompletedDownloadScanRequestGate(downloads);
+  return { downloads, permissions, coordinator, scanGate, lookups, grants, submitted };
 }
 
 function call(f, completion = notice()) {
   return submit({
     downloadsApi: f.downloads, permissionsApi: f.permissions,
-    completion, coordinator: f.coordinator
+    completion, coordinator: f.coordinator, scanGate: f.scanGate
   });
 }
 
 function noListeners(f) {
+  f.scanGate.dispose();
   assert.deepEqual([
     f.downloads.onCreated.size, f.downloads.onChanged.size,
     f.downloads.onErased.size, f.permissions.onRemoved.size
@@ -140,6 +143,7 @@ test("no trusted native coordinator, malformed completion or unsupported event s
     noListeners(f);
   }
   const f = fixture();
+  f.scanGate.dispose();
   delete f.downloads.onErased;
   assert.deepEqual(await call(f), unavailable);
   assert.deepEqual(f.lookups, []);
@@ -264,6 +268,26 @@ test("revocation during the native handoff cannot be reported as accepted", asyn
   assert.deepEqual(await call(f), unavailable);
   assert.equal(f.submitted.length, 1);
   noListeners(f);
+});
+
+test("session gate prevents duplicate native submissions until download ID reuse is observed", async () => {
+  const f = fixture();
+  assert.equal((await call(f)).scanSubmitted, true);
+  assert.deepEqual(await call(f), unavailable);
+  assert.equal(f.submitted.length, 1);
+  f.downloads.onErased.emit(7);
+  assert.equal((await call(f)).scanSubmitted, true);
+  assert.equal(f.submitted.length, 2);
+  noListeners(f);
+});
+
+test("missing session-owned scan gate rejects handoff before any browser access", async () => {
+  const f = fixture();
+  f.scanGate.dispose();
+  f.scanGate = null;
+  assert.deepEqual(await call(f), unavailable);
+  assert.deepEqual(f.lookups, []);
+  noListeners({ ...f, scanGate: { dispose() {} } });
 });
 
 test("module remains inert, does not bypass native host admission or change app settings", async () => {

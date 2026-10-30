@@ -1,7 +1,7 @@
 # Completed PDF download submission boundary (opener-0692)
 
 `submitCompletedPdfDownloadToNative({ downloadsApi, permissionsApi,
-completion, coordinator })` is an **explicitly invoked, one-shot** adapter
+completion, coordinator, scanGate })` is an **explicitly invoked, one-shot** adapter
 between the existing completed-download detection helpers and an
 **independently authenticated native scanner coordinator**. It does not
 install a browser event listener or initiate a native transport on import.
@@ -12,7 +12,9 @@ native host still rejects `scan.request` with
 the readiness flag alone does not authenticate the host.
 
 A future trusted integration must obtain user consent and establish the
-native session independently, then inject a coordinator exposing the own
+native session independently, provide a persistent session-owned
+`createCompletedDownloadScanRequestGate(downloadsApi)` from merged task
+opener-0691, and inject a coordinator exposing the own
 `nativeScannerReady: true` data property and
 `submitCompletedPdfDownload(request)` async method. The latter must
 perform its own canonical identity, local file stability, permission and
@@ -34,7 +36,11 @@ erasure, errors, or rename events, while a separate permission-revocation
 observer spans the complete asynchronous operation. A request is offered
 only when those checks succeed and the injected native coordinator still
 reports readiness. The request contains only
-`Object.freeze({ id, localPath })`. Any exception, failure, stale state,
+`Object.freeze({ id, localPath })`. Before invoking the injected coordinator, the existing session-owned scan
+gate atomically reserves that completed download ID. Duplicate notifications
+cannot issue duplicate native requests, even when callbacks are pending.
+The ID can be reused only after the existing gate observes a new/erased
+browser lifecycle event. Any exception, failure, stale state,
 revocation, or non-Promise callback response fails closed.
 
 A successful acceptance returns a detached frozen
@@ -54,10 +60,10 @@ browser manifest, permission request, user preferences, or background
 worker. The separately reviewed authenticated transport and native
 scanner coordinator are prerequisites to production activation.
 
-The 13 regression tests in
+The 15 regression tests in
 `extensions/webextension/tests/download-native-submit.test.mjs` run as
 part of existing `npm test` in GitHub's `scanner-tests` job. They exercise
 correct and misleading PDF filename signals, exact-ID lookups, early
 exits, missing files, incomplete transfers, permission denial and
 revocation, stale browser events, changed paths, rejected submissions,
-error privacy, and inactive startup behavior.
+error privacy, ID-based duplicate submission suppression, and inactive startup behavior.
