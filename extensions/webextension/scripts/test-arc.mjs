@@ -81,12 +81,31 @@ try {
 
   // A CDP endpoint alone is insufficient: Arc must register the exact MV3
   // extension worker and render the local popup with no extra permissions.
-  const worker = context.serviceWorkers().find((item) =>
-    /^chrome-extension:\/\/[a-p]{32}\/background\.js$/.test(item.url())
-  ) ?? await context.waitForEvent("serviceworker", {
-    predicate: (item) => /^chrome-extension:\/\/[a-p]{32}\/background\.js$/.test(item.url()),
-    timeout: 30000
-  });
+  // Arc has its own built-in extensions with background.js service workers.
+  // Match the actual installed manifest identity, not just a generic worker
+  // URL, or the test could accidentally validate Arc's internal extension.
+  let worker;
+  const inspected = new Set();
+  const deadline = Date.now() + 30000;
+  while (!worker && Date.now() < deadline) {
+    for (const candidate of context.serviceWorkers()) {
+      if (!/^chrome-extension:\/\/[a-p]{32}\/background\.js$/.test(candidate.url()) ||
+          inspected.has(candidate.url())) continue;
+      inspected.add(candidate.url());
+      try {
+        const metadata = await candidate.evaluate(() => chrome.runtime.getManifest());
+        if (metadata?.name === "PDF Magic Opener") {
+          worker = candidate;
+          break;
+        }
+      } catch {
+        // Other internal workers can shut down independently of our extension.
+      }
+    }
+    if (!worker) await sleep(250);
+  }
+  assert.ok(worker,
+    "Arc did not register PDF Magic Opener's MV3 service worker (other Arc workers do not count)");
   const extensionId = new URL(worker.url()).host;
   assert.match(extensionId, /^[a-p]{32}$/);
 
