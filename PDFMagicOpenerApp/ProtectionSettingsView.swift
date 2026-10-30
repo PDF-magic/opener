@@ -238,6 +238,58 @@ private enum ExactEffectiveScanPolicy {
     """
 }
 
+// A read-only comparison for the *planned* Maximum tier. These labels are
+// explanatory, not per-document scan results or a safe-copy save/launch action.
+// The sanitizer's trusted generatedContent/isUntouchedOriginal=false metadata
+// remains the authority for future document-specific presentation.
+private struct MaximumOriginalSafeCopyComparison: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("Original versus generated safe copy")
+        .font(.subheadline.weight(.semibold))
+        .accessibilityAddTraits(.isHeader)
+
+      HStack(alignment: .top, spacing: 10) {
+        Image(systemName: "doc")
+          .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Original PDF")
+            .font(.subheadline.weight(.semibold))
+          Text("Unmodified source document. It is not a generated safe copy; when Maximum requires sanitization, the original is never opened as a fallback.")
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .accessibilityElement(children: .combine)
+      .accessibilityIdentifier("maximumOriginalPDFIdentity")
+
+      HStack(alignment: .top, spacing: 10) {
+        Image(systemName: "doc.badge.gearshape")
+          .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Generated safe copy")
+            .font(.subheadline.weight(.semibold))
+          Text("A separate PDF reconstructed from rasterized pages, not the untouched original. Appearance may change; selectable text, links, forms and digital signatures may be lost. It requires its own fresh scan before opening.")
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .accessibilityElement(children: .combine)
+      .accessibilityIdentifier("maximumGeneratedSafeCopyIdentity")
+
+      Text("Planned Maximum preview only. No document was converted, scanned or opened here, and Maximum remains unavailable.")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(12)
+    .background(Color(nsColor: .controlBackgroundColor),
+                in: RoundedRectangle(cornerRadius: 10))
+    .accessibilityIdentifier("maximumOriginalSafeCopyComparison")
+  }
+}
+
 struct ProtectionSettingsView: View {
   @State private var selectedPreview: PlannedProtectionTier?
   @State private var previewSaveStatus: String?
@@ -401,6 +453,9 @@ struct ProtectionSettingsView: View {
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
                   .accessibilityIdentifier("profileActivationBlockedReason")
+                if selectedPreview == .maximum {
+                  MaximumOriginalSafeCopyComparison()
+                }
                 if !selectedPreview.unavailableMandatoryChecks.isEmpty {
                   Text("Unavailable mandatory engines")
                     .font(.subheadline.weight(.semibold))
