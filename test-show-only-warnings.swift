@@ -16,7 +16,7 @@ struct ShowOnlyWarningsTests {
     precondition(defaults.object(forKey: key) == nil)
     precondition(DownloadWarningOnlyPreference.shouldPresent(.verifiedCleanSummary, defaults: defaults))
     precondition(DownloadWarningOnlyPreference.shouldPresent(.verifiedInformationalSummary, defaults: defaults))
-    for kind: DownloadWarningDisplayKind in [.securityWarning, .scanIncompleteOrFailed, .unknown] {
+    for kind in [DownloadWarningDisplayKind.securityWarning, .scanIncompleteOrFailed, .unknown] {
       precondition(DownloadWarningOnlyPreference.shouldPresent(kind, defaults: defaults))
     }
 
@@ -35,7 +35,7 @@ struct ShowOnlyWarningsTests {
     precondition(DownloadWarningOnlyPreference.isEnabled(defaults: reloaded))
     precondition(!DownloadWarningOnlyPreference.shouldPresent(.verifiedCleanSummary, defaults: reloaded))
     precondition(!DownloadWarningOnlyPreference.shouldPresent(.verifiedInformationalSummary, defaults: reloaded))
-    for kind: DownloadWarningDisplayKind in [.securityWarning, .scanIncompleteOrFailed, .unknown] {
+    for kind in [DownloadWarningDisplayKind.securityWarning, .scanIncompleteOrFailed, .unknown] {
       precondition(DownloadWarningOnlyPreference.shouldPresent(kind, defaults: reloaded))
     }
     precondition(reloaded.string(forKey: "preferredBrowser") == "keep-custom-browser")
