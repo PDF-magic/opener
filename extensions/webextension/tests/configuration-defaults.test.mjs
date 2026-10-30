@@ -68,7 +68,11 @@ test("defaults do not request browser privileges or change the inert manifest", 
   assert.deepEqual(source.host_permissions, []);
   assert.equal(source.nativeMessaging, undefined);
   assert.equal(source.content_scripts, undefined);
-  assert.equal(source.action, undefined);
+  assert.deepEqual(Object.keys(source.action).sort(), ["default_icon", "default_title"]);
+  assert.equal(source.action.default_title, "PDF Magic Opener (not active)");
+  assert.deepEqual(source.action.default_icon, source.icons);
+  assert.equal(source.action.default_popup, undefined);
+  assert.equal(source.action.onClicked, undefined);
 });
 
 test("defaults module imports without browser APIs, storage or native side effects", async () => {

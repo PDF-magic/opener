@@ -11,6 +11,9 @@ PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 SAFARI = ROOT / "extensions" / "safari"
 SHARED = ROOT / "extensions" / "webextension" / "manifest.json"
 BACKGROUND = ROOT / "extensions" / "webextension" / "src" / "background.js"
+ICONS = ROOT / "extensions" / "webextension" / "icons"
+TOOLBAR_TITLE = "PDF Magic Opener (not active)"
+TOOLBAR_ICONS = {str(size): f"icons/icon-{size}.png" for size in (16, 32, 48, 128)}
 EXTENSION_ID = "local.studio.pdfmagicopener.swiftui.safari"
 TARGET_ID = "D56700000000000000000009"
 
@@ -38,7 +41,16 @@ def verify_built_app(app: Path) -> None:
   worker = extension / "Contents" / "Resources" / "background.js"
   assert worker.is_file(), f"Missing bundled inert background entry: {worker}"
   assert worker.read_bytes() == BACKGROUND.read_bytes(), "Safari worker differs from shared source"
-  for forbidden in ("action", "content_scripts", "externally_connectable"):
+  assert manifest["action"] == {
+    "default_title": TOOLBAR_TITLE,
+    "default_icon": TOOLBAR_ICONS
+  }
+  for relative in TOOLBAR_ICONS.values():
+    source = ROOT / "extensions" / "webextension" / relative
+    bundled_icon = extension / "Contents" / "Resources" / relative
+    assert bundled_icon.is_file(), f"Missing bundled toolbar icon: {relative}"
+    assert bundled_icon.read_bytes() == source.read_bytes(), f"Toolbar icon diverges: {relative}"
+  for forbidden in ("content_scripts", "externally_connectable"):
     assert forbidden not in manifest
   with (app / "Contents" / "Info.plist").open("rb") as f:
     host = plistlib.load(f)
@@ -75,9 +87,12 @@ class SafariExtensionTargetTests(unittest.TestCase):
       'INFOPLIST_FILE = extensions/safari/Info.plist;',
       'PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;',
       'path = extensions/webextension/manifest.json;',
-      'files = (D56700000000000000000003, D56700000000000000000014,);',
+      'files = (D56700000000000000000003, D56700000000000000000014, D57500000000000000000001,);',
       'fileRef = D56700000000000000000015;',
       'path = extensions/webextension/src/background.js;',
+      'fileRef = D57500000000000000000002;',
+      'path = extensions/webextension/icons;',
+      'D57500000000000000000001,);',
     ):
       with self.subTest(expected=expected):
         self.assertIn(expected, project)
@@ -107,7 +122,16 @@ class SafariExtensionTargetTests(unittest.TestCase):
                      "// Inactive shared WebExtensions background entry point.\n"
                      "// Do not listen for messages, inspect PDFs or request native access here.\n"
                      "void 0;\n")
-    for forbidden in ("action", "content_scripts", "externally_connectable",
+    self.assertEqual(manifest["action"], {
+      "default_title": TOOLBAR_TITLE,
+      "default_icon": TOOLBAR_ICONS,
+    })
+    self.assertNotIn("default_popup", manifest["action"])
+    for size, path in TOOLBAR_ICONS.items():
+      with self.subTest(size=size):
+        self.assertEqual(path, f"icons/icon-{size}.png")
+        self.assertTrue((ICONS / f"icon-{size}.png").is_file())
+    for forbidden in ("content_scripts", "externally_connectable",
                       "web_accessible_resources", "optional_permissions"):
       self.assertNotIn(forbidden, manifest)
 

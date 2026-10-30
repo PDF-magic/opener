@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const allowed = [
-  "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+  "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
 ];
 
 // The initial shared project must not accidentally acquire runtime privileges.
@@ -21,6 +21,12 @@ if (
     JSON.stringify(["service_worker", "type"]) ||
   manifest.background.service_worker !== "background.js" ||
   manifest.background.type !== "module" ||
+  !manifest.action || typeof manifest.action !== "object" ||
+  Array.isArray(manifest.action) ||
+  JSON.stringify(Object.keys(manifest.action).sort()) !==
+    JSON.stringify(["default_icon", "default_title"]) ||
+  manifest.action.default_title !== "PDF Magic Opener (not active)" ||
+  JSON.stringify(manifest.action.default_icon) !== JSON.stringify(manifest.icons) ||
   !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
   !Array.isArray(manifest.permissions) || manifest.permissions.length !== 0 ||
   !Array.isArray(manifest.host_permissions) || manifest.host_permissions.length !== 0 ||
@@ -82,8 +88,8 @@ await mkdir(output, { recursive: true });
 await writeFile(join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 await copyFile(workerPath, join(output, "background.js"));
 
-// Copy only validated static art. The no-op background module has no runtime
-// permissions, content scripts, event listeners or native PDF bridge.
+// Copy only validated static art for the inert toolbar action. The no-op
+// background has no permissions, toolbar handlers, event listeners or native PDF bridge.
 await mkdir(join(output, "icons"), { recursive: true });
 for (const size of iconSizes) {
   const name = `icon-${size}.png`;
