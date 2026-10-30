@@ -284,10 +284,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Build and test shared WebExtensions project
+      - name: Build and test shared WebExtensions and Firefox manifests
         working-directory: extensions/webextension
         run: |
           npm run build
+          node scripts/build-firefox.mjs
           npm test
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
