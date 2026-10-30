@@ -139,6 +139,48 @@ cancellation, ClamAV freshness and mandatory checks, file integrity,
 quarantine, and verified opening before it can expose real job states.
 Neither message alone may weaken the existing scanner safeguards.
 
+### Scan-result message (opener-0630)
+
+After a successful `host.handshake` on the **same native host process**,
+a caller may query the result of a scan-request correlation identifier:
+
+```json
+{"version":1,"kind":"request","topic":"scan.result","requestId":"result_1","payload":{"scanRequestId":"scan_1"}}
+```
+
+The `scanRequestId` is a bounded, 1–80-character ASCII identifier (letters,
+digits, underscore, hyphen) corresponding to a `scan.request` envelope's
+`requestId`. It is **not proof** that a scan was accepted, started or
+completed. The envelope's own `requestId` independently correlates the
+result query. The payload has exactly one key, `scanRequestId`; caller-supplied
+verdicts, file paths, scan diagnostics, file bytes, policy overrides, progress
+values or any extra field are rejected.
+
+Because `scan.request` is currently *always unavailable* (there is no
+authenticated trusted scanner coordinator), **no native scan result exists**.
+For both known and unknown IDs, the host must return an explicit null result
+and must not fabricate a clean or failed scan:
+
+```json
+{"version":1,"kind":"response","topic":"scan.result","requestId":"result_1","payload":{"scanRequestId":"scan_1","status":"unavailable","reason":"trusted-scan-coordinator-required","result":null,"scanCompleted":false,"scanVerified":false,"authorizesOpen":false}}
+```
+
+`result: null` distinguishes **absence of any verified scan result** from
+a scan failure, detection, cancellation, or completion. Canonical terminal
+outcomes are defined by the separately enforced scanner in
+`scan_results.py` (`clean`, `malwareDetected`, `incompleteScan`, etc.);
+**none is assigned by this unregistered native host**. A scan-result message
+can never replace the scanner's separate verified evidence and PDF-opening
+gate, even if a future implementation reports `clean`.
+
+The handshake does not authenticate a caller. The host does not retain jobs,
+inspect source files, invoke a scanner, read diagnostics, or authorize opening.
+Malformed requests, pre-handshake queries, unsupported kinds or versions,
+or attempted caller-injected results fail closed without a result response.
+Real result delivery requires a separately reviewed, authenticated scanner
+coordinator enforcing explicit file selection, ClamAV freshness, complete
+scanning, file integrity, quarantine, cancellation and verified handoff.
+
 The existing `host.ping` request remains a backward-compatible, read-only
 liveness probe before or after a handshake:
 
