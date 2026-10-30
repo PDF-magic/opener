@@ -175,6 +175,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     }
     cls.manifest.write_text(json.dumps(cls.approved_manifest), encoding="utf-8")
     os.environ["HOME"] = str(cls.home)
+    cls.env = dict(os.environ)
 
   @classmethod
   def tearDownClass(cls):
