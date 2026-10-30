@@ -111,49 +111,6 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         self.assertEqual(len(killed), 1)
         self.assertNotEqual(killed[0][0], os.getpgrp())
 
-    def test_macos_transient_status_probe_requires_verified_zombie(self):
-        process = type("Process", (), {"pid": 101, "returncode": None})()
-        records = (
-            subprocess.TimeoutExpired("/bin/ps", 0.5),
-            subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
-        )
-        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
-            sanitizer.subprocess, "run", side_effect=records
-        ) as probe:
-            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
-            self.assertEqual(probe.call_count, 2)
-
-        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
-            sanitizer.subprocess, "run", side_effect=[
-                subprocess.CalledProcessError(1, "/bin/ps"),
-                subprocess.TimeoutExpired("/bin/ps", 0.5),
-                subprocess.CalledProcessError(1, "/bin/ps"),
-                subprocess.TimeoutExpired("/bin/ps", 0.5),
-            ]
-        ) as probe:
-            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
-                sanitizer._process_has_exited_without_reaping(process)
-            self.assertEqual(probe.call_count, 4)
-
-        # Transient process-table gaps must not hide a verified zombie.
-        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
-            sanitizer.subprocess, "run", side_effect=[
-                subprocess.TimeoutExpired("/bin/ps", 0.5),
-                subprocess.CalledProcessError(1, "/bin/ps"),
-                subprocess.TimeoutExpired("/bin/ps", 0.5),
-                subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
-            ]
-        ) as probe:
-            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
-            self.assertEqual(probe.call_count, 4)
-
-        # A live state is never interpreted as a successfully exited worker.
-        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
-            sanitizer.subprocess, "run",
-            return_value=subprocess.CompletedProcess(("/bin/ps",), 0, b"S+\n"),
-        ):
-            self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
-
     def test_macos_eperm_accepts_only_an_exited_zombie_group(self):
         process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
         table = subprocess.CompletedProcess(
@@ -237,6 +194,7 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                 with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                     sanitizer._stop_process_group(process)
 
+
     def test_non_eperm_cleanup_error_never_uses_zombie_exception(self):
         process = type("Process", (), {"pid": 101, "kill": lambda self: None})()
         with patch.object(sanitizer.sys, "platform", "darwin"), \
@@ -246,6 +204,80 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                 sanitizer._stop_process_group(process)
             check.assert_not_called()
+
+    def test_macos_three_transient_status_failures_can_recover(self):
+        # Verified exit requires an explicit zombie, not a transient ps error.
+        process = type("Process", (), {"pid": 101, "returncode": None})()
+        records = (
+            subprocess.CalledProcessError(1, "/bin/ps"),
+            subprocess.TimeoutExpired("/bin/ps", 0.5),
+            subprocess.CalledProcessError(1, "/bin/ps"),
+            subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
+        )
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), \
+                patch.object(sanitizer.subprocess, "run", side_effect=records) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+        self.assertEqual(probe.call_count, 4)
+
+    def test_macos_transient_status_probe_requires_verified_zombie(self):
+        process = type("Process", (), {"pid": 101, "returncode": None})()
+        records = (
+            subprocess.TimeoutExpired("/bin/ps", 0.5),
+            subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
+        )
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", side_effect=records
+        ) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+            self.assertEqual(probe.call_count, 2)
+
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", side_effect=[
+                subprocess.CalledProcessError(1, "/bin/ps"),
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CalledProcessError(1, "/bin/ps"),
+                subprocess.TimeoutExpired("/bin/ps", 0.5),
+                subprocess.CompletedProcess(
+                    ("/bin/ps",), 0, b"202 202 S+\n",
+                ),
+            ]
+        ) as probe:
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._process_has_exited_without_reaping(process)
+            self.assertEqual(probe.call_count, 5)
+
+        # An initially malformed status may be retried only until a trusted
+        # kernel snapshot explicitly confirms the worker has exited.
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", side_effect=[
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"?\n"),
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
+            ]
+        ) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+            self.assertEqual(probe.call_count, 2)
+
+        # Four inconclusive targeted probes trigger one independent process-
+        # table snapshot; even that cannot authorize an unverifiable exit.
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run", return_value=(
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"?\n")
+            )
+        ) as probe:
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._process_has_exited_without_reaping(process)
+            self.assertEqual(probe.call_count, 5)
+            self.assertEqual(
+                probe.call_args.args[0], ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+            )
+
+        # A live state is never interpreted as a successfully exited worker.
+        with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
+            sanitizer.subprocess, "run",
+            return_value=subprocess.CompletedProcess(("/bin/ps",), 0, b"S+\n"),
+        ):
+            self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
 
     def test_output_limit_is_enforced_while_reading(self):
         source = "import sys; sys.stdin.buffer.read(); sys.stdout.buffer.write(b'X'*129)"
@@ -300,6 +332,42 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                         sanitizer._stop_process_group(leader)
                     leader.kill.assert_called()
                     leader.kill.reset_mock()
+
+    def test_macos_cleanup_retries_only_until_zombie_group_is_proven(self):
+        leader = unittest.mock.Mock(pid=31337)
+        with (
+            patch.object(sanitizer.sys, "platform", "darwin"),
+            patch.object(sanitizer.os, "killpg",
+                         side_effect=PermissionError(errno.EPERM, "denied")),
+            patch.object(sanitizer, "_process_has_exited_without_reaping",
+                         return_value=True) as exited,
+            patch.object(sanitizer, "_darwin_group_has_only_zombies",
+                         side_effect=(False, False, True)) as group,
+            patch.object(sanitizer.time, "sleep") as delay,
+        ):
+            sanitizer._stop_process_group(leader)
+            self.assertEqual(exited.call_count, 3)
+            self.assertEqual(group.call_count, 3)
+            self.assertEqual(delay.call_count, 2)
+            leader.kill.assert_not_called()
+
+        leader.kill.reset_mock()
+        with (
+            patch.object(sanitizer.sys, "platform", "darwin"),
+            patch.object(sanitizer.os, "killpg",
+                         side_effect=PermissionError(errno.EPERM, "denied")),
+            patch.object(sanitizer, "_process_has_exited_without_reaping",
+                         return_value=True) as exited,
+            patch.object(sanitizer, "_darwin_group_has_only_zombies",
+                         return_value=False) as group,
+            patch.object(sanitizer.time, "sleep") as delay,
+        ):
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._stop_process_group(leader)
+            self.assertEqual(exited.call_count, 4)
+            self.assertEqual(group.call_count, 4)
+            self.assertEqual(delay.call_count, 3)
+            leader.kill.assert_called_once()
 
     def test_invalid_limits_fail_before_process_launch(self):
         command = (sys.executable, "-I", "-B", "-c", "pass")

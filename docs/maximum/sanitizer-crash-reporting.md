@@ -36,3 +36,25 @@ sanitizer and active-content removal suites in the Linux/macOS CI matrix.
 The tests launch an actual POSIX child that terminates by SIGKILL, distinguish
 timeouts and nonzero exit codes, verify fixed non-sensitive user messages,
 and ensure no forged clean or malware verdict can be constructed.
+
+## Native Maximum failure presentation (opener-0550)
+
+The reusable native scan-progress panel exposes the display-only
+updateMaximumSanitizationFailure(from:) hook for future trusted Maximum
+callers. It accepts only the bounded, canonical five-field JSON returned by
+SanitizerFailureReport.to_dict(): sanitizerFailure status, an exact known kind
+and fixed message, scanVerdict=notAssessed and permitsOpen=false.
+Untrusted text, source paths, PDF metadata and arbitrary JSON are never shown;
+invalid reports receive a fixed verification-failure warning.
+
+The panel displays sanitization failure and its fixed reason, explicitly says
+that the malware verdict was not assessed, switches to Attention Required/Close
+and hides progress. Separately reported Enhanced findings remain available.
+Clearing the notice does not grant opening permission. Maximum remains
+nonselectable, and this adapter does not execute conversion, alter the active
+scanner, quarantine, user preferences, or source files.
+
+The existing macOS test-scan-progress-component.py harness compiles the native
+panel and checks visible blocked state, valid and forged reports, privacy and
+layout alongside Enhanced findings. A portable regression compares all native
+messages with the canonical sanitizer report.

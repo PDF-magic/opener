@@ -17,10 +17,15 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
         self.parent = tempfile.TemporaryDirectory(prefix="maximum-cleanup-tests-")
         self.addCleanup(self.parent.cleanup)
         self.created = []
+        root_patcher = patch.object(cleanup, "_PRIVATE_ROOT",
+                                    Path(self.parent.name) / "owned-copies")
+        root_patcher.start()
+        self.addCleanup(root_patcher.stop)
         original = tempfile.mkdtemp
 
         def create(*, prefix=None, **kwargs):
-            path = Path(original(prefix=prefix, dir=self.parent.name, **kwargs))
+            kwargs.setdefault("dir", self.parent.name)
+            path = Path(original(prefix=prefix, **kwargs))
             self.created.append(path)
             return str(path)
 

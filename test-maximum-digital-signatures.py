@@ -202,7 +202,7 @@ class SignedPDFFidelityTests(unittest.TestCase):
         ))
 
     def test_scanner_preferences_and_ci_stay_independent(self):
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")

@@ -87,6 +87,119 @@ class ProtectionCardsTests(unittest.TestCase):
     stored = (ROOT / "test-selected-protection-profile.swift").read_text(encoding="utf-8")
     self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn", stored)
 
+  def test_maximum_preview_distinguishes_original_from_safe_copy_without_activation(self):
+    # The current interface has a real, accessible comparison, but it is
+    # exclusively a read-only preview of the unavailable Maximum tier.
+    self.assertRegex(
+        self.source,
+        r"if selectedPreview == \.maximum \{\s*MaximumOriginalSafeCopyComparison\(\)")
+    self.assertEqual(self.source.count("MaximumOriginalSafeCopyComparison()"), 1)
+    comparison = self.source.split(
+        "private struct MaximumOriginalSafeCopyComparison: View {", 1)[1].split(
+        "\nstruct ProtectionSettingsView: View {", 1)[0]
+    for label in (
+        'Text("Original versus generated safe copy")',
+        'Text("Original PDF")',
+        'Text("Generated safe copy")',
+        'maximumOriginalPDFIdentity',
+        'maximumGeneratedSafeCopyIdentity',
+        'maximumOriginalSafeCopyComparison',
+        "not the untouched original",
+        "requires its own fresh scan before opening",
+        "Maximum remains unavailable",
+        ".accessibilityElement(children: .combine)",
+        ".fixedSize(horizontal: false, vertical: true)",
+    ):
+      with self.subTest(label=label):
+        self.assertIn(label, comparison)
+    for forbidden in (
+        "Button(", "Toggle(", "onOpenURL", "FileManager", "UserDefaults",
+        "URLSession", "Process(", "launch_clean_file", "scan_and_open",
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, comparison)
+
+  def test_origin_comparison_does_not_replace_verified_generated_copy_identity(self):
+    root = Path(__file__).resolve().parent
+    offer = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
+    route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
+    for source in (offer, route):
+      self.assertIn('"contentOrigin": GENERATED_CONTENT_ORIGIN', source)
+      self.assertIn('"isUntouchedOriginal": False', source)
+    self.assertIn('GENERATED_CONTENT_ORIGIN = "generatedContent"', offer)
+    self.assertIn('Active protection: Built-in ClamAV', self.source)
+    explanation = (root / "docs/maximum/original-safe-copy-interface.md").read_text(
+        encoding="utf-8")
+    self.assertIn("read-only", explanation)
+    self.assertIn("original", explanation)
+    self.assertIn("generated", explanation)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+
+  def test_maximum_preview_explains_capability_loss_without_enabling_it(self):
+    # A visible, labelled explanation belongs only to the Maximum preview.
+    tier = self.source.split("private enum PlannedProtectionTier:", 1)[1].split(
+        "struct ProtectionSettingsView: View {", 1)[0]
+    self.assertIn("var capabilityLossExplanation: String?", tier)
+    self.assertIn("guard self == .maximum else { return nil }", tier)
+    notice = tier.split("var capabilityLossExplanation: String?", 1)[1].split(
+        "\n  }", 1)[0]
+    for phrase in (
+        "flattened page images", "selectable and searchable text",
+        "clickable links", "interactive form fields",
+        "annotations and comments", "embedded attachments",
+        "document metadata", "scripts or other active PDF actions",
+        "Digital signatures may be invalidated", "visual details can change",
+        "OCR is not restored", "untouched original",
+        "not a malware-clean verdict", "separate fresh scan",
+    ):
+      with self.subTest(phrase=phrase):
+        self.assertIn(phrase, notice)
+
+    self.assertIn(
+        "if let capabilityLoss = selectedPreview.capabilityLossExplanation {",
+        self.source)
+    self.assertEqual(
+        self.source.count("if let capabilityLoss = selectedPreview.capabilityLossExplanation {"), 1)
+    self.assertIn('Text("PDF capabilities that may be removed")', self.source)
+    self.assertIn("Text(capabilityLoss)", self.source)
+    self.assertIn('.accessibilityIdentifier("maximumCapabilityLossExplanation")',
+                  self.source)
+    self.assertIn(".accessibilityAddTraits(.isHeader)", self.source)
+    self.assertIn(".fixedSize(horizontal: false, vertical: true)", self.source)
+    # Existing scanner CI and the native macOS build exercise the new display.
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+    self.assertIn("macos-build:", ci)
+
+  def test_maximum_save_action_is_gated_and_never_activates_unavailable_policy(self):
+    # The preview offers a real SwiftUI Button with an injectable trusted
+    # handler, but the installed Settings page cannot invent a verified PDF.
+    self.assertIn("struct MaximumSanitizedPDFSaveControl: View {", self.source)
+    control = self.source.split("struct MaximumSanitizedPDFSaveControl: View {", 1)[1].split(
+        "\nprivate struct MaximumOriginalSafeCopyComparison: View {", 1)[0]
+    for marker in (
+        "let verifiedOfferAvailable: Bool",
+        "let onSaveRequested: (() -> Void)?",
+        'Button("Save Sanitized PDF")',
+        "guard verifiedOfferAvailable, let onSaveRequested else { return }",
+        "onSaveRequested()",
+        ".disabled(!verifiedOfferAvailable || onSaveRequested == nil)",
+        'accessibilityIdentifier("maximumSaveSanitizedPDFAction")',
+        'accessibilityIdentifier("maximumSaveSanitizedPDFAvailability")',
+        "fresh malware scan", "does not open the file",
+    ):
+      with self.subTest(marker=marker):
+        self.assertIn(marker, control)
+    self.assertIn("if selectedPreview == .maximum {\n                  MaximumSanitizedPDFSaveControl(", self.source)
+    self.assertIn("verifiedOfferAvailable: false,", self.source)
+    self.assertIn("onSaveRequested: nil", self.source)
+    self.assertEqual(self.source.count("MaximumSanitizedPDFSaveControl("), 1)
+    # No direct file or policy changes in a settings preview.
+    self.assertNotIn("Process(", control)
+    self.assertNotIn("FileManager", control)
+    self.assertNotIn("UserDefaults", control)
+
   def test_existing_preferences_and_native_target_remain_wired(self):
     nav = NAVIGATION.read_text(encoding="utf-8")
     project = PROJECT.read_text(encoding="utf-8")

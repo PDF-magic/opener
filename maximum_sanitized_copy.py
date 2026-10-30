@@ -43,6 +43,13 @@ OFFER_EXPLANATION = (
 )
 
 
+SANITIZATION_COMPLETE_LABEL = (
+    "Sanitization complete. The generated PDF still requires a separate scan before opening."
+)
+SANITIZATION_NOT_COMPLETE_LABEL = (
+    "Sanitization not completed. No generated sanitized copy is available."
+)
+
 CONVERSION_CHANGE_WARNING = (
     "Warning: Converting this PDF meaningfully changes the document. "
     "The generated copy contains flattened page images rather than the original "
@@ -50,6 +57,37 @@ CONVERSION_CHANGE_WARNING = (
     "are removed, and some visual details may render differently. "
     "Review the generated copy before relying on it."
 )
+
+SAVED_COPY_LABEL = "Generated sanitized PDF copy (not the original)"
+SAVED_COPY_NOTICE = (
+    "This is a newly generated sanitized copy, not the original PDF. "
+    "Keep the untouched original separately; the flattened copy may differ "
+    "and must be scanned independently before opening."
+)
+
+
+def suggested_saved_copy_filename(source_path: str | Path) -> str:
+    """Suggest a clearly distinct basename, never a full path or write target.
+
+    Only trusted source-path data supplies the basename; PDF-controlled
+    metadata is never used. The future save dialog must still require explicit
+    consent and perform an exclusive, non-overwriting save.
+    """
+    import re
+
+    if (not (type(source_path) is str or isinstance(source_path, Path)) or
+            not str(source_path) or "\x00" in str(source_path)):
+        raise ValueError("A source PDF filename is required")
+    name = Path(source_path).name
+    if not name.lower().endswith(".pdf") or len(name) <= 4:
+        raise ValueError("A source PDF filename is required")
+    stem = re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', "-", name[:-4])
+    stem = stem.strip(" .-_")[:96].rstrip(" .-_") or "document"
+    candidate = f"{stem}-sanitized-copy.pdf"
+    if candidate.casefold() == name.casefold():
+        raise ValueError("Generated name must differ from the original")
+    return candidate
+
 
 @dataclass(frozen=True)
 class SanitizedCopyOffer:
@@ -75,9 +113,35 @@ class SanitizedCopyOffer:
             "label": OFFER_LABEL,
             "explanation": OFFER_EXPLANATION,
             "conversionWarning": CONVERSION_CHANGE_WARNING,
+            "sanitizationComplete": True,
+            "sanitizationStatus": "complete",
+            "sanitizationStatusLabel": SANITIZATION_COMPLETE_LABEL,
             "requiresFreshScan": True,
             "authorizesOpen": False,
             "ocrRestored": False,
+        }
+
+    def to_save_presentation(self, source_path: str | Path) -> dict:
+        """Local save-dialog identity, never permission to save or open.
+
+        The returned name cannot match the supplied original PDF basename.
+        A save implementation must use exclusive creation and must never
+        replace an existing file, especially the source.
+        """
+        if (type(self.content_origin) is not str or
+                self.content_origin != GENERATED_CONTENT_ORIGIN or
+                self.permits_open is not False or
+                self.needs_separate_scan is not True or
+                self.rasterized is not True):
+            raise ValueError("Only verified generated copies can be presented")
+        return {
+            "contentOrigin": GENERATED_CONTENT_ORIGIN,
+            "isUntouchedOriginal": False,
+            "label": SAVED_COPY_LABEL,
+            "notice": SAVED_COPY_NOTICE,
+            "suggestedFilename": suggested_saved_copy_filename(source_path),
+            "requiresFreshScan": True,
+            "authorizesOpen": False,
         }
 
     def __post_init__(self):
@@ -160,11 +224,45 @@ class SanitizerFailureReport:
     def to_dict(self) -> dict:
         return {
             "status": "sanitizerFailure",
+            "sanitizationComplete": False,
+            "sanitizationStatus": "notCompleted",
+            "sanitizationStatusLabel": SANITIZATION_NOT_COMPLETE_LABEL,
             "kind": self.kind.value,
             "message": self.message,
             "scanVerdict": "notAssessed",
             "permitsOpen": False,
         }
+
+
+class SanitizationActivity(str, Enum):
+    """UI-only activity signal for the optional Maximum copy pipeline.
+
+    The installed Built-in scanner never emits this status. Neither phase is
+    a document safety verdict or permission to open a converted document.
+    """
+
+    RUNNING = "sanitizing"
+    IDLE = "idle"
+
+    def to_public_metadata(self) -> dict:
+        running = self is SanitizationActivity.RUNNING
+        return {
+            "phase": self.value,
+            "isRunning": running,
+            "label": "Sanitizing document…" if running else "Sanitization stopped",
+            "scanVerdict": "notAssessed",
+            "authorizesOpen": False,
+        }
+
+
+def _notify_sanitization_activity(on_activity, phase: SanitizationActivity) -> None:
+    """Never let a presentation observer affect the fail-closed scan gate."""
+    if on_activity is not None:
+        try:
+            on_activity(phase.to_public_metadata())
+        except Exception:
+            # Progress presentation is best-effort, never an opening decision.
+            pass
 
 
 @dataclass(frozen=True)
@@ -250,6 +348,14 @@ class SanitizationDecision:
             "reason": (self.blocked_reason.value if self.blocked_reason is not None
                        else None),
             "offerAvailable": self.offer is not None,
+            "sanitizationComplete": self.offer is not None,
+            "sanitizationStatus": (
+                "complete" if self.offer is not None else "notCompleted"
+            ),
+            "sanitizationStatusLabel": (
+                SANITIZATION_COMPLETE_LABEL if self.offer is not None
+                else SANITIZATION_NOT_COMPLETE_LABEL
+            ),
             "pageCount": self.offer.page_count if self.offer is not None else None,
             "permitsOpen": False,
             "allowFallback": False,
@@ -459,7 +565,7 @@ def _passive_pages(
         return False
 
 
-def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
+def attempt_sanitized_pdf_copy(source_bytes: bytes, *, on_activity=None) -> SanitizerAttempt:
     """Report converter crashes separately, never infer malware from a crash.
 
     A verified offer is distinct from sanitization failures; neither
@@ -493,6 +599,19 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
     except Exception:
         return _failed(SanitizerFailureKind.UNSUPPORTED_INPUT)
 
+    _notify_sanitization_activity(on_activity, SanitizationActivity.RUNNING)
+    try:
+        return _convert_and_verify_sanitized_copy(
+            converter, source_bytes, count, page_geometry,
+        )
+    finally:
+        _notify_sanitization_activity(on_activity, SanitizationActivity.IDLE)
+
+
+def _convert_and_verify_sanitized_copy(
+    converter, source_bytes: bytes, count: int, page_geometry: tuple,
+) -> SanitizerAttempt:
+    """Keep the activity indicator live through final output verification."""
     try:
         converted = run_limited_converter(
             (str(converter),),
@@ -547,7 +666,7 @@ def attempt_sanitized_pdf_copy(source_bytes: bytes) -> SanitizerAttempt:
         return _failed(SanitizerFailureKind.INVALID_OUTPUT)
 
 
-def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
+def assess_sanitized_pdf_copy(source_bytes: bytes, *, on_activity=None) -> SanitizationDecision:
     """Classify unsupported sanitization without changing crash-reporting.
 
     Only verified offers from the existing sanitizer attempt may be
@@ -576,7 +695,7 @@ def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
     except Exception:
         return _blocked(SanitizationBlockReason.unreadableSource)
 
-    attempt = attempt_sanitized_pdf_copy(source_bytes)
+    attempt = attempt_sanitized_pdf_copy(source_bytes, on_activity=on_activity)
     if attempt.offer is not None:
         return SanitizationDecision(attempt.offer, None)
     # Keep the separately typed sanitizer-crash result on
@@ -591,10 +710,10 @@ def assess_sanitized_pdf_copy(source_bytes: bytes) -> SanitizationDecision:
     return _blocked(SanitizationBlockReason.conversionFailed)
 
 
-def offer_sanitized_pdf_copy(source_bytes: bytes) -> SanitizedCopyOffer | None:
+def offer_sanitized_pdf_copy(source_bytes: bytes, *, on_activity=None) -> SanitizedCopyOffer | None:
     """Compatibility API: an unsuccessful conversion still offers nothing.
 
     Use attempt_sanitized_pdf_copy() when callers need to show a specific
     sanitizer failure without conflating it with malware detections.
     """
-    return attempt_sanitized_pdf_copy(source_bytes).offer
+    return attempt_sanitized_pdf_copy(source_bytes, on_activity=on_activity).offer

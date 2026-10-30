@@ -24,6 +24,11 @@ class GeneratedCopyOriginTests(unittest.TestCase):
             "label": OFFER_LABEL,
             "explanation": OFFER_EXPLANATION,
             "conversionWarning": CONVERSION_CHANGE_WARNING,
+            "sanitizationComplete": True,
+            "sanitizationStatus": "complete",
+            "sanitizationStatusLabel": (
+                "Sanitization complete. The generated PDF still requires a separate scan before opening."
+            ),
             "requiresFreshScan": True,
             "authorizesOpen": False,
             "ocrRestored": False,
@@ -100,7 +105,7 @@ class GeneratedCopyOriginTests(unittest.TestCase):
         source = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
         rescan = (root / "maximum_generated_rescan.py").read_text(encoding="utf-8")
         route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
-        workflow = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = (root / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertNotIn("maximum_generated_content_marking", scanner)
         self.assertIn("force_rescan=True", scanner)
         self.assertIn("GENERATED_CONTENT_ORIGIN", source)

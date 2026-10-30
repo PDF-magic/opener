@@ -65,5 +65,24 @@ class ExtensionsAndIntegrationsSettingsTests(unittest.TestCase):
         self.assertNotIn(prohibited, page)
 
 
+  def test_extensions_source_root_exists_without_enabling_an_extension(self):
+    # Git cannot track empty directories, so an inert README establishes the
+    # source root without adding a built extension or changing app behavior.
+    source_root = ROOT / "extensions"
+    self.assertTrue(source_root.is_dir())
+    guide = (source_root / "README.md").read_text(encoding="utf-8")
+    self.assertIn("source-only scaffold", guide)
+    self.assertIn("not an installed or enabled extension", guide)
+    self.assertIn("ClamAV", guide)
+    self.assertIn("user-selected application", guide)
+
+    # The existing native settings page and its scanner tests remain wired;
+    # the source directory itself is not an extension activation action.
+    page = PAGE.read_text(encoding="utf-8")
+    self.assertIn("This page does not install, enable, or disable extensions", page)
+    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    self.assertIn("python3 test-extensions-integrations-settings-page.py -v", ci)
+
+
 if __name__ == "__main__":
   unittest.main()

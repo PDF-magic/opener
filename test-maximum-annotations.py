@@ -207,7 +207,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
 
     def test_annotation_policy_and_scanner_remain_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+        workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
         self.assertIn("if not cached_clean(cache_id):", scanner)

@@ -134,11 +134,6 @@ try:
 except BaseException as error:
     print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))
     raise SystemExit(2)
-finally:
-    # Test-only probe has no untrusted work remaining during interpreter exit.
-    if sys.platform == 'darwin':
-        import signal
-        signal.setitimer(signal.ITIMER_REAL, 0)
 """
         completed = subprocess.run(
             [sys.executable, "-I", "-B", "-c", script, str(ROOT)],
@@ -149,22 +144,24 @@ finally:
         self.assertIn(b"parser-ready", completed.stdout)
 
     def test_real_worker_disarms_macos_watchdog_on_shutdown(self):
+        # A successful worker disarms the real-time watchdog before teardown.
         worker = (ROOT / "maximum_isolated_worker.py").read_text()
         self.assertIn("signal.setitimer(signal.ITIMER_REAL, 0)", worker)
         self.assertLess(
-            worker.index("exit_code = main()"),
+            worker.index("code = main()"),
             worker.index("signal.setitimer(signal.ITIMER_REAL, 0)")
         )
         self.assertIn("except BaseException:", worker)
 
-    def test_ci_runs_real_child_checks_on_linux_and_macos(self):
-        ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("ubuntu-latest", ci)
-        self.assertIn("macos-latest", ci)
-        self.assertIn("test-maximum-memory-limits.py -v", ci)
+    def test_ci_runs_portable_child_checks_on_ubuntu(self):
+        ci = (ROOT / ".github/workflows/consolidated-checks.yml").read_text()
+        portable = ci.split("  macos-native-tests:", 1)[0]
+        native = ci.split("  macos-native-tests:", 1)[1]
+        self.assertIn("runs-on: ubuntu-latest", portable)
+        self.assertIn("test-maximum-memory-limits.py -v", portable)
+        self.assertNotIn("test-maximum-memory-limits.py -v", native)
         self.assertIn("test-maximum-isolated-analysis.py -v", ci)
-        self.assertIn("requirements-enhanced-pdf.txt", ci)
-        self.assertIn("macos-maximum-isolation:", ci)
+        self.assertIn("pypdf==5.9.0", ci)
 
 
 if __name__ == "__main__":

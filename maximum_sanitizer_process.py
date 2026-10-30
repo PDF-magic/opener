@@ -223,9 +223,10 @@ def _process_has_exited_without_reaping(process) -> bool:
             raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
     if sys.platform == "darwin":
         # Python 3.11 on macOS has no non-reaping os.waitid. /bin/ps can
-        # occasionally be delayed on hosted runners; retry a transient probe
-        # failure once, but accept exit only after an explicit zombie record.
-        # An absent, malformed or repeatedly unavailable status fails closed.
+        # race with process shutdown and transiently return no status.
+        # Accept exit ONLY after an explicit zombie record. Never reap the
+        # group leader before killing descendants; repeatedly unavailable or
+        # malformed status still fails closed after these bounded retries.
         for attempt in range(4):
             try:
                 completed = subprocess.run(
@@ -240,10 +241,8 @@ def _process_has_exited_without_reaping(process) -> bool:
                     check=True,
                 )
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-                # A newly exited child may not yet be visible in macOS ps.
-                # Retry briefly; never interpret missing status as an exit.
                 if attempt < 3:
-                    time.sleep(0.04)
+                    time.sleep(0.02)
                 continue
             except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
@@ -252,11 +251,46 @@ def _process_has_exited_without_reaping(process) -> bool:
                     line.strip() for line in completed.stdout.decode("ascii").splitlines()
                     if line.strip()
                 ]
+                if not states:
+                    # An empty snapshot cannot prove exit; retry rather than
+                    # prematurely rejecting an otherwise secure worker.
+                    if attempt < 3:
+                        time.sleep(0.02)
+                    continue
                 if len(states) != 1 or not states[0][0].isalpha():
                     raise ValueError
                 return states[0][0].upper() == "Z"
             except (ValueError, UnicodeDecodeError):
-                raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
+                # Transiently malformed ps snapshots are not proof of exit.
+                # Retry briefly, then fail closed if no valid status appears.
+                if attempt < 3:
+                    time.sleep(0.02)
+                continue
+        # If targeted ps remains inconclusive, cross-check a separate
+        # bounded all-process snapshot. Accept only a positively identified,
+        # unreaped session leader whose group ID matches its PID.
+        try:
+            completed = subprocess.run(
+                ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, close_fds=True, cwd="/",
+                env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+                timeout=0.5, check=True,
+            )
+            found = None
+            for line in completed.stdout.decode("ascii").splitlines():
+                fields = line.split()
+                if (len(fields) != 3 or not fields[0].isdecimal()
+                        or not fields[1].isdecimal() or not fields[2][0].isalpha()):
+                    raise ValueError
+                if int(fields[0]) == process.pid:
+                    if int(fields[1]) != process.pid or found is not None:
+                        raise ValueError
+                    found = fields[2][0].upper() == "Z"
+            if found is not None:
+                return found
+        except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+            pass
         raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
@@ -300,13 +334,33 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
         return False
 
 
-def _darwin_group_is_gone_or_zombie_only(process_group_id: int) -> bool:
-    """Compatibility helper for consolidated CI and safe process cleanup."""
-    return _darwin_group_has_only_zombies(process_group_id)
+
+def _darwin_verified_zombie_cleanup(
+    process, *, exited_check=None, group_check=None,
+) -> bool:
+    """Retry transient Darwin process-table gaps, never unknown or live groups.
+
+    Retain the unreaped leader's PID throughout four bounded observations.
+    Each success must independently prove leader exit and a complete,
+    zombie-only process-group snapshot. No unverified status is success.
+    """
+    if exited_check is None:
+        exited_check = _process_has_exited_without_reaping
+    if group_check is None:
+        group_check = _darwin_group_has_only_zombies
+    for attempt in range(4):
+        try:
+            if exited_check(process) and group_check(process.pid):
+                return True
+        except SanitizerProcessExecutionError:
+            pass
+        if attempt < 3:
+            time.sleep(0.05)
+    return False
 
 
 def _stop_process_group(process):
-    """Kill the complete isolated group; fail closed if any live process remains."""
+    """Kill the whole isolated process group, including surviving descendants."""
     try:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
@@ -317,15 +371,10 @@ def _stop_process_group(process):
                 pass
             except OSError:
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
-    except OSError as exc:
-        # Zombie-only groups have nothing left to signal. Never accept an
-        # ambiguous EPERM or leave surviving descendants unsupervised.
-        if (
-            sys.platform == "darwin" and exc.errno == errno.EPERM
-            and _process_has_exited_without_reaping(process)
-            and _darwin_group_is_gone_or_zombie_only(process.pid)
-        ):
-            return
+    except OSError as error:
+        if error.errno == errno.EPERM and sys.platform == "darwin":
+            if _darwin_verified_zombie_cleanup(process):
+                return
         try:
             process.kill()
         except (ProcessLookupError, OSError):
