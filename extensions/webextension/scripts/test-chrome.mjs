@@ -24,6 +24,7 @@ assert.deepEqual(manifest.background, { service_worker: "background.js", type: "
 
 const profile = await mkdtemp(join(tmpdir(), "pdfmagic-chrome-"));
 let browser;
+let stderrTail = "";
 let socket;
 let requestId = 0;
 const requests = new Map();
@@ -72,9 +73,14 @@ try {
   ];
   // Only needed for local root-owned CI containers, never by default.
   if (process.env.CHROME_TEST_NO_SANDBOX === "1") args.unshift("--no-sandbox");
-  browser = spawn(binary, args, { stdio: "ignore" });
+  browser = spawn(binary, args, { stdio: ["ignore", "ignore", "pipe"] });
+  browser.stderr.on("data", (bytes) => {
+    stderrTail = (stderrTail + bytes.toString("utf8")).slice(-2500);
+  });
   const connection = await until(async () => {
-    if (browser.exitCode !== null) throw new Error("Chrome exited before DevTools startup");
+    if (browser.exitCode !== null || browser.signalCode !== null) {
+      throw new Error("Chrome exited before DevTools startup");
+    }
     const lines = (await readFile(join(profile, "DevToolsActivePort"), "utf8")).trim().split("\n");
     if (!/^\d+$/.test(lines[0]) || !lines[1]?.startsWith("/devtools/browser/")) return null;
     return "ws://127.0.0.1:" + lines[0] + lines[1];
@@ -145,6 +151,11 @@ try {
     permissions: [], host_permissions: [], optional_permissions: ["downloads"]
   });
   console.log("PASS Chrome for Testing package install, popup and inactive scanner: " + version);
+} catch (error) {
+  // Only browser startup diagnostics from this fresh, local-only test profile.
+  // Never log document content, environment variables, or browser profile files.
+  console.error("Chrome startup diagnostic tail:", stderrTail);
+  throw error;
 } finally {
   try { socket?.close(); } catch { /* browser may already have exited */ }
   for (const { deadline } of requests.values()) clearTimeout(deadline);

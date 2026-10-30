@@ -45,6 +45,9 @@ jobs:
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
           PACKAGE_DIR: ${{ runner.temp }}/pdfmagic-chrome-smoke
+          # Ubuntu hosted runners may not expose unprivileged user namespaces.
+          # This flag applies only to the disposable CI test browser/profile.
+          CHROME_TEST_NO_SANDBOX: "1"
         run: |
           npm run package:chrome
           mkdir -p "$PACKAGE_DIR"

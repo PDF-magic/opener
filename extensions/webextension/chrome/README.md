@@ -58,3 +58,9 @@ This tests browser loading and the intentionally inactive extension **only**.
 It is not Chrome Web Store publication, signing, end-user installation,
 native scanner verification or PDF opening approval. Those need separate
 review and testing.
+
+For Linux CI environments where an unprivileged Chrome sandbox cannot start,
+the disposable test browser alone uses `CHROME_TEST_NO_SANDBOX=1`. This does
+not alter the packaged extension, production browser behavior, native ClamAV
+sandboxing or application preferences; Chrome still loads **only** the extracted
+local ZIP in an isolated profile.
