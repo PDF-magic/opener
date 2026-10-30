@@ -33,11 +33,11 @@ class SavedCopyIdentityTests(unittest.TestCase):
                 self.assertNotEqual(suggested.casefold(), Path(source).name.casefold())
                 self.assertEqual(Path(suggested).name, suggested)
                 self.assertTrue(suggested.endswith("-sanitized-copy.pdf"))
-                self.assertFalse(any(c in suggested for c in ("\\x00", "/", "\\n", "\\r")))
+                self.assertFalse(any(c in suggested for c in (chr(0), "/", chr(10), chr(13))))
                 self.assertEqual(suggested_saved_copy_filename(source), suggested)
 
     def test_reject_non_pdf_and_ambiguous_inputs(self):
-        for source in ("", "readme.txt", ".pdf", "not-a-pdf", "bad\\x00name.pdf", None,
+        for source in ("", "readme.txt", ".pdf", "not-a-pdf", "bad" + chr(0) + "name.pdf", None,
                        b"source.pdf"):
             with self.subTest(source=source), self.assertRaises(ValueError):
                 suggested_saved_copy_filename(source)
