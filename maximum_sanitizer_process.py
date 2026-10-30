@@ -3,6 +3,7 @@
 This is a passive sanitization primitive. It never scans, saves, opens, or
 authorizes a PDF; failure to complete within the deadline returns no output.
 """
+import errno
 import os
 from pathlib import Path
 import selectors
@@ -278,6 +279,37 @@ def _process_has_exited_without_reaping(process) -> bool:
     raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
 
 
+def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
+    """Confirm that a Darwin EPERM group has no executable descendants.
+
+    macOS can return EPERM for a process group containing only an unreaped
+    zombie. Never treat EPERM alone as successful cleanup: an unsignalable
+    live descendant must remain a blocking failure.
+    """
+    try:
+        completed = subprocess.run(
+            ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            cwd="/",
+            env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+            timeout=0.5,
+            check=True,
+        )
+        for line in completed.stdout.decode("ascii").splitlines():
+            fields = line.split()
+            if (len(fields) != 3 or not fields[0].isdecimal()
+                    or not fields[1].isdecimal() or not fields[2][0].isalpha()):
+                return False
+            if int(fields[1]) == process_group_id and fields[2][0].upper() != "Z":
+                return False
+        return True
+    except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
+        return False
+
+
 def _stop_process_group(process):
     """Kill the whole isolated process group, including surviving descendants."""
     try:
@@ -290,7 +322,14 @@ def _stop_process_group(process):
                 pass
             except OSError:
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
-    except OSError:
+    except OSError as error:
+        if error.errno == errno.EPERM and sys.platform == "darwin":
+            try:
+                if (_process_has_exited_without_reaping(process)
+                        and _darwin_group_has_only_zombies(process.pid)):
+                    return
+            except SanitizerProcessExecutionError:
+                pass
         try:
             process.kill()
         except (ProcessLookupError, OSError):
