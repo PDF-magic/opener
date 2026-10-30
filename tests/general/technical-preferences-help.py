@@ -71,7 +71,8 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # scanner-parameter editor or bypass. Forbid every other button.
         if filename == "AdvancedScanningSettingsView.swift" and term == "Button(":
           continue
-        # Browsers may expose only the explicitly scoped download toggles.
+        # Only the dedicated opt-in download-scope toggle is allowed here.
+        # Do not permit an unrelated scanner-bypass control in this page.
         if filename == "BrowsersSettingsView.swift" and term == "Toggle(":
           continue
         # Updates now has two explicit, user-initiated actions; keep all
