@@ -16,6 +16,19 @@ class ScanProgressComponentTests(unittest.TestCase):
         self.assertIn('· \\(malwareAssessmentLabel)', source)
         self.assertNotIn('· Malware not confirmed")', source)
 
+    def test_maximum_failure_labels_match_canonical_reports(self):
+        import maximum_sanitized_copy as sanitizer
+        source = COMPONENT.read_text()
+        for kind in sanitizer.SanitizerFailureKind:
+            with self.subTest(kind=kind.value):
+                self.assertIn(
+                    f'"{kind.value}": "{sanitizer._FAILURE_MESSAGES[kind]}"', source
+                )
+                result = sanitizer._failed(kind).failure.to_dict()
+                self.assertEqual(result["status"], "sanitizerFailure")
+                self.assertEqual(result["scanVerdict"], "notAssessed")
+                self.assertIs(result["permitsOpen"], False)
+
     def test_existing_native_progress_panel_can_be_used_without_pdf_opener(self):
         source = COMPONENT.read_text()
         self.assertIn("final class ScanProgressPanel: NSPanel", source)
@@ -295,6 +308,55 @@ precondition(panel.enhancedFindingsScrollView.isHidden)
 precondition(panel.enhancedFindingsTextView.string.isEmpty)
 precondition(panel.contentView?.frame.height == 458)
 precondition(panel.progressIndicator.isIndeterminate)
+
+let sanitizerFailure: [String: Any] = [
+    "status": "sanitizerFailure",
+    "kind": "sanitizerCrashed",
+    "message": "The PDF sanitizer crashed; conversion stopped. This is not a malware detection.",
+    "scanVerdict": "notAssessed",
+    "permitsOpen": false,
+]
+let sanitizerData = try JSONSerialization.data(withJSONObject: sanitizerFailure)
+precondition(MaximumSanitizationFailureSnapshot.decode(sanitizerData) != nil)
+panel.updateMaximumSanitizationFailure(from: sanitizerData)
+precondition(!panel.maximumSanitizationFailureLabel.isHidden)
+precondition(panel.maximumSanitizationFailureLabel.accessibilityIdentifier() == "maximumSanitizationFailure")
+precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("sanitizer crashed"))
+precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("not assessed"))
+precondition(panel.maximumSanitizationFailureLabel.accessibilityLabel() == panel.maximumSanitizationFailureLabel.stringValue)
+precondition(panel.stageLabel.stringValue == "Attention required — opening stopped")
+precondition(panel.cancelButton.title == "Close")
+precondition(panel.progressIndicator.isHidden)
+precondition(panel.contentView?.frame.height == 568)
+panel.updateEnhancedFindings(from: findingData)
+precondition(panel.contentView?.frame.height == 610)
+precondition(panel.maximumSanitizationFailureLabel.frame.minY >= panel.enhancedFindingsLabel.frame.maxY)
+panel.enhancedFindingsDetailsButton.performClick(nil)
+precondition(panel.contentView?.frame.height == 760)
+precondition(panel.maximumSanitizationFailureLabel.frame.minY > panel.enhancedFindingsLabel.frame.maxY)
+panel.updateEnhancedFindings(from: nil)
+precondition(panel.contentView?.frame.height == 568)
+for unsafe in [
+    sanitizerFailure.merging(["message": "/private/secret.pdf: malware FOUND"]) { _, new in new },
+    sanitizerFailure.merging(["kind": "unknown"]) { _, new in new },
+    sanitizerFailure.merging(["scanVerdict": "malwareDetected"]) { _, new in new },
+    sanitizerFailure.merging(["permitsOpen": true]) { _, new in new },
+    sanitizerFailure.merging(["extra": "secret"]) { _, new in new },
+] {
+    let data = try JSONSerialization.data(withJSONObject: unsafe)
+    precondition(MaximumSanitizationFailureSnapshot.decode(data) == nil)
+    panel.updateMaximumSanitizationFailure(from: data)
+    precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("could not be verified"))
+    precondition(!panel.maximumSanitizationFailureLabel.stringValue.contains("/private"))
+    precondition(!panel.maximumSanitizationFailureLabel.stringValue.contains("malware FOUND"))
+    precondition(panel.cancelButton.title == "Close")
+}
+panel.updateMaximumSanitizationFailure(from: Data(repeating: 65, count: 4097))
+precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("could not be verified"))
+panel.updateMaximumSanitizationFailure(from: nil)
+precondition(panel.maximumSanitizationFailureLabel.isHidden)
+precondition(panel.maximumSanitizationFailureLabel.stringValue.isEmpty)
+precondition(panel.contentView?.frame.height == 458)
 panel.showAttentionRequired(documentDescription: "blocked.pdf")
 precondition(panel.isVisible)
 precondition(panel.stageLabel.stringValue == "Attention required — opening stopped")
