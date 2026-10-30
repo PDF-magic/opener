@@ -7,12 +7,30 @@ import Glibc
 #endif
 
 
+// Bound request volume before JSON parsing and response generation. Every
+// complete frame consumes a slot, including ping and handshake requests.
+// A burst over budget terminates only this process without a protocol reply.
+private struct NativeRequestRateLimiter {
+  static let maximumRequests = 64
+  static let windowSeconds: TimeInterval = 2
+  private var acceptedAt: [TimeInterval] = []
+
+  mutating func allow(now: TimeInterval) -> Bool {
+    // A bounded sliding window prevents edge-of-window double bursts.
+    acceptedAt.removeAll { now - $0 >= Self.windowSeconds }
+    guard acceptedAt.count < Self.maximumRequests else { return false }
+    acceptedAt.append(now)
+    return true
+  }
+}
+
 // A standalone, transport-only WebExtensions native messaging process.
 // It must never scan, open, or authorize a document.
 private enum HostError: Error {
   case invalidFrame
   case invalidMessage
   case timedOut
+  case silentRejection
 }
 
 @main
@@ -38,6 +56,7 @@ struct PDFMagicNativeMessagingHost {
   private static let idleTimeoutSeconds: TimeInterval = 10
   private static let frameTimeoutSeconds: TimeInterval = 5
   private static let responseTimeoutSeconds: TimeInterval = 5
+
   // Keep a separate allowlist for native message operations. A new switch
   // handler is unusable until its topic passes an explicit security review.
   // No message topic can select an executable, process or shell.
@@ -48,6 +67,73 @@ struct PDFMagicNativeMessagingHost {
   private static let expectedFields: Set<String> = [
     "version", "kind", "topic", "requestId", "payload"
   ]
+
+  // Browser nativeMessaging starts one host process per port; process-local
+  // counters do not constrain connections created by other browser processes.
+  // Four advisory file-lock slots limit concurrent hosts for the *real* OS user.
+  private static let maximumConcurrentConnections = 4
+  private static let lockDirectoryName = ".pdf-magic-native-connections"
+
+  private static func acquireConnectionSlot() throws -> Int32 {
+    guard let account = getpwuid(getuid()) else { throw HostError.invalidMessage }
+    var home = String(cString: account.pointee.pw_dir)
+    #if NATIVE_HOST_CONNECTION_TESTING
+    // Test-only isolated home. Production builds cannot change the lock scope
+    // through HOME, command-line arguments, messages or environment variables.
+    if let testHome = ProcessInfo.processInfo.environment["PDF_MAGIC_NATIVE_TEST_HOME"] {
+      home = testHome
+    }
+    #endif
+    let directoryFlags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC
+    let homeFD = open(home, directoryFlags)
+    guard homeFD >= 0 else { throw HostError.invalidMessage }
+    defer { close(homeFD) }
+    var info = stat()
+    guard fstat(homeFD, &info) == 0,
+          (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFDIR),
+          info.st_uid == getuid() else { throw HostError.invalidMessage }
+
+    // The lock directory and slots are user-owned and not accessible by
+    // other accounts. Never follow symlinks or trust caller-chosen paths.
+    if mkdirat(homeFD, lockDirectoryName, mode_t(0o700)) != 0 && errno != EEXIST {
+      throw HostError.invalidMessage
+    }
+    let directoryFD = openat(homeFD, lockDirectoryName, directoryFlags)
+    guard directoryFD >= 0 else { throw HostError.invalidMessage }
+    defer { close(directoryFD) }
+    guard fstat(directoryFD, &info) == 0,
+          (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFDIR),
+          info.st_uid == getuid(),
+          (info.st_mode & mode_t(0o077)) == 0 else {
+      throw HostError.invalidMessage
+    }
+
+    // flock is released by the kernel on EOF/normal exit, process crash, or
+    // kill; a stale slot file cannot permanently consume capacity.
+    for index in 0..<maximumConcurrentConnections {
+      let descriptor = openat(
+        directoryFD, "slot-\(index).lock",
+        O_RDWR | O_CREAT | O_NOFOLLOW | O_CLOEXEC, mode_t(0o600)
+      )
+      guard descriptor >= 0 else { throw HostError.invalidMessage }
+      guard fstat(descriptor, &info) == 0,
+            (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+            info.st_uid == getuid(), info.st_nlink == 1,
+            (info.st_mode & mode_t(0o077)) == 0 else {
+        close(descriptor)
+        throw HostError.invalidMessage
+      }
+      if flock(descriptor, LOCK_EX | LOCK_NB) == 0 {
+        return descriptor
+      }
+      let failure = errno
+      close(descriptor)
+      if failure != EWOULDBLOCK && failure != EAGAIN {
+        throw HostError.invalidMessage
+      }
+    }
+    throw HostError.invalidMessage
+  }
 
   private static func waitForIO(
     _ descriptor: Int32, events: Int16, deadline: TimeInterval
@@ -306,11 +392,20 @@ struct PDFMagicNativeMessagingHost {
 
   static func main() {
     do {
+      // Admit before reading any caller input or emitting any protocol bytes.
+      guard let slot = try? acquireConnectionSlot() else { exit(1) }
+      defer { close(slot) }
       // Connection-local only; a new host process starts with no handshake.
       var handshakeComplete = false
+      var rateLimiter = NativeRequestRateLimiter()
       while let request = try readFrame() {
+        guard rateLimiter.allow(now: ProcessInfo.processInfo.systemUptime) else {
+          throw HostError.silentRejection
+        }
         try writeFrame(response(for: request, handshakeComplete: &handshakeComplete))
       }
+    } catch HostError.silentRejection {
+      exit(1)
     } catch HostError.timedOut {
       // Preserve the fixed timeout contract: disconnect without diagnostic
       // output or a protocol response on stalled and backpressured peers.

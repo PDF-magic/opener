@@ -255,6 +255,33 @@ fail closed without a response for that message. Health checks can be
 repeated on the established connection and cannot mutate scan or cancellation
 state. The existing compiled-host macOS CI suite exercises these cases.
 
+### Native request rate limit (opener-0664)
+
+The standalone host enforces a fixed **maximum of 64 complete native request
+frames in any rolling two-second window per host process**. The bound is
+checked *after* reading a framed request but *before* parsing its JSON or
+dispatching a handler, so ordinary pings, handshakes, status lookups and
+unavailable scan operations all consume the same budget. The limiter uses
+monotonic process uptime and stores at most 64 timestamps; it neither waits
+nor allocates an unbounded queue. A 65th frame inside the window terminates
+that native host process **without an error response or stderr diagnostics**.
+Previously emitted valid responses remain framed and unchanged.
+
+The rolling window expires naturally during an otherwise healthy, long-lived
+connection, preserving normal use of `host.health`, `host.ping` and the
+existing handshake. Rate limiting does **not** indicate a scan failure, a
+scanner verdict or authorization to open a PDF. A new native host process has
+a new independent budget; this is a **per-connection abuse limit**, not a
+cross-process or per-user quota. Caller authentication and browser-side
+controls are separate security requirements, and native messaging remains
+transport-only. No scanner, policy preferences, file access or registration
+manifests are modified.
+
+The compiled-host tests cover over-limit termination, correct response
+framing, independent new connections, and replenishment after the sliding
+window. They run in the existing `macos-build` CI job via
+`python3 test-native-messaging-host.py -v`.
+
 ### Communication deadlines (opener-0634)
 
 The standalone host enforces cumulative monotonic deadlines on its native
@@ -338,6 +365,33 @@ All invalid inputs fail closed. These changes do not grant any extension
 permission, authenticate a scanner, change ClamAV/quarantine policy, or modify
 PDF opening and user-selected destinations. Real PDF path admission is an
 independent prerequisite of any future privileged scan coordinator.
+
+### Limit simultaneous native messaging processes (opener-0663)
+
+Each browser native messaging port starts a separate host process. The native
+host now admits at most **four concurrent processes per OS user**, across
+supported browsers, using four nonblocking `flock` slots under the actual
+account's `~/.pdf-magic-native-connections/` directory. The directory is
+created with user-only permissions (`0700`), each lock file with `0600`,
+and symlinks, hard links, unsafe ownership and permissive lock directories are
+rejected. The process acquires its slot **before reading any native message**
+and holds the descriptor for its entire connection. A fifth concurrent host
+fails closed without stdout or stderr protocol output. No queue is created.
+
+The OS releases locks automatically on clean EOF, host crash or termination;
+empty lock files remain for reuse and are not a user preference or scanner
+cache. The production lock scope is derived from the OS account, **not** from
+untrusted browser input, `HOME`, a user-supplied host path, or an extension ID.
+A compile-time-only test build can use a disposable home fixture; production
+builds never honor that override.
+
+This limits simultaneous processes, **not** the number of requests handled on
+one admitted port. It does not authenticate callers, activate the dormant
+browser scanner integration, alter PDF paths, execute programs, change the
+selected target app, or bypass signature freshness, scan integrity, quarantine
+or opening gates. The macOS native host test suite covers saturation, immediate
+rejection, ordinary exit, crash recovery, and unsafe slot directories.
+
 
 ### Executable-launch boundary (opener-0657)
 

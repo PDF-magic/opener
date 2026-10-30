@@ -45,7 +45,18 @@ The currently inactive manifest has no native messaging permission, so it
 must not invoke `start()` in production.
 
 A new port sends **only** the existing v1 `host.handshake` request with a fresh
-Web Crypto challenge and correlated request ID. The controller accepts the
+Web Crypto challenge and correlated request ID.
+The outgoing request now also passes through the `credentialFreeNativeMessage`
+guard, which requires the exact version, topic, request ID and single
+`clientNonce` payload field. The guard rejects unknown or extra fields,
+including browser credentials, authorization headers, cookie records, session
+tokens, website URLs, and settings, instead of stripping them or attempting to
+redact sensitive values. It builds a new immutable object; it does not inspect
+browser stores, forward raw browser metadata, or log rejected values. Challenge
+bytes must come from the existing Web Crypto generator; validation of their
+syntax alone does not establish whether arbitrary supplied strings are secrets.
+The guard has no I/O, does not enable native messaging, and does not alter
+existing user preferences or scanner protections. The controller accepts the
 exact transport-only handshake reply from `Host.swift`, requiring the echoed
 challenge, compatible version, `scanAvailable: false`, and the documented
 read-only host metadata. It must not treat a ping, an unsolicited reply, a
