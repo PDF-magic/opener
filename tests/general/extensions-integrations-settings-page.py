@@ -103,7 +103,7 @@ class ExtensionsAndIntegrationsSettingsTests(unittest.TestCase):
     page = PAGE.read_text(encoding="utf-8")
     self.assertIn("This page does not install, enable, or disable extensions", page)
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    self.assertIn("python3 test-extensions-integrations-settings-page.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/extensions-integrations-settings-page.py -v", ci)
 
 
 if __name__ == "__main__":

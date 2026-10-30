@@ -140,7 +140,7 @@ class TimedPDFStructureTests(unittest.TestCase):
     source = (ROOT / "timed_pdf_structure_analysis.py").read_text(
       encoding="utf-8"
     )
-    self.assertIn("python3 test-timed-pdf-structure-analysis.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/timed-pdf-structure-analysis.py -v", ci)
     self.assertNotIn("timed_pdf_structure_analysis", scanner)
     self.assertNotIn("timed_pdf_structure_worker", scanner)
     self.assertNotIn("remove_quarantine(", source)

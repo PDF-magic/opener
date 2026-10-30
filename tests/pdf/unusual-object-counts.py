@@ -171,7 +171,7 @@ class PDFUnusualObjectCountTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("pdf_unusual_object_counts", scanner)
-        self.assertIn("test-pdf-unusual-object-counts.py -v", workflow)
+        self.assertIn("tests/pdf/unusual-object-counts.py -v", workflow)
         for forbidden in ("subprocess.", "requests.", "socket.", "write_text(",
                           "launch_clean_file(", "remove_quarantine(",
                           "os.environ", "eval(", "exec("):

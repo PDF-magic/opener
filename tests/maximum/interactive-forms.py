@@ -241,7 +241,7 @@ class InteractiveFormFixtureTests(unittest.TestCase):
         )
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("test-maximum-interactive-forms.py", scanner)
-        self.assertIn("python3 test-maximum-interactive-forms.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/maximum/interactive-forms.py -v", workflow)
         self.assertIn("forms", copies.OFFER_EXPLANATION)
         offer = copies.SanitizedCopyOffer(_source_pdf(), 2)
         self.assertTrue(offer.rasterized)

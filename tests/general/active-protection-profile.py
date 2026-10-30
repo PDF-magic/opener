@@ -33,8 +33,8 @@ class ActiveProtectionProfileTests(unittest.TestCase):
 
   def test_ci_includes_structural_and_executable_native_coverage(self):
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    self.assertIn("python3 test-active-protection-profile.py -v", workflow)
-    self.assertIn("python3 test-scan-progress-component.py -v", workflow)
+    self.assertIn("python3 scripts/run-test.py tests/general/active-protection-profile.py -v", workflow)
+    self.assertIn("python3 scripts/run-test.py tests/scan/progress-component.py -v", workflow)
     harness = (ROOT / "test-scan-progress-component.py").read_text(encoding="utf-8")
     self.assertIn("panel.protectionProfileLabel.stringValue", harness)
     self.assertIn("panel.protectionProfileDetailsLabel.stringValue", harness)

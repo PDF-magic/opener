@@ -93,7 +93,7 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
 
     def test_ci_runs_the_regression(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-scanner-concurrency-limits.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/concurrency-limits.py -v", ci)
 
 
 if __name__ == "__main__":

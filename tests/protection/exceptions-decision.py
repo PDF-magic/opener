@@ -156,7 +156,7 @@ class ProtectionExceptionDecisionTests(unittest.TestCase):
             self.assertNotIn(forbidden, section)
 
     def test_ci_and_documented_policy(self):
-        self.assertIn("python3 test-protection-exceptions-decision.py -v", CI)
+        self.assertIn("python3 scripts/run-test.py tests/protection/exceptions-decision.py -v", CI)
         self.assertIn("macos-build:", CI)
         document = (ROOT / "docs/protection/exceptions-decision.md").read_text()
         for phrase in ("Exceptions: unsupported", "cache", "fallback", "Built-in"):

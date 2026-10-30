@@ -158,7 +158,7 @@ class EmbeddedObjectSizeTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_embedded_object_sizes", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertIn("python3 test-pdf-embedded-object-sizes.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/embedded-object-sizes.py -v", workflow)
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

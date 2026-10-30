@@ -107,8 +107,8 @@ class ScannerFeatureCheckTests(unittest.TestCase):
         self.assertIn("verify_file_integrity(path, before, identity)", gate)
         self.assertIn("launch_clean_file(path, target_app=", gate)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-scanner-feature-check.py -v", ci)
-        self.assertIn("python3 test-scan-and-open.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/feature-check.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/scan/and-open.py -v", ci)
         self.assertIn("macos-build:", ci)
 
 

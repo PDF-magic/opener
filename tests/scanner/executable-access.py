@@ -101,8 +101,8 @@ class ScannerExecutableAccessTests(unittest.TestCase):
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         scanners, macos = ci.split("  macos-build:", maxsplit=1)
         self.assertIn("  scanner-tests:", scanners)
-        self.assertIn("python3 test_scanner_executable_access.py -v", scanners)
-        self.assertIn("python3 test-brave-pdf-opener.py", macos)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/executable-access.py -v", scanners)
+        self.assertIn("python3 scripts/run-test.py tests/general/brave-pdf-opener.py", macos)
 
 
 if __name__ == "__main__":

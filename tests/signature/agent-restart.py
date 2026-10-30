@@ -201,7 +201,7 @@ class SignatureAgentRestartTests(unittest.TestCase):
         scan = (ROOT / "scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scan)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-signature-agent-restart.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/signature/agent-restart.py -v", ci)
 
 
 if __name__ == "__main__":

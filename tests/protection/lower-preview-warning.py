@@ -113,7 +113,7 @@ class LowerProtectionWarningTests(unittest.TestCase):
         workflow = (
             ROOT / ".github/workflows/consolidated-checks.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn("test-protection-lower-preview-warning.py -v", workflow)
+        self.assertIn("tests/protection/lower-preview-warning.py -v", workflow)
         self.assertIn("pull_request:", workflow)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("macos-build:", ci)

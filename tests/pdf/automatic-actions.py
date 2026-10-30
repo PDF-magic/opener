@@ -242,8 +242,8 @@ class PDFAutomaticActionTests(unittest.TestCase):
             "UserDefaults", "os.environ", "get_data(", "write_text(", "open(",
         ):
             self.assertNotIn(forbidden, module)
-        self.assertIn("python3 test-pdf-automatic-actions.py -v", workflow)
-        self.assertIn("python3 test-pdf-structure-parser.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/automatic-actions.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/structure-parser.py -v", workflow)
 
 
 if __name__ == "__main__":

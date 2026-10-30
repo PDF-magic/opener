@@ -38,8 +38,8 @@ class DestinationBrowserDisplayTests(unittest.TestCase):
     for side_effect in ("Process()", "NSWorkspace.shared.open", "write(to:", "renameat(",
                         "defaults.set(", "quarantine", "clamscan"):
       self.assertNotIn(side_effect, PANEL)
-    self.assertIn("test-scan-progress-component.py -v", CI)
-    self.assertIn("test-selected-destination-browser.py -v", CI)
+    self.assertIn("tests/scan/progress-component.py -v", CI)
+    self.assertIn("tests/general/selected-destination-browser.py -v", CI)
 
 
 if __name__ == "__main__":

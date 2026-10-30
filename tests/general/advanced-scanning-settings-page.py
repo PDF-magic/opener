@@ -80,7 +80,7 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"
     )
-    self.assertIn("python3 test-advanced-scanning-settings-page.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/advanced-scanning-settings-page.py -v", ci)
     self.assertIn("macos-build:", ci)
 
   def test_restore_recommended_limits_is_confirmed_scoped_and_accessible(self):
@@ -117,7 +117,7 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
                       "target-app.txt", "LSSetDefault", "Process("):
       self.assertNotIn(forbidden, shared.split("enum RecommendedScannerLimitsReset {", 1)[1])
     self.assertIn("test-recommended-scanner-limits.swift", ci)
-    self.assertIn("test-advanced-scanning-settings-page.py -v", ci)
+    self.assertIn("tests/general/advanced-scanning-settings-page.py -v", ci)
 
   def test_page_is_part_of_built_swiftui_app_target(self):
     project = PROJECT.read_text(encoding="utf-8")

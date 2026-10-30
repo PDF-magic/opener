@@ -86,7 +86,7 @@ class PDFObjectLimitTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         parser = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
-        self.assertIn("python3 test-pdf-object-limit.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/object-limit.py -v", workflow)
         self.assertIn("total_objects += len(reader.xref_objStm)", parser)
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

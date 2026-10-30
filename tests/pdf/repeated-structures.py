@@ -139,7 +139,7 @@ class PDFRepeatedStructureTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         module = (ROOT / "pdf_repeated_structures.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_repeated_structures", scanner)
-        self.assertIn("python3 test-pdf-repeated-structures.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/repeated-structures.py -v", workflow)
         for forbidden in ("subprocess.", "remove_quarantine(", "launch_clean_file(",
                           "UserDefaults", "os.system("):
             self.assertNotIn(forbidden, module)

@@ -123,7 +123,7 @@ class SignatureValidationTests(unittest.TestCase):
     def test_ci_and_updater_ordering(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-validate-signature-database.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/validate-signature-database.py -v", ci)
         self.assertLess(script.index("if ! scan_output="), script.index("success_tmp="))
         self.assertLess(script.index("success_tmp="), script.index('backup_dir="$(/usr/bin/mktemp'))
         self.assertIn('if [ -n "$validation_probe" ]', script)

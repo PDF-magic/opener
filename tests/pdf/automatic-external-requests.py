@@ -247,7 +247,7 @@ class PDFAutomaticExternalRequestTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("pdf_automatic_external_requests", scanner)
-        self.assertIn("test-pdf-automatic-external-requests.py -v", workflow)
+        self.assertIn("tests/pdf/automatic-external-requests.py -v", workflow)
         for forbidden in (
             "subprocess.run(", "socket.getaddrinfo(", "requests.get(",
             "write_text(", "launch_clean_file(", "remove_quarantine(",

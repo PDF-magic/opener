@@ -136,7 +136,7 @@ class PDFEncryptionPolicyTests(unittest.TestCase):
         self.assertNotIn("pdf_encryption_policy", gate)
         self.assertNotIn("pdf_encryption_policy", native)
         self.assertIn("--alert-encrypted=yes", gate)
-        self.assertIn("python3 test-pdf-encryption-policy.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/encryption-policy.py -v", ci)
 
 
 if __name__ == "__main__":

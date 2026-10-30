@@ -130,9 +130,9 @@ class MaximumInheritsEnhancedRequirementsTests(unittest.TestCase):
 
     def test_ci_runs_both_preexisting_and_inheritance_regressions(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-required-optional-profile-checks.py -v", ci)
-        self.assertIn("python3 test-structured-protection-policy.py -v", ci)
-        self.assertIn("python3 test-maximum-inherits-enhanced.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/required-optional-profile-checks.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/structured-protection-policy.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/maximum/inherits-enhanced.py -v", ci)
         self.assertIn("  macos-build:", ci)
 
 

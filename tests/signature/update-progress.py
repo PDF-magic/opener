@@ -137,7 +137,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
             self.assertNotIn(forbidden, reader)
         self.assertEqual(project.count("path = SignatureUpdateProgress.swift;"), 1)
         self.assertIn("test-signature-update-progress.swift", ci)
-        self.assertIn("python3 test-signature-update-progress.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/signature/update-progress.py -v", ci)
 
     def test_active_marker_is_only_display_metadata(self):
         script = (ROOT / "update-malware-signatures.sh").read_text()

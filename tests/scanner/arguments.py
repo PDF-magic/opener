@@ -204,7 +204,7 @@ class ScannerArgumentTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("validate_scanner_arguments(command,", source)
         self.assertIn("validate_scanner_version_arguments(version_command,", source)
-        self.assertIn("python3 test-scanner-arguments.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/arguments.py -v", workflow)
 
 
 if __name__ == "__main__":

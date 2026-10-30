@@ -158,9 +158,9 @@ except BaseException as error:
         portable = ci.split("  macos-native-tests:", 1)[0]
         native = ci.split("  macos-native-tests:", 1)[1]
         self.assertIn("runs-on: ubuntu-latest", portable)
-        self.assertIn("test-maximum-memory-limits.py -v", portable)
+        self.assertIn("tests/maximum/memory-limits.py -v", portable)
         self.assertNotIn("test-maximum-memory-limits.py -v", native)
-        self.assertIn("test-maximum-isolated-analysis.py -v", ci)
+        self.assertIn("tests/maximum/isolated-analysis.py -v", ci)
         self.assertIn("pypdf==5.9.0", ci)
 
 

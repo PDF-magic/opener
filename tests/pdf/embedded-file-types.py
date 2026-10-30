@@ -202,7 +202,7 @@ class PDFEmbeddedFileTypeTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/embedded-file-types.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_embedded_file_types", scanner)
-        self.assertIn("python3 test-pdf-embedded-file-types.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/embedded-file-types.py -v", workflow)
         self.assertIn("/EmbeddedFiles", docs)
         self.assertIn("ClamAV", docs)
         self.assertIn("if not cached_clean(cache_id):", scanner)

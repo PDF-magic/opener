@@ -40,7 +40,7 @@ class ProtectionChoicePersistenceTests(unittest.TestCase):
 
     def test_real_restart_regression_is_required_in_macos_ci(self):
         self.assertIn("test-protection-choice-restart.swift", CI)
-        self.assertIn("test-protection-choice-persistence.py -v", CI)
+        self.assertIn("tests/protection/choice-persistence.py -v", CI)
         self.assertIn("test-protection-choice-restart.swift", "\n".join(
             p.name for p in ROOT.glob("test-protection-choice-restart.swift")))
 

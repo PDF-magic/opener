@@ -111,10 +111,10 @@ class UnavailableProtectionDependenciesTests(unittest.TestCase):
 
     def test_regressions_and_native_target_run_in_ci(self):
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-unavailable-protection-dependencies.py -v", ci)
-        self.assertIn("python3 test-protection-settings-cards.py -v", ci)
-        self.assertIn("python3 test-protection-settings-checks.py -v", ci)
-        self.assertIn("python3 test-missing-dependency-policy.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/unavailable-protection-dependencies.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/protection/settings-checks.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/missing-dependency-policy.py -v", ci)
         self.assertIn("macos-build:", ci)
         self.assertIn("path = ProtectionSettingsView.swift;", (
             ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"

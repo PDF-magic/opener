@@ -165,9 +165,9 @@ class FinderOpenTests(unittest.TestCase):
     def test_manual_instructions_and_ci_do_not_modify_default_association(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-finder-open.py --live", readme)
+        self.assertIn("python3 scripts/run-test.py tests/general/finder-open.py --live", readme)
         self.assertIn("osacompile", ci)
-        self.assertIn("python3 test-finder-open.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/finder-open.py -v", ci)
         self.assertIn("Automation consent", readme)
         self.assertNotIn("osascript", ci)
 

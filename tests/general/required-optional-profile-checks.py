@@ -122,7 +122,7 @@ class ProfileCheckAssignmentsTests(unittest.TestCase):
         self.assertNotIn("def select_profile", policy_source)
         self.assertIn('static let name = "Built-in"',
                       (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8"))
-        self.assertIn("python3 test-required-optional-profile-checks.py -v",
+        self.assertIn("python3 scripts/run-test.py tests/general/required-optional-profile-checks.py -v",
                       (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
 
 

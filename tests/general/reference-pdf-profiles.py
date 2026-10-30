@@ -180,7 +180,7 @@ class SameReferencePDFCollectionTests(unittest.TestCase):
 
     def test_ci_registers_reference_suite_without_claiming_profiles_are_live(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-reference-pdf-profiles.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/general/reference-pdf-profiles.py -v", workflow)
         self.assertNotIn("reference_pdf_collection", (ROOT / "scan-and-open.py").read_text(encoding="utf-8"))
         self.assertIn("not executable", __doc__)
         self.assertEqual(len(tuple(ProtectionProfileID)), 3)

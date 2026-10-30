@@ -112,7 +112,7 @@ class MandatorySignatureGateTests(unittest.TestCase):
         self.assertIn("remove_quarantine(path)", source)
         self.assertIn("verify_launch_target(path", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-mandatory-signature-gate.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/mandatory-signature-gate.py -v", ci)
 
 
 if __name__ == "__main__":

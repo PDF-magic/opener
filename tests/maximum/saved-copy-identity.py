@@ -89,7 +89,7 @@ class SavedCopyIdentityTests(unittest.TestCase):
             encoding="utf-8"
         )
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
-        self.assertIn("python3 test-maximum-saved-copy-identity.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/maximum/saved-copy-identity.py -v", workflow)
         self.assertNotIn("maximum_saved_copy_identity", scanner)
 
 

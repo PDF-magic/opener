@@ -66,7 +66,7 @@ class ResetProtectionSettingsTests(unittest.TestCase):
             self.assertNotIn(forbidden, VIEW)
 
     def test_ci_requires_real_macos_swift_and_python_checks(self):
-        self.assertIn("test-reset-protection-settings.py -v", CI)
+        self.assertIn("tests/general/reset-protection-settings.py -v", CI)
         self.assertIn("test-reset-protection-settings.swift", CI)
         self.assertIn("macos-build:", CI)
         self.assertTrue((ROOT / "test-reset-protection-settings.swift").exists())

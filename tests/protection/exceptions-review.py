@@ -71,7 +71,7 @@ class ProtectionExceptionReviewTests(unittest.TestCase):
         self.assertIn("verify_file_integrity(path, before, identity)", scanner)
         self.assertNotIn("showExistingExceptions", scanner)
         self.assertNotIn("reviewExistingProtectionExceptions", scanner)
-        self.assertIn("python3 test-protection-exceptions-review.py -v", CI)
+        self.assertIn("python3 scripts/run-test.py tests/protection/exceptions-review.py -v", CI)
         self.assertIn("macos-build:", CI)
 
 

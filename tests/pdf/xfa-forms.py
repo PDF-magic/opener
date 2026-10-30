@@ -201,7 +201,7 @@ class PDFXFAFormTests(unittest.TestCase):
         docs = (ROOT / "docs/pdf/xfa-forms.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_xfa_forms", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertIn("python3 test-pdf-xfa-forms.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/xfa-forms.py -v", ci)
         self.assertIn("/AcroForm", docs)
         self.assertIn("/XFA", docs)
         for forbidden in ("get_data(", "decompress(", "open(", "subprocess.",

@@ -92,7 +92,7 @@ class FindingObjectReferenceTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertNotIn("enhanced_finding_object_references", scanner)
-        self.assertIn("test-enhanced-finding-object-references.py -v", workflow)
+        self.assertIn("tests/enhanced/finding-object-references.py -v", workflow)
         self.assertFalse(StructuredAnalysisFindings(
             (AnalysisStage.embeddedUrls,),
             (StageAnalysis(AnalysisStage.embeddedUrls, StageOutcome.completed,

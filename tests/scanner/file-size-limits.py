@@ -122,7 +122,7 @@ class ScannerFileSizeLimitTests(unittest.TestCase):
         workflow = (root / ".github/workflows/ci.yml").read_text()
         self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", source)
         self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", validator)
-        self.assertIn("python3 test-scanner-file-size-limits.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/file-size-limits.py -v", workflow)
 
 
 if __name__ == "__main__":

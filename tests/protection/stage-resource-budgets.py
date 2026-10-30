@@ -150,7 +150,7 @@ class ProtectionStageBudgetTests(unittest.TestCase):
 
     def test_budget_contract_runs_in_linux_ci(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-protection-stage-resource-budgets.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/protection/stage-resource-budgets.py -v", ci)
 
 
 if __name__ == "__main__":

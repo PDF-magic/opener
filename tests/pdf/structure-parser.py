@@ -114,7 +114,7 @@ class PDFStructureParserTests(unittest.TestCase):
         self.assertIn("verify_file_integrity", scanner)
         self.assertIn("pypdf==6.21.3", requirements)
         self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
-        self.assertIn("python3 test-pdf-structure-parser.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/structure-parser.py -v", workflow)
         for forbidden in ("subprocess.", "remove_quarantine(", "launch_clean_file(",
                           "UserDefaults", "Path(", "open(", "write_text(", "os.environ"):
             self.assertNotIn(forbidden, module)

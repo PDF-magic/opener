@@ -38,7 +38,7 @@ class ResetToDefaultsTests(unittest.TestCase):
 
   def test_ci_retains_native_persistence_and_app_build_checks(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    self.assertIn("python3 test-reset-to-defaults.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/reset-to-defaults.py -v", ci)
     self.assertIn("test-reset-general-preferences.swift", ci)
     self.assertIn("xcodebuild -project PDFMagicOpener.xcodeproj", ci)
 

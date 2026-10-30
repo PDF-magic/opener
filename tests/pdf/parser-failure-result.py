@@ -125,7 +125,7 @@ class PDFStructuredFailureTests(unittest.TestCase):
         self.assertNotIn("pypdf", scanner)
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertIn("check_database()", scanner)
-        self.assertIn("python3 test-pdf-parser-failure-result.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/parser-failure-result.py -v", workflow)
         self.assertIn("parse_pdf_structure_result", doc)
         for forbidden in ("open(", "subprocess.", "remove_quarantine(",
                           "launch_clean_file(", "Path(", "write_text("):

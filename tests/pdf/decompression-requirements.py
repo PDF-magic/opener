@@ -151,7 +151,7 @@ class PDFDecompressionRequirementsTests(unittest.TestCase):
             self.assertNotIn(forbidden, module)
         workflow = ROOT / ".github/workflows/ci.yml"
         if workflow.exists():
-            self.assertIn("python3 test-pdf-decompression-requirements.py -v", workflow.read_text(encoding="utf-8"))
+            self.assertIn("python3 scripts/run-test.py tests/pdf/decompression-requirements.py -v", workflow.read_text(encoding="utf-8"))
         self.assertGreater(MAX_EXPANSION_RATIO, 1)
         self.assertGreater(MAX_TOTAL_DECODED_BYTES, MAX_STREAM_DECODED_BYTES)
 

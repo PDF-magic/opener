@@ -56,7 +56,7 @@ class LargeTextPreferencesTests(unittest.TestCase):
   def test_macos_build_exercises_dynamic_type_layouts(self):
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("test-preferences-large-text.swift", ci)
-    self.assertIn("test-preferences-large-text.py -v", ci)
+    self.assertIn("tests/preferences/large-text.py -v", ci)
     self.assertIn("PDFMagicOpenerApp/*SettingsView.swift", ci)
 
 

@@ -304,9 +304,9 @@ raise SystemExit(3)
         portable = workflow.split("  macos-native-tests:", 1)[0]
         native = workflow.split("  macos-native-tests:", 1)[1]
         self.assertIn("runs-on: ubuntu-latest", portable)
-        self.assertIn("test-maximum-sanitizer-memory-limits.py -v", portable)
+        self.assertIn("tests/maximum/sanitizer-memory-limits.py -v", portable)
         self.assertIn("runs-on: macos-latest", native)
-        self.assertIn("test-maximum-sanitizer-memory-limits.py -v", native)
+        self.assertIn("tests/maximum/sanitizer-memory-limits.py -v", native)
 
 
 if __name__ == "__main__":

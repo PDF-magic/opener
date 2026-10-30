@@ -134,7 +134,7 @@ class ProtectionCardsTests(unittest.TestCase):
     self.assertIn("original", explanation)
     self.assertIn("generated", explanation)
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
 
   def test_maximum_preview_explains_capability_loss_without_enabling_it(self):
     # A visible, labelled explanation belongs only to the Maximum preview.
@@ -169,7 +169,7 @@ class ProtectionCardsTests(unittest.TestCase):
     self.assertIn(".fixedSize(horizontal: false, vertical: true)", self.source)
     # Existing scanner CI and the native macOS build exercise the new display.
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
     self.assertIn("macos-build:", ci)
 
   def test_maximum_save_action_is_gated_and_never_activates_unavailable_policy(self):
@@ -217,10 +217,10 @@ class ProtectionCardsTests(unittest.TestCase):
 
   def test_ci_runs_cards_and_full_native_build(self):
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
     self.assertIn("macos-build:", ci)
-    self.assertIn("test-main-preferences-window.py -v", ci)
-    self.assertIn("test-technical-preferences-help.py -v", ci)
+    self.assertIn("tests/general/main-preferences-window.py -v", ci)
+    self.assertIn("tests/general/technical-preferences-help.py -v", ci)
 
 
 if __name__ == "__main__":

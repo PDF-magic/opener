@@ -111,7 +111,7 @@ class GeneratedCopyOriginTests(unittest.TestCase):
         self.assertIn("GENERATED_CONTENT_ORIGIN", source)
         self.assertIn("GENERATED_CONTENT_ORIGIN", route)
         self.assertIn("GENERATED_CONTENT_ORIGIN", rescan)
-        self.assertIn("test-maximum-generated-content-marking.py -v", workflow)
+        self.assertIn("tests/maximum/generated-content-marking.py -v", workflow)
         self.assertNotIn("writer.add_metadata(", source)
 
 if __name__ == "__main__":

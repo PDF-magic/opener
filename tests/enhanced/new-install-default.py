@@ -112,7 +112,7 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
         )
         portable = workflow.split("  macos-native-tests:", 1)[0]
         native = workflow.split("  macos-native-tests:", 1)[1]
-        self.assertIn("test-enhanced-new-install-default.py -v", portable)
+        self.assertIn("tests/enhanced/new-install-default.py -v", portable)
         self.assertIn("ubuntu-latest", portable)
         self.assertNotIn("test-enhanced-new-install-default.py -v", native)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

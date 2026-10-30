@@ -252,8 +252,8 @@ class PDFJavaScriptActionTests(unittest.TestCase):
         for forbidden in ("subprocess.", "launch_clean_file(", "remove_quarantine(",
                           "UserDefaults", "os.environ", "write_text(", "eval(", "exec("):
             self.assertNotIn(forbidden, module)
-        self.assertIn("python3 test-pdf-javascript-actions.py -v", workflow)
-        self.assertIn("python3 test-pdf-automatic-actions.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/javascript-actions.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/automatic-actions.py -v", workflow)
 
 
 if __name__ == "__main__":

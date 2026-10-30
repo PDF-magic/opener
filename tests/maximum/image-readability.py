@@ -176,7 +176,7 @@ class ImageReadabilityMetricTests(unittest.TestCase):
         )
         self.assertNotIn("maximum-image-readability", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertIn("python3 test-maximum-image-readability.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/maximum/image-readability.py -v", workflow)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         self.assertTrue(copies.SanitizedCopyOffer(_source_pdf(), 2).needs_separate_scan)

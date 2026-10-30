@@ -463,9 +463,9 @@ class MaximumRendererTests(unittest.TestCase):
         portable = ci.split("  macos-native-tests:", 1)[0]
         native = ci.split("  macos-native-tests:", 1)[1]
         self.assertIn("runs-on: ubuntu-latest", portable)
-        self.assertIn("test-maximum-isolated-renderer.py -v", portable)
+        self.assertIn("tests/maximum/isolated-renderer.py -v", portable)
         self.assertIn("runs-on: macos-latest", native)
-        self.assertIn("test-maximum-isolated-renderer.py -v", native)
+        self.assertIn("tests/maximum/isolated-renderer.py -v", native)
         self.assertIn("pymupdf==2.0", portable)
         self.assertIn("pymupdf==2.0", native)
         self.assertTrue((ROOT / "maximum_render_filesystem_probe.py").is_file())

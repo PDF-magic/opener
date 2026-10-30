@@ -100,8 +100,8 @@ class ScannerParameterDecisionTests(unittest.TestCase):
         ):
             self.assertIn(term, doc)
         self.assertIn("docs/scanner/parameters-decision.md", readme)
-        self.assertIn("python3 test-scanner-parameters-decision.py -v", ci)
-        self.assertIn("python3 test-scanner-arguments.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/parameters-decision.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/arguments.py -v", ci)
 
 
 if __name__ == "__main__":

@@ -38,9 +38,9 @@ class ActiveScanCountTests(unittest.TestCase):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     native = (ROOT / "test-native-cancellation.py").read_text(encoding="utf-8")
     component = (ROOT / "test-scan-progress-component.py").read_text(encoding="utf-8")
-    self.assertIn("python3 test-active-scan-count.py -v", ci)
-    self.assertIn("python3 test-native-cancellation.py", ci)
-    self.assertIn("python3 test-scan-progress-component.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/general/active-scan-count.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/native/cancellation.py", ci)
+    self.assertIn("python3 scripts/run-test.py tests/scan/progress-component.py -v", ci)
     self.assertIn('progress.activeScansLabel.stringValue == "Active scans: 2"', native)
     for count in (0, 1, 2):
       self.assertIn(f'panel.activeScansLabel.stringValue == "Active scans: {count}"', component)

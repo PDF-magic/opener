@@ -162,7 +162,7 @@ class EffectivePolicyScanResultsTests(unittest.TestCase):
         self.assertIn("scan_result = (CleanScanResult(", source)
         self.assertIn("failure.scan_result = ScanResult(decision.detection_names)", source)
         self.assertNotIn("effective_policy_id TEXT", source)
-        self.assertIn("python3 test-effective-policy-scan-results.py -v",
+        self.assertIn("python3 scripts/run-test.py tests/general/effective-policy-scan-results.py -v",
                       (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
 
 

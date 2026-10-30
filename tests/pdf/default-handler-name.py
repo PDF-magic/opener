@@ -33,7 +33,7 @@ class DefaultPDFHandlerNameTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn('xcrun swiftc ' + NEW_NAME + ' -o "$RUNNER_TEMP/SetPDFHandler"', workflow)
-        self.assertIn('python3 test-pdf-default-handler-name.py -v', workflow)
+        self.assertIn('python3 scripts/run-test.py tests/pdf/default-handler-name.py -v', workflow)
         self.assertIn('swift ' + NEW_NAME, readme)
         self.assertIn('|' + ' `' + NEW_NAME + '`' + ' |', readme)
         self.assertNotIn(OLD_NAME, workflow)

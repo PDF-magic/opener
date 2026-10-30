@@ -44,7 +44,7 @@ class PDFDefaultUserActionTests(unittest.TestCase):
 
     def test_ci_runs_both_syntax_and_native_validation(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-pdf-default-user-action.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/default-user-action.py -v", workflow)
         self.assertIn("make-pdf-magic-default.command", workflow)
         self.assertIn("test-make-pdf-magic-default.swift", workflow)
 

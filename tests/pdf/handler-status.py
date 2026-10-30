@@ -90,7 +90,7 @@ class PDFHandlerStatusTests(unittest.TestCase):
         self.assertIn("only reads", readme)
         self.assertIn("pdf-handler-status.py", readme)
         self.assertIn("identify-pdf-handler", readme)
-        self.assertIn("python3 test-pdf-handler-status.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/handler-status.py -v", ci)
 
 
 if __name__ == "__main__":

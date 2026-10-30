@@ -188,7 +188,7 @@ class RotatedPageFidelityTests(unittest.TestCase):
         )
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("test-maximum-rotated-pages", scanner)
-        self.assertIn("test-maximum-rotated-pages.py -v", workflow)
+        self.assertIn("tests/maximum/rotated-pages.py -v", workflow)
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

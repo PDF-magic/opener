@@ -126,7 +126,7 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         self.assertIn("'StartInterval': 14400", installer)
         self.assertIn("'RunAtLoad': True", installer)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-signature-update-times.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/signature/update-times.py -v", ci)
 
 
 if __name__ == "__main__":

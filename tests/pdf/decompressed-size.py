@@ -89,7 +89,7 @@ class PDFDecodedSizeTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("verify_file_integrity", scanner)
-        self.assertIn("python3 test-pdf-decompressed-size.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/decompressed-size.py -v", workflow)
         self.assertEqual(parser.MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES, 8 * 1024 * 1024)
         self.assertEqual(parser.MAX_STRUCTURE_TOTAL_DECOMPRESSED_BYTES, 32 * 1024 * 1024)
 

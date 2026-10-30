@@ -212,7 +212,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
         )
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("maximum-annotations", scanner)
-        self.assertIn("python3 test-maximum-annotations.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/maximum/annotations.py -v", workflow)
         self.assertFalse(copies.SanitizedCopyOffer(_pdf(), 2).permits_open)
         self.assertTrue(copies.SanitizedCopyOffer(_pdf(), 2).needs_separate_scan)
         self.assertIn("other interactive features are not preserved", copies.OFFER_EXPLANATION)

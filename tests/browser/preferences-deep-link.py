@@ -56,8 +56,8 @@ class NativePreferencesLinkTests(unittest.TestCase):
 
   def test_existing_ci_inspects_compiled_app_and_native_url_types(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    self.assertIn("python3 test-browser-preferences-deep-link.py -v", ci)
-    self.assertIn("python3 test-browser-preferences-deep-link.py --verify-built-app", ci)
+    self.assertIn("python3 scripts/run-test.py tests/browser/preferences-deep-link.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/browser/preferences-deep-link.py --verify-built-app", ci)
 
 
 if __name__ == "__main__":

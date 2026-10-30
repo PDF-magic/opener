@@ -124,7 +124,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
         policy = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", policy)
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 test-pdf-format-identification.py -v", workflow)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/format-identification.py -v", workflow)
 
 
 if __name__ == "__main__":

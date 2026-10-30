@@ -71,7 +71,7 @@ class SuccessfulScanNotificationsTests(unittest.TestCase):
       self.assertNotIn(forbidden, PREF)
 
   def test_ci_covers_native_isolated_preference_and_scanner(self):
-    self.assertIn("test-show-successful-scan-notifications.py -v", CI)
+    self.assertIn("tests/general/show-successful-scan-notifications.py -v", CI)
     self.assertIn("test-show-successful-scan-notifications.swift", CI)
     self.assertIn("brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", CI)
 

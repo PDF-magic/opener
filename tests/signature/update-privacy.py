@@ -103,7 +103,7 @@ class SignatureUpdatePrivacyTests(unittest.TestCase):
         self.assertIn('"$updater" --config-file="$install_dir/freshclam.conf" --datadir="$stage_dir" </dev/null &', script)
         self.assertIn('if [ "$#" -ne 0 ]; then', script)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-signature-update-privacy.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/signature/update-privacy.py -v", ci)
         scanner = (ROOT / "scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertIn("check_database()", scanner)

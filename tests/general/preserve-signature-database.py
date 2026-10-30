@@ -160,7 +160,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", source)
         self.assertIn("check_database()", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-preserve-signature-database.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/general/preserve-signature-database.py -v", ci)
         self.assertIn("bash -n install-allow-and-open.sh", ci)
 
 

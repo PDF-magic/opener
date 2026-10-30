@@ -115,7 +115,7 @@ class BenchmarkTests(unittest.TestCase):
                 self.assertIn(option if not option.startswith("--database=")
                               else "--database=", live)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-scanner-startup-benchmark.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/scanner/startup-benchmark.py -v", ci)
         readme = (ROOT / "README.md").read_text()
         self.assertIn("scanner_startup_benchmark.py", readme)
         self.assertIn("no clamd migration", readme.lower())

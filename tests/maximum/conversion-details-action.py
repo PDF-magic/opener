@@ -74,8 +74,8 @@ class MaximumConversionDetailsActionTests(unittest.TestCase):
 
   def test_ci_runs_action_regressions_and_native_app_build(self):
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("python3 test-maximum-conversion-details-action.py -v", ci)
-    self.assertIn("python3 test-protection-settings-cards.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/maximum/conversion-details-action.py -v", ci)
+    self.assertIn("python3 scripts/run-test.py tests/protection/settings-cards.py -v", ci)
     self.assertIn("macos-build:", ci)
     self.assertIn("xcodebuild", ci)
 

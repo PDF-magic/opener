@@ -218,7 +218,7 @@ class UnsupportedPDFFeatureInspectionTests(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_unsupported_feature_inspection", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        self.assertIn("python3 test-pdf-unsupported-feature-inspection.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/pdf/unsupported-feature-inspection.py -v", ci)
         for forbidden in ("get_data(", "decrypt(", "subprocess.", "launch_clean_file(",
                           "remove_quarantine(", "write_text(", "os.environ"):
             self.assertNotIn(forbidden, source)

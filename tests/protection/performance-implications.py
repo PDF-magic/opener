@@ -100,7 +100,7 @@ class PerformanceImplicationsTests(unittest.TestCase):
         project = (ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj").read_text()
         self.assertIn("protection-performance.json", project)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 test-protection-performance-implications.py -v", ci)
+        self.assertIn("python3 scripts/run-test.py tests/protection/performance-implications.py -v", ci)
 
 
 if __name__ == "__main__":
