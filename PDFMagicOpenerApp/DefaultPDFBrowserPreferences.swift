@@ -24,6 +24,12 @@ enum DefaultPDFBrowserPreferences {
     ("com.apple.Safari", "Safari"),
   ]
 
+  // Stable, read-only supported-browser roster for status presentation.
+  // Actual installation detection still uses the validated discover() path.
+  static var monitoringBrowserCatalog: [(id: String, name: String)] {
+    browserNames.map { (id: $0.0, name: $0.1) }
+  }
+
   private static let preferenceDirectory = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Application Support/Studio/allow-and-open", isDirectory: true)
 
