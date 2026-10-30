@@ -144,53 +144,64 @@ raise SystemExit(3)
 
     def test_macos_exit_detection_does_not_reap_a_running_process(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
-        if all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
-            with patch.object(sanitizer.sys, "platform", "darwin"), \
-                    patch.object(sanitizer.os, "waitid", return_value=None):
-                self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
-        else:
-            completed = subprocess.CompletedProcess(("ps",), 0, b"S+\n", None)
-            with patch.object(sanitizer.sys, "platform", "darwin"), \
-                    patch.object(sanitizer.subprocess, "run", return_value=completed):
-                self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
+        completed = subprocess.CompletedProcess(("ps",), 0, b"S+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.subprocess, "run", return_value=completed) as probe:
+            self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
+        probe.assert_called_once()
+        self.assertEqual(
+            probe.call_args.args[0], ("/bin/ps", "-o", "stat=", "-p", "101")
+        )
+        self.assertIsNone(process.returncode)
 
     def test_macos_exit_detection_recognizes_zombie_without_reaping(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
-        if all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
-            result = type("WaitResult", (), {"si_pid": 101})()
-            with patch.object(sanitizer.sys, "platform", "darwin"), \
-                    patch.object(sanitizer.os, "waitid", return_value=result):
-                self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
-        else:
-            completed = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
-            with patch.object(sanitizer.sys, "platform", "darwin"), \
-                    patch.object(sanitizer.subprocess, "run", return_value=completed):
-                self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+        completed = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.subprocess, "run", return_value=completed) as probe:
+            self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
+        probe.assert_called_once()
+        self.assertIsNone(process.returncode)
 
     def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
-        with patch.object(sanitizer.sys, "platform", "darwin"):
-            if all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
-                with patch.object(sanitizer.os, "waitid", side_effect=OSError("private")):
-                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
-                        sanitizer._process_has_exited_without_reaping(process)
-            else:
-                with patch.object(sanitizer.subprocess, "run", side_effect=OSError("private")):
-                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
-                        sanitizer._process_has_exited_without_reaping(process)
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.subprocess, "run",
+                             side_effect=OSError("private")) as probe:
+            with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                sanitizer._process_has_exited_without_reaping(process)
+        probe.assert_called_once()
 
     def test_macos_eperm_cleanup_requires_no_live_group_members(self):
         process = type("FakeProcess", (), {"pid": 101, "returncode": None})()
-        zombie = subprocess.CompletedProcess(("ps",), 0, b"101 Z+\n201 S+\n", None)
-        living = subprocess.CompletedProcess(("ps",), 0, b"101 S+\n", None)
+        leader = subprocess.CompletedProcess(("ps",), 0, b"Z+\n", None)
+        zombies = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 Z+\n102 101 Z\n201 201 S+\n", None
+        )
+        living = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 Z+\n102 101 S+\n", None
+        )
+        missing_leader = subprocess.CompletedProcess(
+            ("ps",), 0, b"102 101 Z+\n", None
+        )
         with patch.object(sanitizer.sys, "platform", "darwin"), \
-                patch.object(sanitizer.os, "killpg", side_effect=PermissionError(errno.EPERM, "denied")), \
-                patch.object(process, "kill", return_value=None, create=True):
-            with patch.object(sanitizer.subprocess, "run", return_value=zombie):
+                patch.object(sanitizer.os, "killpg",
+                             side_effect=PermissionError(errno.EPERM, "denied")), \
+                patch.object(process, "kill", return_value=None, create=True) as kill:
+            with patch.object(sanitizer.subprocess, "run",
+                              side_effect=(leader, zombies)) as probe:
                 sanitizer._stop_process_group(process)
-            with patch.object(sanitizer.subprocess, "run", return_value=living):
-                with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
-                    sanitizer._stop_process_group(process)
+                self.assertEqual(probe.call_count, 2)
+                kill.assert_not_called()
+            for group in (living, missing_leader):
+                with self.subTest(group=group.stdout), \
+                        patch.object(sanitizer.subprocess, "run",
+                                     side_effect=(leader, group)) as probe:
+                    with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
+                        sanitizer._stop_process_group(process)
+                    self.assertEqual(probe.call_count, 2)
+                    kill.assert_called()
+                    kill.reset_mock()
 
     def test_memory_overage_kills_the_process_group_and_returns_no_output(self):
         killed = []
