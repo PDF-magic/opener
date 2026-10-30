@@ -980,6 +980,60 @@ jobs:
         run: python3 test-maximum-renderer-selection.py -v
       - name: Run test-maximum-isolated-renderer.py
         run: python3 test-maximum-isolated-renderer.py -v
+      - name: Diagnose failed macOS renderer confinement without exposing PDF data
+        if: ${{ failure() && runner.os == 'macOS' }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import sys
+          import maximum_isolated_renderer as renderer
+
+          root = Path(renderer.__file__).resolve().parent
+          worker = root / "maximum_render_worker.py"
+          checks = {
+              "sandbox": renderer._trusted_regular_file(
+                  renderer.SANDBOX_EXEC, executable=True),
+              "python": renderer._trusted_regular_file(
+                  str(Path(sys.executable).resolve()), executable=True),
+              "worker": renderer._trusted_regular_file(str(worker)),
+              "support": all(renderer._trusted_regular_file(str(root / name))
+                  for name in ("maximum_isolated_worker.py",
+                               "maximum_network_isolation.py",
+                               "maximum_isolated_renderer.py")),
+              "workspace": renderer._trusted_directory(str(root)),
+              "python_prefix": renderer._trusted_directory(
+                  str(Path(sys.prefix).resolve()), runtime=True),
+              "python_base_prefix": renderer._trusted_directory(
+                  str(Path(sys.base_prefix).resolve()), runtime=True),
+          }
+          for name, result in sorted(checks.items()):
+              print("trusted_" + name + "=" + str(bool(result)).lower())
+          try:
+              command = list(renderer._renderer_command(worker, 0))
+          except renderer.MaximumPDFRenderError:
+              print("renderer_preflight=blocked")
+          else:
+              print("renderer_preflight=accepted")
+              # No PDF input, user pathname, sandbox stderr or untrusted output.
+              command[-2:] = ["-c", "import pymupdf; print('import-ok')"]
+              try:
+                  completed = subprocess.run(
+                      command, input=b"", stdout=subprocess.PIPE,
+                      stderr=subprocess.DEVNULL, timeout=10, check=False,
+                      close_fds=True, start_new_session=True, cwd="/",
+                      env={"PATH": "/usr/bin:/bin", "HOME": "/nonexistent",
+                           "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
+                           "PYTHONNOUSERSITE": "1",
+                           "PDF_MAGIC_RENDER_NETWORK_SANDBOX": "seatbelt-v1"},
+                  )
+                  print("isolated_import_passed=" + str(
+                      completed.returncode == 0 and
+                      completed.stdout == b"import-ok\n").lower())
+                  print("isolated_import_exit_code=" + str(completed.returncode))
+              except (OSError, subprocess.SubprocessError):
+                  print("isolated_import_probe=failed")
+          PY
       - name: Run test-maximum-memory-limits.py
         run: python3 test-maximum-memory-limits.py -v
       - name: Run test-maximum-network-isolation.py

@@ -273,7 +273,7 @@ def _darwin_group_has_only_zombies(process_group_id: int) -> bool:
             close_fds=True,
             cwd="/",
             env={"PATH": "/usr/bin:/bin", "LANG": "C"},
-            timeout=0.25,
+            timeout=0.5,
             check=True,
         )
         found_leader = False

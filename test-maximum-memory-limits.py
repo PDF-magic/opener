@@ -148,6 +148,15 @@ finally:
         self.assertEqual(completed.returncode, 0, completed.stdout.decode("ascii"))
         self.assertIn(b"parser-ready", completed.stdout)
 
+    def test_real_worker_disarms_macos_watchdog_on_shutdown(self):
+        worker = (ROOT / "maximum_isolated_worker.py").read_text()
+        self.assertIn("signal.setitimer(signal.ITIMER_REAL, 0)", worker)
+        self.assertLess(
+            worker.index("exit_code = main()"),
+            worker.index("signal.setitimer(signal.ITIMER_REAL, 0)")
+        )
+        self.assertIn("except BaseException:", worker)
+
     def test_ci_runs_real_child_checks_on_linux_and_macos(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("ubuntu-latest", ci)
