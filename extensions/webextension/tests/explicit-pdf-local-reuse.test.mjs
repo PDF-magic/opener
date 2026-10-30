@@ -120,6 +120,16 @@ test("navigation or document changes during awaited inspection invalidate reuse"
   assert.equal((await planExplicitPdfLocalReuse({
     coordinator: trusted, selectionId: selected
   })).status, "unavailable");
+
+  // Even if a replacement callback returns the original-looking selection,
+  // it may belong to another document or session. Never trust the old one.
+  trusted.localPdfReuseReady = true;
+  let finish;
+  trusted.inspectExistingLocalPdf = () => new Promise(resolve => { finish = resolve; });
+  const next = planExplicitPdfLocalReuse({ coordinator: trusted, selectionId: selected });
+  trusted.inspectExistingLocalPdf = async () => available();
+  finish(available());
+  assert.equal((await next).status, "unavailable");
 });
 
 test("untrusted accessors, inherited evidence, proxies and native failures fail closed", async () => {

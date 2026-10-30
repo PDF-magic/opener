@@ -100,7 +100,11 @@ export async function planExplicitPdfLocalReuse({ coordinator, selectionId: sele
     const lookup = Object.freeze({ selectionId: selected, documentRevision: revision });
     const inspection = await inspect.call(coordinator, lookup);
     const choice = validLocalInspection(inspection, selected, revision);
-    if (!choice || own(coordinator, "localPdfReuseReady") !== true) return unavailable;
+    // A changed coordinator callback can refer to a different document or
+    // native session. Do not consult a captured, stale callback after await.
+    if (!choice || own(coordinator, "localPdfReuseReady") !== true ||
+        own(coordinator, "readCurrentPdfSelection") !== current ||
+        own(coordinator, "inspectExistingLocalPdf") !== inspect) return unavailable;
 
     // Invalidate a result if navigation, permission, document identity or
     // user selection changed during the asynchronous local-file inspection.
