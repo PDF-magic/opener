@@ -34,25 +34,53 @@ assert.equal(manifest.optional_host_permissions, undefined);
 assert.deepEqual(manifest.background, { service_worker: "background.js", type: "module" });
 
 const profile = await mkdtemp(join(tmpdir(), "pdfmagic-arc-smoke-"));
-let context;
+let browser;
+let child;
+const port = 9223; // Isolated CI machine, loopback only. Never expose CDP externally.
+const endpoint = "http://127.0.0.1:" + port;
+const { setTimeout: sleep } = await import("node:timers/promises");
 try {
-  context = await chromium.launchPersistentContext(profile, {
-    executablePath,
-    headless: true,
-    args: [
-      "--disable-extensions-except=" + extensionPath,
-      "--load-extension=" + extensionPath,
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-sync",
-      "--disable-component-update"
-    ],
-    timeout: 60000
-  });
+  // Arc does not support Playwright's --remote-debugging-pipe launch protocol.
+  // Launch the real signed Arc executable, then attach through its supported
+  // loopback Chrome DevTools port instead. Do not attach to a user's session.
+  child = (await import("node:child_process")).spawn(executablePath, [
+    "--remote-debugging-port=" + port,
+    "--remote-debugging-address=127.0.0.1",
+    "--user-data-dir=" + profile,
+    "--disable-extensions-except=" + extensionPath,
+    "--load-extension=" + extensionPath,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--disable-component-update",
+    "about:blank"
+  ], { stdio: "ignore" });
 
-  // Do not pass if Arc only opens a first-run/sign-in screen: a real
-  // registered extension service worker is mandatory evidence of support.
+  let started = false;
+  for (let i = 0; i < 90; i += 1) {
+    if (child.exitCode !== null) throw new Error("Arc terminated before exposing local CDP");
+    try {
+      const response = await fetch(endpoint + "/json/version", {
+        signal: AbortSignal.timeout(700)
+      });
+      if (response.ok) {
+        const info = await response.json();
+        assert.match(info.Browser || "", /Chrome|Chromium|Arc/,
+          "Debugging endpoint must be provided by a Chromium-family browser");
+        started = true;
+        break;
+      }
+    } catch { /* Arc may still be launching */ }
+    await sleep(500);
+  }
+  assert.ok(started, "Real Arc never exposed its local DevTools endpoint");
+  browser = await chromium.connectOverCDP(endpoint, { timeout: 15000 });
+  const context = browser.contexts()[0];
+  assert.ok(context, "Real Arc must expose a browser context");
+
+  // A CDP endpoint alone is insufficient: Arc must register the exact MV3
+  // extension worker and render the local popup with no extra permissions.
   const worker = context.serviceWorkers().find((item) =>
     /^chrome-extension:\/\/[a-p]{32}\/background\.js$/.test(item.url())
   ) ?? await context.waitForEvent("serviceworker", {
@@ -75,8 +103,6 @@ try {
   );
   assert.equal(optionalGranted, false, "Arc must not silently grant optional downloads access");
 
-  // The only navigation is to this extension's bundled local popup. The
-  // external preferences URL is inspected, not clicked or launched.
   const popup = await context.newPage();
   const pageErrors = [];
   popup.on("pageerror", (error) => pageErrors.push(error.message));
@@ -96,9 +122,11 @@ try {
   assert.equal(await popup.locator("script").count(), 0);
   assert.ok(await popup.evaluate(() => document.styleSheets.length) >= 1);
   assert.deepEqual(pageErrors, []);
-  console.log("PASS actual Arc for macOS MV3 worker, inactive popup, optional-permission gate");
+  console.log("PASS actual Arc MV3 worker, inactive popup and optional permission gate");
 } finally {
-  try { await context?.close(); } finally {
-    await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-  }
+  try { await browser?.close(); } catch { /* Arc may have already exited */ }
+  if (child && child.exitCode === null) child.kill("SIGTERM");
+  await sleep(300);
+  if (child && child.exitCode === null) child.kill("SIGKILL");
+  await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }

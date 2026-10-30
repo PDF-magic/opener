@@ -51,7 +51,8 @@ test("Arc real-browser smoke cannot substitute Chrome or mutate user state", asy
   assert.equal(pkg.devDependencies, undefined);
   const smoke = await readFile(join(root, "scripts/test-arc.mjs"), "utf8");
   assert.ok(smoke.includes('assert.equal(bundleIdentifier, "company.thebrowser.Browser"'));
-  assert.ok(smoke.includes("launchPersistentContext(profile"));
+  assert.ok(smoke.includes("chromium.connectOverCDP(endpoint")); 
+  assert.ok(smoke.includes("--remote-debugging-port="));
   assert.ok(smoke.includes("--load-extension="));
   assert.ok(smoke.includes('chrome.permissions.contains({ permissions: ["downloads"] })'));
   assert.ok(smoke.includes("assert.equal(optionalGranted, false"));

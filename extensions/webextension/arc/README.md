@@ -8,7 +8,9 @@ installs the official Arc application through Homebrew's `arc` cask and
 verifies the installed macOS app bundle identifier
 `company.thebrowser.Browser` and its code signature. It builds the existing,
 validated unpacked `dist/` Manifest V3 extension, then launches the actual
-Arc executable with an isolated disposable browser profile. The smoke test
+Arc executable with an isolated disposable browser profile and a
+loopback-only Chrome DevTools Protocol endpoint, which is Arc's supported
+automation interface. The smoke test
 **must observe the real registered extension service worker** and
 browser-rendered popup, including local styling and the disabled **Scan PDF**
 control. It checks Arc's effective extension manifest and that the optional
