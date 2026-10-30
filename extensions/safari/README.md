@@ -63,6 +63,33 @@ user-authorized private window on every release. The extension remains inert,
 without page access, native messaging or PDF opening. Future activated Safari
 integrations must separately review and test private-context exclusion.
 
+## Safari permission regression coverage (opener-0612)
+
+The Safari-specific permission tests exercise the **current inert extension**
+without installing it or claiming that Safari has approved access.
+`test-safari-extension-permissions.py` checks the source and built .appex
+manifests, the sandbox-only entitlement, and regressions that would introduce
+required browser permissions, website access, optional native messaging, or
+private-browsing eligibility. The build-time check compares the embedded
+manifest byte-for-byte with the reviewed shared source.
+
+`extensions/webextension/tests/safari-permission-handling.test.mjs` uses
+injected Safari-like WebExtensions permission APIs to test opt-in-only
+`downloads` requests, explicit denials, rejected or unavailable APIs,
+revocation and non-restoration, and rejection of undeclared website/native
+permissions. A positive download grant is **not** a PDF scan verdict or
+authorization to open a document. The real extension background and native
+request handler remain inert; these tests do not request Safari privileges,
+activate monitoring, read browser history, or change native user preferences.
+
+Run `python3 test-safari-extension-permissions.py -v` and
+`cd extensions/webextension && npm run build && npm test` locally.
+The existing portable scanner CI job runs both suites; macOS CI additionally
+checks `--verify-built-app` against the Xcode-produced embedded extension.
+Safari Settings authorization prompts and live browser behavior require a
+separate interactive Safari test after activation/native messaging integration
+is implemented; no headless unit test can certify a real user's Safari grants.
+
 ## Unsigned Safari extension package (opener-0608)
 
 The Xcode host application embeds the Safari Web Extension as a native
