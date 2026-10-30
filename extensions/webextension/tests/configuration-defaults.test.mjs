@@ -92,7 +92,7 @@ test("config defaults do not depend on active background registration", async ()
   const pkg = JSON.parse(
     await readFile(new URL("../package.json", import.meta.url), "utf8")
   );
-  assert.equal(pkg.scripts.test, "node --test tests/*.test.mjs");
+  assert.equal(pkg.scripts.test, "node --test --test-concurrency=1 tests/*.test.mjs");
   assert.equal(pkg.dependencies, undefined);
   assert.equal(pkg.devDependencies, undefined);
 });
