@@ -35,7 +35,8 @@ scanner bridge. Its `popup.html` remains permanently disabled in the shipped
 build. This module does not install popup scripts or listeners, grant browser
 permissions, submit scans, read page content, or confer an opening verdict.
 Actual live activation is blocked until that separately reviewed integration
-is available; the toolbar presentation PR #514 also must land. The native
+is available. The toolbar presentation landed in PR #514, but its
+shipped button stays disabled until that integration exists. The native
 ClamAV, signature freshness, quarantine, file integrity, and user-selected
 PDF application rules are untouched.
 
