@@ -223,10 +223,11 @@ def _process_has_exited_without_reaping(process) -> bool:
             raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
     if sys.platform == "darwin":
         # Python 3.11 on macOS has no non-reaping os.waitid. /bin/ps can
-        # occasionally be delayed on hosted runners; retry a transient probe
-        # failure once, but accept exit only after an explicit zombie record.
-        # An absent, malformed or repeatedly unavailable status fails closed.
-        for _ in range(2):
+        # race with process shutdown and transiently return no status.
+        # Accept exit ONLY after an explicit zombie record. Never reap the
+        # group leader before killing descendants; repeatedly unavailable or
+        # malformed status still fails closed after these bounded retries.
+        for attempt in range(4):
             try:
                 completed = subprocess.run(
                     ("/bin/ps", "-o", "stat=", "-p", str(process.pid)),
@@ -240,6 +241,8 @@ def _process_has_exited_without_reaping(process) -> bool:
                     check=True,
                 )
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                if attempt < 3:
+                    time.sleep(0.02)
                 continue
             except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
                 raise SanitizerProcessExecutionError(BLOCK_MESSAGE) from None
@@ -248,6 +251,12 @@ def _process_has_exited_without_reaping(process) -> bool:
                     line.strip() for line in completed.stdout.decode("ascii").splitlines()
                     if line.strip()
                 ]
+                if not states:
+                    # An empty snapshot cannot prove exit; retry rather than
+                    # prematurely rejecting an otherwise secure worker.
+                    if attempt < 3:
+                        time.sleep(0.02)
+                    continue
                 if len(states) != 1 or not states[0][0].isalpha():
                     raise ValueError
                 return states[0][0].upper() == "Z"
