@@ -134,20 +134,28 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         leader_pid = 31337
         leader = unittest.mock.Mock(pid=leader_pid)
         cases = (
-            (b"31337 31337 Z\\n31338 31337 Z\\n", True),
-            (b"31337 31337 Z\\n31338 31337 S\\n", False),
-            (b"31338 31337 Z\\n", False),
+            (b"31337 31337 Z\n31338 31337 Z\n", True),
+            (b"31337 31337 Z\n31338 31337 S\n", False),
+            (b"31338 31337 Z\n", False),
             (b"invalid process table", False),
         )
         for stdout, allowed in cases:
-            with self.subTest(allowed=allowed, output=stdout), \\
-                    patch.object(sanitizer.sys, "platform", "darwin"), \\
-                    patch.object(sanitizer.os, "killpg",
-                                 side_effect=PermissionError(errno.EPERM, "denied")), \\
-                    patch.object(sanitizer, "_process_has_exited_without_reaping",
-                                 return_value=True), \\
-                    patch.object(sanitizer.subprocess, "run", return_value=
-                                 subprocess.CompletedProcess([], 0, stdout, b"")):
+            with (
+                self.subTest(allowed=allowed, output=stdout),
+                patch.object(sanitizer.sys, "platform", "darwin"),
+                patch.object(
+                    sanitizer.os, "killpg",
+                    side_effect=PermissionError(errno.EPERM, "denied"),
+                ),
+                patch.object(
+                    sanitizer, "_process_has_exited_without_reaping",
+                    return_value=True,
+                ),
+                patch.object(
+                    sanitizer.subprocess, "run",
+                    return_value=subprocess.CompletedProcess([], 0, stdout, b""),
+                ),
+            ):
                 if allowed:
                     sanitizer._stop_process_group(leader)
                     leader.kill.assert_not_called()
