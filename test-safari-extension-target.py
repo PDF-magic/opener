@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Check Safari Web Extension target structure and fail-closed packaging."""
+import json
+from pathlib import Path
+import plistlib
+import sys
+import unittest
+
+ROOT = Path(__file__).resolve().parent
+PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
+SAFARI = ROOT / "extensions" / "safari"
+SHARED = ROOT / "extensions" / "webextension" / "manifest.json"
+EXTENSION_ID = "local.studio.pdfmagicopener.swiftui.safari"
+TARGET_ID = "D56700000000000000000009"
+
+
+def verify_built_app(app: Path) -> None:
+  """Inspect the real macOS bundle without launching or installing anything."""
+  assert app.is_dir(), f"Missing host app: {app}"
+  extension = app / "Contents" / "PlugIns" / "PDFMagicOpenerSafari.appex"
+  plist_path = extension / "Contents" / "Info.plist"
+  assert plist_path.is_file(), f"Missing embedded Safari extension: {plist_path}"
+  with plist_path.open("rb") as f:
+    info = plistlib.load(f)
+  assert info["CFBundleIdentifier"] == EXTENSION_ID
+  assert info["CFBundlePackageType"] == "XPC!"
+  assert info["NSExtension"]["NSExtensionPointIdentifier"] == "com.apple.Safari.web-extension"
+  assert info["NSExtension"]["NSExtensionPrincipalClass"] == "PDFMagicOpenerSafari.SafariWebExtensionHandler"
+  executable = extension / "Contents" / "MacOS" / "PDFMagicOpenerSafari"
+  assert executable.is_file(), f"Missing compiled extension executable: {executable}"
+  bundled = extension / "Contents" / "Resources" / "manifest.json"
+  assert bundled.is_file(), f"Missing shared web extension manifest: {bundled}"
+  assert bundled.read_bytes() == SHARED.read_bytes(), "Safari manifest diverges from shared source"
+  manifest = json.loads(bundled.read_text(encoding="utf-8"))
+  assert manifest["permissions"] == [] and manifest["host_permissions"] == []
+  for forbidden in ("background", "action", "content_scripts", "externally_connectable"):
+    assert forbidden not in manifest
+  with (app / "Contents" / "Info.plist").open("rb") as f:
+    host = plistlib.load(f)
+  assert "CFBundleDocumentTypes" not in host
+  assert host["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"
+
+
+class SafariExtensionTargetTests(unittest.TestCase):
+  def test_plist_identifies_modern_safari_web_extension_only(self):
+    with (SAFARI / "Info.plist").open("rb") as f:
+      info = plistlib.load(f)
+    self.assertEqual(info["CFBundlePackageType"], "XPC!")
+    self.assertEqual(info["NSExtension"], {
+      "NSExtensionPointIdentifier": "com.apple.Safari.web-extension",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).SafariWebExtensionHandler",
+    })
+    with (SAFARI / "SafariExtension.entitlements").open("rb") as f:
+      self.assertEqual(plistlib.load(f), {"com.apple.security.app-sandbox": True})
+
+  def test_xcode_creates_separate_target_and_embeds_appex(self):
+    project = PROJECT.read_text(encoding="utf-8")
+    self.assertIn(f"{TARGET_ID} = {{", project)
+    for expected in (
+      'productType = "com.apple.product-type.app-extension";',
+      'productReference = D56700000000000000000006;',
+      'name = PDFMagicOpenerSafari;',
+      'dstSubfolderSpec = 13;',
+      'name = "Embed App Extensions";',
+      'target = D56700000000000000000009;',
+      'dependencies = (D5670000000000000000000D,);',
+      'targets = (A10000000000000000000008, D56700000000000000000009,);',
+      'APPLICATION_EXTENSION_API_ONLY = YES;',
+      'CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;',
+      'INFOPLIST_FILE = extensions/safari/Info.plist;',
+      'PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;',
+      'path = extensions/webextension/manifest.json;',
+      'files = (D56700000000000000000003,);',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, project)
+    self.assertEqual(project.count('productType = "com.apple.product-type.app-extension";'), 1)
+    self.assertEqual(project.count('dstSubfolderSpec = 13;'), 1)
+
+  def test_no_native_message_or_scanner_handoff(self):
+    source = (SAFARI / "SafariWebExtensionHandler.swift").read_text(encoding="utf-8")
+    self.assertIn("NSExtensionRequestHandling", source)
+    self.assertIn("context.completeRequest(returningItems: [], completionHandler: nil)", source)
+    for forbidden in ("SFExtensionMessageKey", "nativeMessaging", "NSWorkspace",
+                      "FileManager", "URLSession", "Process(", "open(", "clamscan",
+                      "context.inputItems", "@AppStorage", "UserDefaults"):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, source)
+
+  def test_shared_manifest_is_permission_free(self):
+    manifest = json.loads(SHARED.read_text(encoding="utf-8"))
+    self.assertEqual(manifest["manifest_version"], 3)
+    self.assertEqual(manifest["name"], "PDF Magic Opener")
+    self.assertEqual(manifest["permissions"], [])
+    self.assertEqual(manifest["host_permissions"], [])
+    for forbidden in ("background", "action", "content_scripts", "externally_connectable",
+                      "web_accessible_resources", "optional_permissions"):
+      self.assertNotIn(forbidden, manifest)
+
+  def test_ci_builds_and_inspects_embedded_extension(self):
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    self.assertIn("xcodebuild -project PDFMagicOpener.xcodeproj", ci)
+    self.assertIn("python3 test-safari-extension-target.py -v", ci)
+    self.assertIn("python3 test-safari-extension-target.py --verify-built-app", ci)
+    self.assertIn("CODE_SIGNING_ALLOWED=NO build", ci)
+
+
+if __name__ == "__main__":
+  if len(sys.argv) == 3 and sys.argv[1] == "--verify-built-app":
+    verify_built_app(Path(sys.argv[2]))
+  else:
+    unittest.main()
