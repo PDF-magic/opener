@@ -3,7 +3,9 @@
 `Host.swift` is a **standalone native executable source** for macOS. Build it with the system Swift compiler:
 
 ```sh
-xcrun swiftc -O -parse-as-library -warnings-as-errors native-messaging/Host.swift -o /path/to/pdf-magic-native-host
+xcrun swiftc -O -parse-as-library -warnings-as-errors \
+  native-messaging/Host.swift native-messaging/HostStatus.swift \
+  native-messaging/CallerOrigin.swift -o /path/to/pdf-magic-native-host
 ```
 
 The output is a real process executable, not a browser extension or PDF handler. It speaks browser native messaging transport: a 32-bit little-endian byte length followed by UTF-8 JSON on standard input, and the same framing on standard output. Frames are bounded to 16 KiB, matching the shared WebExtensions message envelope.
@@ -408,3 +410,31 @@ Normal complete messages and clean EOF remain unchanged. Browser-provided
 messages cannot override these fixed limits. The scanner remains unavailable
 from the transport-only native host, and signature freshness, quarantine,
 file integrity, scan verdicts and user PDF-opening preferences are unaffected.
+
+### Caller-origin admission (opener-0653)
+
+On a **browser-launched process**, the host now validates the caller's launch
+metadata **before reading any message**. On macOS, Chromium-family browsers
+pass a `chrome-extension://<32-character a–p ID>` origin (with or without a
+terminal slash); Firefox supplies its native host manifest path and Gecko
+extension ID as separate arguments. Unknown, malformed, extra or unsupported
+arguments terminate with no framed output or diagnostics. Only an exact
+allowlist match in a safe, per-user, browser-specific `org.pdfmagic.opener.json`
+registration with the canonical host name, `stdio` transport and the current
+executable path is admitted. Chromium candidates cover Chrome (also Opera),
+Chromium, Chrome for Testing, Edge, Brave, Vivaldi and Arc. Firefox uses its
+own `allowed_extensions` list and registered path. Missing, symlinked,
+conflicting or malformed registrations fail closed.
+
+A **no-argument** executable invocation retains the pre-existing, local
+transport-only behavior needed for regression probes. It is **not an
+identified browser** and cannot perform a privileged action. Likewise, a
+matching origin is **not authentication**: any local process can forge the
+command-line arguments and a locally managed manifest. Browser enforcement
+of the manifest, identity verification from a trusted browser adapter,
+explicit permission and a separately authenticated scanner coordinator are
+required before any privileged operation can be enabled. Do not use the
+origin or a successful handshake to authorize scanning or opening a PDF.
+The native host remains transport-only and makes no changes to PDF, scanner,
+user preferences or extension permissions. The existing required macOS CI
+runs the compiled-host and temporary registration-fixture regression tests.

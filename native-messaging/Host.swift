@@ -394,6 +394,8 @@ struct PDFMagicNativeMessagingHost {
   }
 
   static func main() {
+    // Validate a registered browser origin before receiving native messages.
+    guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
     do {
       // Admit before reading any caller input or emitting any protocol bytes.
       let slot = try acquireConnectionSlot()

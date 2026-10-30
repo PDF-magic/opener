@@ -14,6 +14,8 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "native-messaging" / "Host.swift"
 STATUS_SOURCE = ROOT / "native-messaging" / "HostStatus.swift"
+CALLER_SOURCE = ROOT / "native-messaging" / "CallerOrigin.swift"
+CALLER_TEST = ROOT / "test-caller-origin.swift"
 STATUS_TEST = ROOT / "test-native-host-status.swift"
 
 
@@ -143,12 +145,15 @@ class NativeMessagingHostTests(unittest.TestCase):
                              completed.stderr[-8000:])
 
     checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
-                     "-typecheck", str(SOURCE), str(STATUS_SOURCE)])
+                     "-typecheck", str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE)])
     checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
                      "-D", "NATIVE_HOST_CONNECTION_TESTING",
-                     str(SOURCE), str(STATUS_SOURCE), "-o", str(cls.binary)])
+                     str(SOURCE), str(STATUS_SOURCE), str(CALLER_SOURCE), "-o", str(cls.binary)])
     cls.prior_test_home = os.environ.get("PDF_MAGIC_NATIVE_TEST_HOME")
     os.environ["PDF_MAGIC_NATIVE_TEST_HOME"] = cls.directory.name
+    cls.caller_binary = Path(cls.directory.name) / "native-caller-origin-tests"
+    checked_compile([compiler, "-parse-as-library", "-warnings-as-errors",
+                     str(CALLER_SOURCE), str(CALLER_TEST), "-o", str(cls.caller_binary)])
     cls.status_binary = Path(cls.directory.name) / "native-host-status-tests"
     subprocess.run([compiler, "-parse-as-library", "-warnings-as-errors",
                     str(STATUS_SOURCE), str(STATUS_TEST), "-o", str(cls.status_binary)],
@@ -1137,11 +1142,23 @@ class NativeMessagingHostTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(result.stderr, b"")
 
-  def test_browser_supplied_origin_does_not_enable_a_scan(self):
-    result = self.run_host(frame(ping()), "chrome-extension://exampleid/")
-    self.assertEqual(result.returncode, 0)
-    reply, = responses(result.stdout)
-    self.assertFalse(reply["payload"]["scanAvailable"])
+  def test_browser_supplied_origin_must_be_verified_before_any_reply(self):
+    for raw_origin in ("chrome-extension://exampleid/",
+                       "chrome-extension://abcdefghijklmnopabcdefghijklmnop/",
+                       "https://unapproved.invalid", "*"):
+      with self.subTest(raw_origin=raw_origin):
+        result = self.run_host(frame(ping()), raw_origin)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+
+  def test_caller_origin_manifest_validation_fixtures(self):
+    completed = subprocess.run([str(self.caller_binary)],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               timeout=10, check=False)
+    self.assertEqual(completed.returncode, 0, completed.stderr.decode("utf-8"))
+    self.assertIn(b"fixture checks passed", completed.stdout)
+    self.assertEqual(completed.stderr, b"")
 
   def test_messages_cannot_launch_an_executable(self):
     # Exercise the compiled binary, not a mocked JSON validator. An attacker
