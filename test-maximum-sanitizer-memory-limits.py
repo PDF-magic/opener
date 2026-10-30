@@ -189,8 +189,10 @@ raise SystemExit(3)
         verified = subprocess.CompletedProcess(
             ("ps",), 0, b"101 101 Z+\n202 202 S+\n", None
         )
+        # A positively identified live process is not exited (False);
+        # absent, mismatched or malformed records must still raise.
         untrusted = (b"102 101 Z+\n", b"101 202 Z+\n",
-                     b"101 101 S+\n", b"invalid-data\n")
+                     b"invalid-data\n")
         with patch.object(sanitizer.sys, "platform", "darwin"), \
                 patch.object(sanitizer.time, "sleep"), patch.object(
                     sanitizer.subprocess, "run",
@@ -211,6 +213,14 @@ raise SystemExit(3)
                     ):
                 with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
                     sanitizer._process_has_exited_without_reaping(process)
+        live = subprocess.CompletedProcess(("ps",), 0, b"101 101 S+\n")
+        with patch.object(sanitizer.sys, "platform", "darwin"), \
+                patch.object(sanitizer.time, "sleep"), patch.object(
+                    sanitizer.subprocess, "run",
+                    side_effect=(empty, empty, empty, empty, live),
+                ) as probe:
+            self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
+            self.assertEqual(probe.call_count, 5)
         self.assertIsNone(process.returncode)
 
     def test_macos_exit_detection_fails_closed_when_status_is_unavailable(self):
