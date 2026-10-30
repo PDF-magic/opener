@@ -42,13 +42,13 @@ jobs:
       - name: Compile native progress UI and verify the SwiftUI integration
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
-          python3 test-scan-progress-component.py -v
+          PYTHONPATH=. python3 tests/scan/progress-component.py -v
       - name: Verify the real macOS deny-by-default filesystem sandbox
-        run: python3 test-maximum-filesystem-sandbox.py -v
+        run: PYTHONPATH=. python3 tests/maximum/filesystem-sandbox.py -v
       - name: Install pinned dependencies for native CoreGraphics and isolated-renderer tests
         run: python3 -m pip install --disable-pip-version-check "pypdf==5.9.0" "Pillow==11.3.0" "cryptography==46.0.4" "pymupdf==2.0"
       - name: Verify native isolated renderer under deny-by-default confinement
-        run: python3 test-maximum-isolated-renderer.py -v
+        run: PYTHONPATH=. python3 tests/maximum/isolated-renderer.py -v
       - name: Diagnose failed renderer resource setup with no PDF input
         if: ${{ failure() }}
         run: |
@@ -110,20 +110,20 @@ jobs:
         run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: Verify native raster conversion, page fidelity and active-content removal
         run: |
-          python3 test-maximum-sanitized-copy.py -v
-          python3 test-maximum-active-content-removal.py -v
-          python3 test-maximum-sanitizer-reporting.py -v
+          PYTHONPATH=. python3 tests/maximum/sanitized-copy.py -v
+          PYTHONPATH=. python3 tests/maximum/active-content-removal.py -v
+          PYTHONPATH=. python3 tests/maximum/sanitizer-reporting.py -v
       - name: Verify sanitizer resource ceilings and process cleanup
         run: |
-          python3 test-maximum-sanitizer-time-limits.py -v
-          python3 test-maximum-sanitizer-memory-limits.py -v
+          PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
+          PYTHONPATH=. python3 tests/maximum/sanitizer-memory-limits.py -v
       - name: Verify generated copies are rescanned before browser handoff
-        run: python3 test-maximum-generated-rescan.py -v
+        run: PYTHONPATH=. python3 tests/maximum/generated-rescan.py -v
       - name: Verify password-protected PDFs never produce sanitized-copy offers
-        run: python3 test-maximum-password-protected.py -v
+        run: PYTHONPATH=. python3 tests/maximum/password-protected.py -v
       - name: Verify the sanitized copy is separate from the original and is safely handed off
-        run: python3 test-maximum-safe-copy-handoff.py -v
+        run: PYTHONPATH=. python3 tests/maximum/safe-copy-handoff.py -v
       - name: Verify sanitized output structure contains no copied active metadata
-        run: python3 test-maximum-sanitized-structure.py -v
+        run: PYTHONPATH=. python3 tests/maximum/sanitized-structure.py -v
       - name: Reject temporary output symlink, hardlink and directory substitutions
-        run: python3 test-maximum-temporary-output.py -v
+        run: PYTHONPATH=. python3 tests/maximum/temporary-output.py -v
