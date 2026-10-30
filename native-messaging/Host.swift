@@ -82,6 +82,29 @@ struct PDFMagicNativeMessagingHost {
       var status = NativeHostStatus.current()
       status["clientNonce"] = clientNonce
       payload = status
+    case "scan.request":
+      // Define the request protocol without enabling a scan. A handshake is
+      // transport readiness, never authentication or proof of a user gesture.
+      // A trusted coordinator must separately select a local PDF and enforce
+      // scanner, freshness, integrity, quarantine and opening requirements.
+      guard handshakeComplete,
+            let scanRequest = message["payload"] as? [String: Any],
+            scanRequest.count == 1,
+            let intent = scanRequest["intent"] as? String,
+            intent == "user-selected-pdf" else {
+        throw HostError.invalidMessage
+      }
+      // Do not accept paths, browser download metadata, file contents,
+      // claimed verdicts, or caller-provided policy overrides. This reply
+      // neither queues work nor confirms an actual scan was performed.
+      payload = [
+        "status": "unavailable",
+        "reason": "trusted-scan-coordinator-required",
+        "scanAvailable": false,
+        "scanStarted": false,
+        "scanVerified": false,
+        "authorizesOpen": false
+      ]
     default:
       throw HostError.invalidMessage
     }

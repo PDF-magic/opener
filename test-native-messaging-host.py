@@ -37,6 +37,20 @@ def handshake_response(request_id="hello_1", client_nonce="Client_Challenge_1234
             "clientNonce": client_nonce, "scanAvailable": False}}
 
 
+def scan_request(request_id="scan_1"):
+  return dict(ping(request_id), topic="scan.request",
+              payload={"intent": "user-selected-pdf"})
+
+
+def unavailable_scan_reply(request_id="scan_1"):
+  return {"version": 1, "kind": "response", "topic": "scan.request",
+          "requestId": request_id, "payload": {
+            "status": "unavailable",
+            "reason": "trusted-scan-coordinator-required",
+            "scanAvailable": False, "scanStarted": False,
+            "scanVerified": False, "authorizesOpen": False}}
+
+
 def responses(output):
   decoded = []
   while output:
@@ -199,6 +213,99 @@ class NativeMessagingHostTests(unittest.TestCase):
       self.assert_handshake_response(replies[0])
       self.assertEqual(result.stderr, b"")
       self.assertFalse(sentinel.exists())
+
+  def test_scan_request_requires_completed_handshake(self):
+    result = self.run_host(frame(scan_request()))
+    self.assertNotEqual(result.returncode, 0)
+    self.assertEqual(result.stdout, b"")
+    self.assertEqual(result.stderr, b"")
+
+    # A successful ping is not a handshake or an authorization.
+    result = self.run_host(frame(ping("ping_1")) + frame(scan_request()))
+    self.assertNotEqual(result.returncode, 0)
+    self.assertEqual(responses(result.stdout)[0]["topic"], "host.ping")
+    self.assertEqual(len(responses(result.stdout)), 1)
+    self.assertEqual(result.stderr, b"")
+
+  def test_scan_request_returns_correlated_explicit_unavailability(self):
+    result = self.run_host(frame(handshake()) + frame(scan_request()))
+    self.assertEqual(result.returncode, 0)
+    self.assertEqual(result.stderr, b"")
+    replies = responses(result.stdout)
+    self.assertEqual(len(replies), 2)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply())
+    self.assertFalse(replies[1]["payload"]["scanStarted"])
+    self.assertFalse(replies[1]["payload"]["authorizesOpen"])
+
+  def test_scan_request_never_mutates_handshake_or_ping(self):
+    result = self.run_host(
+      frame(handshake()) +
+      frame(scan_request("manual_1")) +
+      frame(ping("check_1")) +
+      frame(scan_request("manual_2"))
+    )
+    self.assertEqual(result.returncode, 0)
+    self.assertEqual(result.stderr, b"")
+    replies = responses(result.stdout)
+    self.assertEqual(len(replies), 4)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply("manual_1"))
+    self.assertEqual(replies[2]["topic"], "host.ping")
+    self.assertEqual(replies[2]["payload"],
+                     {"status": "transport-only", "scanAvailable": False})
+    self.assertEqual(replies[3], unavailable_scan_reply("manual_2"))
+
+  def test_scan_request_rejects_paths_claimed_verdicts_and_malformed_intent(self):
+    good = scan_request()
+    invalid = [
+      dict(good, payload=None),
+      dict(good, payload={}),
+      dict(good, payload={"intent": True}),
+      dict(good, payload={"intent": 1}),
+      dict(good, payload={"intent": "pdf.open"}),
+      dict(good, payload={"intent": "browser-download"}),
+      dict(good, payload={"intent": "user-selected-pdf", "path": "/tmp/file.pdf"}),
+      dict(good, payload={"intent": "user-selected-pdf", "downloadId": 12}),
+      dict(good, payload={"intent": "user-selected-pdf", "sourceUrl": "https://invalid.example/"}),
+      dict(good, payload={"intent": "user-selected-pdf", "scanVerified": True}),
+      dict(good, payload={"intent": "user-selected-pdf", "protectionLevel": "off"}),
+      dict(good, payload=["user-selected-pdf"]),
+      dict(good, kind="event"),
+      dict(good, version=2),
+      dict(good, requestId="../secret"),
+      dict(good, topic="pdf.scan"),
+    ]
+    for request in invalid:
+      with self.subTest(request=request):
+        result = self.run_host(frame(handshake()) + frame(request))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, b"")
+        replies = responses(result.stdout)
+        self.assertEqual(len(replies), 1)
+        self.assert_handshake_response(replies[0])
+
+  def test_scan_request_never_reads_or_opens_caller_paths(self):
+    with tempfile.TemporaryDirectory(prefix="native-scan-request-inert-") as d:
+      private_file = Path(d) / "private.pdf"
+      private_file.write_bytes(b"private contents are not native messages")
+      bad = dict(scan_request(), payload={
+        "intent": "user-selected-pdf", "path": str(private_file)
+      })
+      result = self.run_host(frame(handshake()) + frame(bad))
+      self.assertNotEqual(result.returncode, 0)
+      self.assertEqual(result.stderr, b"")
+      self.assertNotIn(str(private_file).encode(), result.stdout)
+      self.assertNotIn(private_file.read_bytes(), result.stdout)
+      self.assertEqual(private_file.read_bytes(),
+                       b"private contents are not native messages")
+
+      # Even a valid request does not scan, launch, or alter the file.
+      result = self.run_host(frame(handshake()) + frame(scan_request()))
+      self.assertEqual(result.returncode, 0)
+      self.assertEqual(responses(result.stdout)[1], unavailable_scan_reply())
+      self.assertEqual(private_file.read_bytes(),
+                       b"private contents are not native messages")
 
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",

@@ -61,6 +61,44 @@ The confirmation means *transport readiness only*; the challenge echo and
 request ID are **not authentication, a session credential, or authorization**.
 No caller identity, host authenticity, scanner state, or trust is established.
 
+### Scan-request message (opener-0628)
+
+After a successful `host.handshake` on the **same native host process**, a
+caller may express manual scan intent using a bounded v1 request:
+
+```json
+{"version":1,"kind":"request","topic":"scan.request","requestId":"scan_1","payload":{"intent":"user-selected-pdf"}}
+```
+
+The payload must contain **exactly one** string field, `intent`, equal to
+`"user-selected-pdf"`. It deliberately contains **no local file path, URL,
+download ID, file bytes, claimed verdict, profile override, or authority
+token**. A caller's declaration of manual intent is not proof of a user
+gesture or of a trusted file selection.
+
+Until a separately authenticated and reviewed native coordinator is installed,
+the host emits a **correlated rejection** with the same `requestId`:
+
+```json
+{"version":1,"kind":"response","topic":"scan.request","requestId":"scan_1","payload":{"status":"unavailable","reason":"trusted-scan-coordinator-required","scanAvailable":false,"scanStarted":false,"scanVerified":false,"authorizesOpen":false}}
+```
+
+This is a defined message exchange, **not scan execution or scan submission**.
+It does not enqueue or launch a scanner, open files, access the filesystem,
+record paths, create persistent state or change user preferences. A valid
+request may be repeated; every reply remains unavailable. Scan requests
+before the connection handshake, malformed payloads, unsupported versions,
+extra fields and the older `pdf.scan` topic fail closed without a response.
+The host still does not register itself with browsers, request extension
+permissions or authenticate the caller. **A handshake is not sufficient
+authentication** for scanning.
+
+Enabling actual scans is a separate integration task requiring authenticated
+extension identity, an explicit trusted user-selected local file, the existing
+mandatory ClamAV and signature freshness gate, file integrity and quarantine
+checks, verified destination handoff, and safe cancellation/results. No browser
+input may weaken these checks; no message is proof a PDF is clean.
+
 The existing `host.ping` request remains a backward-compatible, read-only
 liveness probe before or after a handshake:
 
