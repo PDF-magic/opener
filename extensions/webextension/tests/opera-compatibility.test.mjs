@@ -40,12 +40,12 @@ test("Opera gets the same inert popup and background assets as the shared build"
   assert.equal(await get("dist/popup.css"), await get("src/popup.css"));
 });
 
-test("Opera CI uses the actual stable browser, not a Chromium-only approximation", async () => {
+test("Opera CI connects to the actual stable browser, not a Chromium-only approximation", async () => {
   const smoke = await get("scripts/smoke-opera.mjs");
   for (const requirement of [
-    "playwright-core", "/usr/bin/opera", "launchPersistentContext",
-    "--load-extension=", "serviceWorkers()", "chrome.runtime.getManifest",
-    "chrome.permissions.contains", "isDisabled()", "mkdtemp(", "context?.close()",
+    "puppeteer-core", "/usr/bin/opera", "puppeteer.connect",
+    "--load-extension=", "service_worker", "chrome.runtime.getManifest",
+    "chrome.permissions.contains", "el.disabled", "mkdtemp(", "browser?.close()",
     "rm(profile"
   ]) assert.ok(smoke.includes(requirement), requirement);
   assert.ok(!smoke.includes("chromium.launch("),

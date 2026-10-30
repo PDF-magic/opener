@@ -41,7 +41,7 @@ jobs:
           echo 'deb [signed-by=/usr/share/keyrings/opera-browser.gpg] https://deb.opera.com/opera-stable/ stable non-free' |
             sudo tee /etc/apt/sources.list.d/opera-archive.list
           sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq opera-stable xvfb
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq opera-stable xvfb gsettings-desktop-schemas dbus-x11
           test -x /usr/bin/opera
           /usr/bin/opera --version
       - name: Set up Node.js
@@ -55,10 +55,10 @@ jobs:
           node --test tests/opera-compatibility.test.mjs
       - name: Install CI-only Opera automation driver
         working-directory: extensions/webextension
-        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund puppeteer-core@24.24.1
       - name: Launch real Opera Stable with a disposable profile and inspect the extension
         working-directory: extensions/webextension
         timeout-minutes: 4
         env:
           OPERA_BROWSER_PATH: /usr/bin/opera
-        run: xvfb-run -a --server-args="-screen 0 1440x900x24" node scripts/smoke-opera.mjs
+        run: dbus-run-session -- xvfb-run -a --server-args="-screen 0 1440x900x24" node scripts/smoke-opera.mjs

@@ -13,11 +13,12 @@ documented GPG signing-key fingerprint:
 https://deb.opera.com/manual.html
 
 The test builds the already validated, unpacked Chromium Manifest V3
-extension from the shared project and uses a CI-only automation driver to
-launch /usr/bin/opera in an Xvfb display with an isolated, disposable
-profile. Opera is **not officially supported by Playwright**; a launch
-failure or divergent debugging protocol is treated as a failed test, not
-evidence that Opera is compatible with the extension.
+extension from the shared project and uses a CI-only Puppeteer Core driver to connect to Opera's actual, locally
+bound Chromium DevTools debugging endpoint in an Xvfb display with an
+isolated, disposable profile. Opera is **not officially supported by
+Playwright**; this test does not use Playwright's incompatible Opera launch
+pipe or silently substitute Chromium. Missing or divergent Opera debugging
+support is treated as a failure, not evidence of compatibility.
 
 The browser smoke test checks that the real Opera instance loads the
 extension background service worker and exposes the least-privilege
