@@ -27,7 +27,11 @@ async function load() {
 }
 
 function browserRows(documentation) {
-  return documentation.split("\n").filter((line) =>
+  // The capability matrix and strict-interception matrix intentionally
+  // describe different browser capabilities; never combine their rows.
+  const section = documentation.split("## Browser-by-browser support matrix")[1]
+    ?.split("## Strict pre-open interception availability (opener-0717)")[0] ?? "";
+  return section.split("\n").filter((line) =>
     /^\| (?:Brave \(default\)|Google Chrome|Chromium|Microsoft Edge|Vivaldi|Opera|Arc|Mozilla Firefox|Apple Safari) \|/.test(line));
 }
 
@@ -194,7 +198,8 @@ test("strict-interception definition covers browser-owned and OS bypass paths wi
   const section = documentation.split("## Strict pre-open interception availability (opener-0717)")[1]
     .split("\n## What can actually be enforced?")[0];
   for (const phrase of [
-    "universal, pre-open veto",
+    "universal",
+    "pre-open veto",
     "public WebExtensions downloads API",
     "automatic-open",
     "inline",
@@ -203,7 +208,8 @@ test("strict-interception definition covers browser-owned and OS bypass paths wi
     "downloads.onChanged",
     "downloads.onErased",
     "downloads.onDeterminingFilename",
-    "filename selection",
+    "filename",
+    "selection",
     "downloads.open",
     "user gesture",
     "browser's own",
