@@ -9,6 +9,7 @@ import {
 
 const expected = {
   downloadMonitoringEnabled: false,
+  scanPdfsOnly: true,
   automaticScanRequestsEnabled: false,
   nativeMessagingEnabled: false,
   automaticOpenEnabled: false,
@@ -19,9 +20,9 @@ test("defaults have an explicit version and only safe disabled capabilities", ()
   assert.equal(EXTENSION_CONFIG_VERSION, 1);
   assert.deepEqual(DEFAULT_EXTENSION_CONFIG, expected);
   assert.deepEqual(Object.keys(DEFAULT_EXTENSION_CONFIG).sort(), Object.keys(expected).sort());
-  for (const value of Object.values(DEFAULT_EXTENSION_CONFIG)) {
+  for (const [key, value] of Object.entries(DEFAULT_EXTENSION_CONFIG)) {
     assert.equal(typeof value, "boolean");
-    assert.equal(value, false);
+    assert.equal(value, key === "scanPdfsOnly");
   }
 });
 
