@@ -20,9 +20,12 @@ npm test
 
 The shared Manifest V3 `action` displays the existing PDF Magic Opener icon
 in the browser toolbar with the truthful title **PDF Magic Opener (not active)**.
-It has no popup, click handler, PDF scanner, or launch behavior; interactions
-require separate review. The Chromium and Firefox builds package the same
-local toolbar icons without adding permissions or host access.
+It opens a static, accessible **Not active** popup with no controls, scripts,
+PDF scanner or launch behavior. Active interactions require separate review.
+The Chromium and Firefox builds package local toolbar icons and the fixed
+`popup.html` and `popup.css` assets without adding permissions or host access.
+The popup does not read browser state, user preferences or document contents.
+The build rejects scripts, remote links, active controls and symlinked assets.
 
 The build writes `dist/manifest.json`, packages an inert `dist/background.js`
 Manifest V3 module service-worker entry point from `src/background.js`, and copies
