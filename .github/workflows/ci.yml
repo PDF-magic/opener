@@ -323,6 +323,8 @@ jobs:
           npm run package:firefox
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
+      - name: Audit distribution-channel package and signing prerequisites
+        run: python3 test-extension-distribution.py -v
       - name: Upload validated Chrome extension package
         uses: actions/upload-artifact@v4
         with:
