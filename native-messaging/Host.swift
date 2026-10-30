@@ -25,6 +25,14 @@ struct PDFMagicNativeMessagingHost {
     "version", "kind", "topic", "requestId", "payload"
   ]
 
+  // Keep a separate allowlist for native message operations. A new switch
+  // handler is unusable until its topic passes an explicit security review.
+  // No message topic can select an executable, process or shell.
+  private static let approvedTopics: Set<String> = [
+    "host.handshake", "host.health", "host.ping",
+    "scan.cancel", "scan.request", "scan.result", "scan.status"
+  ]
+
   // Browser nativeMessaging starts one host process per port; process-local
   // counters do not constrain connections created by other browser processes.
   // Four advisory file-lock slots limit concurrent hosts for the *real* OS user.
@@ -171,6 +179,7 @@ struct PDFMagicNativeMessagingHost {
           version.intValue == 1 && version.doubleValue == 1,
           let kind = message["kind"] as? String, kind == "request",
           let topic = message["topic"] as? String,
+          approvedTopics.contains(topic),
           let requestId = message["requestId"] as? String,
           isValidRequestId(requestId) else {
       throw HostError.invalidMessage
