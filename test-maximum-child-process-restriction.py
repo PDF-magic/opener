@@ -134,6 +134,10 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
+        context.update({
+            key: str((ROOT / filename).resolve())
+            for key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT
+        })
         with (
             patch.object(renderer.sys, "platform", "darwin"),
             patch.object(renderer, "_renderer_sandbox_context", return_value=context),
@@ -149,6 +153,9 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertIn("(deny process-fork)", command[2])
         self.assertNotIn("(allow default)", command[2])
         self.assertNotIn("(allow file-write", command[2])
+        for key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
+            self.assertIn(parameter + "=" + context[key], command)
+            self.assertIn('(literal (param "' + parameter + '"))', command[2])
 
     @unittest.skipUnless(sys.platform == "linux", "Linux seccomp enforcement test")
     def test_linux_kernel_denies_fork_and_process_spawning_but_allows_threads(self):
