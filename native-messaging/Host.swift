@@ -395,7 +395,20 @@ struct PDFMagicNativeMessagingHost {
 
   static func main() {
     // Validate a registered browser origin before receiving native messages.
+    // The isolated compiled-host tests must not access real browser profiles.
+    // Production always resolves the OS-managed home, never a caller-supplied HOME.
+    #if NATIVE_HOST_CONNECTION_TESTING
+    guard let executable = Bundle.main.executableURL?.standardizedFileURL.path,
+          let fixtureHome = ProcessInfo.processInfo.environment["HOME"],
+          !fixtureHome.isEmpty,
+          NativeCallerOrigin.verify(
+            arguments: CommandLine.arguments,
+            home: URL(fileURLWithPath: fixtureHome, isDirectory: true),
+            executable: executable
+          ) != .denied else { exit(1) }
+    #else
     guard NativeCallerOrigin.verifyProcessArguments() != .denied else { exit(1) }
+    #endif
     do {
       // Validate the exact installed native host extension identity independently
       // of the browser's origin marker, before admitting a connection.
