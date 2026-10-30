@@ -172,18 +172,38 @@ class MaximumProcessTerminationTests(unittest.TestCase):
         self.assertEqual(result.exception.category, "worker-exit")
         self.assertNotIn("Users", str(result.exception))
 
-    def test_macos_eperm_never_ignores_live_worker_descendants(self):
-        process = type("FakeWorker", (), {"pid": 101, "returncode": 0, "kill": lambda self: None})()
-        zombie = subprocess.CompletedProcess(("ps",), 0, b"101 Z+\n202 S+\n", None)
-        living = subprocess.CompletedProcess(("ps",), 0, b"101 S+\n", None)
+    def test_macos_eperm_requires_verified_zombie_leader(self):
+        process = type("FakeWorker", (), {
+            "pid": 101, "returncode": None, "kill": lambda self: None,
+        })()
+        verified = subprocess.CompletedProcess(
+            ("ps",), 0, b"101 101 Z+\n102 101 Z\n202 202 S+\n"
+        )
+        invalid = (
+            b"",
+            b"202 202 Z\n",
+            b"102 101 Z\n",
+            b"101 202 Z\n102 101 Z\n",
+            b"101 101 S\n",
+            b"101 101 Z\n102 101 S\n",
+            b"not-a-process-record\n",
+        )
         with patch.object(guard.sys, "platform", "darwin"), \
                 patch.object(guard.os, "killpg",
                              side_effect=PermissionError(errno.EPERM, "private")):
-            with patch.object(guard.subprocess, "run", return_value=zombie):
+            with patch.object(guard.subprocess, "run", return_value=verified) as probe:
                 guard._stop_group(process)
-            with patch.object(guard.subprocess, "run", return_value=living):
-                with self.assertRaises(guard.MaximumProcessTerminationError):
-                    guard._stop_group(process)
+                self.assertEqual(
+                    probe.call_args.args[0],
+                    ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
+                )
+            for table in invalid:
+                with self.subTest(table=table), \
+                        patch.object(guard.subprocess, "run", return_value=(
+                            subprocess.CompletedProcess(("ps",), 0, table)
+                        )):
+                    with self.assertRaises(guard.MaximumProcessTerminationError):
+                        guard._stop_group(process)
 
     def test_only_opt_in_maximum_uses_new_supervisor(self):
         from pathlib import Path

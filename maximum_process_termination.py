@@ -32,24 +32,31 @@ class MaximumProcessTerminationError(RuntimeError):
 
 
 def _macos_group_is_zombie_only(pgid):
-    """Verify that an EPERM process group has no live members."""
-    if sys.platform != "darwin":
+    """Prove the unreaped group leader and all group members are zombies."""
+    if sys.platform != "darwin" or type(pgid) is not int or pgid <= 0:
         return False
     try:
         result = subprocess.run(
-            ("/bin/ps", "-A", "-o", "pgid=,stat="),
+            ("/bin/ps", "-A", "-o", "pid=,pgid=,stat="),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, close_fds=True, cwd="/",
             env={"PATH": "/usr/bin:/bin", "LANG": "C"},
             timeout=2, check=True,
         )
+        found_leader = False
         for line in result.stdout.decode("ascii").splitlines():
             fields = line.split()
-            if len(fields) != 2 or not fields[0].isdecimal() or not fields[1]:
+            if (len(fields) != 3 or not fields[0].isdecimal()
+                    or not fields[1].isdecimal() or not fields[2][0].isalpha()):
                 return False
-            if int(fields[0]) == pgid and fields[1][0].upper() != "Z":
+            pid, group, state = int(fields[0]), int(fields[1]), fields[2]
+            if group != pgid:
+                continue
+            if state[0].upper() != "Z":
                 return False
-        return True
+            if pid == pgid:
+                found_leader = True
+        return found_leader
     except (OSError, ValueError, UnicodeDecodeError, subprocess.SubprocessError):
         return False
 
