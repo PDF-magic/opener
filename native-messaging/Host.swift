@@ -44,7 +44,7 @@ struct PDFMagicNativeMessagingHost {
     }
   }
 
-  private static func response(for data: Data) throws -> Data {
+  private static func response(for data: Data, handshakeComplete: inout Bool) throws -> Data {
     guard let message = try JSONSerialization.jsonObject(with: data) as? [String: Any],
           Set(message.keys) == expectedFields,
           let version = message["version"] as? NSNumber,
@@ -54,24 +54,50 @@ struct PDFMagicNativeMessagingHost {
             String(cString: version.objCType)),
           version.intValue == 1 && version.doubleValue == 1,
           let kind = message["kind"] as? String, kind == "request",
-          let topic = message["topic"] as? String, topic == "host.ping",
+          let topic = message["topic"] as? String,
           let requestId = message["requestId"] as? String,
-          isValidRequestId(requestId),
-          message["payload"] is NSNull else {
+          isValidRequestId(requestId) else {
       throw HostError.invalidMessage
     }
 
-    // A transport liveness response is not an authenticated session, scan verdict,
-    // permission grant, or authorization to open any PDF.
+    let payload: [String: Any]
+    switch topic {
+    case "host.ping":
+      // Preserve the existing read-only liveness probe before and after hello.
+      guard message["payload"] is NSNull else { throw HostError.invalidMessage }
+      payload = ["status": "transport-only", "scanAvailable": false]
+    case "host.handshake":
+      // One version-1 handshake per process. Echoing a bounded challenge proves
+      // correlation only: it does NOT authenticate the browser or host.
+      guard !handshakeComplete,
+            let hello = message["payload"] as? [String: Any],
+            hello.count == 1,
+            let clientNonce = hello["clientNonce"] as? String,
+            (16...64).contains(clientNonce.utf8.count),
+            isValidRequestId(clientNonce) else {
+        throw HostError.invalidMessage
+      }
+      payload = [
+        "status": "transport-only",
+        "protocolVersion": 1,
+        "clientNonce": clientNonce,
+        "scanAvailable": false
+      ]
+    default:
+      throw HostError.invalidMessage
+    }
+
+    // This is transport readiness, not a scan verdict or permission grant.
     let reply: [String: Any] = [
       "version": 1,
       "kind": "response",
-      "topic": "host.ping",
+      "topic": topic,
       "requestId": requestId,
-      "payload": ["status": "transport-only", "scanAvailable": false]
+      "payload": payload
     ]
     let encoded = try JSONSerialization.data(withJSONObject: reply, options: [.sortedKeys])
     guard encoded.count <= maximumFrameBytes else { throw HostError.invalidMessage }
+    if topic == "host.handshake" { handshakeComplete = true }
     return encoded
   }
 
@@ -89,8 +115,10 @@ struct PDFMagicNativeMessagingHost {
 
   static func main() {
     do {
+      // Connection-local only; a new host process starts with no handshake.
+      var handshakeComplete = false
       while let request = try readFrame() {
-        try writeFrame(response(for: request))
+        try writeFrame(response(for: request, handshakeComplete: &handshakeComplete))
       }
     } catch {
       // No stderr or stdout diagnostics: native paths and user data must not leak.

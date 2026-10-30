@@ -23,6 +23,18 @@ def ping(request_id="test_1"):
           "requestId": request_id, "payload": None}
 
 
+def handshake(request_id="hello_1", client_nonce="Client_Challenge_123456789"):
+  return dict(ping(request_id), topic="host.handshake",
+              payload={"clientNonce": client_nonce})
+
+
+def handshake_response(request_id="hello_1", client_nonce="Client_Challenge_123456789"):
+  return {"version": 1, "kind": "response", "topic": "host.handshake",
+          "requestId": request_id, "payload": {
+            "status": "transport-only", "protocolVersion": 1,
+            "clientNonce": client_nonce, "scanAvailable": False}}
+
+
 def responses(output):
   decoded = []
   while output:
@@ -81,6 +93,75 @@ class NativeMessagingHostTests(unittest.TestCase):
     self.assertEqual(result.returncode, 0)
     self.assertEqual([message["requestId"] for message in responses(result.stdout)],
                      ["first", "second"])
+
+  def test_handshake_acknowledges_version_and_echoes_client_challenge(self):
+    result = self.run_host(frame(handshake()))
+    self.assertEqual(result.returncode, 0)
+    self.assertEqual(result.stderr, b"")
+    self.assertEqual(responses(result.stdout), [handshake_response()])
+    self.assertFalse(responses(result.stdout)[0]["payload"]["scanAvailable"])
+
+  def test_handshake_is_one_time_and_connection_local(self):
+    first = handshake()
+    second = handshake("hello_2", "Another_Challenge_123456789")
+    duplicate = self.run_host(frame(first) + frame(second))
+    self.assertNotEqual(duplicate.returncode, 0)
+    self.assertEqual(responses(duplicate.stdout), [handshake_response()])
+    self.assertEqual(duplicate.stderr, b"")
+
+    # A fresh native host process has independent handshake state.
+    for request in (first, second):
+      with self.subTest(request=request["requestId"]):
+        result = self.run_host(frame(request))
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(len(responses(result.stdout)), 1)
+
+  def test_handshake_and_legacy_ping_can_share_one_connection(self):
+    result = self.run_host(frame(ping("before")) + frame(handshake()) +
+                           frame(ping("after")))
+    self.assertEqual(result.returncode, 0)
+    self.assertEqual(result.stderr, b"")
+    replies = responses(result.stdout)
+    self.assertEqual([r["topic"] for r in replies],
+                     ["host.ping", "host.handshake", "host.ping"])
+    self.assertEqual([r["requestId"] for r in replies],
+                     ["before", "hello_1", "after"])
+    self.assertEqual(replies[1], handshake_response())
+    self.assertEqual(replies[0]["payload"], replies[2]["payload"])
+
+  def test_rejects_malformed_handshakes_without_reply(self):
+    valid = handshake()
+    invalid = [
+      dict(valid, payload=None),
+      dict(valid, payload={}),
+      dict(valid, payload={"clientNonce": ""}),
+      dict(valid, payload={"clientNonce": "too_short"}),
+      dict(valid, payload={"clientNonce": "x" * 65}),
+      dict(valid, payload={"clientNonce": "a" * 16 + "/"}),
+      dict(valid, payload={"clientNonce": 1234567890123456}),
+      dict(valid, payload={"clientNonce": True}),
+      dict(valid, payload={"clientNonce": "a" * 16, "scanVerified": True}),
+      dict(valid, version=2),
+      dict(valid, kind="event"),
+      dict(valid, topic="host.handshake", requestId="invalid/path"),
+    ]
+    for message in invalid:
+      with self.subTest(message=message):
+        result = self.run_host(frame(message))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+
+  def test_handshake_never_authorizes_native_pdf_actions(self):
+    with tempfile.TemporaryDirectory(prefix="native-handshake-no-action-") as d:
+      sentinel = Path(d) / "would-be-created"
+      attack = dict(ping("open_1"), topic="pdf.open", payload={
+        "path": str(sentinel), "command": "touch " + str(sentinel)})
+      result = self.run_host(frame(handshake()) + frame(attack))
+      self.assertNotEqual(result.returncode, 0)
+      self.assertEqual(responses(result.stdout), [handshake_response()])
+      self.assertEqual(result.stderr, b"")
+      self.assertFalse(sentinel.exists())
 
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",
