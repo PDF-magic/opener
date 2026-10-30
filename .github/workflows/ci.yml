@@ -368,6 +368,9 @@ jobs:
       - name: Verify passive top-frame PDF navigation detection contract
         working-directory: extensions/webextension
         run: node --test tests/pdf-navigation.test.mjs
+      - name: Test PDF links through browser-observed redirects
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-redirect-links.test.mjs
       - name: Verify passive privileged PDF viewer page recognition
         working-directory: extensions/webextension
         run: node --test tests/pdf-privileged-viewer.test.mjs
