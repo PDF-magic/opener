@@ -26,7 +26,8 @@ test("native host registration inventory is canonical and contains every support
     assert.deepEqual(Object.keys(entry).sort(), [
       "browser", "evidence", "registration", "source", "userManifestDirectory"
     ]);
-    assert.match(entry.userManifestDirectory, /^~\\/Library\\/Application Support\\/.+\\/NativeMessagingHosts$/);
+    assert.equal(entry.userManifestDirectory.startsWith("~/Library/Application Support/"), true);
+    assert.equal(entry.userManifestDirectory.endsWith("/NativeMessagingHosts"), true);
     assert.equal(entry.userManifestDirectory.includes(".."), false);
     assert.match(entry.source, /^https:\/\//);
     assert.ok(["publisher-documented", "integration-reference-not-publisher-confirmed"].includes(entry.evidence));
