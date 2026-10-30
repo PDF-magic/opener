@@ -280,6 +280,15 @@ jobs:
         run: python3 test-technical-preferences-help.py -v
       - name: Verify Extensions and Integrations settings page
         run: python3 test-extensions-integrations-settings-page.py -v
+      - name: Set up Node.js for shared WebExtensions project checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build and test shared WebExtensions project
+        working-directory: extensions/webextension
+        run: |
+          npm run build
+          npm test
       - name: Verify native Settings shortcut
         run: python3 test-settings-keyboard-shortcut.py -v
       - name: Verify menu-bar status item decision
