@@ -24,3 +24,13 @@ Run `python3 test-safari-extension-target.py -v` for portable structural
 tests. macOS CI builds the app and checks the actual embedded .appex,
 executable, Info.plist and byte-for-byte shared manifest without launching
 Safari or installing an extension.
+
+## Inert shared background entry (opener-0568)
+
+The shared Manifest V3 now declares a **no-op module service worker**. The
+Safari extension resources bundle `background.js` directly beside the exact
+shared `manifest.json`; neither file is generated from document contents.
+The fixed script registers no listeners or messaging, reads no PDFs, and has
+no browser privileges or native scanner access. Its bundle presence and exact
+source bytes are verified by the Safari CI checks. This scaffolding does not
+make the extension functional or grant a PDF opening verdict.

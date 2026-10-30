@@ -1,8 +1,10 @@
 # Firefox Manifest V3 build (opener-0566)
 
 This directory contains Firefox-only Gecko manifest settings. It is not a
-standalone extension, and contains no runtime scripts, host access, browser
-permissions, or native messaging.
+standalone extension. It packages the shared intentionally inert background
+entry point using Firefox-compatible MV3 `background.scripts` rather than
+Chromium `background.service_worker`. The script has no event listeners,
+network access, native messaging or PDF logic; no host permissions are added.
 
 Run from `extensions/webextension/` with Node.js 20 or newer:
 
@@ -14,7 +16,8 @@ npm test
 
 The Firefox build combines the common `manifest.json` (including any later
 approved name, description, version, and icon metadata) with `firefox/gecko.json`
-to create a complete, deterministic `dist/firefox/manifest.json`. The existing
+to create a complete, deterministic `dist/firefox/manifest.json` and
+`dist/firefox/background.js`, independently of the Chromium build. The existing
 Chromium `dist/manifest.json` stays unchanged. The same `npm test` command
 also builds and checks the Firefox variant independently.
 

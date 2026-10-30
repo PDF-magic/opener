@@ -359,6 +359,17 @@
       };
       name = Release;
     };
+    D56700000000000000000014 = {
+      isa = PBXBuildFile;
+      fileRef = D56700000000000000000015;
+    };
+    D56700000000000000000015 = {
+      isa = PBXFileReference;
+      lastKnownFileType = sourcecode.javascript;
+      name = background.js;
+      path = extensions/webextension/src/background.js;
+      sourceTree = SOURCE_ROOT;
+    };
     D56700000000000000000001 = {
       isa = PBXBuildFile;
       fileRef = D56700000000000000000002;
@@ -432,7 +443,7 @@
     D5670000000000000000000C = {
       isa = PBXResourcesBuildPhase;
       buildActionMask = 2147483647;
-      files = (D56700000000000000000003,);
+      files = (D56700000000000000000003, D56700000000000000000014,);
       runOnlyForDeploymentPostprocessing = 0;
     };
     D5670000000000000000000D = {
@@ -449,7 +460,7 @@
     };
     D5670000000000000000000F = {
       isa = PBXGroup;
-      children = (D56700000000000000000002, D56700000000000000000005, D56700000000000000000013, D56700000000000000000004,);
+      children = (D56700000000000000000002, D56700000000000000000005, D56700000000000000000013, D56700000000000000000004, D56700000000000000000015,);
       name = "Safari Web Extension";
       path = extensions/safari;
       sourceTree = SOURCE_ROOT;

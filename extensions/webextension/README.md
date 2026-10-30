@@ -18,20 +18,25 @@ npm run build
 npm test
 ```
 
-The shared Manifest V3 `action` displays the existing icon in the browser
-toolbar with the truthful title **PDF Magic Opener (not active)**. It deliberately
-has no popup, click handler or scanning/launch behavior; future interaction
-requires separate security review. The Chromium and Firefox builds package
-the same local toolbar icons without adding permissions or host access.
+The shared Manifest V3 `action` displays the existing PDF Magic Opener icon
+in the browser toolbar with the truthful title **PDF Magic Opener (not active)**.
+It has no popup, click handler, PDF scanner, or launch behavior; interactions
+require separate review. The Chromium and Firefox builds package the same
+local toolbar icons without adding permissions or host access.
 
-The build writes `dist/manifest.json` and copies the four source PNG icons
+The build writes `dist/manifest.json`, packages an inert `dist/background.js`
+Manifest V3 module service-worker entry point from `src/background.js`, and copies
+the four source PNG icons
 (16, 32, 48, 128 pixels) into `dist/icons/`. These are original local artwork:
 a violet rounded tile, white folded PDF page, and gold sparkle. The manifest
 references only these static assets; no image requires a network request.
 The build validates format, dimensions and exact local paths. Tests decode PNG
 pixels and verify output bytes match source art. `dist/` is ignored by Git. The project deliberately includes
-no browser-specific configuration, runtime background script, content script,
-permissions, host access, or native messaging. Browser-specific targets and
+no browser-specific configuration, active background listeners, content scripts,
+permissions, host access, or native messaging. The registered service worker is
+intentionally a no-op module: it does not inspect documents, handle browser
+events, send messages, or contact the native application. Firefox-specific
+background registration belongs to its separate manifest task. Browser-specific targets and
 useful extension functionality must be introduced in separately reviewed work.
 
 **Security boundary:** A built manifest is not a PDF scan or opening approval.

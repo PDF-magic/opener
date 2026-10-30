@@ -23,7 +23,7 @@ test("the shared project is a private dependency-free Node package", async () =>
 test("the common Manifest V3 scaffold has no browser or host privileges", async () => {
   const manifest = await load("manifest.json");
   assert.deepEqual(Object.keys(manifest).sort(), [
-    "action", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
+    "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "permissions", "version"
   ]);
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
@@ -34,7 +34,7 @@ test("the common Manifest V3 scaffold has no browser or host privileges", async 
   assert.deepEqual(manifest.permissions, []);
   assert.deepEqual(manifest.host_permissions, []);
   for (const forbidden of [
-    "background", "content_scripts", "externally_connectable", "nativeMessaging",
+    "content_scripts", "externally_connectable", "nativeMessaging",
     "web_accessible_resources", "optional_permissions", "optional_host_permissions"
   ]) {
     assert.equal(manifest[forbidden], undefined);
@@ -96,20 +96,45 @@ test("the manifest identifies four actual portable PNG icon sizes", async () => 
   }
 });
 
-test("toolbar action is discoverable, uses only packaged icons and never activates PDF opening", async () => {
+test("the shared Manifest V3 declares a packaged no-op background module", async () => {
+  const manifest = await load("manifest.json");
+  const builtManifest = await load("dist/manifest.json");
+  assert.deepEqual(manifest.background, {
+    service_worker: "background.js",
+    type: "module"
+  });
+  assert.deepEqual(builtManifest.background, manifest.background);
+
+  const workerSource = await readFile(join(root, "src", "background.js"), "utf8");
+  const packagedWorker = await readFile(join(root, "dist", "background.js"), "utf8");
+  assert.equal(packagedWorker, workerSource);
+  assert.equal(workerSource,
+    "// Inactive shared WebExtensions background entry point.\n" +
+    "// Do not listen for messages, inspect PDFs or request native access here.\n" +
+    "void 0;\n"
+  );
+
+  // Importing the packaged module has no side effects, registrations,
+  // browser API calls, network requests or access to native scan policy.
+  const url = new URL("../dist/background.js", import.meta.url);
+  const imported = await import(url.href);
+  assert.deepEqual(Object.keys(imported), []);
+});
+
+test("toolbar action uses only existing icons and cannot activate PDF opening", async () => {
   const source = await load("manifest.json");
   const built = await load("dist/manifest.json");
   assert.deepEqual(Object.keys(source.action).sort(), ["default_icon", "default_title"]);
   assert.equal(source.action.default_title, "PDF Magic Opener (not active)");
   assert.deepEqual(source.action.default_icon, source.icons);
   assert.deepEqual(built.action, source.action);
-  assert.equal(source.action.default_popup, undefined, "popup implementation is a separate task");
+  assert.equal(source.action.default_popup, undefined, "popup is a separate task");
   assert.deepEqual(source.permissions, []);
   assert.deepEqual(source.host_permissions, []);
+  assert.deepEqual(source.background, { service_worker: "background.js", type: "module" });
   for (const size of [16, 32, 48, 128]) {
     const path = source.action.default_icon[String(size)];
     assert.equal(path, `icons/icon-${size}.png`);
-    assert.deepEqual(await readFile(join(root, "dist", path)),
-      await readFile(join(root, path)));
+    assert.deepEqual(await readFile(join(root, "dist", path)), await readFile(join(root, path)));
   }
 });

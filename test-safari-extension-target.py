@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 SAFARI = ROOT / "extensions" / "safari"
 SHARED = ROOT / "extensions" / "webextension" / "manifest.json"
+BACKGROUND = ROOT / "extensions" / "webextension" / "src" / "background.js"
 EXTENSION_ID = "local.studio.pdfmagicopener.swiftui.safari"
 TARGET_ID = "D56700000000000000000009"
 
@@ -33,7 +34,11 @@ def verify_built_app(app: Path) -> None:
   assert bundled.read_bytes() == SHARED.read_bytes(), "Safari manifest diverges from shared source"
   manifest = json.loads(bundled.read_text(encoding="utf-8"))
   assert manifest["permissions"] == [] and manifest["host_permissions"] == []
-  for forbidden in ("background", "action", "content_scripts", "externally_connectable"):
+  assert manifest["background"] == {"service_worker": "background.js", "type": "module"}
+  worker = extension / "Contents" / "Resources" / "background.js"
+  assert worker.is_file(), f"Missing bundled inert background entry: {worker}"
+  assert worker.read_bytes() == BACKGROUND.read_bytes(), "Safari worker differs from shared source"
+  for forbidden in ("action", "content_scripts", "externally_connectable"):
     assert forbidden not in manifest
   with (app / "Contents" / "Info.plist").open("rb") as f:
     host = plistlib.load(f)
@@ -70,7 +75,9 @@ class SafariExtensionTargetTests(unittest.TestCase):
       'INFOPLIST_FILE = extensions/safari/Info.plist;',
       'PRODUCT_BUNDLE_IDENTIFIER = local.studio.pdfmagicopener.swiftui.safari;',
       'path = extensions/webextension/manifest.json;',
-      'files = (D56700000000000000000003,);',
+      'files = (D56700000000000000000003, D56700000000000000000014,);',
+      'fileRef = D56700000000000000000015;',
+      'path = extensions/webextension/src/background.js;',
     ):
       with self.subTest(expected=expected):
         self.assertIn(expected, project)
@@ -93,7 +100,14 @@ class SafariExtensionTargetTests(unittest.TestCase):
     self.assertEqual(manifest["name"], "PDF Magic Opener")
     self.assertEqual(manifest["permissions"], [])
     self.assertEqual(manifest["host_permissions"], [])
-    for forbidden in ("background", "action", "content_scripts", "externally_connectable",
+    self.assertEqual(manifest["background"], {
+      "service_worker": "background.js", "type": "module"
+    })
+    self.assertEqual(BACKGROUND.read_text(encoding="utf-8"),
+                     "// Inactive shared WebExtensions background entry point.\n"
+                     "// Do not listen for messages, inspect PDFs or request native access here.\n"
+                     "void 0;\n")
+    for forbidden in ("action", "content_scripts", "externally_connectable",
                       "web_accessible_resources", "optional_permissions"):
       self.assertNotIn(forbidden, manifest)
 
