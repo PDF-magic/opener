@@ -1,8 +1,8 @@
 import { copyFile, lstat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-// Informational UI with exactly one inert, disabled scan control. Reject any
-// enabled, scripted or remotely loaded interactions until reviewed integration.
+// Informational UI with two separately labeled, permanently disabled scan
+// controls. Reject enabled or scripted access until reviewed integration.
 const assets = Object.freeze(["popup.html", "popup.css"]);
 const preferencesAction =
   '<a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a>';
@@ -10,6 +10,10 @@ const disabledScanControl =
   '<button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button>';
 const disabledScanExplanation =
   '<p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p>';
+const disabledCurrentPdfControl =
+  '<button id="scanThisPDF" type="button" disabled aria-disabled="true" aria-describedby="scanThisPDFUnavailable">Scan This PDF</button>';
+const disabledCurrentPdfExplanation =
+  '<p id="scanThisPDFUnavailable">Scan This PDF is unavailable until a verified native scanner and trusted current-PDF selection are connected.</p>';
 const disallowed = /<\s*(?:script|iframe|frame|object|embed|form|input|button|a|video|audio|select|textarea|details|summary)\b|\bon[a-z]+\s*=|\bcontenteditable\s*=|https?:\/\/|javascript\s*:|data\s*:|(?:@import|url\s*\(|expression\s*\()/i;
 
 export function validatePopupAsset(name, content) {
@@ -19,10 +23,14 @@ export function validatePopupAsset(name, content) {
         ? (content.split(preferencesAction).length !== 2 ||
            content.split(disabledScanControl).length !== 2 ||
            content.split(disabledScanExplanation).length !== 2 ||
+           content.split(disabledCurrentPdfControl).length !== 2 ||
+           content.split(disabledCurrentPdfExplanation).length !== 2 ||
            disallowed.test(content
              .replace(preferencesAction, "")
              .replace(disabledScanControl, "")
-             .replace(disabledScanExplanation, "")))
+             .replace(disabledScanExplanation, "")
+             .replace(disabledCurrentPdfControl, "")
+             .replace(disabledCurrentPdfExplanation, "")))
         : disallowed.test(content))) {
     throw new Error("Unsafe WebExtensions popup asset");
   }

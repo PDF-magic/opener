@@ -13,6 +13,26 @@ const unsupportedBlobUrl = Object.freeze({
   isPdfCandidate: false, evidence: "unsupported-blob-url", authorizesOpen: false
 });
 
+const unsupportedDataCandidate = Object.freeze({
+  isPdfCandidate: false, evidence: "unsupported-data-url", authorizesOpen: false
+});
+const unsupportedDataUrl = Object.freeze({
+  isUnsupportedDataUrl: true, reason: "data-url-unsupported", authorizesOpen: false
+});
+const notDataUrl = Object.freeze({
+  isUnsupportedDataUrl: false, reason: "none", authorizesOpen: false
+});
+
+/**
+ * Recognize an unsupported data: URL from its scheme alone, without parsing,
+ * decoding or retaining its potentially large, private inline payload.
+ * Even PDF-typed data URLs cannot be verified as scanned local files here.
+ */
+export function recognizeUnsupportedDataUrl(rawUrl) {
+  return typeof rawUrl === "string" && /^data:/i.test(rawUrl) ?
+    unsupportedDataUrl : notDataUrl;
+}
+
 function candidate(evidence) {
   return Object.freeze({
     isPdfCandidate: true, evidence, authorizesOpen: false
@@ -80,6 +100,11 @@ function isBlobUrl(rawUrl) {
 export function detectPdfCandidate(metadata) {
   const fields = safeMetadata(metadata);
   if (!fields) return none;
+
+  // Never let PDF MIME or filename hints make an inline data: URL actionable.
+  if (recognizeUnsupportedDataUrl(fields.url).isUnsupportedDataUrl) {
+    return unsupportedDataCandidate;
+  }
 
   // Apply this before all hints, including MIME and filename, so callers can
   // distinguish unsupported browser-owned blob URLs from ordinary non-PDFs.

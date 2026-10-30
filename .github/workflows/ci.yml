@@ -362,9 +362,15 @@ jobs:
           npm run package:firefox
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
+      - name: Reject unsupported data URLs before PDF candidate selection
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-data-url.test.mjs
       - name: Verify passive top-frame PDF navigation detection contract
         working-directory: extensions/webextension
         run: node --test tests/pdf-navigation.test.mjs
+      - name: Test PDF links through browser-observed redirects
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-redirect-links.test.mjs
       - name: Verify passive privileged PDF viewer page recognition
         working-directory: extensions/webextension
         run: node --test tests/pdf-privileged-viewer.test.mjs
@@ -380,6 +386,9 @@ jobs:
       - name: Verify passive PDF detection in HTML object elements
         working-directory: extensions/webextension
         run: node --test tests/pdf-object-embed.test.mjs
+      - name: Verify passive JavaScript PDF.js viewer candidates
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-js-viewer.test.mjs
       - name: Verify passive inline Content-Disposition response detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-inline-disposition.test.mjs

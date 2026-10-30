@@ -26,6 +26,10 @@ test("toolbar popup is local, accessible and explicitly inactive in both builds"
   assert.match(html, /<meta name="viewport"/);
   assert.ok(html.includes('<button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button>'));
   assert.ok(html.includes('<p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p>'));
+  assert.ok(html.includes('<button id="scanThisPDF" type="button" disabled aria-disabled="true" aria-describedby="scanThisPDFUnavailable">Scan This PDF</button>'));
+  assert.ok(html.includes('<p id="scanThisPDFUnavailable">Scan This PDF is unavailable until a verified native scanner and trusted current-PDF selection are connected.</p>'));
+  assert.match(html, /<section class="unsupported-action" aria-labelledby="current-pdf-title">/);
+  assert.match(html, /<h2 id="current-pdf-title">Current PDF<\/h2>/);
   assert.match(css, /button:disabled/);
   assert.equal(createScanPdfAction().state().enabled, false);
   assert.equal(SCAN_PDF_UNAVAILABLE_MESSAGE,
@@ -43,7 +47,7 @@ test("toolbar popup is local, accessible and explicitly inactive in both builds"
 });
 
 test("popup validator rejects active controls, remote resources and injection", () => {
-  const baseline = '<!doctype html>\n<html lang="en">\n<link rel="stylesheet" href="popup.css"><p role="status">Not active</p><p>cannot scan, sanitize, or open PDF files yet.</p><a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a><button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button><p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p></html>';
+  const baseline = '<!doctype html>\n<html lang="en">\n<link rel="stylesheet" href="popup.css"><p role="status">Not active</p><p>cannot scan, sanitize, or open PDF files yet.</p><a id="openPDFMagicPreferences" href="pdfmagicopener://preferences">Open PDF Magic Preferences</a><button id="scanPDF" type="button" disabled aria-disabled="true" aria-describedby="scanPDFUnavailable">Scan PDF</button><p id="scanPDFUnavailable">Scan PDF is unavailable until a verified native scanner is connected.</p><button id="scanThisPDF" type="button" disabled aria-disabled="true" aria-describedby="scanThisPDFUnavailable">Scan This PDF</button><p id="scanThisPDFUnavailable">Scan This PDF is unavailable until a verified native scanner and trusted current-PDF selection are connected.</p></html>';
   assert.doesNotThrow(() => validatePopupAsset("popup.html", baseline));
   for (const injected of [
     '<script>alert(1)</script>', '<button>Scan</button>', '<form></form>',
@@ -57,6 +61,38 @@ test("popup validator rejects active controls, remote resources and injection", 
   }
   assert.throws(() => validatePopupAsset("../popup.html", baseline));
   assert.throws(() => validatePopupAsset("popup.html", "<div>Active</div>"));
+});
+
+test("Scan This PDF toolbar action remains disabled until trusted native PDF selection exists", async () => {
+  const html = await readFile(join(root, "src", "popup.html"), "utf8");
+  const control = '<button id="scanThisPDF" type="button" disabled aria-disabled="true" aria-describedby="scanThisPDFUnavailable">Scan This PDF</button>';
+  const explanation = '<p id="scanThisPDFUnavailable">Scan This PDF is unavailable until a verified native scanner and trusted current-PDF selection are connected.</p>';
+  assert.doesNotThrow(() => validatePopupAsset("popup.html", html));
+  assert.equal(html.split(control).length, 2);
+  assert.equal(html.split(explanation).length, 2);
+  const mutations = [
+    html.replace(control, control.replace(" disabled aria-disabled", " aria-disabled")),
+    html.replace(control, control.replace('aria-disabled="true"', 'aria-disabled="false"')),
+    html.replace(control, control.replace('type="button"', 'type="submit"')),
+    html.replace(control, control.replace('aria-describedby="scanThisPDFUnavailable"', 'aria-describedby="missing"')),
+    html.replace(control, control.replace('id="scanThisPDF"', 'id="scanPDF"')),
+    html.replace(control, ""),
+    html.replace(explanation, ""),
+    html.replace(control, control + control),
+    html.replace(explanation, explanation + explanation),
+    html.replace(explanation, explanation.replace("trusted current-PDF selection", "any page URL")),
+    html.replace("</section>", '<button id="scanAnyFile">Scan</button></section>'),
+    html.replace("</section>", '<script>scanDocument()</script></section>')
+  ];
+  for (const mutation of mutations) {
+    assert.notEqual(mutation, html);
+    assert.throws(() => validatePopupAsset("popup.html", mutation),
+      /Unsafe WebExtensions popup asset/);
+  }
+  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  assert.equal(manifest.action.default_popup, "popup.html");
+  assert.deepEqual(manifest.host_permissions, []);
+  assert.deepEqual(manifest.permissions, []);
 });
 
 test("unsupported Scan PDF cannot be enabled, rewired or stripped of its reason", async () => {

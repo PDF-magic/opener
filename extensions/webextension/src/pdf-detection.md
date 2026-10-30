@@ -58,3 +58,23 @@ The existing `tests/pdf-detection.test.mjs` suite covers regular/opaque/
 malformed and mixed-case blob schemes, contradictory PDF hints, immutable
 path-free outputs, and preserved HTTP(S)/filename detection. That suite
 already runs via `npm test` in required GitHub `scanner-tests` CI.
+
+## Unsupported inline data URLs (opener-0749)
+
+`recognizeUnsupportedDataUrl(rawUrl)` identifies the `data:` scheme (case
+insensitively), including PDF MIME declarations, generic or malformed data
+URLs, without reading or decoding their potentially large inline payloads.
+It returns a frozen, private-data-free
+`{ isUnsupportedDataUrl: true, reason: "data-url-unsupported", authorizesOpen: false }`
+record, or the analogous `false`/`"none"` record for non-data inputs.
+
+For otherwise valid, bounded browser metadata, `detectPdfCandidate`
+reports a frozen `{ isPdfCandidate: false, evidence: "unsupported-data-url",
+authorizesOpen: false }` rather than accepting misleading PDF MIME or filename
+hints. Oversized metadata still fails closed with ordinary `none`.
+This classification does not prove PDF contents or authorize loading, fetching,
+scanning, opening or bypassing the mandatory local scanner. Browser permissions,
+listeners, native messaging and user settings remain unchanged.
+
+Dedicated `tests/pdf-data-url.test.mjs` coverage runs via `npm test` and
+also explicitly in required GitHub CI.
