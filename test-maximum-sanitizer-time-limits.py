@@ -141,7 +141,7 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
                 subprocess.CalledProcessError(1, "/bin/ps"),
                 subprocess.TimeoutExpired("/bin/ps", 0.5),
-                subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\\n"),
+                subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
             ]
         ) as probe:
             self.assertTrue(sanitizer._process_has_exited_without_reaping(process))
