@@ -9,7 +9,14 @@ import sys
 import selectors
 import signal
 import subprocess
+import sys
 import time
+
+from maximum_sanitizer_process import (
+    _darwin_group_has_only_zombies,
+    _process_has_exited_without_reaping,
+    SanitizerProcessExecutionError,
+)
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 4096
@@ -62,8 +69,15 @@ def _stop_group(process):
         if process.poll() is None:
             process.kill()
     except OSError as error:
-        if error.errno == errno.EPERM and _macos_group_is_zombie_only(process.pid):
-            return
+        # An EPERM group is safe only after its owned leader exited and
+        # a complete process snapshot proves no live descendants remain.
+        if sys.platform == "darwin" and error.errno == errno.EPERM:
+            try:
+                if (_process_has_exited_without_reaping(process) and
+                        _darwin_group_has_only_zombies(process.pid)):
+                    return
+            except SanitizerProcessExecutionError:
+                pass
         try:
             process.kill()
         except ProcessLookupError:
@@ -162,8 +176,18 @@ def run_limited_worker(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise MaximumProcessTerminationError(BLOCK_MESSAGE)
+        # Wait without reaping so the group ID cannot be reassigned before
+        # cleanup. Stop every descendant even after the leader exits.
+        while not _process_has_exited_without_reaping(process):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise MaximumProcessTerminationError(
+                    BLOCK_MESSAGE, category="timeout",
+                )
+            time.sleep(min(remaining, 0.025))
+        _stop_group(process)
         try:
-            return_code = process.wait(timeout=remaining)
+            return_code = process.wait(timeout=REAP_SECONDS)
         except subprocess.TimeoutExpired:
             raise MaximumProcessTerminationError(
                 BLOCK_MESSAGE, category="timeout",
@@ -172,6 +196,7 @@ def run_limited_worker(
             raise MaximumProcessTerminationError(
                 BLOCK_MESSAGE, category="worker-exit",
             )
+        process = None
         return bytes(output)
     except MaximumProcessTerminationError:
         raise
