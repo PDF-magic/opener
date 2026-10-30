@@ -96,7 +96,7 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         process = type("Process", (), {"pid": 101, "returncode": None})()
         records = (
             subprocess.TimeoutExpired("/bin/ps", 0.5),
-            subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\\n"),
+            subprocess.CompletedProcess(("/bin/ps",), 0, b"Z+\n"),
         )
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
             sanitizer.subprocess, "run", side_effect=records
@@ -117,7 +117,7 @@ class SanitizerProcessDeadlineTests(unittest.TestCase):
         # A live state is never interpreted as a successfully exited worker.
         with patch.object(sanitizer.sys, "platform", "darwin"), patch.object(
             sanitizer.subprocess, "run",
-            return_value=subprocess.CompletedProcess(("/bin/ps",), 0, b"S+\\n"),
+            return_value=subprocess.CompletedProcess(("/bin/ps",), 0, b"S+\n"),
         ):
             self.assertFalse(sanitizer._process_has_exited_without_reaping(process))
 
