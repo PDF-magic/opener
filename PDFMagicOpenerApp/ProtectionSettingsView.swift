@@ -170,6 +170,13 @@ private enum PlannedProtectionTier: String, CaseIterable, Identifiable {
     }
   }
 
+  // Fixed, document-independent preview text. Only Maximum can rasterize
+  // into a generated copy; this does not claim that Maximum is active.
+  var capabilityLossExplanation: String? {
+    guard self == .maximum else { return nil }
+    return "A future Maximum-generated safe copy is rebuilt from flattened page images, not an editable original. Flattening may remove selectable and searchable text, clickable links, interactive form fields, annotations and comments, embedded attachments, document metadata, and scripts or other active PDF actions. Digital signatures may be invalidated, and visual details can change. OCR is not restored. Keep the untouched original if you need these capabilities. A generated copy is not a malware-clean verdict and still requires a separate fresh scan before opening."
+  }
+
   // This view may only preview named protection tiers. A complete,
   // separately verified engine-to-scan-gate integration is required before
   // any tier can become an effective selection.
@@ -484,6 +491,17 @@ struct ProtectionSettingsView: View {
                     verifiedOfferAvailable: false,
                     onSaveRequested: nil
                   )
+                }
+                if let capabilityLoss = selectedPreview.capabilityLossExplanation {
+                  VStack(alignment: .leading, spacing: 6) {
+                    Text("PDF capabilities that may be removed")
+                      .font(.subheadline.weight(.semibold))
+                      .accessibilityAddTraits(.isHeader)
+                    Text(capabilityLoss)
+                      .foregroundStyle(.secondary)
+                      .fixedSize(horizontal: false, vertical: true)
+                  }
+                  .accessibilityIdentifier("maximumCapabilityLossExplanation")
                 }
                 Text(selectedPreview.activationBlockReason)
                   .foregroundStyle(.secondary)
