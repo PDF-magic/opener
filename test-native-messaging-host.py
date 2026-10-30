@@ -66,6 +66,21 @@ def unavailable_status_reply(request_id="status_1", scan_request_id="scan_1"):
             "scanVerified": False, "authorizesOpen": False}}
 
 
+def scan_result(request_id="result_1", scan_request_id="scan_1"):
+  return dict(ping(request_id), topic="scan.result",
+              payload={"scanRequestId": scan_request_id})
+
+
+def unavailable_result_reply(request_id="result_1", scan_request_id="scan_1"):
+  return {"version": 1, "kind": "response", "topic": "scan.result",
+          "requestId": request_id, "payload": {
+            "scanRequestId": scan_request_id,
+            "status": "unavailable",
+            "reason": "trusted-scan-coordinator-required",
+            "result": None, "scanCompleted": False,
+            "scanVerified": False, "authorizesOpen": False}}
+
+
 def responses(output):
   decoded = []
   while output:
@@ -432,6 +447,120 @@ class NativeMessagingHostTests(unittest.TestCase):
       self.assertEqual(accepted.stderr, b"")
       self.assertEqual(responses(accepted.stdout)[1], unavailable_status_reply())
       self.assertEqual(sentinel.read_bytes(), original)
+
+  def test_scan_result_requires_completed_handshake(self):
+    for prefix in (b"", frame(ping("probe"))):
+      with self.subTest(ping=bool(prefix)):
+        run = self.run_host(prefix + frame(scan_result()))
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(run.stderr, b"")
+        replies = responses(run.stdout)
+        self.assertEqual(len(replies), 1 if prefix else 0)
+        if replies:
+          self.assertEqual(replies[0]["topic"], "host.ping")
+          self.assertFalse(replies[0]["payload"]["scanAvailable"])
+
+  def test_scan_result_is_correlated_and_never_claims_a_verdict(self):
+    run = self.run_host(
+      frame(handshake()) +
+      frame(scan_request("scan_1")) +
+      frame(scan_status("status_1", "scan_1")) +
+      frame(scan_result("result_1", "scan_1"))
+    )
+    self.assertEqual(run.returncode, 0)
+    self.assertEqual(run.stderr, b"")
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 4)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply())
+    self.assertEqual(replies[2], unavailable_status_reply())
+    self.assertEqual(replies[3], unavailable_result_reply())
+    result = replies[3]["payload"]
+    self.assertIsNone(result["result"])
+    self.assertIs(result["scanCompleted"], False)
+    self.assertIs(result["scanVerified"], False)
+    self.assertIs(result["authorizesOpen"], False)
+    for forbidden in ("detectionNames", "verdict", "path", "downloadId",
+                      "percentComplete", "clean", "scanAvailable"):
+      self.assertNotIn(forbidden, result)
+
+  def test_scan_result_unknown_repeated_and_new_connections_stay_unavailable(self):
+    requests = [handshake(), scan_result("unknown_1", "missing"),
+                scan_request("manual_1"), scan_result("known_1", "manual_1"),
+                ping("still_alive"), scan_result("unknown_2", "missing")]
+    run = self.run_host(b"".join(frame(m) for m in requests))
+    self.assertEqual(run.returncode, 0)
+    self.assertEqual(run.stderr, b"")
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), len(requests))
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_result_reply("unknown_1", "missing"))
+    self.assertEqual(replies[2], unavailable_scan_reply("manual_1"))
+    self.assertEqual(replies[3], unavailable_result_reply("known_1", "manual_1"))
+    self.assertEqual(replies[4]["topic"], "host.ping")
+    self.assertEqual(replies[5], unavailable_result_reply("unknown_2", "missing"))
+
+    fresh = self.run_host(frame(handshake()) +
+                          frame(scan_result("fresh_1", "manual_1")))
+    self.assertEqual(fresh.returncode, 0)
+    self.assertEqual(fresh.stderr, b"")
+    self.assertEqual(responses(fresh.stdout)[1],
+                     unavailable_result_reply("fresh_1", "manual_1"))
+
+  def test_scan_result_rejects_invalid_ids_and_caller_verdicts(self):
+    valid = scan_result()
+    malformed = [
+      dict(valid, payload=None),
+      dict(valid, payload={}),
+      dict(valid, payload=[]),
+      dict(valid, payload={"scanRequestId": ""}),
+      dict(valid, payload={"scanRequestId": "x" * 81}),
+      dict(valid, payload={"scanRequestId": "has space"}),
+      dict(valid, payload={"scanRequestId": "../private.pdf"}),
+      dict(valid, payload={"scanRequestId": 1}),
+      dict(valid, payload={"scanRequestId": True}),
+      dict(valid, payload={"scanRequestId": None}),
+      dict(valid, payload={"scanRequestId": ["scan_1"]}),
+      dict(valid, payload={"scanRequestId": "scan_1", "result": "clean"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "status": "clean"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "scanVerified": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "authorizesOpen": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "path": "/tmp/private.pdf"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "protectionLevel": "off"}),
+      dict(valid, kind="event"),
+      dict(valid, kind="response"),
+      dict(valid, version=2),
+      dict(valid, requestId="bad/id"),
+      dict(valid, topic="pdf.result"),
+    ]
+    for message in malformed:
+      with self.subTest(message=message):
+        run = self.run_host(frame(handshake()) + frame(message))
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(run.stderr, b"")
+        replies = responses(run.stdout)
+        self.assertEqual(len(replies), 1)
+        self.assert_handshake_response(replies[0])
+
+  def test_scan_result_does_not_access_a_local_pdf_or_open_a_file(self):
+    with tempfile.TemporaryDirectory(prefix="native-result-no-action-") as d:
+      private_file = Path(d) / "private.pdf"
+      original = b"private file bytes cannot be inferred from a scan result"
+      private_file.write_bytes(original)
+      malformed = dict(scan_result(), payload={"scanRequestId": "scan_1",
+                                                 "path": str(private_file)})
+      refused = self.run_host(frame(handshake()) + frame(malformed))
+      self.assertNotEqual(refused.returncode, 0)
+      self.assertEqual(refused.stderr, b"")
+      self.assertNotIn(str(private_file).encode(), refused.stdout)
+      self.assertNotIn(original, refused.stdout)
+      self.assertEqual(private_file.read_bytes(), original)
+
+      run = self.run_host(frame(handshake()) + frame(scan_result()))
+      self.assertEqual(run.returncode, 0)
+      self.assertEqual(run.stderr, b"")
+      self.assertEqual(responses(run.stdout)[1], unavailable_result_reply())
+      self.assertEqual(private_file.read_bytes(), original)
 
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",
