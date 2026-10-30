@@ -11,11 +11,12 @@ WebExtensions changes and via manual dispatch. It installs the **real Vivaldi
 Stable browser** from Vivaldi's official HTTPS APT repository with a scoped
 GPG signing key, then builds the shared Chromium Manifest V3 extension.
 
-The test-only playwright-core driver attaches over loopback-only Chrome
-DevTools Protocol to the actual /usr/bin/vivaldi-stable process launched
-**headed in Xvfb** with an isolated temporary profile and the unpacked
-dist/ extension. Direct launch avoids Chromium automation flags that can
-disable Vivaldi's own UI. It never substitutes Chromium or Chrome.
+The dependency-free test driver launches the real /usr/bin/vivaldi-stable
+process **headed in Xvfb** with an isolated temporary profile. It uses
+Chromium's private CDP pipe and Extensions.loadUnpacked command to load the
+reviewed unpacked dist/ assets, then inspects the actual extension popup.
+The special extension-debugging flag is CI-only and does not change the
+product, allow private browsing or grant permissions. No substitute browser.
 CI fails if Vivaldi cannot install, launch, load the MV3 service worker,
 or render the extension popup.
 

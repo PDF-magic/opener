@@ -55,9 +55,6 @@ jobs:
           npm run build
           npm run package:chrome
           node --test tests/vivaldi-compatibility.test.mjs
-      - name: Install test-only Playwright driver
-        working-directory: extensions/webextension
-        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
       - name: Launch actual Vivaldi and inspect installed MV3 extension
         working-directory: extensions/webextension
         env:

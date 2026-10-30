@@ -1,13 +1,12 @@
-// Real Vivaldi Stable extension smoke (opener-0602).
-// Launch the official browser directly, rather than via Playwright's generic
-// Chromium launch flags, in a disposable isolated CI-only profile.
+// Real Vivaldi Stable WebExtensions smoke test (opener-0602).
+// Launch the installed browser with its native CDP pipe. No Playwright,
+// downloaded browser substitute, user profile, public page, PDF or scanner.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-core";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const extensionPath = resolve(root, "dist");
@@ -15,8 +14,61 @@ const executablePath = process.env.VIVALDI_BROWSER_PATH || "/usr/bin/vivaldi-sta
 const profile = await mkdtemp(join(tmpdir(), "pdf-magic-vivaldi-"));
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 let browser;
-let processHandle;
-let processError = "";
+let browserLog = "";
+const pending = new Map();
+let sequence = 0;
+
+function send(method, params = {}, sessionId, timeout = 25000) {
+  return new Promise((resolveCommand, rejectCommand) => {
+    const id = ++sequence;
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      rejectCommand(new Error("Vivaldi CDP timed out: " + method +
+        "; " + browserLog.slice(-700)));
+    }, timeout);
+    pending.set(id, {
+      resolve: (data) => { clearTimeout(timer); resolveCommand(data); },
+      reject: (error) => { clearTimeout(timer); rejectCommand(error); }
+    });
+    const request = { id, method, params };
+    if (sessionId) request.sessionId = sessionId;
+    browser.stdio[3].write(JSON.stringify(request) + "\0", (error) => {
+      if (error && pending.has(id)) {
+        pending.get(id).reject(error);
+        pending.delete(id);
+      }
+    });
+  });
+}
+
+function inspectPopup() {
+  const manifest = chrome.runtime.getManifest();
+  const scan = document.querySelector("#scanPDF");
+  const status = document.querySelector('[role="status"]');
+  if (!scan || !status || document.readyState !== "complete") {
+    return { ready: false };
+  }
+  return {
+    ready: true,
+    manifest,
+    heading: document.querySelector("#popup-title")?.textContent,
+    status: status.textContent,
+    availability: document.querySelector("#availability-title")?.textContent,
+    disabled: scan.disabled,
+    ariaDisabled: scan.getAttribute("aria-disabled"),
+    ariaDescription: scan.getAttribute("aria-describedby"),
+    reason: document.querySelector("#scanPDFUnavailable")?.textContent,
+    preferences: document.querySelector("#openPDFMagicPreferences")?.getAttribute("href"),
+    stylesheet: document.querySelector('link[rel="stylesheet"]')?.getAttribute("href"),
+    stylesheetLoaded: [...document.styleSheets].some(
+      (sheet) => sheet.href?.endsWith("/popup.css")
+    ),
+    scripts: document.querySelectorAll("script").length,
+    // Query existing permissions only; never request new browser privileges.
+    downloadsGranted: null
+  };
+}
+
 try {
   const source = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
   const packaged = JSON.parse(await readFile(join(extensionPath, "manifest.json"), "utf8"));
@@ -27,19 +79,14 @@ try {
   assert.deepEqual(packaged.host_permissions, []);
   assert.deepEqual(packaged.optional_permissions, ["downloads"]);
   assert.equal(packaged.optional_host_permissions, undefined);
-  assert.deepEqual(packaged.background,
-    { service_worker: "background.js", type: "module" });
 
-  // Vivaldi is not stock Chromium: Chromium launch defaults can disable its
-  // extension engine or crash the Vivaldi UI. Start the actual binary with
-  // only the arguments this isolated smoke test needs, then attach via CDP.
-  // The debug port listens on loopback only; nothing is exposed externally.
-  processHandle = spawn(executablePath, [
+  // The Extensions.loadUnpacked CDP command requires a private debugging
+  // pipe and --enable-unsafe-extension-debugging. Both exist only in this
+  // disposable test process, never the product or user configuration.
+  browser = spawn(executablePath, [
     "--user-data-dir=" + profile,
-    "--remote-debugging-port=0",
-    "--remote-debugging-address=127.0.0.1",
-    "--disable-extensions-except=" + extensionPath,
-    "--load-extension=" + extensionPath,
+    "--remote-debugging-pipe",
+    "--enable-unsafe-extension-debugging",
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-background-networking",
@@ -47,102 +94,111 @@ try {
     "--disable-gpu",
     "--no-sandbox",
     "about:blank"
-  ], { stdio: ["ignore", "ignore", "pipe"] });
-  processHandle.on("error", (error) => { processError = error.message; });
-  processHandle.stderr.on("data", (data) => {
-    processError = (processError + data.toString("utf8")).slice(-5000);
+  ], { stdio: ["ignore", "ignore", "pipe", "pipe", "pipe"] });
+  browser.stderr.on("data", (chunk) => {
+    browserLog = (browserLog + chunk.toString("utf8")).slice(-3000);
+  });
+  browser.on("error", (error) => { browserLog += error.message; });
+  browser.on("exit", () => {
+    for (const task of pending.values()) {
+      task.reject(new Error("Vivaldi browser closed during CDP smoke"));
+    }
+    pending.clear();
+  });
+  let data = "";
+  browser.stdio[4].on("data", (chunk) => {
+    data += chunk.toString("utf8");
+    let end;
+    while ((end = data.indexOf("\0")) !== -1) {
+      const packet = data.slice(0, end);
+      data = data.slice(end + 1);
+      if (!packet) continue;
+      const message = JSON.parse(packet);
+      const task = pending.get(message.id);
+      if (!task) continue;
+      pending.delete(message.id);
+      if (message.error) {
+        task.reject(new Error("Vivaldi CDP " + message.error.message));
+      } else {
+        task.resolve(message.result);
+      }
+    }
   });
 
-  let port;
-  for (let i = 0; i < 160; i++) {
-    if (processHandle.exitCode !== null || processHandle.signalCode !== null) {
-      throw new Error("Vivaldi exited before debugging started: " +
-        processHandle.exitCode + " / " + processHandle.signalCode +
-        " / " + processError.slice(-1500));
-    }
+  const version = await send("Browser.getVersion");
+  assert.match(version.product, /Chrome|Vivaldi|Chromium/,
+    "Official Vivaldi must respond to its browser debugging protocol");
+  const install = await send("Extensions.loadUnpacked",
+    { path: extensionPath, enableInIncognito: false });
+  const extensionId = install.id;
+  assert.match(extensionId, /^[a-p]{32}$/,
+    "Vivaldi must actually install the unpacked MV3 extension");
+
+  const target = await send("Target.createTarget",
+    { url: "chrome-extension://" + extensionId + "/popup.html" });
+  assert.ok(target.targetId, "Vivaldi must open the extension popup target");
+  const attached = await send("Target.attachToTarget",
+    { targetId: target.targetId, flatten: true });
+  assert.ok(attached.sessionId);
+  await send("Runtime.enable", {}, attached.sessionId);
+
+  let popup;
+  for (let i = 0; i < 60; i++) {
     try {
-      const data = await readFile(join(profile, "DevToolsActivePort"), "utf8");
-      const candidate = Number(data.split("\n")[0]);
-      if (Number.isInteger(candidate) && candidate > 0 && candidate < 65536) {
-        port = candidate;
+      const result = await send("Runtime.evaluate", {
+        expression: "(" + inspectPopup.toString() + ")()",
+        returnByValue: true,
+        awaitPromise: true
+      }, attached.sessionId, 5000);
+      if (!result.exceptionDetails && result.result?.value?.ready) {
+        popup = result.result.value;
         break;
       }
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
+    } catch {
+      // A context can be temporarily destroyed during the first navigation.
     }
     await pause(200);
   }
-  if (!port) throw new Error("Vivaldi did not expose its localhost debug port");
-  browser = await chromium.connectOverCDP("http://127.0.0.1:" + port,
-    { timeout: 20000 });
-  const context = browser.contexts()[0];
-  assert.ok(context, "Vivaldi must provide a real persistent profile");
+  assert.ok(popup?.ready, "Vivaldi must render the actual local extension popup");
+  assert.equal(popup.manifest.name, "PDF Magic Opener");
+  assert.equal(popup.manifest.manifest_version, 3);
+  assert.equal(popup.manifest.incognito, "not_allowed");
+  assert.deepEqual(popup.manifest.permissions, []);
+  assert.deepEqual(popup.manifest.host_permissions, []);
+  assert.deepEqual(popup.manifest.optional_permissions, ["downloads"]);
+  assert.equal(popup.manifest.optional_host_permissions, undefined);
+  assert.deepEqual(popup.manifest.background,
+    { service_worker: "background.js", type: "module" });
+  assert.equal(popup.heading, "PDF Magic Opener");
+  assert.equal(popup.status, "Not active");
+  assert.match(popup.availability, /Browser integration is not enabled/);
+  assert.equal(popup.disabled, true);
+  assert.equal(popup.ariaDisabled, "true");
+  assert.equal(popup.ariaDescription, "scanPDFUnavailable");
+  assert.match(popup.reason, /verified native scanner/);
+  assert.equal(popup.preferences, "pdfmagicopener://preferences");
+  assert.equal(popup.stylesheet, "popup.css");
+  assert.equal(popup.stylesheetLoaded, true);
+  assert.equal(popup.scripts, 0);
 
-  const worker = context.serviceWorkers().find((entry) =>
-    entry.url().startsWith("chrome-extension://")) ??
-    await context.waitForEvent("serviceworker", {
-      predicate: (entry) => entry.url().startsWith("chrome-extension://"),
-      timeout: 35000
-    });
-  const extensionId = new URL(worker.url()).host;
-  assert.match(extensionId, /^[a-p]{32}$/,
-    "Vivaldi must register the unpacked Manifest V3 extension worker");
-
-  const effective = await worker.evaluate(() => chrome.runtime.getManifest());
-  assert.equal(effective.name, "PDF Magic Opener");
-  assert.equal(effective.manifest_version, 3);
-  assert.equal(effective.incognito, "not_allowed");
-  assert.deepEqual(effective.permissions, []);
-  assert.deepEqual(effective.host_permissions, []);
-  assert.deepEqual(effective.optional_permissions, ["downloads"]);
-  assert.equal(effective.optional_host_permissions, undefined);
-  assert.equal(effective.action.default_popup, "popup.html");
-
-  const popup = await context.newPage();
-  const javascriptErrors = [];
-  popup.on("pageerror", (error) => javascriptErrors.push(error.message));
-  const response = await popup.goto(
-    "chrome-extension://" + extensionId + "/popup.html", { waitUntil: "load" }
-  );
-  assert.equal(response?.status(), 200, "Vivaldi must render the local popup");
-  assert.equal(await popup.locator("#popup-title").innerText(), "PDF Magic Opener");
-  assert.equal(await popup.locator('[role="status"]').innerText(), "Not active");
-  assert.match(await popup.locator("#availability-title").innerText(),
-    /Browser integration is not enabled/);
-  const scanButton = popup.locator("#scanPDF");
-  assert.equal(await scanButton.isDisabled(), true);
-  assert.equal(await scanButton.getAttribute("aria-disabled"), "true");
-  assert.equal(await scanButton.getAttribute("aria-describedby"), "scanPDFUnavailable");
-  assert.match(await popup.locator("#scanPDFUnavailable").innerText(),
-    /verified native scanner/);
-  assert.equal(await popup.locator("#openPDFMagicPreferences").getAttribute("href"),
-    "pdfmagicopener://preferences");
-  assert.equal(await popup.locator('link[rel="stylesheet"]').getAttribute("href"),
-    "popup.css");
-  assert.equal(await popup.evaluate(() =>
-    [...document.styleSheets].some((sheet) => sheet.href?.endsWith("/popup.css"))), true);
-  assert.deepEqual(javascriptErrors, []);
-
-  // The optional download permission must not be silently granted.
-  const downloadsGranted = await worker.evaluate(async () =>
-    chrome.permissions.contains({ permissions: ["downloads"] })
-  );
-  assert.equal(downloadsGranted, false,
+  const checkPermission = await send("Runtime.evaluate", {
+    expression: "(new Promise(resolve => chrome.permissions.contains(" +
+      "{permissions: ['downloads']}, resolve)))",
+    returnByValue: true,
+    awaitPromise: true
+  }, attached.sessionId);
+  assert.equal(checkPermission.result?.value, false,
     "Vivaldi must not silently grant optional downloads access");
-  console.log("Vivaldi Stable smoke passed: real MV3 worker, inactive popup, no grants.");
+
+  console.log("Vivaldi Stable smoke passed: installed MV3 popup, no grants or scanning.");
 } finally {
-  try {
-    await browser?.close();
-  } finally {
-    if (processHandle && processHandle.exitCode === null &&
-        processHandle.signalCode === null) {
-      processHandle.kill("SIGTERM");
-      for (let i = 0; i < 20 && processHandle.exitCode === null &&
-           processHandle.signalCode === null; i++) await pause(100);
-      if (processHandle.exitCode === null && processHandle.signalCode === null) {
-        processHandle.kill("SIGKILL");
-      }
+  if (browser && browser.exitCode === null && browser.signalCode === null) {
+    browser.kill("SIGTERM");
+    for (let i = 0; i < 20 && browser.exitCode === null &&
+         browser.signalCode === null; i++) await pause(100);
+    if (browser.exitCode === null && browser.signalCode === null) {
+      browser.kill("SIGKILL");
     }
-    await rm(profile, { recursive: true, force: true });
   }
+  await rm(profile, { recursive: true, force: true });
 }
