@@ -8,13 +8,42 @@ xcrun swiftc -O -parse-as-library -warnings-as-errors native-messaging/Host.swif
 
 The output is a real process executable, not a browser extension or PDF handler. It speaks browser native messaging transport: a 32-bit little-endian byte length followed by UTF-8 JSON on standard input, and the same framing on standard output. Frames are bounded to 16 KiB, matching the shared WebExtensions message envelope.
 
-The **only** accepted request is this exact envelope with a 1–80 character ASCII `requestId`:
+### Connection handshake (opener-0624)
+
+A new native host process starts **without a completed handshake**. To confirm the
+supported protocol and correlate the connection, send one version-1 request:
+
+```json
+{"version":1,"kind":"request","topic":"host.handshake","requestId":"hello_1","payload":{"clientNonce":"Client_Challenge_123456789"}}
+```
+
+The host acknowledges with the same `requestId` and `clientNonce`:
+
+```json
+{"version":1,"kind":"response","topic":"host.handshake","requestId":"hello_1","payload":{"status":"transport-only","protocolVersion":1,"clientNonce":"Client_Challenge_123456789","scanAvailable":false}}
+```
+
+The `clientNonce` must contain **16–64 ASCII letters, digits, underscores, or
+hyphens**. The host rejects a malformed nonce, unknown fields, incompatible
+version, or **second handshake on the same process**, without an error response
+or diagnostics. Reconnecting creates a new process with fresh handshake state.
+The confirmation means *transport readiness only*; the challenge echo and
+request ID are **not authentication, a session credential, or authorization**.
+No caller identity, host authenticity, scanner state, or trust is established.
+
+The existing `host.ping` request remains a backward-compatible, read-only
+liveness probe before or after a handshake:
 
 ```json
 {"version":1,"kind":"request","topic":"host.ping","requestId":"example1","payload":null}
 ```
 
-The response uses `kind:"response"`, topic `host.ping`, the same request ID and payload `{"status":"transport-only","scanAvailable":false}`. The process handles multiple frames until clean EOF. Malformed, oversized, truncated, unknown, or non-ping requests terminate without an output response or user-data diagnostics. Stdout contains only framed protocol bytes.
+Its response remains `kind:"response"`, topic `host.ping`, the same request
+ID, and payload `{"status":"transport-only","scanAvailable":false}`. Ping
+does **not** complete or substitute for the handshake. The process supports
+multiple frames until clean EOF. Malformed, oversized, truncated, unknown, or
+privileged requests terminate without an output response for the offending
+message or user-data diagnostics. Stdout contains only framed protocol bytes.
 
 **Security boundary:** This executable is deliberately **not installed or registered as a browser native messaging host**. PR opener-0614 separately defines the stable host identifier; do not duplicate its identity file or documentation. Browser host manifests, allowed extension identity validation, installation, consent, packaging, native adapters, and scanner coordination are separate checklist tasks. No browser permission or existing browser script is changed here. An arbitrary process can invoke the unregistered binary: ping is *not* authentication, a scanner status, a safe-file verdict or authorization to open any PDF. Browser-supplied origin arguments cannot authorize requests. The host does not access document bytes, paths, scanner processes, quarantine settings, user configurations or launch preferences.
 
