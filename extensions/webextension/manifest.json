@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "PDF Magic Opener (Shared Extension Scaffold)",
+  "name": "PDF Magic Opener",
   "version": "0.1.0",
   "description": "PDF Magic Opener browser integration scaffold. Not active; cannot scan, sanitize, or open PDF files.",
   "permissions": [],
