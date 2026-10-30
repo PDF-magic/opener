@@ -29,9 +29,12 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 BLOCK_MESSAGE = "Isolated PDF rendering could not complete; opening was stopped."
 RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (deny default)
-(allow process-exec (literal (param "PYTHON")))
+(allow process-exec
+    (literal (param "PYTHON"))
+    (literal (param "PYTHON_APP")))
 (allow file-map-executable
     (literal (param "PYTHON"))
+    (literal (param "PYTHON_APP"))
     (subpath (param "PYTHON_PREFIX"))
     (subpath (param "PYTHON_BASE_PREFIX"))
     (subpath "/System")
@@ -42,6 +45,7 @@ RENDERER_FILESYSTEM_PROFILE = """(version 1)
 (allow file-read*
     (literal "/")
     (literal (param "PYTHON"))
+    (literal (param "PYTHON_APP"))
     (literal (param "WORKER"))
     (literal (param "WORKER_SUPPORT"))
     (literal (param "NETWORK_SUPPORT"))
@@ -117,6 +121,9 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         renderer_support = Path(__file__).resolve(strict=True)
         prefix = str(Path(sys.prefix).resolve(strict=True))
         base_prefix = str(Path(sys.base_prefix).resolve(strict=True))
+        # CPython framework launchers re-exec this exact, bundled Python.app binary.
+        app_path = Path(base_prefix) / "Resources/Python.app/Contents/MacOS/Python"
+        python_app = str(app_path.resolve(strict=True)) if app_path.exists() else python
     except (OSError, RuntimeError, TypeError):
         raise MaximumPDFRenderError(BLOCK_MESSAGE) from None
 
@@ -125,6 +132,9 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
             any(path.parent != source_root for path in support_files) or
             not _trusted_regular_file(SANDBOX_EXEC, executable=True) or
             not _trusted_regular_file(python, executable=True) or
+            not _trusted_regular_file(python_app, executable=True) or
+            (python_app != python and
+             not Path(python_app).is_relative_to(Path(base_prefix))) or
             not _trusted_regular_file(worker) or
             not all(_trusted_regular_file(str(path)) for path in support_files) or
             not _trusted_directory(str(source_root)) or
@@ -133,6 +143,7 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         raise MaximumPDFRenderError(BLOCK_MESSAGE)
     return {
         "python": python,
+        "python_app": python_app,
         "worker": worker,
         "worker_support": str(worker_support),
         "network_support": str(network_support),
@@ -229,6 +240,7 @@ def _renderer_command(worker: Path, page_index: int) -> tuple[str, ...]:
     command = [SANDBOX_EXEC, "-p", RENDERER_FILESYSTEM_PROFILE]
     for name, key in (
         ("PYTHON", "python"),
+        ("PYTHON_APP", "python_app"),
         ("WORKER", "worker"),
         ("WORKER_SUPPORT", "worker_support"),
         ("NETWORK_SUPPORT", "network_support"),
