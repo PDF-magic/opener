@@ -6,9 +6,10 @@ directories, so this source-only scaffold started with opener-0559.
 
 The shared, dependency-free WebExtensions project now lives at
 [`webextension/`](webextension/README.md) (opener-0560). Its local build
-produces only a permission-free, non-operational browser manifest. This is
-**not an enabled or functional PDF-processing extension**. A separately
-sandboxed Safari Web Extension target now packages the permission-free manifest
+produces only a permission-free, non-operational browser manifest. The
+shared source project is **not an installed or enabled extension** and is not
+a functional PDF processor. A separately sandboxed Safari Web Extension target
+now packages the permission-free manifest
 inside the native app (opener-0567); it does not auto-enable the extension,
 request website access, scan or open PDFs, or modify preferences.
 See [`safari/`](safari/README.md) for the target and packaging boundary.
