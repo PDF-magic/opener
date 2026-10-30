@@ -284,7 +284,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Build and test shared WebExtensions and Firefox manifests
+      - name: Build and test shared WebExtensions project
         working-directory: extensions/webextension
         run: |
           npm run build
