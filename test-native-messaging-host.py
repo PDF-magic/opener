@@ -51,6 +51,21 @@ def unavailable_scan_reply(request_id="scan_1"):
             "scanVerified": False, "authorizesOpen": False}}
 
 
+def scan_status(request_id="status_1", scan_request_id="scan_1"):
+  return dict(ping(request_id), topic="scan.status",
+              payload={"scanRequestId": scan_request_id})
+
+
+def unavailable_status_reply(request_id="status_1", scan_request_id="scan_1"):
+  return {"version": 1, "kind": "response", "topic": "scan.status",
+          "requestId": request_id, "payload": {
+            "scanRequestId": scan_request_id,
+            "status": "unavailable",
+            "reason": "trusted-scan-coordinator-required",
+            "scanAvailable": False, "scanStarted": False,
+            "scanVerified": False, "authorizesOpen": False}}
+
+
 def responses(output):
   decoded = []
   while output:
@@ -306,6 +321,117 @@ class NativeMessagingHostTests(unittest.TestCase):
       self.assertEqual(responses(result.stdout)[1], unavailable_scan_reply())
       self.assertEqual(private_file.read_bytes(),
                        b"private contents are not native messages")
+
+  def test_scan_status_requires_handshake_not_just_ping(self):
+    for prefix in (b"", frame(ping("live_1"))):
+      with self.subTest(prefix=bool(prefix)):
+        result = self.run_host(prefix + frame(scan_status()))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, b"")
+        expected = [] if not prefix else [{
+          "version": 1, "kind": "response", "topic": "host.ping",
+          "requestId": "live_1", "payload": {
+            "status": "transport-only", "scanAvailable": False}
+        }]
+        self.assertEqual(responses(result.stdout), expected)
+
+  def test_scan_status_correlates_without_fabricating_progress(self):
+    result = self.run_host(frame(handshake()) +
+                           frame(scan_request("scan_1")) +
+                           frame(scan_status("check_1", "scan_1")))
+    self.assertEqual(result.returncode, 0)
+    self.assertEqual(result.stderr, b"")
+    replies = responses(result.stdout)
+    self.assertEqual(len(replies), 3)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_scan_reply("scan_1"))
+    self.assertEqual(replies[2], unavailable_status_reply("check_1", "scan_1"))
+    status = replies[2]["payload"]
+    self.assertIs(status["scanStarted"], False)
+    self.assertIs(status["scanVerified"], False)
+    self.assertIs(status["authorizesOpen"], False)
+    self.assertNotIn("percentComplete", status)
+    self.assertNotIn("scanResult", status)
+    self.assertNotIn("path", status)
+
+  def test_scan_status_unknown_and_repeated_ids_remain_unavailable(self):
+    # No trusted coordinator exists: neither a correlated ID nor a prior
+    # scan.request acknowledgment establishes a real scanner job.
+    messages = [handshake(), scan_status("first", "unknown"),
+                scan_request("manual_1"), ping("still_alive"),
+                scan_status("second", "manual_1"),
+                scan_status("third", "unknown")]
+    result = self.run_host(b"".join(frame(m) for m in messages))
+    self.assertEqual(result.returncode, 0)
+    self.assertEqual(result.stderr, b"")
+    replies = responses(result.stdout)
+    self.assertEqual(len(replies), len(messages))
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], unavailable_status_reply("first", "unknown"))
+    self.assertEqual(replies[2], unavailable_scan_reply("manual_1"))
+    self.assertEqual(replies[3]["payload"],
+                     {"status": "transport-only", "scanAvailable": False})
+    self.assertEqual(replies[4], unavailable_status_reply("second", "manual_1"))
+    self.assertEqual(replies[5], unavailable_status_reply("third", "unknown"))
+
+    # A fresh host process cannot claim jobs from a prior connection.
+    fresh = self.run_host(frame(handshake()) +
+                          frame(scan_status("fresh", "manual_1")))
+    self.assertEqual(fresh.returncode, 0)
+    self.assertEqual(responses(fresh.stdout)[1],
+                     unavailable_status_reply("fresh", "manual_1"))
+
+  def test_scan_status_rejects_malformed_queries_and_claims(self):
+    valid = scan_status()
+    malformed = [
+      dict(valid, payload=None),
+      dict(valid, payload={}),
+      dict(valid, payload=[]),
+      dict(valid, payload={"scanRequestId": ""}),
+      dict(valid, payload={"scanRequestId": "x" * 81}),
+      dict(valid, payload={"scanRequestId": "has space"}),
+      dict(valid, payload={"scanRequestId": "../private.pdf"}),
+      dict(valid, payload={"scanRequestId": 42}),
+      dict(valid, payload={"scanRequestId": True}),
+      dict(valid, payload={"scanRequestId": None}),
+      dict(valid, payload={"scanRequestId": ["scan_1"]}),
+      dict(valid, payload={"scanRequestId": "scan_1", "path": "/tmp/private.pdf"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "status": "clean"}),
+      dict(valid, payload={"scanRequestId": "scan_1", "authorizesOpen": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "scanVerified": True}),
+      dict(valid, payload={"scanRequestId": "scan_1", "protectionLevel": "off"}),
+      dict(valid, kind="event"),
+      dict(valid, version=2),
+      dict(valid, requestId="bad/id"),
+      dict(valid, topic="pdf.status"),
+    ]
+    for request in malformed:
+      with self.subTest(request=request):
+        result = self.run_host(frame(handshake()) + frame(request))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, b"")
+        replies = responses(result.stdout)
+        self.assertEqual(len(replies), 1)
+        self.assert_handshake_response(replies[0])
+
+  def test_scan_status_never_reads_file_paths_or_starts_a_scan(self):
+    with tempfile.TemporaryDirectory(prefix="native-scan-status-inert-") as d:
+      sentinel = Path(d) / "private.pdf"
+      original = b"private file contents must remain untouched"
+      sentinel.write_bytes(original)
+      invalid = dict(scan_status(), payload={"scanRequestId": str(sentinel)})
+      refused = self.run_host(frame(handshake()) + frame(invalid))
+      self.assertNotEqual(refused.returncode, 0)
+      self.assertEqual(refused.stderr, b"")
+      self.assertNotIn(str(sentinel).encode(), refused.stdout)
+      self.assertNotIn(original, refused.stdout)
+      self.assertEqual(sentinel.read_bytes(), original)
+
+      accepted = self.run_host(frame(handshake()) + frame(scan_status()))
+      self.assertEqual(accepted.returncode, 0)
+      self.assertEqual(accepted.stderr, b"")
+      self.assertEqual(responses(accepted.stdout)[1], unavailable_status_reply())
+      self.assertEqual(sentinel.read_bytes(), original)
 
   def test_truncated_and_invalid_length_fail_closed(self):
     for data in (b"\x01", b"\x08\x00\x00\x00{}",
