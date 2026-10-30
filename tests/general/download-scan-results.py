@@ -27,7 +27,9 @@ class DownloadScanResultsTests(unittest.TestCase):
 
   def test_preference_is_presentation_only_and_preserves_missing_values(self):
     src = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
-    contract = src.split("enum DownloadScanResultPresentation {", 1)[1]
+    self.assertIn("enum DownloadScanResultPresentation {", src)
+    # Inspect only this enum, never unrelated schema or preference declarations.
+    contract = src.split("enum DownloadScanResultsPreference {", 1)[1].split("\n}\n", 1)[0]
     for required in (
         'static let key = "showScanResults"',
         "ScanProgressPreference.suiteName",
