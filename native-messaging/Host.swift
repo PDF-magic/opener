@@ -1,5 +1,10 @@
 import CoreFoundation
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#else
+import Glibc
+#endif
 
 // A standalone, transport-only WebExtensions native messaging process.
 // It must never scan, open, or authorize a document.
@@ -10,30 +15,73 @@ private enum HostError: Error {
 @main
 struct PDFMagicNativeMessagingHost {
   private static let maximumFrameBytes = 16 * 1024
+  // A silent peer cannot hold the process forever. Both frame completion
+  // and response writing use fixed, cumulative monotonic deadlines.
+  private static let idleTimeoutSeconds: TimeInterval = 10
+  private static let frameTimeoutSeconds: TimeInterval = 5
+  private static let responseTimeoutSeconds: TimeInterval = 5
   private static let expectedFields: Set<String> = [
     "version", "kind", "topic", "requestId", "payload"
   ]
 
-  private static func readExactly(_ count: Int, allowCleanEOF: Bool) throws -> Data? {
+  private static func waitForIO(
+    _ descriptor: Int32, events: Int16, deadline: TimeInterval
+  ) throws {
+    while true {
+      let remaining = deadline - ProcessInfo.processInfo.systemUptime
+      guard remaining > 0 else { throw HostError.invalidMessage }
+      var entry = pollfd(fd: descriptor, events: events, revents: 0)
+      let milliseconds = Int32(min(ceil(remaining * 1000), Double(Int32.max)))
+      let ready = poll(&entry, 1, milliseconds)
+      if ready < 0 && errno == EINTR { continue }
+      if ready > 0 && (entry.revents & events) != 0 { return }
+      // A peer closing its input is only a clean EOF between frames.
+      // Allow read() to distinguish it from a truncated header or body.
+      if ready > 0 && events == Int16(POLLIN) &&
+          (entry.revents & Int16(POLLHUP)) != 0 { return }
+      throw HostError.invalidMessage
+    }
+  }
+
+  private static func readExactly(
+    _ count: Int, allowCleanEOF: Bool, deadline: TimeInterval
+  ) throws -> Data? {
     var result = Data()
     while result.count < count {
-      let chunk = FileHandle.standardInput.readData(ofLength: count - result.count)
-      if chunk.isEmpty {
+      try waitForIO(STDIN_FILENO, events: Int16(POLLIN), deadline: deadline)
+      var buffer = [UInt8](repeating: 0, count: min(4096, count - result.count))
+      let length = buffer.withUnsafeMutableBytes {
+        read(STDIN_FILENO, $0.baseAddress, $0.count)
+      }
+      if length < 0 && (errno == EINTR || errno == EAGAIN) { continue }
+      guard length >= 0 else { throw HostError.invalidMessage }
+      if length == 0 {
         if allowCleanEOF && result.isEmpty { return nil }
         throw HostError.invalidMessage
       }
-      result.append(chunk)
+      result.append(contentsOf: buffer[..<length])
     }
     return result
   }
 
   private static func readFrame() throws -> Data? {
-    guard let header = try readExactly(4, allowCleanEOF: true) else { return nil }
+    // Idle waiting is separate from the entire active frame deadline.
+    // Dripping bytes cannot reset the deadline for the length or body.
+    guard let firstByte = try readExactly(
+      1, allowCleanEOF: true,
+      deadline: ProcessInfo.processInfo.systemUptime + idleTimeoutSeconds
+    ) else { return nil }
+    let deadline = ProcessInfo.processInfo.systemUptime + frameTimeoutSeconds
+    guard let headerTail = try readExactly(
+      3, allowCleanEOF: false, deadline: deadline
+    ) else { throw HostError.invalidMessage }
+    var header = firstByte
+    header.append(headerTail)
     let size = header.enumerated().reduce(UInt32(0)) { result, element in
       result | (UInt32(element.element) << (8 * element.offset))
     }
     guard size > 0 && size <= maximumFrameBytes else { throw HostError.invalidMessage }
-    return try readExactly(Int(size), allowCleanEOF: false)
+    return try readExactly(Int(size), allowCleanEOF: false, deadline: deadline)
   }
 
   private static func isValidRequestId(_ value: String) -> Bool {
@@ -190,16 +238,29 @@ struct PDFMagicNativeMessagingHost {
     return encoded
   }
 
-  private static func writeFrame(_ data: Data) {
+  private static func writeFrame(_ data: Data) throws {
     let size = UInt32(data.count)
-    let prefix = Data([
+    var frame = Data([
       UInt8(truncatingIfNeeded: size),
       UInt8(truncatingIfNeeded: size >> 8),
       UInt8(truncatingIfNeeded: size >> 16),
       UInt8(truncatingIfNeeded: size >> 24)
     ])
-    FileHandle.standardOutput.write(prefix)
-    FileHandle.standardOutput.write(data)
+    frame.append(data)
+    let deadline = ProcessInfo.processInfo.systemUptime + responseTimeoutSeconds
+    var offset = 0
+    while offset < frame.count {
+      try waitForIO(STDOUT_FILENO, events: Int16(POLLOUT), deadline: deadline)
+      // Limit each pipe write to POSIX's minimum atomic PIPE_BUF size.
+      // A blocked or disconnected receiver can never stall this loop.
+      let length = frame.withUnsafeBytes { bytes in
+        write(STDOUT_FILENO, bytes.baseAddress!.advanced(by: offset),
+              min(512, frame.count - offset))
+      }
+      if length < 0 && (errno == EINTR || errno == EAGAIN) { continue }
+      guard length > 0 else { throw HostError.invalidMessage }
+      offset += length
+    }
   }
 
   static func main() {
