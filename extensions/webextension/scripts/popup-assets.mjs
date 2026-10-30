@@ -14,6 +14,9 @@ const disabledCurrentPdfControl =
   '<button id="scanThisPDF" type="button" disabled aria-disabled="true" aria-describedby="scanThisPDFUnavailable">Scan This PDF</button>';
 const disabledCurrentPdfExplanation =
   '<p id="scanThisPDFUnavailable">Scan This PDF is unavailable until a verified native scanner and trusted current-PDF selection are connected.</p>';
+const scanResultSection = '<section class="scan-result" aria-labelledby="explicit-pdf-result-title">';
+const scanResultTitle = '<h2 id="explicit-pdf-result-title">Scan result</h2>';
+const scanResultPlaceholder = '<p id="explicitPdfScanResult" role="status" aria-live="polite">No verified scan result is available.</p>';
 const disallowed = /<\s*(?:script|iframe|frame|object|embed|form|input|button|a|video|audio|select|textarea|details|summary)\b|\bon[a-z]+\s*=|\bcontenteditable\s*=|https?:\/\/|javascript\s*:|data\s*:|(?:@import|url\s*\(|expression\s*\()/i;
 
 export function validatePopupAsset(name, content) {
@@ -21,6 +24,9 @@ export function validatePopupAsset(name, content) {
       !content || content.length > 8192 ||
       (name === "popup.html"
         ? (content.split(preferencesAction).length !== 2 ||
+           content.split(scanResultSection).length !== 2 ||
+           content.split(scanResultTitle).length !== 2 ||
+           content.split(scanResultPlaceholder).length !== 2 ||
            content.split(disabledScanControl).length !== 2 ||
            content.split(disabledScanExplanation).length !== 2 ||
            content.split(disabledCurrentPdfControl).length !== 2 ||
@@ -30,7 +36,10 @@ export function validatePopupAsset(name, content) {
              .replace(disabledScanControl, "")
              .replace(disabledScanExplanation, "")
              .replace(disabledCurrentPdfControl, "")
-             .replace(disabledCurrentPdfExplanation, "")))
+             .replace(disabledCurrentPdfExplanation, "")
+             .replace(scanResultSection, "")
+             .replace(scanResultTitle, "")
+             .replace(scanResultPlaceholder, "")))
         : disallowed.test(content))) {
     throw new Error("Unsafe WebExtensions popup asset");
   }
