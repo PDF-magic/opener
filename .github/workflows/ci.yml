@@ -339,6 +339,8 @@ jobs:
           path: extensions/webextension/dist/firefox-packages/*.zip
           if-no-files-found: error
           retention-days: 7
+      - name: Reject unsafe Safari packages in portable tests
+        run: python3 test-safari-extension-package.py -v
       - name: Verify sandboxed Safari Web Extension target configuration
         run: |
           python3 test-safari-extension-target.py -v
@@ -542,6 +544,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Compile and test the transport-only native messaging host
+        run: python3 test-native-messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
@@ -603,6 +607,23 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
           "$RUNNER_TEMP/TestSafariExtensionActivation" --self-test
+      - name: Package and verify unsigned Safari Web Extension host app
+        run: |
+          app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          output="$RUNNER_TEMP/pdf-magic-safari-package"
+          python3 scripts/package_safari_extension.py --app "$app" --output-dir "$output"
+          python3 scripts/package_safari_extension.py --verify "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip"
+          unzip -t "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip"
+          mkdir -p "$RUNNER_TEMP/PDFMagicSafariExtract"
+          ditto -x -k "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip" "$RUNNER_TEMP/PDFMagicSafariExtract"
+          python3 test-safari-extension-target.py --verify-built-app "$RUNNER_TEMP/PDFMagicSafariExtract/PDFMagicOpener.app"
+      - name: Upload verified unsigned Safari Web Extension host app
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-magic-opener-safari-unsigned
+          path: ${{ runner.temp }}/pdf-magic-safari-package/*.zip
+          if-no-files-found: error
+          retention-days: 7
       - name: Exercise SwiftUI preferences at increased text sizes
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors \

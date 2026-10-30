@@ -1,0 +1,30 @@
+name: Browser extension distribution audit
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  distribution-audit:
+    name: Verify unsigned packages and signing prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build unsigned browser distribution packages
+        working-directory: extensions/webextension
+        run: |
+          npm run package:chrome
+          npm run package:firefox
+      - name: Audit channel packages and signing blockers
+        run: python3 test-extension-distribution.py -v
+      - name: Check Safari embedded app extension target
+        run: python3 test-safari-extension-target.py -v
