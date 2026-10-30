@@ -40,11 +40,13 @@ class SafariPackageTests(unittest.TestCase):
         name if name == "manifest.json" or name.startswith("icons/")
         else "src/" + name)
       self.files[safari.APPEX + "Resources/" + name] = src.read_bytes()
+    for name in safari.OPTIONAL_DYLIBS:
+      self.files[name] = b"generated Xcode Debug dylib fixture"
     for name, data in self.files.items():
       target = self.app / name
       target.parent.mkdir(parents=True, exist_ok=True)
       target.write_bytes(data)
-      if name in safari.EXECUTABLES:
+      if name in safari.EXECUTABLE_ENTRIES:
         target.chmod(0o755)
 
   def test_build_real_zip_and_reproduce_exact_bytes(self):

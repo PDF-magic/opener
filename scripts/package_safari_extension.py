@@ -17,7 +17,16 @@ RESOURCES = ("manifest.json", "background.js", "popup.html", "popup.css",
              *(f"icons/icon-{n}.png" for n in (16, 32, 48, 128)))
 EXECUTABLES = ("Contents/MacOS/PDFMagicOpener",
                APPEX + "MacOS/PDFMagicOpenerSafari")
+# Xcode Debug uses executable preview and debug dylibs alongside the host.
+OPTIONAL_DYLIBS = (
+  "Contents/MacOS/__preview.dylib",
+  "Contents/MacOS/PDFMagicOpener.debug.dylib",
+  APPEX + "MacOS/__preview.dylib",
+  APPEX + "MacOS/PDFMagicOpenerSafari.debug.dylib",
+)
+EXECUTABLE_ENTRIES = frozenset((*EXECUTABLES, *OPTIONAL_DYLIBS))
 ALLOWED = frozenset((
+  *OPTIONAL_DYLIBS,
   "Contents/Info.plist", "Contents/PkgInfo",
   "Contents/MacOS/PDFMagicOpener",
   "Contents/Resources/LICENSE",
@@ -96,7 +105,7 @@ def read_app(app):
       raise ValueError("Oversized Safari bundle file")
     files[relative] = path.read_bytes()
   version = validate(files)
-  for path in EXECUTABLES:
+  for path in files.keys() & EXECUTABLE_ENTRIES:
     if not (app / path).stat().st_mode & stat.S_IXUSR:
       raise ValueError("Missing executable bit: " + path)
   return files, version
@@ -119,7 +128,7 @@ def verify_archive(archive):
       mode = entry.external_attr >> 16
       if (name not in ALLOWED or entry.is_dir()
           or not stat.S_ISREG(mode) or entry.file_size > MAX_FILE
-          or (name in EXECUTABLES and not mode & stat.S_IXUSR)):
+          or (name in EXECUTABLE_ENTRIES and not mode & stat.S_IXUSR)):
         raise ValueError("Unexpected Safari ZIP entry: " + entry.filename)
       files[name] = bundle.read(entry)
     return validate(files)
@@ -141,7 +150,7 @@ def package(app, output):
           info = zipfile.ZipInfo(HOST + path, date_time=(1980, 1, 1, 0, 0, 0))
           info.create_system = 3
           info.external_attr = ((stat.S_IFREG |
-                                 (0o755 if path in EXECUTABLES else 0o644)) << 16)
+                                 (0o755 if path in EXECUTABLE_ENTRIES else 0o644)) << 16)
           info.compress_type = zipfile.ZIP_DEFLATED
           bundle.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED,
                           compresslevel=9)
