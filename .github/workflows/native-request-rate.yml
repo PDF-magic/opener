@@ -5,14 +5,14 @@ on:
     paths:
       - "native-messaging/Host.swift"
       - "native-messaging/HostStatus.swift"
-      - "test-native-messaging-host.py"
+      - "tests/native/messaging-host.py"
       - ".github/workflows/native-request-rate.yml"
   push:
     branches: [main]
     paths:
       - "native-messaging/Host.swift"
       - "native-messaging/HostStatus.swift"
-      - "test-native-messaging-host.py"
+      - "tests/native/messaging-host.py"
       - ".github/workflows/native-request-rate.yml"
   merge_group:
     types: [checks_requested]
@@ -31,7 +31,7 @@ jobs:
         run: swiftc --version
       - name: Exercise host burst, recovery and process isolation
         run: |
-          python3 test-native-messaging-host.py \
+          PYTHONPATH=. python3 tests/native/messaging-host.py \
             NativeMessagingHostTests.test_native_request_rate_limit_closes_burst_without_responding_to_overflow \
             NativeMessagingHostTests.test_request_rate_budget_expires_after_sliding_window \
             NativeMessagingHostTests.test_new_host_process_has_independent_request_rate_budget -v
