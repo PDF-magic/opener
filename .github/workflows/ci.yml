@@ -377,6 +377,9 @@ jobs:
       - name: Verify PDFs served from extensionless URLs using trusted response MIME
         working-directory: extensions/webextension
         run: node --test tests/pdf-extensionless.test.mjs
+      - name: Verify passive JavaScript PDF.js viewer candidates
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-js-viewer.test.mjs
       - name: Verify passive inline Content-Disposition response detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-inline-disposition.test.mjs
