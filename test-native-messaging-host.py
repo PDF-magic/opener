@@ -25,6 +25,18 @@ def ping(request_id="test_1"):
           "requestId": request_id, "payload": None}
 
 
+def health(request_id="health_1"):
+  return dict(ping(request_id), topic="host.health")
+
+
+def health_reply(request_id="health_1"):
+  return {"version": 1, "kind": "response", "topic": "host.health",
+          "requestId": request_id, "payload": {
+            "status": "transport-only", "transportResponsive": True,
+            "scannerHealth": None, "scanAvailable": False,
+            "authorizesOpen": False}}
+
+
 def handshake(request_id="hello_1", client_nonce="Client_Challenge_123456789"):
   return dict(ping(request_id), topic="host.handshake",
               payload={"clientNonce": client_nonce})
@@ -189,6 +201,86 @@ class NativeMessagingHostTests(unittest.TestCase):
     self.assertIn(payload["activeProtectionProfile"], ("built-in", None))
     if payload["applicationVersion"] is not None:
       self.assertRegex(payload["applicationVersion"], r"^[A-Za-z0-9.+-]{1,64}$")
+
+  def test_health_check_requires_completed_handshake_not_just_ping(self):
+    for prefix in (b"", frame(ping("probe_1"))):
+      with self.subTest(has_ping=bool(prefix)):
+        run = self.run_host(prefix + frame(health()))
+        self.assertNotEqual(run.returncode, 0)
+        self.assert_diagnostics(run)
+        replies = responses(run.stdout)
+        self.assertEqual(len(replies), int(bool(prefix)))
+        if replies:
+          self.assertEqual(replies[0]["topic"], "host.ping")
+
+  def test_health_check_correlates_without_claiming_scanner_health(self):
+    run = self.run_host(
+      frame(handshake()) + frame(health()) +
+      frame(scan_request("scan_1")) + frame(scan_cancel("cancel_1", "scan_1")) +
+      frame(health("health_2")) + frame(ping("still_alive"))
+    )
+    self.assertEqual(run.returncode, 0)
+    self.assert_diagnostics(run)
+    replies = responses(run.stdout)
+    self.assertEqual(len(replies), 6)
+    self.assert_handshake_response(replies[0])
+    self.assertEqual(replies[1], health_reply())
+    self.assertEqual(replies[2], unavailable_scan_reply("scan_1"))
+    self.assertEqual(replies[3], unavailable_cancel_reply("cancel_1", "scan_1"))
+    self.assertEqual(replies[4], health_reply("health_2"))
+    self.assertEqual(replies[5]["payload"],
+                     {"status": "transport-only", "scanAvailable": False})
+    for health_response in (replies[1], replies[4]):
+      payload = health_response["payload"]
+      self.assertIs(payload["transportResponsive"], True)
+      self.assertIsNone(payload["scannerHealth"])
+      self.assertIs(payload["scanAvailable"], False)
+      self.assertIs(payload["authorizesOpen"], False)
+      for forbidden in ("scanVerified", "scanResult", "filePath", "activeProtectionProfile"):
+        self.assertNotIn(forbidden, payload)
+
+  def test_health_check_rejects_untrusted_payloads_and_envelopes(self):
+    valid = health()
+    invalid = [
+      dict(valid, payload={}),
+      dict(valid, payload={"path": "/private/secret.pdf"}),
+      dict(valid, payload={"scannerHealthy": True}),
+      dict(valid, payload={"authorizesOpen": True}),
+      dict(valid, payload={"scanAvailable": True}),
+      dict(valid, payload=[]),
+      dict(valid, payload=False),
+      dict(valid, payload="ping"),
+      dict(valid, kind="event"),
+      dict(valid, kind="response"),
+      dict(valid, version=2),
+      dict(valid, requestId="../invalid"),
+    ]
+    for request in invalid:
+      with self.subTest(request=request):
+        run = self.run_host(frame(handshake()) + frame(request))
+        self.assertNotEqual(run.returncode, 0)
+        self.assert_diagnostics(run)
+        replies = responses(run.stdout)
+        self.assertEqual(len(replies), 1)
+        self.assert_handshake_response(replies[0])
+
+  def test_health_check_does_not_read_or_modify_pdf(self):
+    with tempfile.TemporaryDirectory(prefix="native-health-read-only-") as directory:
+      document = Path(directory) / "private.pdf"
+      original = b"%PDF-1.4\nprivate fixture remains untouched"
+      document.write_bytes(original)
+      # Unknown caller fields cannot turn a health check into a file probe.
+      attack = dict(health(), payload={"path": str(document)})
+      rejected = self.run_host(frame(handshake()) + frame(attack))
+      self.assertNotEqual(rejected.returncode, 0)
+      self.assertEqual(len(responses(rejected.stdout)), 1)
+      self.assert_diagnostics(rejected)
+      self.assertNotIn(original, rejected.stdout)
+      accepted = self.run_host(frame(handshake()) + frame(health()))
+      self.assertEqual(accepted.returncode, 0)
+      self.assertEqual(responses(accepted.stdout)[1], health_reply())
+      self.assert_diagnostics(accepted)
+      self.assertEqual(document.read_bytes(), original)
 
   def test_read_only_status_snapshot_resolver(self):
     completed = subprocess.run([str(self.status_binary)], stdout=subprocess.PIPE,
