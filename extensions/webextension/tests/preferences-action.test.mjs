@@ -39,8 +39,8 @@ test("Chromium and Firefox package the exact approved popup bytes", async () => 
 });
 
 test("native registration and exact URL handling do not modify the PDF scan gate", async () => {
-  const app = await read("../../../PDFMagicOpenerApp/PDFMagicOpenerApp.swift");
-  const plist = await read("../../../PDFMagicOpenerApp/Info.plist");
+  const app = await read("../../PDFMagicOpenerApp/PDFMagicOpenerApp.swift");
+  const plist = await read("../../PDFMagicOpenerApp/Info.plist");
   assert.match(plist, /<key>CFBundleURLTypes<\/key>/);
   assert.match(plist, /<string>pdfmagicopener<\/string>/);
   assert.match(app, /url\.absoluteString == "pdfmagicopener:\/\/preferences"/);
