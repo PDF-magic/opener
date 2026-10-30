@@ -10,6 +10,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "package:chrome": "node scripts/package-chrome.mjs"
+    "package:chrome": "node scripts/package-chrome.mjs",
+    "package:firefox": "node scripts/package-firefox.mjs"
   }
 }
