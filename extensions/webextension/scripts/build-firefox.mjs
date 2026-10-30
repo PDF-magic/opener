@@ -10,6 +10,7 @@ const keys = Object.keys(settings.gecko ?? {}).sort();
 
 if (
   source.manifest_version !== 3 ||
+  source.incognito !== "not_allowed" ||
   typeof source.name !== "string" || !source.name.trim() ||
   !/^\d+\.\d+\.\d+$/.test(source.version) ||
   source.browser_specific_settings !== undefined ||

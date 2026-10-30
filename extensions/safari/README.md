@@ -52,3 +52,13 @@ preferences URL, which may trigger a browser confirmation. The source and
 bundled Safari popup are byte-identical and retain their explicit inactive
 PDF scanning status. This is not an extension-to-scanner message or PDF
 opening capability; the existing native handler remains inert.
+
+## Exclude private windows by default (opener-0593)
+
+The embedded shared Manifest V3 now declares `"incognito": "not_allowed"`.
+Native CI verifies the exact manifest bytes inside the built Safari .appex.
+Safari also provides its own user-managed private-browsing access setting;
+the manifest flag alone is not a claim that Safari will block every
+user-authorized private window on every release. The extension remains inert,
+without page access, native messaging or PDF opening. Future activated Safari
+integrations must separately review and test private-context exclusion.

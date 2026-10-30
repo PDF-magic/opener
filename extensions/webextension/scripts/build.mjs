@@ -6,13 +6,15 @@ import { copyPopupAssets } from "./popup-assets.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const allowed = [
-  "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "optional_permissions", "permissions", "version"
+  "action", "background", "description", "host_permissions", "icons", "incognito", "manifest_version", "name", "optional_permissions", "permissions", "version"
 ];
 
 // The initial shared project must not accidentally acquire runtime privileges.
 if (
   JSON.stringify(Object.keys(manifest).sort()) !== JSON.stringify(allowed) ||
   manifest.manifest_version !== 3 ||
+  // Never package an extension eligible for private/incognito contexts.
+  manifest.incognito !== "not_allowed" ||
   manifest.name !== "PDF Magic Opener" ||
   typeof manifest.description !== "string" ||
   !manifest.description.trim() || manifest.description.length > 132 ||

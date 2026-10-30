@@ -23,9 +23,10 @@ test("the shared project is a private dependency-free Node package", async () =>
 test("the common Manifest V3 scaffold has no browser or host privileges", async () => {
   const manifest = await load("manifest.json");
   assert.deepEqual(Object.keys(manifest).sort(), [
-    "action", "background", "description", "host_permissions", "icons", "manifest_version", "name", "optional_permissions", "permissions", "version"
+    "action", "background", "description", "host_permissions", "icons", "incognito", "manifest_version", "name", "optional_permissions", "permissions", "version"
   ]);
   assert.equal(manifest.manifest_version, 3);
+  assert.equal(manifest.incognito, "not_allowed");
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(manifest.name, "PDF Magic Opener");
   assert.equal(manifest.description,
