@@ -56,10 +56,15 @@ enum NativeCallerOrigin {
     let homePath = home.standardizedFileURL.path
     let filePath = file.standardizedFileURL.path
     guard filePath.hasPrefix(homePath + "/"), file.path == filePath,
-          FileManager.default.fileExists(atPath: homePath) else { return false }
-    // Reject symlinks in the entire path, including ancestors of the home.
-    var current = ""
-    for segment in filePath.split(separator: "/") {
+          let homeAttrs = try? FileManager.default.attributesOfItem(atPath: homePath),
+          (homeAttrs[.type] as? FileAttributeType) == .typeDirectory else {
+      return false
+    }
+    // macOS can represent system ancestors via /var -> /private/var.
+    // Reject links from the selected user home downward; never follow an
+    // untrusted registration-directory component or manifest symlink.
+    var current = homePath
+    for segment in filePath.dropFirst(homePath.count + 1).split(separator: "/") {
       current += "/" + segment
       guard let attrs = try? FileManager.default.attributesOfItem(atPath: current),
             let kind = attrs[.type] as? FileAttributeType,
