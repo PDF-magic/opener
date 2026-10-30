@@ -362,6 +362,9 @@ jobs:
           npm run package:firefox
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
+      - name: Verify passive top-frame PDF navigation detection contract
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-navigation.test.mjs
       - name: Verify passive PDF navigation response MIME detection
         working-directory: extensions/webextension
         run: node --test tests/pdf-response-mime.test.mjs
