@@ -563,6 +563,54 @@ enum DownloadFailedScanNotificationPreference {
   }
 }
 
+// This app has no authenticated live browser-to-native connection observer yet.
+// A transport-only host handshake never proves that scanning is available.
+// The read-only indicator must not treat saved opt-in or installed apps as health.
+enum BrowserNativeConnectionHealth: Equatable {
+  case notConnected
+  case transportOnly
+
+  // No live observer is installed. Change this only when a separately reviewed
+  // authenticated coordinator supplies a current, session-bound status.
+  static var current: BrowserNativeConnectionHealth { .notConnected }
+
+  // Future integration boundary: input must come from independently verified
+  // host registration, exact extension identity and an authenticated session.
+  // The existing v1 handshake explicitly advertises scanAvailable = false.
+  // Unrecognized or privileged claims remain unverified.
+  static func fromVerifiedHandshake(
+    authenticatedSession: Bool,
+    protocolVersion: Int,
+    hostStatus: String,
+    scanAvailable: Bool
+  ) -> BrowserNativeConnectionHealth {
+    guard authenticatedSession, protocolVersion == 1,
+          hostStatus == "transport-only", !scanAvailable else {
+      return .notConnected
+    }
+    return .transportOnly
+  }
+
+  var statusLabel: String {
+    switch self {
+    case .notConnected: return "Not connected"
+    case .transportOnly: return "Host reachable — scanning unavailable"
+    }
+  }
+
+  var detail: String {
+    switch self {
+    case .notConnected:
+      return "No authenticated browser-to-native connection is active. Browser download scanning is not available."
+    case .transportOnly:
+      return "Native messaging transport is verified, but the scanner is not connected to browser downloads."
+    }
+  }
+
+  // Mandatory native scanner enforcement is never controlled by this display.
+  var scannerConnectionHealthy: Bool { false }
+}
+
 // Download scan-result presentation only. No native scanner, browser permission,
 // mandatory warning, blocked-file alert, or PDF destination depends
 // on this preference. Unverified/incomplete results must remain visible.

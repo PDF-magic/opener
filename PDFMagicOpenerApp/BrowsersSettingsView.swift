@@ -203,6 +203,31 @@ struct BrowsersSettingsView: View {
         .accessibilityIdentifier("perBrowserMonitoringStatusSection")
         .onAppear(perform: refreshBrowserMonitoringStatus)
 
+        GroupBox("Connection health") {
+          VStack(alignment: .leading, spacing: 8) {
+            Label(
+              BrowserNativeConnectionHealth.current.statusLabel,
+              systemImage: "bolt.slash"
+            )
+            .font(.headline)
+            .accessibilityIdentifier("browserNativeConnectionHealthIndicator")
+
+            Text(BrowserNativeConnectionHealth.current.detail)
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("browserNativeConnectionHealthDetail")
+
+            Text("A saved monitoring preference, installed browser or native host, and a transport-only handshake do not establish a working scan connection. No permission is requested or scan started by this indicator.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("browserNativeConnectionHealthSection")
+
         GroupBox("Browser integration test") {
           VStack(alignment: .leading, spacing: 10) {
             Button("Test Browser Integration") {
