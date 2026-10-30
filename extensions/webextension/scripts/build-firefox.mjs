@@ -1,6 +1,7 @@
 import { copyFile, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { copyPopupAssets } from "./popup-assets.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const source = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -20,7 +21,8 @@ if (
   !source.action || typeof source.action !== "object" ||
   Array.isArray(source.action) ||
   JSON.stringify(Object.keys(source.action).sort()) !==
-    JSON.stringify(["default_icon", "default_title"]) ||
+    JSON.stringify(["default_icon", "default_popup", "default_title"]) ||
+  source.action.default_popup !== "popup.html" ||
   source.action.default_title !== "PDF Magic Opener (not active)" ||
   JSON.stringify(source.action.default_icon) !== JSON.stringify(source.icons) ||
   ["content_scripts", "externally_connectable",
@@ -72,6 +74,8 @@ await writeFile(
   "utf8"
 );
 await copyFile(workerPath, join(output, "background.js"));
+
+await copyPopupAssets(root, output);
 
 // Package the same local, allowlisted toolbar icons for the Firefox variant.
 // Do not follow symlinks or accept manifest-supplied file paths.

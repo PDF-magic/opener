@@ -34,3 +34,21 @@ The fixed script registers no listeners or messaging, reads no PDFs, and has
 no browser privileges or native scanner access. Its bundle presence and exact
 source bytes are verified by the Safari CI checks. This scaffolding does not
 make the extension functional or grant a PDF opening verdict.
+
+## Inactive toolbar popup (opener-0576)
+
+The toolbar opens a local, read-only **Not active** panel supplied by the
+shared `src/popup.html` and `src/popup.css`. Safari's app-extension Resources
+bundle packages both files beside the shared manifest. Xcode and portable
+CI check the exact source bytes; no scripts, browser APIs, remote resources,
+scanner commands or native messaging are permitted. This popup does not
+activate the browser integration or change the user's selected PDF handler.
+
+## Open native preferences (opener-0577)
+
+The static shared popup now includes a single opt-in
+**Open PDF Magic Preferences** link. It requests the registered local macOS
+preferences URL, which may trigger a browser confirmation. The source and
+bundled Safari popup are byte-identical and retain their explicit inactive
+PDF scanning status. This is not an extension-to-scanner message or PDF
+opening capability; the existing native handler remains inert.

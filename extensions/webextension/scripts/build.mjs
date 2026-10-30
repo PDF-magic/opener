@@ -1,6 +1,7 @@
 import { copyFile, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { copyPopupAssets } from "./popup-assets.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -24,7 +25,8 @@ if (
   !manifest.action || typeof manifest.action !== "object" ||
   Array.isArray(manifest.action) ||
   JSON.stringify(Object.keys(manifest.action).sort()) !==
-    JSON.stringify(["default_icon", "default_title"]) ||
+    JSON.stringify(["default_icon", "default_popup", "default_title"]) ||
+  manifest.action.default_popup !== "popup.html" ||
   manifest.action.default_title !== "PDF Magic Opener (not active)" ||
   JSON.stringify(manifest.action.default_icon) !== JSON.stringify(manifest.icons) ||
   !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
@@ -88,6 +90,7 @@ const output = join(root, "dist");
 await mkdir(output, { recursive: true });
 await writeFile(join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 await copyFile(workerPath, join(output, "background.js"));
+await copyPopupAssets(root, output);
 
 // Copy only validated static art for the inert toolbar action. The no-op
 // background has no permissions, toolbar handlers, event listeners or native PDF bridge.

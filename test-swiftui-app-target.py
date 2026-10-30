@@ -26,7 +26,13 @@ class SwiftUIAppTargetTests(unittest.TestCase):
     source = SOURCE.read_text(encoding="utf-8")
     for required in ("import SwiftUI", "@main", "struct PDFMagicOpenerApp: App", "WindowGroup"):
       self.assertIn(required, source)
-    for forbidden in ("NSWorkspace", "onOpenURL", "DocumentGroup", "clamscan", "target-app.txt"):
+    # The only URL handler may activate this same preferences window; it must
+    # never treat a browser link as a PDF document or bypass the scanner.
+    self.assertEqual(source.count(".onOpenURL { url in"), 1)
+    self.assertIn('guard url.absoluteString == "pdfmagicopener://preferences" else { return }', source)
+    self.assertIn("NSApplication.shared.activate(ignoringOtherApps: true)", source)
+    for forbidden in ("NSWorkspace", "DocumentGroup", "clamscan", "target-app.txt",
+                      "openDocument(", "FileManager.default"):
       self.assertNotIn(forbidden, source)
 
   def test_shared_xcode_scheme_builds_the_application(self):
