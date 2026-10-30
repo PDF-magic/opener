@@ -538,6 +538,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Compile and test the transport-only native messaging host
+        run: python3 test-native-messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
