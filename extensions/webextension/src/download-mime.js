@@ -27,6 +27,12 @@ function completedId(notice) {
   return Number.isSafeInteger(id) && id >= 0 ? id : null;
 }
 
+/** Return whether a browser declaration uses the bounded MIME grammar. */
+export function isValidDeclaredDownloadMime(mime) {
+  return typeof mime === "string" && mime.length >= 3 &&
+    mime.length <= MAX_MIME_LENGTH && mimePattern.test(mime);
+}
+
 function declaredMimeResult(results, id) {
   if (!Array.isArray(results) || results.length !== 1 ||
       !Object.hasOwn(results, "0")) return null;
@@ -35,8 +41,7 @@ function declaredMimeResult(results, id) {
       ![Object.prototype, null].includes(Object.getPrototypeOf(item)) ||
       own(item, "id") !== id || own(item, "state") !== "complete") return null;
   const mime = own(item, "mime");
-  if (typeof mime !== "string" || mime.length < 3 ||
-      mime.length > MAX_MIME_LENGTH || !mimePattern.test(mime)) return null;
+  if (!isValidDeclaredDownloadMime(mime)) return null;
   // Return only the browser declaration, not filename, URL, danger or bytes.
   return Object.freeze({ id, mime });
 }
