@@ -6,6 +6,7 @@ import sqlite3
 import stat
 import tempfile
 import unittest
+from unittest import mock
 
 from scan_history_metadata import ScanHistoryStorageError, store_scan_metadata
 from scan_results import EFFECTIVE_POLICY_ID, ScanResultStatus
@@ -17,6 +18,10 @@ class ScanHistoryMetadataTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name) / "private"
         self.database = self.folder / "history.sqlite3"
+        # Synthetic dates stay stable even as the real clock advances.
+        clock = mock.patch("scan_history_metadata.time.time", return_value=1_783_000_223.125)
+        clock.start()
+        self.addCleanup(clock.stop)
 
     def store(self, status=ScanResultStatus.clean, **kwargs):
         return store_scan_metadata(scanned_at=1_783_000_123.125,

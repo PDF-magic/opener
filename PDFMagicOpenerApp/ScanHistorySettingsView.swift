@@ -11,6 +11,37 @@ struct ScanHistorySettingsView: View {
   @State private var showClearHistoryConfirmation = false
   @State private var showClearHistoryResult = false
   @State private var clearHistoryResultMessage = ""
+  @State private var retentionDays = ScanHistoryRetentionStore.defaultDays
+  @State private var retentionReady = false
+  @State private var retentionMessage: String?
+
+  private func expireHistory() {
+    switch ScanHistoryRetentionStore.removeExpired() {
+    case .removed(let count):
+      retentionMessage = "Removed \(count) expired scan history entries."
+    case .nothingToRemove:
+      retentionMessage = nil
+    case .unavailable:
+      retentionMessage = "Could not safely remove expired scan history."
+    }
+  }
+
+  private var retentionSelection: Binding<Int> {
+    Binding(
+      get: { retentionDays },
+      set: { days in
+        guard retentionReady else { return }
+        guard ScanHistoryRetentionStore.saveDays(days) else {
+          retentionMessage = "Could not safely save history retention."
+          return
+        }
+        retentionDays = days
+        inspectedResult = nil
+        recentScanHistory = nil
+        expireHistory()
+      }
+    )
+  }
 
   var body: some View {
     ScrollView {
@@ -26,15 +57,34 @@ struct ScanHistorySettingsView: View {
         GroupBox("History availability") {
           VStack(alignment: .leading, spacing: 8) {
             Text("The Scan History page is available only after the owning feature explicitly enables it.")
-            Text("This page does not automatically load, export, or delete document records. The owning integration must independently verify the user's opt-in before enabling this page and collecting any entries.")
+            Text("This page does not automatically display, export, or clear all saved results. Expired optional history rows are removed automatically according to the selected retention period. The owning integration must independently verify the user's opt-in before enabling this page and collecting any entries.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
 
+            Picker("Keep scan history for", selection: retentionSelection) {
+              ForEach(ScanHistoryRetentionStore.allowedDays, id: \.self) { days in
+                Text("\(days) days").tag(days)
+              }
+            }
+            .disabled(!retentionReady)
+            .accessibilityIdentifier("scanHistoryRetentionPicker")
+
+            if let retentionMessage {
+              Text(retentionMessage)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("scanHistoryRetentionStatus")
+            }
+
             Button("Show recent scan results") {
               inspectedResult = nil
-              recentScanHistory = RecentScanHistoryReader.load()
+              if case .unavailable = ScanHistoryRetentionStore.removeExpired() {
+                recentScanHistory = .unavailable
+              } else {
+                recentScanHistory = RecentScanHistoryReader.load()
+              }
             }
             .accessibilityIdentifier("showRecentScanResultsButton")
+            .disabled(!retentionReady)
 
             Button("Clear History…", role: .destructive) {
               showClearHistoryConfirmation = true
@@ -98,7 +148,7 @@ struct ScanHistorySettingsView: View {
         }
         .accessibilityIdentifier("scanHistoryPrivacySection")
 
-        Text("Viewing this page does not change scan history, saved preferences, or the existing scanner.")
+        Text("Viewing this enabled page removes expired optional history rows only. The scanner and unrelated preferences remain unchanged.")
           .font(.footnote)
           .foregroundStyle(.secondary)
       }
@@ -106,6 +156,15 @@ struct ScanHistorySettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("scanHistorySettingsPage")
+    .task {
+      guard let savedDays = ScanHistoryRetentionStore.selectedDays() else {
+        retentionMessage = "History retention settings could not be read safely."
+        return
+      }
+      retentionDays = savedDays
+      expireHistory()
+      retentionReady = true
+    }
     .sheet(item: $inspectedResult) { row in
       ScanHistoryResultDetailView(row: row)
     }

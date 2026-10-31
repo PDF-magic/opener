@@ -72,7 +72,7 @@ enum RecentScanHistoryReader {
       && (metadata.st_mode & mode_t(0o077)) == 0
   }
 
-  private static func hasExactSchema(_ database: OpaquePointer) -> Bool {
+  static func hasExactSchema(_ database: OpaquePointer) -> Bool {
     var query: OpaquePointer?
     guard sqlite3_prepare_v2(database, "PRAGMA table_xinfo(scan_history)", -1,
                              &query, nil) == SQLITE_OK, let query else { return false }
