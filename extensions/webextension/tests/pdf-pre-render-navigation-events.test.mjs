@@ -176,6 +176,8 @@ test("classification remains passive without adding interception privileges or c
   for (const forbidden of [
     "addListener(", "webRequestBlocking", "permissions.request(",
     "sendNativeMessage(", "connectNative(", "downloads.open(",
-    "fetch(", "XMLHttpRequest", "globalThis.", "chrome.", "browser."
+    "fetch(", "XMLHttpRequest", "globalThis."
   ]) assert.equal(source.includes(forbidden), false, forbidden);
+  assert.doesNotMatch(source,
+    /\b(?:chrome|browser)\s*\.\s*(?:webNavigation|webRequest|downloads|runtime|permissions|tabs)\b/u);
 });

@@ -52,8 +52,7 @@ A future separately reviewed interception experiment requires explicit user
 consent and browser permissions, a threat model, authentication of browser
 events and native scan results, full ClamAV/signature freshness checks,
 quarantine and stable file identity, as well as preservation of user-selected
-PDF applications/preferences. It also requires **browser-specific live
-experiments** across Chrome, Chromium, Brave, Edge, Vivaldi, Opera, Arc,
+PDF applications/preferences. It also requires **browser-specific live experiments** across Chrome, Chromium, Brave, Edge, Vivaldi, Opera, Arc,
 Firefox, and Safari for redirects, inline PDFs, iframe/PDF.js viewers,
 cached files, and service worker/browser internal paths. This task makes
 no universal timing or interception guarantee and changes no live listeners.
