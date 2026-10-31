@@ -67,7 +67,8 @@ for (const name of CHROME_PACKAGE_FILES) {
   }
   const bytes = await readFile(builtPath);
   if (name !== "manifest.json") {
-    const input = name === "background.js" || name.startsWith("popup.")
+    const input = name === "background.js" || name.startsWith("popup.") ||
+      name.startsWith("intercept-scan-failed.")
       ? join(root, "src", name) : join(root, name);
     const sourceStat = await lstat(input);
     if (!sourceStat.isFile() || sourceStat.isSymbolicLink() ||

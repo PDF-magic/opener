@@ -23,11 +23,13 @@ no URL in its status record. Invalid/unsupported/credential-bearing URLs,
 stale or mismatched holds, changed coordinators, and malformed replies fail
 closed; `clear()` and `dispose()` erase the URL and invalidate pending reads.
 
-**Prerequisite:** the actual holding-screen structure and ownership from
-**opener-0785** are not yet implemented on main. This module is deliberately
-not wired to the inert background, and it does not build the holding UI or
-enable automatic interception, native scanning, or opening. A separately
-reviewed integration must enforce scanner safety and user preferences.
+**Integration:** opener-0785 now supplies the extension-owned holding
+screen. That renderer creates the `holdingScreenOriginalUrl` text element only
+after verifying a current scanning hold; this presenter then displays a
+separately authenticated original navigation URL for that same hold.
+The shared background remains inert. Actual interception and native scan
+gating remain separate, and integration must preserve scanner safety and user
+preferences.
 
 Run `node --test tests/holding-screen-original-url.test.mjs` or `npm test`.
 The existing WebExtension CI runs both the focused test and the full suite.

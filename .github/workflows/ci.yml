@@ -326,6 +326,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/download-monitoring-limits.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
+      - name: Verify automatic PDF interception preference is browser-gated and inert
+        run: PYTHONPATH=. python3 tests/general/automatic-pdf-interception-option.py -v
       - name: Verify opt-in non-PDF download scan preference surface
         run: PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v
       - name: Verify opt-in browser download failed-scan notifications remain safety-neutral
@@ -371,9 +373,15 @@ jobs:
       - name: Preserve original PDF URL on the holding screen
         working-directory: extensions/webextension
         run: node --test tests/holding-screen-original-url.test.mjs
+      - name: Verify automatic PDF scan holding screen stays accessible and fail-closed
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-interception-holding-screen.test.mjs
       - name: Verify trusted explicit PDF scan results appear safely in the extension
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-scan-result-display.test.mjs
+      - name: webextension / automatic-scan-failure-page / Verify inert blocking page and browser packages
+        working-directory: extensions/webextension
+        run: node --test tests/intercept-scan-failed-page.test.mjs
       - name: Verify ownership and policy-safe temporary explicit PDF cleanup
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-temporary-cleanup.test.mjs
@@ -773,6 +781,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
           "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
+      - name: Verify isolated per-browser automatic interception opt-ins
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-automatic-pdf-interception.swift -o "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
+          "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
       - name: Verify browser failed-scan notification preference in isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"

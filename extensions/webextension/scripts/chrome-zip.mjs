@@ -2,6 +2,7 @@
 // Exact archive allowlist deliberately excludes Firefox, source and secrets.
 export const CHROME_PACKAGE_FILES = Object.freeze([
   "manifest.json", "background.js", "popup.html", "popup.css",
+  "intercept-scan-failed.html", "intercept-scan-failed.css",
   "icons/icon-16.png", "icons/icon-32.png",
   "icons/icon-48.png", "icons/icon-128.png"
 ]);
@@ -20,7 +21,7 @@ function crc32(data) {
 /** Encode only approved files as a deterministic ZIP STORE archive. */
 export function encodeChromeZip(entries) {
   if (!Array.isArray(entries) || entries.length !== CHROME_PACKAGE_FILES.length) {
-    throw new Error("Chrome ZIP must contain exactly eight approved files");
+    throw new Error("Chrome ZIP must contain exactly ten approved files");
   }
   const localParts = [];
   const centralParts = [];

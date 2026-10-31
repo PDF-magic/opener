@@ -60,7 +60,7 @@ function verifyZipArchive(zip) {
   return records;
 }
 
-test("Chrome package is a real ZIP containing only eight validated assets", async () => {
+test("Chrome package is a real ZIP containing only ten validated assets", async () => {
   const manifest = JSON.parse(await readFile(join(dist, "manifest.json"), "utf8"));
   const filename = "pdf-magic-opener-chrome-" + manifest.version + ".zip";
   const archive = join(dist, "chrome", filename);

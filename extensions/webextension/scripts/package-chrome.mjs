@@ -44,7 +44,8 @@ const entries = [];
 for (const name of CHROME_PACKAGE_FILES) {
   const builtPath = join(dist, name);
   const sourcePath = join(root, name === "manifest.json" ? name :
-    name === "background.js" || name.startsWith("popup.") ? join("src", name) : name);
+    name === "background.js" || name.startsWith("popup.") ||
+    name.startsWith("intercept-scan-failed.") ? join("src", name) : name);
   const stat = await lstat(builtPath);
   if (!stat.isFile() || stat.isSymbolicLink() ||
       stat.size === 0 || stat.size > 2 * 1024 * 1024) {
