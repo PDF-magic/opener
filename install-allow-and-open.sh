@@ -10,6 +10,10 @@ if [ ! -f "$workflow" ]; then
     exit 1
 fi
 
+# Discover existing scan entry points before touching installed scripts or settings.
+# This preflight never reads or runs existing user-customized script contents.
+python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
+
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
     brew install clamav
 fi
