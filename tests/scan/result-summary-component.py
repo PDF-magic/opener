@@ -46,6 +46,16 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertNotIn("scannerOutput", source)
         self.assertIn("documentURL: URL? = nil", source)
         self.assertIn("selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil", source)
+        self.assertIn("sanitization: ScanResultSummarySanitization? = nil", source)
+        self.assertIn("enum ScanResultSummarySanitization: String, CaseIterable", source)
+        self.assertIn('return "Sanitization: Performed"', source)
+        self.assertIn('return "Sanitization: Not performed"', source)
+        self.assertIn('"Sanitization: Unavailable"', source)
+        self.assertIn("sanitization?.displayText", source)
+        self.assertIn("displayedSanitization = sanitization", source)
+        self.assertIn("sanitizationLabel.setAccessibilityLabel", source)
+        self.assertNotIn("selectedProtectionLevel == .maximum", source)
+        self.assertNotIn("status == .clean", source)
         self.assertIn("url.isFileURL", source)
         self.assertIn("url.lastPathComponent", source)
         self.assertIn("CharacterSet.controlCharacters.contains", source)
@@ -92,6 +102,11 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('Document: März résumé 🦄.pdf', harness)
         self.assertIn('URL(string: "https://example.invalid/secret.pdf")', harness)
         self.assertIn("preview only", harness)
+        self.assertIn("sanitization: .performed", harness)
+        self.assertIn("sanitization: .notPerformed", harness)
+        self.assertIn('ScanResultSummarySanitization(rawValue: "attempted") == nil', harness)
+        self.assertIn("first.displayedSanitization == nil", harness)
+        self.assertIn("second.sanitizationLabel.stringValue", harness)
 
 
 if __name__ == "__main__":
