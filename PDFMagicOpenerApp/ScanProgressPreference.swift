@@ -378,6 +378,20 @@ enum PlannedProtectionLevelPreference {
   }
 }
 
+// First-run choice is an explicit future-profile preference, never an
+// authorization to switch off Built-in ClamAV or activate planned controls.
+// A missing selection must not write even the default preview marker.
+enum InitialProtectionProfileChoice {
+  @discardableResult
+  static func save(
+    _ choice: PreferredProtectionLevel?,
+    defaults: UserDefaults? = UserDefaults(suiteName: PlannedProtectionLevelPreference.suiteName)
+  ) -> Bool {
+    guard let choice else { return false }
+    return PlannedProtectionLevelPreference.saveExplicitChoice(choice, defaults: defaults)
+  }
+}
+
 // Explicit, narrow reset of the *planned preview* metadata only. The
 // effective Built-in scan policy and all other preferences are out of scope.
 // Unknown future selections are never coerced into a known profile.
