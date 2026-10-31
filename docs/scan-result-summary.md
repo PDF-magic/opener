@@ -50,3 +50,23 @@ Each new result update clears missing contextual fields, and `reset()`
 clears the document name, selected level and prior verdict together. The
 existing portable and macOS rendering suites verify Unicode, privacy,
 inactive-preview explanations, accessible labels and fail-closed reset behavior.
+
+
+## Copy Diagnostic Details (opener-0886)
+
+The reusable native summary now includes an accessible **Copy Diagnostic Details**
+button that writes a fresh, plain-text report to the macOS clipboard. It contains
+the trusted canonical status code, fixed heading and explanation, a validated
+local document basename (or `Unavailable`), and the selected typed protection
+level with its preview-only warning. A missing result is `unavailable`.
+
+For a supplied local document URL, the report says `Document path: [redacted]`
+instead of retaining or exporting the private directory or absolute URL. Absent
+and remote URLs say `Not provided`. The report is built from typed values and
+fixed strings, not raw scanner stdout/stderr, PDF content, exception messages,
+mutable UI labels or arbitrary diagnostics. Reset and each new result discard
+the preceding path flag and document name. Copying does not authorize opening,
+run a scanner, change preferences or collect telemetry.
+
+The existing portable and macOS CI suites test accessibility, actual clipboard
+writes, status parity, path redaction, unsafe names and reset semantics.

@@ -21,6 +21,14 @@ struct ScanResultSummaryComponentTests {
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
         precondition(first.subviews.count == 1, "the component must own its layout")
+        precondition(first.copyDiagnosticDetailsButton.title == "Copy Diagnostic Details")
+        precondition(first.copyDiagnosticDetailsButton.accessibilityIdentifier()
+                     == "scanResultSummaryCopyDiagnostics")
+        precondition(first.copyDiagnosticDetailsButton.accessibilityLabel()
+                     == "Copy Diagnostic Details")
+        precondition(first.copyDiagnosticDetailsButton.action != nil)
+        precondition(first.diagnosticDetailsForCopy().contains("Status: unavailable"))
+        precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
 
         let expected = [
             "clean", "malwareDetected", "suspiciousStructure", "encrypted",
@@ -31,6 +39,8 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            precondition(first.diagnosticDetailsForCopy().contains("Status: " + status.rawValue))
+            precondition(!first.diagnosticDetailsForCopy().contains("[redacted]"))
             precondition(!first.headingLabel.stringValue.isEmpty)
             precondition(!first.explanationLabel.stringValue.isEmpty)
             precondition(first.headingLabel.accessibilityLabel() == first.headingLabel.stringValue)
@@ -57,12 +67,27 @@ struct ScanResultSummaryComponentTests {
         precondition(first.selectedProtectionLevelLabel.accessibilityLabel()
                      == "Selected protection level: Built-in")
         precondition(first.displayedProtectionLevel == .builtIn)
+        let safeCopy = first.diagnosticDetailsForCopy()
+        precondition(safeCopy.contains("Status: clean"))
+        precondition(safeCopy.contains("Document: März résumé 🦄.pdf"))
+        precondition(safeCopy.contains("Document path: [redacted]"))
+        precondition(safeCopy.contains("Selected protection level: Built-in"))
+        precondition(safeCopy.contains("File integrity and verified opening checks still apply"))
+        precondition(!safeCopy.contains("/Users/"))
+        precondition(!safeCopy.contains("Private scans"))
+        precondition(!safeCopy.contains(target.path))
+        first.copyDiagnosticDetailsButton.performClick(nil)
+        precondition(NSPasteboard.general.string(forType: .string) == safeCopy,
+                     "button must copy only the privacy-safe snapshot")
         precondition(first.headingLabel.stringValue == "Scan complete")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
                     selectedProtectionLevel: .enhanced)
         precondition(second.headingLabel.stringValue == "Scan failed")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
+        precondition(second.diagnosticDetailsForCopy().contains("Status: scanFailed"))
+        precondition(second.diagnosticDetailsForCopy().contains("Document path: [redacted]"))
+        precondition(!second.diagnosticDetailsForCopy().contains("/tmp/other.pdf"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("Enhanced"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains(
@@ -90,6 +115,8 @@ struct ScanResultSummaryComponentTests {
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
+        precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
+        precondition(!first.diagnosticDetailsForCopy().contains("example.invalid"))
         for unsafe in [
             "/tmp/line\nspoof.pdf",
             "/tmp/\u{202E}fdp.dab.pdf",
@@ -98,9 +125,21 @@ struct ScanResultSummaryComponentTests {
             first.show(.scanFailed, documentURL: URL(fileURLWithPath: unsafe),
                        selectedProtectionLevel: .builtIn)
             precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
+            let redacted = first.diagnosticDetailsForCopy()
+            precondition(redacted.contains("Document: Unavailable"))
+            precondition(redacted.contains("Document path: [redacted]"))
+            precondition(!redacted.contains(unsafe))
+            precondition(!redacted.contains("spoof.pdf"))
+            precondition(!redacted.contains("fdp.dab.pdf"))
         }
         first.reset()
         precondition(first.displayedStatus == nil)
+        precondition(first.diagnosticDetailsForCopy().contains("Status: unavailable"))
+        precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
+        precondition(!first.diagnosticDetailsForCopy().contains("März résumé"))
+        first.copyDiagnosticDetailsButton.performClick(nil)
+        precondition(NSPasteboard.general.string(forType: .string)
+                     == first.diagnosticDetailsForCopy())
         precondition(first.displayedProtectionLevel == nil)
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
