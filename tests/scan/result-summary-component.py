@@ -62,7 +62,11 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("displayedSanitization = sanitization", source)
         self.assertIn("sanitizationLabel.setAccessibilityLabel", source)
         self.assertNotIn("selectedProtectionLevel == .maximum", source)
-        self.assertNotIn("status == .clean", source)
+        # Sanitization display must depend only on trusted conversion evidence.
+        sanitization_assignment = next(
+            line for line in source.splitlines() if "let sanitizationCopy =" in line
+        )
+        self.assertNotIn("status == .clean", sanitization_assignment)
         self.assertIn("url.isFileURL", source)
         self.assertIn("url.lastPathComponent", source)
         self.assertIn("CharacterSet.controlCharacters.contains", source)
@@ -75,6 +79,38 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertNotIn("UserDefaults", source)
         self.assertNotIn("scannerOutput", source)
         self.assertIn("private(set) var displayedStatus", source)
+        self.assertIn("enum ScanResultSummaryOpeningOutcome", source)
+        self.assertIn("openingOutcome: ScanResultSummaryOpeningOutcome? = nil", source)
+        self.assertIn("status == .clean ? openingOutcome : .blocked", source)
+        self.assertIn("status == nil ? nil", source)
+        for fixed_copy in (
+            "File opened: Yes", "File opened: No", "File opened: Not confirmed",
+            "File blocked: Yes", "File blocked: No", "File blocked: Not confirmed",
+            "Blocking reason: None", "Blocking reason: Not confirmed",
+            "Blocking reason: Verified opening did not complete.",
+            "Malware was detected.", "Required scanning failed.",
+        ):
+            self.assertIn(fixed_copy, source)
+        for identifier in (
+            "scanResultSummaryFileOpened", "scanResultSummaryFileBlocked",
+            "scanResultSummaryBlockingReason",
+        ):
+            self.assertIn(identifier, source)
+        self.assertIn("label.setAccessibilityLabel(value)", source)
+        self.assertNotIn("openingError", source)
+        self.assertNotIn("blockingMessage:", source)
+
+
+        self.assertIn("private(set) var technicalDetailsExpanded", source)
+        self.assertIn("ScanResultSummaryTechnicalCopy.forStatus(status)", source)
+        self.assertIn("technicalDetailsButton.isHidden = technicalCopy == nil", source)
+        self.assertIn("technicalDetailsLabel.setAccessibilityLabel(technicalCopy ??", source)
+        self.assertIn('case .clean, .cancelled:', source)
+        self.assertIn("technicalDetailsExpanded = false", source)
+        self.assertIn("#selector(toggleTechnicalDetails(_:))", source)
+        self.assertIn("invalidateIntrinsicContentSize()", source)
+        self.assertNotIn("scannerOutput", source)
+
         self.assertIn("private(set) var technicalDetailsExpanded", source)
         self.assertIn("ScanResultSummaryTechnicalCopy.forStatus(status)", source)
         self.assertIn("technicalDetailsButton.isHidden = technicalCopy == nil", source)
@@ -109,6 +145,15 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('ScanResultSummarySanitization(rawValue: "attempted") == nil', harness)
         self.assertIn("first.displayedSanitization == nil", harness)
         self.assertIn("second.sanitizationLabel.stringValue", harness)
+        self.assertIn("openingOutcome: .opened", harness)
+        self.assertIn("openingOutcome: .blocked", harness)
+        self.assertIn('File opened: Not confirmed', harness)
+        self.assertIn('File blocked: Yes', harness)
+        self.assertIn("first.displayedOpeningOutcome == nil", harness)
+        self.assertIn("first.displayedOpeningOutcome == .blocked", harness)
+
+
+
         self.assertIn("for status in ScanResultSummaryStatus.allCases", harness)
         self.assertIn('status == .malwareDetected ? "Malware: Detected"', harness)
         self.assertIn('status == .clean ? "Malware: Not detected" : "Malware: Not determined"', harness)
