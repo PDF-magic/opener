@@ -46,7 +46,7 @@ class HomebrewDependencyDecisionTests(unittest.TestCase):
         guide = DECISION.read_text(encoding="utf-8")
         readme = README.read_text(encoding="utf-8")
         self.assertIn("Retain Homebrew as the default provisioning route", guide)
-        self.assertIn("not a required", guide)
+        self.assertIn("Do **not** make Homebrew a required", guide)
         self.assertIn("docs/clamav-homebrew-decision.md", readme)
         installer = INSTALLER.read_text(encoding="utf-8")
         for forbidden in ("brew upgrade clamav", "brew uninstall clamav",
