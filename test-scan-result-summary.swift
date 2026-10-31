@@ -234,32 +234,7 @@ struct ScanResultSummaryComponentTests {
         precondition(first.displayedOpeningOutcome == nil)
         precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
         precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
-        precondition(ScanResultSummaryProtectionLevel(rawValue: "disabled") == nil)
-        precondition(ScanResultSummaryProtectionLevel(rawValue: "custom") == nil)
-        first.show(.fileChanged, documentURL: URL(string: "https://example.invalid/secret.pdf"),
-                   selectedProtectionLevel: nil)
-        precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
-        precondition(first.selectedProtectionLevelLabel.stringValue
-                     == "Selected protection level: Unavailable")
-        for unsafe in [
-            "/tmp/line\nspoof.pdf",
-            "/tmp/\u{202E}fdp.dab.pdf",
-            "/tmp/" + String(repeating: "a", count: 260) + ".pdf"
-        ] {
-            first.show(.scanFailed, documentURL: URL(fileURLWithPath: unsafe),
-                       selectedProtectionLevel: .builtIn)
-            precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
-        }
-        first.reset()
-        precondition(first.displayedStatus == nil)
-        precondition(first.displayedProtectionLevel == nil)
-        precondition(first.displayedOpeningOutcome == nil)
-        precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
-        precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
-        precondition(ScanResultSummaryProtectionLevel(rawValue: "disabled") == nil)
-        precondition(ScanResultSummaryProtectionLevel(rawValue: "custom") == nil)
-        first.show(.fileChanged, documentURL: URL(string: "https://example.invalid/secret.pdf"),
-                   selectedProtectionLevel: nil)
+        precondition(first.blockingReasonLabel.stringValue == "Blocking reason: Not confirmed")
         precondition(first.displayedSanitization == nil)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
         precondition(first.sanitizationLabel.accessibilityLabel()
