@@ -67,7 +67,7 @@ test("Brave's real built-in PDF viewer is exercised in a separate headed CI step
 });
 
 test("Brave viewer documentation distinguishes verified CI behavior from scanner enforcement", async () => {
-  const doc = await read("brave/README.md");
+  const doc = await read("../brave/README.md");
   for (const phrase of [
     "opener-0801", "built-in PDF viewer", "Xvfb",
     "localhost", "synthetic", "inline", "not",
