@@ -340,6 +340,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/window-branding.py -v
       - name: Verify independent SwiftUI application target
         run: PYTHONPATH=. python3 tests/general/swiftui-app-target.py -v
+      - name: Verify packaged application helper allowlist and safety boundaries
+        run: PYTHONPATH=. python3 tests/general/application-helper-packaging.py -v
       - name: Verify SwiftUI About window, version and AGPL license
         run: PYTHONPATH=. python3 tests/general/about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
@@ -899,6 +901,15 @@ jobs:
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
+      - name: Stage and verify reviewed executable helpers in isolated macOS application package
+        run: |
+          app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          stage="$RUNNER_TEMP/PDFMagicOpenerHelpersPackage"
+          python3 scripts/package_application_helpers.py --app "$app" --output-dir "$stage"
+          python3 scripts/package_application_helpers.py --verify "$stage/PDFMagicOpener.app"
+          test -x "$stage/PDFMagicOpener.app/Contents/Helpers/pdf-magic-native-host"
+          test -x "$stage/PDFMagicOpener.app/Contents/Helpers/launch-scanned-file"
+          test ! -e "$app/Contents/Helpers"
       - name: Test native notifications after quitting the built Settings application
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission
