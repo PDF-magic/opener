@@ -73,6 +73,77 @@ enum ScanResultSummarySignatureFreshness: String, CaseIterable {
     }
 }
 
+// Opening is a separate trusted post-scan handoff result. A clean scan alone
+// never proves a file opened; an untrusted caller must not construct this value.
+enum ScanResultSummaryOpeningOutcome {
+    case opened
+    case blocked
+}
+
+private struct ScanResultSummaryOpeningCopy {
+    let opened: String
+    let blocked: String
+    let reason: String
+
+    static func forResult(
+        _ status: ScanResultSummaryStatus?, openingOutcome: ScanResultSummaryOpeningOutcome?
+    ) -> ScanResultSummaryOpeningCopy {
+        guard let status else {
+            return ScanResultSummaryOpeningCopy(
+                opened: "File opened: Not confirmed",
+                blocked: "File blocked: Not confirmed",
+                reason: "Blocking reason: Not confirmed")
+        }
+        if status == .clean {
+            switch openingOutcome {
+            case .opened:
+                return ScanResultSummaryOpeningCopy(
+                    opened: "File opened: Yes", blocked: "File blocked: No",
+                    reason: "Blocking reason: None")
+            case .blocked:
+                return ScanResultSummaryOpeningCopy(
+                    opened: "File opened: No", blocked: "File blocked: Yes",
+                    reason: "Blocking reason: Verified opening did not complete.")
+            case nil:
+                return ScanResultSummaryOpeningCopy(
+                    opened: "File opened: Not confirmed",
+                    blocked: "File blocked: Not confirmed",
+                    reason: "Blocking reason: Not confirmed")
+            }
+        }
+
+        // Non-clean terminal outcomes cannot claim an authorized opening, even
+        // if a stale/inconsistent opening outcome is supplied by a caller.
+        let reason: String
+        switch status {
+        case .malwareDetected:
+            reason = "Malware was detected."
+        case .suspiciousStructure:
+            reason = "Suspicious PDF structure."
+        case .encrypted:
+            reason = "Required encrypted-file inspection could not complete."
+        case .incompleteScan:
+            reason = "Required scanning was incomplete."
+        case .scanFailed:
+            reason = "Required scanning failed."
+        case .scanTimedOut:
+            reason = "Required scanning timed out."
+        case .fileChanged:
+            reason = "The file changed during verification."
+        case .fileTooLarge:
+            reason = "The file exceeded required scan limits."
+        case .cancelled:
+            reason = "The scan was cancelled."
+        case .clean:
+            // Already handled above.
+            reason = "Opening not confirmed."
+        }
+        return ScanResultSummaryOpeningCopy(
+            opened: "File opened: No", blocked: "File blocked: Yes",
+            reason: "Blocking reason: " + reason)
+    }
+}
+
 private struct ScanResultSummaryCopy {
     let heading: String
     let explanation: String
@@ -170,6 +241,9 @@ final class ScanResultSummaryView: NSView {
     let structureAnalysisLabel = NSTextField(labelWithString: "Structure analysis: Unavailable")
     let technicalDetailsButton = NSButton(title: "Show technical details", target: nil, action: nil)
     let technicalDetailsLabel = NSTextField(wrappingLabelWithString: "")
+    let fileOpenedLabel = NSTextField(labelWithString: "File opened: Not confirmed")
+    let fileBlockedLabel = NSTextField(labelWithString: "File blocked: Not confirmed")
+    let blockingReasonLabel = NSTextField(wrappingLabelWithString: "Blocking reason: Not confirmed")
     let copyDiagnosticDetailsButton = NSButton(
         title: "Copy Diagnostic Details", target: nil, action: nil)
     // Retain only safe presentation data, never the private directory or URL.
@@ -178,6 +252,7 @@ final class ScanResultSummaryView: NSView {
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
     private(set) var displayedSanitization: ScanResultSummarySanitization?
+    private(set) var displayedOpeningOutcome: ScanResultSummaryOpeningOutcome?
     let signatureFreshnessLabel = NSTextField(wrappingLabelWithString: "")
     private(set) var displayedSignatureFreshness: ScanResultSummarySignatureFreshness?
     private(set) var displayedStructureAnalysisCompleted: Bool?
@@ -238,6 +313,18 @@ final class ScanResultSummaryView: NSView {
         technicalDetailsLabel.maximumNumberOfLines = 0
         technicalDetailsLabel.setAccessibilityIdentifier("scanResultSummaryTechnicalDetails")
 
+        for (label, identifier) in [
+            (fileOpenedLabel, "scanResultSummaryFileOpened"),
+            (fileBlockedLabel, "scanResultSummaryFileBlocked"),
+            (blockingReasonLabel, "scanResultSummaryBlockingReason")
+        ] {
+            label.font = .systemFont(ofSize: 12)
+            label.textColor = .secondaryLabelColor
+            label.setAccessibilityIdentifier(identifier)
+        }
+        blockingReasonLabel.lineBreakMode = .byWordWrapping
+        blockingReasonLabel.maximumNumberOfLines = 0
+
         copyDiagnosticDetailsButton.setAccessibilityIdentifier("scanResultSummaryCopyDiagnostics")
         copyDiagnosticDetailsButton.setAccessibilityLabel("Copy Diagnostic Details")
         copyDiagnosticDetailsButton.bezelStyle = .rounded
@@ -247,7 +334,9 @@ final class ScanResultSummaryView: NSView {
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
             sanitizationLabel, malwareStatusLabel, structureAnalysisLabel,
-            signatureFreshnessLabel, explanationLabel, technicalDetailsButton, technicalDetailsLabel, copyDiagnosticDetailsButton
+            signatureFreshnessLabel, explanationLabel,
+            fileOpenedLabel, fileBlockedLabel, blockingReasonLabel,
+            technicalDetailsButton, technicalDetailsLabel, copyDiagnosticDetailsButton
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -312,11 +401,27 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
         sanitization: ScanResultSummarySanitization? = nil,
         structureAnalysisCompleted: Bool? = nil,
-        signatureFreshness: ScanResultSummarySignatureFreshness? = nil
+        signatureFreshness: ScanResultSummarySignatureFreshness? = nil,
+        openingOutcome: ScanResultSummaryOpeningOutcome? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
         displayedSanitization = sanitization
+        // Displayed outcome is derived from the trusted scan policy, not from
+        // an inconsistent caller-supplied claim of a successful handoff.
+        displayedOpeningOutcome = status == nil ? nil :
+            (status == .clean && signatureFreshness != .stale && signatureFreshness != .unverified
+             ? openingOutcome : .blocked)
+        let opening = ScanResultSummaryOpeningCopy.forResult(
+            status, openingOutcome: displayedOpeningOutcome)
+        for (label, value) in [
+            (fileOpenedLabel, opening.opened),
+            (fileBlockedLabel, opening.blocked),
+            (blockingReasonLabel, opening.reason)
+        ] {
+            label.stringValue = value
+            label.setAccessibilityLabel(value)
+        }
         displayedStructureAnalysisCompleted = structureAnalysisCompleted
         displayedSignatureFreshness = signatureFreshness
         let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"

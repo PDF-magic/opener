@@ -47,6 +47,13 @@ struct ScanResultSummaryComponentTests {
                      == "scanResultSummarySignatureFreshness")
         precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
         precondition(first.displayedSignatureFreshness == nil)
+        precondition(first.fileOpenedLabel.accessibilityIdentifier() == "scanResultSummaryFileOpened")
+        precondition(first.fileBlockedLabel.accessibilityIdentifier() == "scanResultSummaryFileBlocked")
+        precondition(first.blockingReasonLabel.accessibilityIdentifier()
+                     == "scanResultSummaryBlockingReason")
+        precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
+        precondition(first.blockingReasonLabel.stringValue == "Blocking reason: Not confirmed")
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         precondition(first.copyDiagnosticDetailsButton.title == "Copy Diagnostic Details")
@@ -86,6 +93,26 @@ struct ScanResultSummaryComponentTests {
             precondition(first.explanationLabel.accessibilityLabel() == first.explanationLabel.stringValue)
             precondition(!first.explanationLabel.stringValue.contains("/Users/"))
             precondition(!first.explanationLabel.stringValue.contains("secret.pdf"))
+            precondition(first.fileOpenedLabel.accessibilityLabel()
+                         == first.fileOpenedLabel.stringValue)
+            precondition(first.fileBlockedLabel.accessibilityLabel()
+                         == first.fileBlockedLabel.stringValue)
+            precondition(first.blockingReasonLabel.accessibilityLabel()
+                         == first.blockingReasonLabel.stringValue)
+            if status == .clean {
+                // Clean scanning is not evidence that the app launched.
+                precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
+                precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
+                precondition(first.blockingReasonLabel.stringValue
+                             == "Blocking reason: Not confirmed")
+            } else {
+                precondition(first.fileOpenedLabel.stringValue == "File opened: No")
+                precondition(first.fileBlockedLabel.stringValue == "File blocked: Yes")
+                precondition(first.blockingReasonLabel.stringValue.hasPrefix("Blocking reason: "))
+                precondition(first.blockingReasonLabel.stringValue != "Blocking reason: None")
+                precondition(!first.blockingReasonLabel.stringValue.contains("/Users/"))
+                precondition(!first.blockingReasonLabel.stringValue.contains("secret.pdf"))
+            }
             if status != .clean {
                 precondition(!first.headingLabel.stringValue.contains("Scan complete"))
                 precondition(first.explanationLabel.stringValue.contains("Opening"))
@@ -160,6 +187,35 @@ struct ScanResultSummaryComponentTests {
         precondition(first.headingLabel.stringValue == "Scan complete")
         precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
+        // The trusted post-handoff signal is the only path to displaying opened.
+        first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
+                   openingOutcome: .opened)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: Yes")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: No")
+        precondition(first.blockingReasonLabel.stringValue == "Blocking reason: None")
+        precondition(first.displayedOpeningOutcome == .opened)
+
+        // A clean verdict cannot claim an opening when freshness is unsafe.
+        first.show(.clean, documentURL: target, signatureFreshness: .stale, openingOutcome: .opened)
+        precondition(first.displayedOpeningOutcome == .blocked)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: No")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Yes")
+        first.show(.clean, documentURL: target, signatureFreshness: .unverified, openingOutcome: .opened)
+        precondition(first.displayedOpeningOutcome == .blocked)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: No")
+
+        // An explicit post-scan opening denial must not be presented as success.
+        first.show(.clean, documentURL: target, openingOutcome: .blocked)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: No")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Yes")
+        precondition(first.blockingReasonLabel.stringValue
+                     == "Blocking reason: Verified opening did not complete.")
+        // Restore independently verified structure completion for the
+        // instance-isolation check; intervening show calls cleared prior evidence.
+        first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
+                   structureAnalysisCompleted: true, openingOutcome: .opened)
+        precondition(first.displayedStructureAnalysisCompleted == true)
+
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
                     selectedProtectionLevel: .enhanced, sanitization: .notPerformed,
                     structureAnalysisCompleted: false)
@@ -175,6 +231,9 @@ struct ScanResultSummaryComponentTests {
                      == "Sanitization: Not performed")
         precondition(second.headingLabel.stringValue == "Scan failed")
         precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
+        precondition(second.fileBlockedLabel.stringValue == "File blocked: Yes")
+        precondition(second.blockingReasonLabel.stringValue
+                     == "Blocking reason: Required scanning failed.")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
         precondition(second.diagnosticDetailsForCopy().contains("Status: scanFailed"))
         precondition(second.diagnosticDetailsForCopy().contains("Sanitization: Not performed"))
@@ -218,6 +277,17 @@ struct ScanResultSummaryComponentTests {
         precondition(first.headingLabel.stringValue == "Malware detected")
         precondition(first.explanationLabel.stringValue.contains("Opening was stopped"))
         precondition(second.sanitizationLabel.stringValue == "Sanitization: Not performed")
+        // Never trust a stale or contradictory opened signal for denied scans.
+        first.show(.malwareDetected, documentURL: target, openingOutcome: .opened)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: No")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Yes")
+        precondition(first.blockingReasonLabel.stringValue
+                     == "Blocking reason: Malware was detected.")
+        precondition(first.displayedOpeningOutcome == .blocked)
+        first.show(nil, documentURL: target, openingOutcome: .opened)
+        precondition(first.displayedOpeningOutcome == nil)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
         precondition(ScanResultSummaryProtectionLevel(rawValue: "disabled") == nil)
         precondition(ScanResultSummaryProtectionLevel(rawValue: "custom") == nil)
         first.show(.fileChanged, documentURL: URL(string: "https://example.invalid/secret.pdf"),
@@ -287,6 +357,10 @@ struct ScanResultSummaryComponentTests {
                      == first.diagnosticDetailsForCopy())
         precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
+        precondition(first.displayedOpeningOutcome == nil)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
+        precondition(first.blockingReasonLabel.stringValue == "Blocking reason: Not confirmed")
         precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
         precondition(first.structureAnalysisLabel.accessibilityLabel()
