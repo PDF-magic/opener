@@ -134,10 +134,10 @@ recordNativeScanOrigin(script: origin, path: document, environment: env)
         with tempfile.TemporaryDirectory(prefix="opener-0852-") as directory:
             root = Path(directory)
             sleeping = root / "unresponsive.py"
-            sleeping.write_text("import time\\ntime.sleep(30)\\n", encoding="utf-8")
+            sleeping.write_text("import time\ntime.sleep(30)\n", encoding="utf-8")
             harness = root / "deadline.swift"
             harness.write_text(
-                "import Foundation\\nimport Darwin\\n" + helpers + """
+                "import Foundation\nimport Darwin\n" + helpers + """
 let process = Process()
 process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
 process.arguments = [CommandLine.arguments[1]]
