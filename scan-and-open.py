@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scan selected local files while retaining macOS quarantine protections."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 from scanner_concurrency_validation import validate_scanner_concurrency_limit
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from scanner_argument_validation import (
@@ -39,6 +40,8 @@ CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 SCAN_REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
+# A version probe outside an active scan must share the same cross-process cap.
+_ACTIVE_SCAN_SLOT = ContextVar('active_scan_slot', default=False)
 REQUESTING_APPLICATION_ENV = 'PDF_MAGIC_REQUESTING_APPLICATION'
 
 PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
@@ -184,9 +187,11 @@ def scan_slot():
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except BlockingIOError:
                     continue
+                token = _ACTIVE_SCAN_SLOT.set(True)
                 try:
                     yield
                 finally:
+                    _ACTIVE_SCAN_SLOT.reset(token)
                     fcntl.flock(fd, fcntl.LOCK_UN)
                 return
             finally:
@@ -704,8 +709,14 @@ def scan_engine_version(scanner):
     version_command = [scanner, '--version']
     try:
         validate_scanner_version_arguments(version_command, scanner=scanner)
-        output = subprocess.check_output(
-            version_command, text=True, timeout=5, stderr=subprocess.DEVNULL)
+        # Scanner admission invokes this before scan_slot() in main(), and
+        # advisory version discovery can run independently. Make both share
+        # the two-slot cross-process cap with active scans. Reuse a slot
+        # already owned by this request to avoid nested-lock deadlock.
+        guard = nullcontext() if _ACTIVE_SCAN_SLOT.get() else scan_slot()
+        with guard:
+            output = subprocess.check_output(
+                version_command, text=True, timeout=5, stderr=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError, UnicodeError, InvalidScannerArguments):
         return None
     match = re.match(
