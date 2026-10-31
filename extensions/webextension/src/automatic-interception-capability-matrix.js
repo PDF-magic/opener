@@ -31,8 +31,77 @@ export const AUTOMATIC_INTERCEPTION_CAPABILITY_MATRIX = Object.freeze(
   }))
 );
 
+
+// Explicit deny-by-default decision for browsers and PDF entry paths whose
+// native scan-before-render hold cannot be demonstrated in this installation.
+// A recorded user preference or observed API shape is never permission to
+// intercept. This is an inactive policy decision, NOT a capability probe.
+export const AUTOMATIC_INTERCEPTION_RELIABILITY_POLICY_VERSION = 1;
+export const AUTOMATIC_INTERCEPTION_PDF_PATHS = Object.freeze([
+  "network-main-frame", "inline-browser-viewer", "embedded-pdf",
+  "pdfjs-page", "redirected-response", "blob-url", "data-url",
+  "file-url", "cached-pdf", "attachment-download"
+]);
+
+function disabledReliability(browserId, reason) {
+  return Object.freeze({
+    status: "disabled-unreliable",
+    browserId, reason,
+    automaticInterceptionDisabled: true,
+    automaticInterceptionEnabled: false,
+    blockingPointVerified: false,
+    nativeScanInterlockVerified: false,
+    allPdfOpeningPathsBlocked: false,
+    authorizesScan: false,
+    authorizesOpen: false
+  });
+}
+
+/**
+ * Fail closed for every currently unverified browser and PDF route.
+ *
+ * This guards the distinction between a possible vendor API and a reliable,
+ * working native PDF scan-before-render interlock. Even Firefox's documented
+ * response filter is not implemented or verified in this extension. Chromium
+ * MV3 blocking is enterprise-policy-only; Safari and forks need version-
+ * specific validation. A URL or browser viewer path can bypass any matching
+ * network request hook. Do not consult stored opt-in flags as proof.
+ *
+ * A future independently audited integration must separately validate
+ * effective permissions, original browser/response identity, complete bytes,
+ * native scan/authentication, cleanup, and actual browser-specific release
+ * before replacing this permanently disabled decision.
+ */
+export function assessAutomaticInterceptionReliability(
+  browserId, pdfPath = "network-main-frame"
+) {
+  if (typeof browserId !== "string") {
+    return disabledReliability(null, "unsupported-browser");
+  }
+  const row = AUTOMATIC_INTERCEPTION_CAPABILITY_MATRIX.find(
+    item => item.id === browserId
+  );
+  if (!row) return disabledReliability(null, "unsupported-browser");
+  if (typeof pdfPath !== "string" ||
+      !AUTOMATIC_INTERCEPTION_PDF_PATHS.includes(pdfPath)) {
+    return disabledReliability(row.id, "unverified-pdf-path");
+  }
+  if (pdfPath !== "network-main-frame") {
+    return disabledReliability(row.id, "uncontrolled-pdf-path");
+  }
+  if (row.family === "chromium") {
+    return disabledReliability(row.id, "no-verified-blocking-native-hold");
+  }
+  if (row.family === "webkit") {
+    return disabledReliability(row.id, "browser-interception-unverified");
+  }
+  return disabledReliability(row.id, "native-scan-interlock-unverified");
+}
+
 const UNKNOWN = Object.freeze({
   status: "unsupported-browser", browserId: null,
+  automaticInterceptionDisabled: true,
+  disabledReason: "unsupported-browser",
   observedDownloadEventsApi: false, observedDeclarativeRulesApi: false,
   observedWebRequestApi: false, observedFirefoxResponseFilterApi: false,
   automaticInterceptionEnabled: false, allPdfOpeningBlocked: false,
@@ -84,6 +153,8 @@ export function assessAutomaticPdfInterception(browserId, api = {}) {
   return Object.freeze({
     status: "inactive",
     browserId: row.id,
+    automaticInterceptionDisabled: true,
+    disabledReason: assessAutomaticInterceptionReliability(row.id).reason,
     observedDownloadEventsApi: flags.downloadEventsApi,
     observedDeclarativeRulesApi: hasMethod(dnr, "updateDynamicRules") &&
       hasMethod(dnr, "getDynamicRules"),
