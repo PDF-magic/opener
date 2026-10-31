@@ -117,6 +117,8 @@ class PackagedHelperTests(unittest.TestCase):
   def fake_compile(arguments, **kwargs):
     assert arguments[0:2] == ["/usr/bin/xcrun", "swiftc"]
     assert arguments[-2] == "-o"
+    if target_name := Path(arguments[-1]).name:
+      assert ("-parse-as-library" in arguments) == (target_name != "launch-scanned-file")
     target = Path(arguments[-1])
     target.write_bytes(b"\xcf\xfa\xed\xfe" + b"binary")
     return None

@@ -110,7 +110,10 @@ def stage(app, output, *, swiftc="/usr/bin/xcrun"):
       sources = [ROOT / path for path in paths]
       if any(not path.is_file() or path.is_symlink() for path in sources):
         raise ValueError("Missing or unsafe reviewed helper source: " + name)
-      arguments = [swiftc, "swiftc", "-parse-as-library", "-O",
+      # The launch-scanned-file source retains its original top-level entry
+      # expression; the other helper sources provide their own @main types.
+      library_flags = [] if name == "launch-scanned-file" else ["-parse-as-library"]
+      arguments = [swiftc, "swiftc", *library_flags, "-O",
                    *definitions, *(str(path) for path in sources),
                    "-o", str(helpers / name)]
       # No shell or user-controlled executable names/Swift flags.
