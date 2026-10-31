@@ -7,7 +7,6 @@ This test never invokes a real scanner, Launch Services, or a user's PDF app.
 """
 
 from contextlib import ExitStack
-import errno
 import importlib.util
 import os
 from pathlib import Path
@@ -30,7 +29,28 @@ SYNTHETIC_QUARANTINE = (
 EXPECTED_NAMES = ("pdfmagic-attachment.pdf", "pdfmagic-octet.pdf")
 
 
-@unittest.skipUnless(sys.platform == "darwin" and hasattr(os, "setxattr"),
+def read_quarantine(path):
+    """Read exact macOS quarantine bytes using xattr; os.getxattr is absent."""
+    result = subprocess.run(
+        ["/usr/bin/xattr", "-px", QUARANTINE, str(path)],
+        capture_output=True, check=False
+    )
+    if result.returncode == 0:
+        return bytes.fromhex(result.stdout.decode("ascii"))
+    if b"No such xattr" in result.stderr:
+        return None
+    raise AssertionError("Could not read Chrome download quarantine attribute")
+
+
+def seed_quarantine(path):
+    subprocess.run(
+        ["/usr/bin/xattr", "-wx", QUARANTINE,
+         SYNTHETIC_QUARANTINE.hex(), str(path)],
+        capture_output=True, check=True
+    )
+
+
+@unittest.skipUnless(sys.platform == "darwin",
                      "Real Chrome handoff and macOS quarantine require macOS")
 class ChromeDownloadedQuarantineTests(unittest.TestCase):
     @classmethod
@@ -71,7 +91,7 @@ class ChromeDownloadedQuarantineTests(unittest.TestCase):
         def safe_launch(path, **kwargs):
             self.assertEqual(Path(path), pdf)
             self.assertEqual(kwargs["target_app"], "com.google.Chrome")
-            self.assertEqual(os.getxattr(pdf, QUARANTINE), expected_quarantine)
+            self.assertEqual(read_quarantine(pdf), expected_quarantine)
             self.assertEqual(pdf.read_bytes(), original_bytes)
             launch_calls.append(Path(path))
 
@@ -109,7 +129,7 @@ class ChromeDownloadedQuarantineTests(unittest.TestCase):
                 launch.assert_not_called()
             self.assertEqual(len(calls), 1)
         self.assertEqual(pdf.read_bytes(), original_bytes)
-        self.assertEqual(os.getxattr(pdf, QUARANTINE), expected_quarantine)
+        self.assertEqual(read_quarantine(pdf), expected_quarantine)
 
     def test_real_chrome_downloads_preserve_quarantine_during_safe_open_handoff(self):
         pdfs = [self.download_dir / name for name in EXPECTED_NAMES]
@@ -125,13 +145,10 @@ class ChromeDownloadedQuarantineTests(unittest.TestCase):
                 # Headless Chrome may not attach Gatekeeper quarantine on a
                 # synthetic loopback URL. If missing, label only this disposable
                 # downloaded test file, then assert the scan/open gate retains it.
-                try:
-                    original_quarantine = os.getxattr(pdf, QUARANTINE)
-                except OSError as error:
-                    if error.errno not in {getattr(errno, "ENOATTR", -1), errno.ENODATA}:
-                        raise
-                    os.setxattr(pdf, QUARANTINE, SYNTHETIC_QUARANTINE)
-                    original_quarantine = os.getxattr(pdf, QUARANTINE)
+                original_quarantine = read_quarantine(pdf)
+                if original_quarantine is None:
+                    seed_quarantine(pdf)
+                    original_quarantine = read_quarantine(pdf)
                 self.assertTrue(original_quarantine)
                 launched = []
                 with tempfile.TemporaryDirectory(prefix="chrome-pdf-open-gate-") as tmp:
@@ -149,7 +166,7 @@ class ChromeDownloadedQuarantineTests(unittest.TestCase):
                             self.assertEqual(launched, [],
                                              "Failed scans may never hand off a file")
                 self.assertEqual(pdf.read_bytes(), original_bytes)
-                self.assertEqual(os.getxattr(pdf, QUARANTINE), original_quarantine)
+                self.assertEqual(read_quarantine(pdf), original_quarantine)
 
 
 if __name__ == "__main__":
