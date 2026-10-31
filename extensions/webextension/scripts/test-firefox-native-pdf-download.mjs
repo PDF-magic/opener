@@ -18,6 +18,9 @@ const version = execFileSync(firefox, ["--version"], {
   encoding: "utf8", timeout: 8000
 }).trim();
 assert.match(version, /Mozilla Firefox/, "The real Firefox binary is required");
+const verifyMacHandoff = process.argv.includes("--macos-handoff");
+if (verifyMacHandoff) assert.equal(process.platform, "darwin",
+  "The quarantine/scan-open integration requires a real macOS runner");
 const fixture = createNativePdfDownloadFixture();
 const server = createServer((request, response) => {
   if (fixture.handle(request, response)) return;
@@ -153,6 +156,15 @@ try {
     }, "completed native PDF file " + item.name, 55_000);
     assert.deepEqual(await readFile(join(downloadDir, item.name)), fixture.pdf,
       "Firefox must save exact bytes with the server-supplied filename");
+    if (verifyMacHandoff) {
+      // The helper runs the real scanner gate with all external scanner/GUI
+      // commands mocked; nothing is launched outside this disposable profile.
+      const verified = execFileSync("python3", [
+        "../../tests/browser/firefox-downloaded-open.py",
+        join(downloadDir, item.name)
+      ], { encoding: "utf8", timeout: 45_000 });
+      assert.match(verified, /PASS Firefox-downloaded PDF scan-and-open isolation/);
+    }
   }
 
   assert.deepEqual((await readdir(downloadDir)).sort(),
@@ -164,6 +176,9 @@ try {
       "One user-like click must fetch one PDF");
   }
   console.log("PASS Firefox browser-native PDF attachment and octet downloads: " + version);
+  if (verifyMacHandoff) console.log(
+    "PASS Firefox-downloaded PDF safe-opening and quarantine scenarios on macOS"
+  );
 } catch (error) {
   console.error("Firefox isolated download diagnostics:", stderrTail);
   throw error;
