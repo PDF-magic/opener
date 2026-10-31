@@ -94,10 +94,16 @@ class DependencyLicensingTests(unittest.TestCase):
       checker.check(self.root)
 
   def test_rejects_install_route_or_project_license_changes(self):
-    self.edit("install-allow-and-open.sh", "brew install clamav", "brew install unrelated")
+    command = '"$brew_executable" install clamav'
+    self.edit("install-allow-and-open.sh", command, '"$brew_executable" install unrelated')
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh", "brew install unrelated", "brew install clamav")
+    self.edit("install-allow-and-open.sh", '"$brew_executable" install unrelated', command)
+    detector = 'scripts/detect_homebrew.py'
+    self.edit("install-allow-and-open.sh", detector, "scripts/untrusted_brew.py")
+    with self.assertRaises(checker.LicenseReviewError):
+      checker.check(self.root)
+    self.edit("install-allow-and-open.sh", "scripts/untrusted_brew.py", detector)
     self.edit("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE", "INCOMPATIBLE LICENSE")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)

@@ -117,7 +117,63 @@ def check(root=ROOT):
     if package.get(field):
       raise LicenseReviewError("Unreviewed WebExtension dependency: " + field)
   installer = (root / "install-allow-and-open.sh").read_text(encoding="utf-8")
-  if "brew install clamav" not in installer or "clamscan" not in installer:
+  # Recognize only the reviewed external Homebrew provisioning routes. The
+  # newer installer resolves a fixed Homebrew executable before invoking it;
+  # the legacy literal route remains valid for older compatible checkouts.
+  legacy_route = re.search(r'(?m)^\\s*brew install clamav\\s*
+  project_license = (root / "LICENSE").read_text(encoding="utf-8")
+  if "GNU AFFERO GENERAL PUBLIC LICENSE" not in project_license:
+    raise LicenseReviewError("Application license changed; review dependency compatibility")
+  return found
+
+
+if __name__ == "__main__":
+  try:
+    found = check()
+  except (OSError, ValueError) as error:
+    print("Dependency license review FAILED: " + str(error), file=sys.stderr)
+    sys.exit(1)
+  print("Reviewed dependency licensing: ClamAV GPLv2 and "
+        + ", ".join(sorted(name + "==" + version for name, version in found)))
+, installer)
+  detected_route = (
+    re.search(r'(?m)^\\s*"\\$brew_executable" install clamav\\s*
+  project_license = (root / "LICENSE").read_text(encoding="utf-8")
+  if "GNU AFFERO GENERAL PUBLIC LICENSE" not in project_license:
+    raise LicenseReviewError("Application license changed; review dependency compatibility")
+  return found
+
+
+if __name__ == "__main__":
+  try:
+    found = check()
+  except (OSError, ValueError) as error:
+    print("Dependency license review FAILED: " + str(error), file=sys.stderr)
+    sys.exit(1)
+  print("Reviewed dependency licensing: ClamAV GPLv2 and "
+        + ", ".join(sorted(name + "==" + version for name, version in found)))
+, installer)
+    and re.search(
+      r'(?m)^\\s*if ! brew_executable="\\$\\(python3 "\\$script_dir/scripts/detect_homebrew.py"\\)"; then\\s*
+  project_license = (root / "LICENSE").read_text(encoding="utf-8")
+  if "GNU AFFERO GENERAL PUBLIC LICENSE" not in project_license:
+    raise LicenseReviewError("Application license changed; review dependency compatibility")
+  return found
+
+
+if __name__ == "__main__":
+  try:
+    found = check()
+  except (OSError, ValueError) as error:
+    print("Dependency license review FAILED: " + str(error), file=sys.stderr)
+    sys.exit(1)
+  print("Reviewed dependency licensing: ClamAV GPLv2 and "
+        + ", ".join(sorted(name + "==" + version for name, version in found)))
+,
+      installer,
+    )
+  )
+  if "clamscan" not in installer or not (legacy_route or detected_route):
     raise LicenseReviewError("ClamAV installation route changed; recheck GPL terms")
   project_license = (root / "LICENSE").read_text(encoding="utf-8")
   if "GNU AFFERO GENERAL PUBLIC LICENSE" not in project_license:
