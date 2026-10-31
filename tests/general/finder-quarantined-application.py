@@ -176,7 +176,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
             else:
                 message = ("timed out" if verdict == "timeout" else
                            "Malware" if verdict == "malware" else
-                           "unscannable" if verdict == "unscannable" else
+                           "could not finish" if verdict == "unscannable" else
                            "changed" if mutate else "could not open")
                 with self.assertRaisesRegex(RuntimeError, message):
                     invoke()
