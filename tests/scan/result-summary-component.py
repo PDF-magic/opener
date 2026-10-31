@@ -46,7 +46,8 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
 
     def test_only_fixed_copy_is_rendered_without_paths_or_untrusted_diagnostics(self):
         source = SOURCE.read_text(encoding="utf-8")
-        self.assertIn("let copy = ScanResultSummaryCopy.forStatus(status)", source)
+        self.assertIn("let copy = inconsistent", source)
+        self.assertIn("ScanResultSummaryCopy.forStatus(status)", source)
         self.assertIn("headingLabel.stringValue = copy.heading", source)
         self.assertIn("explanationLabel.stringValue = copy.explanation", source)
         self.assertNotIn("func show(_ status: String)", source)
@@ -92,6 +93,30 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("#selector(toggleTechnicalDetails(_:))", source)
         self.assertIn("invalidateIntrinsicContentSize()", source)
         self.assertNotIn("scannerOutput", source)
+
+    def test_stale_signatures_are_explicit_and_inconsistent_clean_is_not_reassuring(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        native = SWIFT_TEST.read_text(encoding="utf-8")
+        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
+        self.assertIn("enum ScanResultSummarySignatureFreshness: String, CaseIterable", source)
+        for case in ("recentUpdate", "stale", "unverified"):
+            self.assertRegex(source, rf"case {case}\b")
+        self.assertIn("signatureFreshness: ScanResultSummarySignatureFreshness? = nil", source)
+        self.assertIn("Signature database STALE", source)
+        self.assertIn("No successful update within 48 hours", source)
+        self.assertIn("Signature database freshness cannot be verified", source)
+        self.assertIn("let inconsistent = cleanReported", source)
+        self.assertIn("heading: \"Scan verification incomplete\"", source)
+        self.assertIn("signatureFreshnessLabel.setAccessibilityLabel(freshness)", source)
+        self.assertIn("scanResultSummarySignatureFreshness", source)
+        self.assertIn("displayedSignatureFreshness = signatureFreshness", source)
+        self.assertIn("show(nil)", source)
+        for item in ("signatureFreshness: .stale", "signatureFreshness: .unverified",
+                     "signatureFreshness: .recentUpdate", "first.reset()"):
+            self.assertIn(item, native)
+        for forbidden in ("NSWorkspace.shared.open", "Process(", "UserDefaults"):
+            self.assertNotIn(forbidden, source)
 
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
         workflow = CI.read_text(encoding="utf-8")
