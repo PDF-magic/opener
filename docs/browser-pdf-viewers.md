@@ -131,6 +131,36 @@ enforcement, which remain inactive. User PDF files, browser profiles,
 preferences, and preferred PDF applications are never accessed or changed.
 Temporary test profiles and the loopback listener are disposed after the run.
 
+## Safari's PDF viewing: real browser verification (opener-0804)
+
+CI's **Real Safari PDF viewer behavior** check uses Apple's own
+`/usr/bin/safaridriver` on a disposable macOS runner. It enables
+remote automation for that runner, creates an isolated Safari WebDriver
+window and visits two pages hosted solely on `127.0.0.1`: a `.pdf`
+URL and an extensionless URL with `Content-Type: application/pdf`.
+Both responses have `Content-Disposition: inline` and contain a
+generated, harmless, single-page PDF; each renders a large, different
+colored rectangle.
+
+The test requires a real Safari WebDriver session, a successful local
+PDF request, the PDF's navigation URL, and a browser-viewport screenshot
+showing a substantial region of the PDF's **actual rendered color**.
+It does not equate a network request, content type or URL alone with
+successful viewing. An unavailable Safari automation session, blank viewer,
+download-only outcome, navigation error or missing color makes CI **fail**;
+there is no silently skipped browser check. The portable self-test covers
+PDF structure, loopback-only response headers, strict 404 behavior, and the
+PNG color detector, without pretending to be a Safari test.
+
+The automated smoke test only establishes that the *tested* macOS Safari
+build can display inline PDFs from the two local HTTP paths. It does not
+test toolbar features, private windows, remote URLs, blob/file URLs,
+automatic interception, native scanner gating, or an actual production
+file handoff. Safari WebDriver's automation windows are isolated from
+normal user browser settings; no Safari extension is installed. The
+existing PDF Magic Opener scanner and selected application preferences
+are never touched. See [Apple's Safari WebDriver guidance](https://developer.apple.com/documentation/webkit/testing-with-webdriver-in-safari).
+
 ## Vendor documentation
 
 - [Google Chrome — Manage PDFs](https://support.google.com/chrome/answer/16215622?hl=en)

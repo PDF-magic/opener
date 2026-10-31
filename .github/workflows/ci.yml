@@ -91,6 +91,20 @@ jobs:
           FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
         run: node scripts/test-firefox-pdf-viewer.mjs "$FIREFOX_PATH"
 
+  safari-pdf-viewer:
+    # Safari WebDriver opens isolated automation windows; test the actual
+    # macOS Safari PDF renderer, not the WebKit engine or a mocked handoff.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: Real Safari PDF viewer behavior
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable Safari's native WebDriver in the disposable CI runner
+        run: sudo /usr/bin/safaridriver --enable
+      - name: Verify Safari renders local PDF and MIME-only PDF
+        run: python3 tests/browser/safari-pdf-viewer.py --live
+
   detect-scope:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Validate dependency map for native CI
@@ -618,6 +632,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/browser/pdf-behavior.py
       - name: Verify stable and preview browser release classification
         run: PYTHONPATH=. python3 tests/browser/release.py -v
+      - name: Verify Safari PDF viewer fixture and strict browser test contract
+        run: |
+          python3 tests/browser/safari-pdf-viewer.py --self-test
+          python3 tests/browser/safari-pdf-viewer-contract.py -v
       - name: Verify browser PDF viewer comparison documentation
         run: PYTHONPATH=. python3 tests/browser/viewer-docs.py -v
       - name: Verify optional PDF fallback selection and safety
