@@ -393,7 +393,8 @@ struct FirstRunWelcomeView: View {
         Spacer()
         Button("Continue to Preferences", action: finishSetup)
           .disabled(initialProfile == nil)
-          .disabled(savingBrowserChoice || isSettingDefault)
+          .disabled(savingBrowserChoice)
+          .disabled(isSettingDefault)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("firstRunContinueButton")
       }
