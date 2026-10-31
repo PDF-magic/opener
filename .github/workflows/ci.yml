@@ -579,6 +579,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/network-volumes.py -v
       - name: Verify scan input metadata and hashing use pinned file descriptors
         run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
+      - name: Bound scanner preflight child processes by the shared scan slots
+        run: PYTHONPATH=. python3 tests/scan/subprocess-limit.py -v
       - name: Verify final scan-to-launch validation occurs after slow preflight
         run: PYTHONPATH=. python3 tests/scan/final-handoff.py -v
       - name: Reject nonexistent scan paths before scanner or launch admission
@@ -779,6 +781,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify descriptor-pinned scan inputs on macOS
         run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
+      - name: Bound scanner subprocess probes on macOS
+        run: PYTHONPATH=. python3 tests/scan/subprocess-limit.py -v
       - name: Verify final scan-to-launch validation on macOS
         run: PYTHONPATH=. python3 tests/scan/final-handoff.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
