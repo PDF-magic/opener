@@ -198,6 +198,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
       - name: Detect existing Finder Quick Action and backup without touching user files
         run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
+      - name: Detect interrupted installation migrations and verify safe retries
+        run: PYTHONPATH=. python3 tests/migration/repeatable-state.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
