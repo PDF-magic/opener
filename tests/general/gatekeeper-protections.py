@@ -41,8 +41,10 @@ def require_gatekeeper_enabled(result):
 def require_rejected_unsigned_app(result):
     """An accepted result, spctl usage error, or unavailable service is not proof."""
     output = result.stdout + "\n" + result.stderr
-    if result.returncode == 0 or not re.search(r"\brejected\b", output, re.I):
-        raise AssertionError("Gatekeeper did not explicitly reject unsigned app")
+    if result.returncode == 0 or not re.search(r"\b(rejected|denied)\b", output, re.I):
+        raise AssertionError(
+            f"Gatekeeper did not explicitly reject unsigned app "
+            f"(status={result.returncode}, output={output[:800]!r})")
 
 
 def create_unsigned_app(root):
@@ -57,11 +59,29 @@ def create_unsigned_app(root):
         "CFBundlePackageType": "APPL",
         "CFBundleVersion": "1",
     }))
+    executable = macos / "UntrustedFixture"
     subprocess.run(
-        ["/usr/bin/clang", "-x", "c", "-", "-o", str(macos / "UntrustedFixture")],
+        ["/usr/bin/clang", "-x", "c", "-", "-o", str(executable)],
         input="int main(void) { return 0; }\n", text=True,
         capture_output=True, check=True, timeout=30,
     )
+    # Apple Silicon linkers may apply ad-hoc signing. Strip any signature from
+    # only this disposable fixture, never from installed or user applications.
+    signed = subprocess.run(
+        ["/usr/bin/codesign", "--verify", str(executable)],
+        capture_output=True, text=True, timeout=15,
+    )
+    if signed.returncode == 0:
+        subprocess.run(
+            ["/usr/bin/codesign", "--remove-signature", str(executable)],
+            capture_output=True, text=True, check=True, timeout=15,
+        )
+    unsigned = subprocess.run(
+        ["/usr/bin/codesign", "--verify", str(executable)],
+        capture_output=True, text=True, timeout=15,
+    )
+    if unsigned.returncode == 0:
+        raise AssertionError("Disposable negative-control executable is still signed")
     return app
 
 
