@@ -587,6 +587,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/inaccessible-paths.py -v
       - name: Fail closed if scan inputs become unavailable mid-scan
         run: PYTHONPATH=. python3 tests/scan/file-unavailable-midscan.py -v
+      - name: Verify native scan process uses direct Python execution
+        run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
@@ -991,6 +993,8 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
+      - name: Verify direct native scanner and origin processes on macOS
+        run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
       - name: Verify General PDF association action with synthetic apps only
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-default-pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
