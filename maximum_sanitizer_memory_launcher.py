@@ -1,9 +1,10 @@
-"""Fixed Linux pre-exec launcher for the optional PDF sanitizer memory ceiling."""
+"""Fixed Linux pre-exec launcher for the optional PDF sanitizer security limits."""
 import os
 import resource
 import sys
 
 MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE = 125
+NETWORK_DENIAL_SETUP_FAILED_EXIT_CODE = 124
 EXEC_FAILED_EXIT_CODE = 126
 
 
@@ -47,6 +48,13 @@ def main() -> int:
         return MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE
     if not tighten_address_space_limit(MAX_SANITIZER_MEMORY_BYTES):
         return MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE
+    # Apply kernel-enforced network denial before exec; filters are inherited
+    # by the converter and any descendants. Refuse an unconfined launch.
+    try:
+        from maximum_network_isolation import apply_linux_network_denial
+        apply_linux_network_denial()
+    except Exception:
+        return NETWORK_DENIAL_SETUP_FAILED_EXIT_CODE
     try:
         os.execvpe(command[0], command, os.environ)
     except OSError:

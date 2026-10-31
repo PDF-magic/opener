@@ -217,6 +217,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
       - name: maximum / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-memory-limits.py -v
+      - name: maximum / sanitizer-network / Prove sanitizer network connections and listeners are denied
+        run: PYTHONPATH=. python3 tests/maximum/sanitizer-network-denial.py -v
       - name: maximum / maximum-sanitized-copy / Verify page geometry, supported-only copy offers and scanner isolation
         run: |
           PYTHONPATH=. python3 tests/maximum/active-content-removal.py -v
@@ -363,6 +365,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
       - name: mac / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-memory-limits.py -v
+      - name: mac / sanitizer-network / Prove sanitizer network connections and listeners are denied
+        run: PYTHONPATH=. python3 tests/maximum/sanitizer-network-denial.py -v
       - name: mac / maximum-sanitized-copy / Verify real conversion preserves page order, dimensions, rotation and discards PDF actions
         run: |
           PYTHONPATH=. python3 tests/maximum/active-content-removal.py -v
