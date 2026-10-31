@@ -5,6 +5,7 @@ import importlib.util
 import os
 from pathlib import Path
 import plistlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -130,6 +131,44 @@ class ExistingAgentDetectionTests(unittest.TestCase):
         result = invoke()
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "")
+
+    def installer_plist_registration(self, state):
+        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        match = re.search(
+            r"python3 - \"\$app\" \"\$install_dir\" \"\$app_name\" \"\$agent_state\" <<'CONFIG'\n(.*?)\nCONFIG",
+            installer, re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        app = self.home / "Test.app"
+        (app / "Contents").mkdir(parents=True, exist_ok=True)
+        installed = self.home / "Library/Application Support/Studio/allow-and-open"
+        return subprocess.run(
+            [sys.executable, "-c", match.group(1), str(app), str(installed),
+             "PDF Magic Opener", state],
+            env=dict(os.environ, HOME=str(self.home)),
+            capture_output=True, text=True, timeout=5,
+        )
+
+    def test_installer_preserves_existing_custom_agent(self):
+        agent = self.expected()
+        agent["StartInterval"] = 12345
+        agent["StandardErrorPath"] = str(self.home / "my-custom-errors.log")
+        self.create_agent(agent)
+        original = self.plist.read_bytes()
+        result = self.installer_plist_registration("existing")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.plist.read_bytes(), original)
+
+    def test_installer_creates_only_absent_agent_and_refuses_clobber(self):
+        self.agents.mkdir(parents=True)
+        result = self.installer_plist_registration("absent")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(plistlib.loads(self.plist.read_bytes())["Label"], module.AGENT_LABEL)
+        self.assertEqual(self.plist.stat().st_mode & 0o777, 0o600)
+        before = self.plist.read_bytes()
+        duplicate = self.installer_plist_registration("absent")
+        self.assertNotEqual(duplicate.returncode, 0)
+        self.assertEqual(self.plist.read_bytes(), before)
 
     def test_installer_detects_before_writing_and_preserves_existing_plist(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
