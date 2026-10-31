@@ -25,6 +25,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deny-by-default policy and fail-closed launch
         run: PYTHONPATH=. python3 tests/scanner/filesystem-sandbox.py -v
+      - name: Install existing PDF parser test dependencies
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Existing strict scanner options
         run: PYTHONPATH=. python3 tests/scanner/fixed-safety-parameters.py -v
       - name: Existing scan gate regression suite
