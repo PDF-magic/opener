@@ -10,6 +10,12 @@ It then explains the existing local scanner gate, the user's selected PDF
 application, and where to review settings. It does **not** claim that ClamAV
 is installed, that a PDF has already been scanned, or that scans guarantee safety.
 
+The welcome also makes clear that a verified **clean scan** reduces risk but
+**cannot guarantee** a PDF is safe: ClamAV may miss unknown or otherwise
+undetected threats. It advises opening documents only from trusted sources,
+even after verification. This is informational and does not weaken the required
+scan gate or claim that an individual file is harmless.
+
 The first-run screen also offers an optional **Default PDF browser** picker
 using the same installed-browser discovery and verified atomic chooser as
 General preferences. Its initial selection reflects the saved PDF destination,
