@@ -35,7 +35,7 @@ def _valid_basename(name):
 class ScanHistoryRecord:
     """One completed request; missing opening evidence is *not* success.
 
-    \`\`filename\`\` is optional and, if provided by a trusted local caller, must
+    ``filename`` is optional and, if provided by a trusted local caller, must
     be a basename. Never include full paths, URLs, diagnostic text, or PDF data.
     """
 
