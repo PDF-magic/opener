@@ -54,8 +54,9 @@ class SystemDefaultBrowserTests(unittest.TestCase):
         self.assertEqual(commands[0], [str(launcher.DEFAULT_BROWSER_RESOLVER)])
         self.assertEqual(commands[1][0], "/scanner")
         preflight = [str(launcher.PDF_TARGET_VERIFIER), "com.apple.Safari"]
-        launch = [str(launcher.NATIVE_LAUNCHER), "--bundle-id",
-                  "com.apple.Safari", str(self.document)]
+        proof = ":".join(map(str, scanner.file_identity(self.document)[0][1:]))
+        launch = [str(launcher.NATIVE_LAUNCHER), "--expected-identity", proof,
+                  "--bundle-id", "com.apple.Safari", str(self.document)]
         self.assertIn(preflight, commands)
         self.assertEqual(commands[-1], launch)
         self.assertLess(commands.index(preflight), commands.index(launch))

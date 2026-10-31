@@ -15,7 +15,7 @@ from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_VERIFICATION_MESSAGE,
                            intended_destination, launch_clean_file,
-                           pdf_fallback_application,
+                           scanned_file_identity, pdf_fallback_application,
                            verify_launch_target, verify_local_file_available)
 import os
 import signal
@@ -47,6 +47,7 @@ PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
 )
 
 UNREADABLE_SCAN_INPUT_MESSAGE = 'The selected file is unreadable; opening was stopped.'
+NONEXISTENT_SCAN_INPUT_MESSAGE = 'The selected file or application does not exist; opening was stopped.'
 
 # Only these fixed, path-free errors may appear in scan diagnostics.
 # Unexpected system or scanner exceptions may contain private source paths.
@@ -56,6 +57,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_TARGET_VERIFICATION_MESSAGE,
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     UNREADABLE_SCAN_INPUT_MESSAGE,
+    NONEXISTENT_SCAN_INPUT_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
     'A zero-length file cannot be scanned; opening was stopped.',
@@ -230,17 +232,21 @@ def parse_scan_requests(args):
 
 
 def require_readable_file(path):
-    """Fail closed when the selected regular file cannot actually be read.
+    """Fail closed when a selected file cannot be read or an app enumerated.
 
-    Opening and reading one byte checks access under the current process identity,
-    rather than relying on permission bits or os.access(). This does not replace
-    full-byte hashing or the scanner's independent complete-scan verdict.
+    Check access under the current process identity, not permission bits or
+    os.access(). The subsequent full-byte hash and scanner verdict are still
+    mandatory, including for each member of an application bundle.
     """
-    if not path.is_file():
-        return
     try:
-        with path.open('rb') as stream:
-            stream.read(1)
+        if path.is_dir():
+            # An .app can have a valid directory entry but deny enumeration.
+            # Reject it at admission, before the scan queue or cache is touched.
+            with os.scandir(path) as entries:
+                next(entries, None)
+        elif path.is_file():
+            with path.open('rb') as stream:
+                stream.read(1)
     except OSError as error:
         raise RuntimeError(UNREADABLE_SCAN_INPUT_MESSAGE) from error
 
@@ -255,7 +261,10 @@ def validate_scan_request(item):
         raise RuntimeError('Scan request requires a valid, nonempty file path.')
     if requested.lower().endswith('.pdf.icloud'):
         raise RuntimeError('The requested PDF is not available locally; opening was stopped.')
-    path = Path(requested).expanduser().resolve(strict=True)
+    try:
+        path = Path(requested).expanduser().resolve(strict=True)
+    except FileNotFoundError as error:
+        raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from error
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
     require_readable_file(path)
@@ -481,21 +490,30 @@ def fingerprint(path):
         if entry.is_symlink():
             digest.update(b'link\0' + os.fsencode(os.readlink(entry)) + b'\0')
         elif entry.is_file():
-            size = entry.stat().st_size
-            # ClamAV may skip empty files; never cache or open an unscanned input.
-            # This also protects empty members of recursively scanned app bundles.
-            if size == 0:
-                raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
-            if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
-                raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
-            digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
+            # Open once, then inspect and hash through the same descriptor.
+            # O_NOFOLLOW rejects a symlink substituted after entry.is_file().
+            flags = os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_NOFOLLOW', 0)
             try:
-                with entry.open('rb') as stream:
-                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-                        digest.update(chunk)
+                fd = os.open(entry, flags)
+                try:
+                    info = os.fstat(fd)
+                    if not stat.S_ISREG(info.st_mode):
+                        raise RuntimeError('Only regular files and application bundles can be scanned.')
+                    size = info.st_size
+                    # ClamAV may skip empty files, including app-bundle members.
+                    if size == 0:
+                        raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
+                    if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
+                        raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
+                    digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
+                    with os.fdopen(fd, 'rb', closefd=False) as stream:
+                        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                            digest.update(chunk)
+                finally:
+                    os.close(fd)
             except OSError as error:
-                # Files may become unreadable after admission; never cache or
-                # open a partial hash, or print source paths from system errors.
+                # An unopenable, substituted, or unreadable input cannot be
+                # cached or opened; do not expose its path in diagnostics.
                 raise RuntimeError(UNREADABLE_SCAN_INPUT_MESSAGE) from error
         elif entry.is_dir():
             digest.update(b'directory\0')
@@ -881,7 +899,10 @@ def supported_request_path(item):
         raise RuntimeError('Unsupported scan request type: URL requests are not supported.')
     if raw_path.lower().endswith('.pdf.icloud'):
         raise RuntimeError('The requested PDF is not available locally; opening was stopped.')
-    path = Path(raw_path).expanduser().resolve(strict=True)
+    try:
+        path = Path(raw_path).expanduser().resolve(strict=True)
+    except FileNotFoundError as error:
+        raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from error
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
     require_readable_file(path)
@@ -1047,20 +1068,22 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     if is_pdf:
         verify_local_file_available(path)
-    # The scan engine does not select an application or browser.
-    try:
-        launch_clean_file(path, target_app=destination if is_pdf else None)
-    except (OSError, subprocess.SubprocessError, RuntimeError) as error:
-        if verified_fallback is None:
-            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
-        # Recheck the unchanged, locally available PDF before another launch.
-        verify_selected_file()
-        verify_local_file_available(path)
-        record_scan_destination(verified_fallback)
+    # Carry the scanned root identity across process creation so the native
+    # helper also rejects byte-identical replacement immediately before opening.
+    with scanned_file_identity(identity):
         try:
-            launch_clean_file(path, target_app=verified_fallback)
-        except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
-            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
+            launch_clean_file(path, target_app=destination if is_pdf else None)
+        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+            if verified_fallback is None:
+                raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
+            # Recheck the unchanged, locally available PDF before another launch.
+            verify_selected_file()
+            verify_local_file_available(path)
+            record_scan_destination(verified_fallback)
+            try:
+                launch_clean_file(path, target_app=verified_fallback)
+            except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
+                raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
     # Capture what actually opened, never merely what was requested or scanned.
     # A generated-copy origin is established solely by the validated, forced
     # re-scan entry point, not by user-controlled path or protection metadata.

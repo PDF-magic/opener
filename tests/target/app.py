@@ -42,6 +42,15 @@ class TargetApplicationTests(unittest.TestCase):
         audit_setting.start()
         self.addCleanup(audit_setting.stop)
 
+    def expected_launch(self, path, bundle_id=None):
+        # Assert the native helper receives precisely the scanned file identity
+        # while retaining the exact destination and unmodified path spelling.
+        proof = ":".join(map(str, opener.file_identity(path)[0][1:]))
+        args = [str(launcher.NATIVE_LAUNCHER), "--expected-identity", proof]
+        if bundle_id is not None:
+            args.extend(["--bundle-id", bundle_id])
+        return [*args, str(path)]
+
     def scan_clean(self, item=None):
         complete = subprocess.CompletedProcess([], 0, 'file: OK', '')
         with patch.object(opener.subprocess, 'run', return_value=complete) as run, \
@@ -52,15 +61,13 @@ class TargetApplicationTests(unittest.TestCase):
     def test_missing_configuration_keeps_brave_default(self):
         self.assertEqual(launcher.pdf_target_application(), 'com.brave.Browser')
         run, quarantine = self.scan_clean()
-        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser',
-                                                  str(self.document)])
+        self.assertEqual(run.call_args.args[0], self.expected_launch(self.document, 'com.brave.Browser'))
         quarantine.assert_called_once()
 
     def test_configured_bundle_identifier_used_only_after_clean_scan(self):
         self.config.write_text('com.apple.Preview\n')
         run, quarantine = self.scan_clean()
-        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), '--bundle-id', 'com.apple.Preview',
-                                                  str(self.document)])
+        self.assertEqual(run.call_args.args[0], self.expected_launch(self.document, 'com.apple.Preview'))
         self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
         self.assertIn('--alert-encrypted=yes', run.call_args_list[0].args[0])
         with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
@@ -89,9 +96,7 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertIn('--alert-encrypted=yes', flow[0])
         self.assertEqual(flow[1], [str(launcher.PDF_TARGET_VERIFIER),
                                    'com.vivaldi.Vivaldi'])
-        self.assertEqual(flow[2], [str(launcher.NATIVE_LAUNCHER),
-                                   '--bundle-id', 'com.vivaldi.Vivaldi',
-                                   str(self.document)])
+        self.assertEqual(flow[2], self.expected_launch(self.document, 'com.vivaldi.Vivaldi'))
         quarantine.assert_called_once_with(self.document)
         with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
             destination = db.execute(
@@ -123,8 +128,7 @@ class TargetApplicationTests(unittest.TestCase):
         run, quarantine = self.scan_clean()
         commands = [call.args[0] for call in run.call_args_list]
         preflight = [str(launcher.PDF_TARGET_VERIFIER), 'com.google.Chrome']
-        launch = [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
-                  'com.google.Chrome', str(self.document)]
+        launch = self.expected_launch(self.document, 'com.google.Chrome')
         self.assertEqual(commands[0][0], '/scanner')
         self.assertIn('--alert-encrypted=yes', commands[0])
         self.assertIn(preflight, commands)
@@ -159,8 +163,7 @@ class TargetApplicationTests(unittest.TestCase):
         run, quarantine = self.scan_clean()
         commands = [call.args[0] for call in run.call_args_list]
         preflight = [str(launcher.PDF_TARGET_VERIFIER), 'com.operasoftware.Opera']
-        launch = [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
-                  'com.operasoftware.Opera', str(self.document)]
+        launch = self.expected_launch(self.document, 'com.operasoftware.Opera')
         self.assertEqual(commands[0][0], '/scanner')
         self.assertIn('--alert-encrypted=yes', commands[0])
         self.assertIn(preflight, commands)
@@ -214,8 +217,7 @@ class TargetApplicationTests(unittest.TestCase):
 
         self.assertEqual(inspected, [(self.document, 'com.apple.Safari')])
         self.assertEqual(run.call_args.args[0],
-                         [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
-                          'com.apple.Safari', str(self.document)])
+                         self.expected_launch(self.document, 'com.apple.Safari'))
         self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
         with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
             chosen = db.execute('SELECT intended_destination_application FROM scan_requests').fetchone()
@@ -227,8 +229,7 @@ class TargetApplicationTests(unittest.TestCase):
         run, quarantine = self.scan_clean()
         commands = [call.args[0] for call in run.call_args_list]
         preflight = [str(launcher.PDF_TARGET_VERIFIER), 'company.thebrowser.Browser']
-        launch = [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
-                  'company.thebrowser.Browser', str(self.document)]
+        launch = self.expected_launch(self.document, 'company.thebrowser.Browser')
         self.assertEqual(commands[0][0], '/scanner')
         self.assertIn('--alert-encrypted=yes', commands[0])
         self.assertIn(preflight, commands)
@@ -282,8 +283,7 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(verified, [(self.document, 'org.mozilla.firefox')])
         self.assertEqual(
             run.call_args.args[0],
-            [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
-             'org.mozilla.firefox', str(self.document)],
+            self.expected_launch(self.document, 'org.mozilla.firefox'),
         )
         self.assertEqual(run.call_args_list[0].args[0][0], '/scanner')
         quarantine.assert_called_once()
@@ -306,8 +306,7 @@ class TargetApplicationTests(unittest.TestCase):
         self.assertEqual(seen, [(self.document, 'com.apple.Preview')])
         self.assertEqual(
             run.call_args.args[0],
-            [str(launcher.NATIVE_LAUNCHER), '--bundle-id',
-             'com.apple.Preview', str(self.document)],
+            self.expected_launch(self.document, 'com.apple.Preview'),
         )
         quarantine.assert_called_once()
 
@@ -380,7 +379,7 @@ class TargetApplicationTests(unittest.TestCase):
         other.write_bytes(b'notes')
         self.config.write_text('not a bundle ID')
         run, quarantine = self.scan_clean(other)
-        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), str(other)])
+        self.assertEqual(run.call_args.args[0], self.expected_launch(other))
         quarantine.assert_called_once()
 
     def test_installer_creates_private_default_and_preserves_custom_choice(self):

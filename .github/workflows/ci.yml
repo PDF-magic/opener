@@ -555,8 +555,12 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/symbolic-link-changes.py -v
       - name: Verify quarantined PDF opening honors scan and application gates
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
+      - name: Check Finder quarantine and app bundle scanner handoff
+        run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Fail closed and retain quarantine for unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
+      - name: Reject Gatekeeper bypasses and false-positive assessments
+        run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py
@@ -569,8 +573,14 @@ jobs:
         run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
       - name: Run scan-gate and request-metadata tests
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
+      - name: Verify scan input metadata and hashing use pinned file descriptors
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
+      - name: Reject nonexistent scan paths before scanner or launch admission
+        run: PYTHONPATH=. python3 tests/general/nonexistent-file-paths.py -v
       - name: Reject unreadable scan files before scanning or cached opening
         run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
+      - name: Reject inaccessible file and application paths before scanner admission
+        run: PYTHONPATH=. python3 tests/scan/inaccessible-paths.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
@@ -742,6 +752,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify real macOS Gatekeeper rejection of quarantined unsigned apps
+        run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Compile and test the transport-only native messaging host
         run: PYTHONPATH=. python3 tests/native/messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
@@ -751,6 +763,8 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
+      - name: Verify descriptor-pinned scan inputs on macOS
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permissions on macOS
@@ -1033,6 +1047,8 @@ jobs:
           printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+      - name: Reject replaced files at the native scan-to-open handoff
+        run: PYTHONPATH=. python3 tests/native/launch-identity.py "$RUNNER_TEMP/LaunchScannedFile"
       - name: Verify native PDF cloud download-state decisions
         run: PYTHONPATH=. python3 tests/native/file-availability.py
       - name: Verify browser names, icons, versions and executable paths
@@ -1142,8 +1158,12 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/symbolic-link-changes.py -v
       - name: Test verified opening handoff of actually quarantined PDFs
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
+      - name: Reject nonexistent local files and dangling links on macOS
+        run: PYTHONPATH=. python3 tests/general/nonexistent-file-paths.py -v
       - name: Verify real macOS quarantine on unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
+      - name: Verify quarantined app bundle opening through the Finder action
+        run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py

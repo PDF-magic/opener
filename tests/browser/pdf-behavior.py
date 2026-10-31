@@ -96,9 +96,10 @@ class PerBrowserPDFTests(unittest.TestCase):
         self.assertEqual(self.events[1][1],
                          [str(launcher.PDF_TARGET_VERIFIER), self.bundle])
         self.assertEqual(self.events[2][1], self.pdf)
+        proof = ":".join(map(str, opener.file_identity(self.pdf)[0][1:]))
         self.assertEqual(self.events[3][1],
-                         [str(launcher.NATIVE_LAUNCHER), "--bundle-id",
-                          self.bundle, str(self.pdf)])
+                         [str(launcher.NATIVE_LAUNCHER), "--expected-identity", proof,
+                          "--bundle-id", self.bundle, str(self.pdf)])
 
     def test_clean_pdf_is_scanned_and_opened_in_the_selected_browser(self):
         self.assertEqual(launcher.pdf_target_application(), self.bundle)

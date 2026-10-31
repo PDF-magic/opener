@@ -44,13 +44,20 @@ class FallbackTests(unittest.TestCase):
             return [entry[0] for entry in db.execute(
                 "SELECT intended_destination_application FROM scan_requests ORDER BY rowid")]
 
+    def native_command(self, path, bundle_id=None):
+        proof = ":".join(map(str, opener.file_identity(path)[0][1:]))
+        command = [str(launcher.NATIVE_LAUNCHER), "--expected-identity", proof]
+        if bundle_id is not None:
+            command.extend(["--bundle-id", bundle_id])
+        return [*command, str(path)]
+
     def runner(self, *, reject=(), fail_launch=()):
         commands = []
         def execute(command, *args, **kwargs):
             commands.append(command)
             if command[0] == str(launcher.PDF_TARGET_VERIFIER) and command[1] in reject:
                 return subprocess.CompletedProcess(command, 1, "", "not registered")
-            if command[0] == str(launcher.NATIVE_LAUNCHER) and "--bundle-id" in command and command[2] in fail_launch:
+            if command[0] == str(launcher.NATIVE_LAUNCHER) and "--bundle-id" in command and command[4] in fail_launch:
                 raise subprocess.CalledProcessError(1, command)
             return subprocess.CompletedProcess(command, 0, "file: OK", "")
         return commands, execute
@@ -77,8 +84,7 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual([c[1] for c in commands if c[0] == str(launcher.PDF_TARGET_VERIFIER)],
                          ["com.brave.Browser", "com.apple.Preview"])
         launches = [c for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)]
-        self.assertEqual(launches, [[str(launcher.NATIVE_LAUNCHER),
-                                     "--bundle-id", "com.apple.Preview", str(self.pdf)]])
+        self.assertEqual(launches, [self.native_command(self.pdf, "com.apple.Preview")])
         self.assertEqual(self.destinations(), ["com.brave.Browser", "com.apple.Preview"])
         quarantine.assert_called_once()
 
@@ -91,7 +97,7 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(outcome.status, "clean")
         self.assertEqual([c[1] for c in commands if c[0] == str(launcher.PDF_TARGET_VERIFIER)],
                          ["com.brave.Browser", "com.apple.Preview"])
-        launches = [c[2] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)]
+        launches = [c[4] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)]
         self.assertEqual(launches, ["com.brave.Browser", "com.apple.Preview"])
         self.assertEqual(self.destinations(), ["com.brave.Browser", "com.apple.Preview"])
         # Quarantine stays intact through primary and fallback handoffs.
@@ -105,7 +111,7 @@ class FallbackTests(unittest.TestCase):
         with patch.object(opener.subprocess, "run", side_effect=execute), \
              patch.object(opener, "remove_quarantine"):
             opener.scan_and_open(str(self.pdf), "/scanner")
-        launches = [c[2] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)]
+        launches = [c[4] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)]
         self.assertEqual(launches, ["com.brave.Browser"])
         self.assertEqual(self.destinations(), ["com.brave.Browser"])
 
@@ -115,7 +121,7 @@ class FallbackTests(unittest.TestCase):
              patch.object(opener, "remove_quarantine"):
             with self.assertRaises(opener.LaunchFailedError):
                 opener.scan_and_open(str(self.pdf), "/scanner")
-        self.assertEqual([c[2] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
+        self.assertEqual([c[4] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
                          ["com.brave.Browser"])
         self.assertEqual(self.destinations(), ["com.brave.Browser"])
 
@@ -126,7 +132,7 @@ class FallbackTests(unittest.TestCase):
             with self.assertRaises(opener.LaunchFailedError) as err:
                 opener.scan_and_open(str(self.pdf), "/scanner")
         self.assertEqual(err.exception.scan_result.status, "clean")
-        self.assertEqual([c[2] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
+        self.assertEqual([c[4] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
                          ["com.brave.Browser", "com.apple.Preview"])
 
     def test_blocked_scan_does_not_preflight_or_launch_fallback(self):
@@ -171,7 +177,7 @@ class FallbackTests(unittest.TestCase):
              patch.object(opener, "remove_quarantine"):
             with self.assertRaises(opener.LaunchFailedError):
                 opener.scan_and_open(str(self.pdf), "/scanner")
-        self.assertEqual([c[2] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
+        self.assertEqual([c[4] for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
                          ["com.brave.Browser"])
 
     def test_non_pdf_ignores_pdf_fallback(self):
@@ -183,7 +189,7 @@ class FallbackTests(unittest.TestCase):
              patch.object(opener, "remove_quarantine"):
             opener.scan_and_open(str(txt), "/scanner")
         self.assertEqual([c for c in commands if c[0] == str(launcher.NATIVE_LAUNCHER)],
-                         [[str(launcher.NATIVE_LAUNCHER), str(txt)]])
+                         [self.native_command(txt)])
 
 if __name__ == "__main__":
     unittest.main()

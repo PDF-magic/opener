@@ -106,25 +106,54 @@ func isLocallyAvailablePDF(_ url: URL) -> Bool {
     }
 }
 
+// Compare the pre-scan identity to the filesystem object at native handoff.
+// The scanner separately verified complete bytes and every app-bundle member.
+func identityMatches(_ path: String, expected: String?) -> Bool {
+    guard let expected = expected else { return true }
+    guard !expected.isEmpty && expected.utf8.count <= 256 else { return false }
+    var info = stat()
+    guard lstat(path, &info) == 0 else { return false }
+    let actual = [
+        String(info.st_dev),
+        String(info.st_ino),
+        String(info.st_mode & 0o170000),
+        String(info.st_size),
+        String(Int64(info.st_mtimespec.tv_sec) * 1_000_000_000 +
+               Int64(info.st_mtimespec.tv_nsec)),
+        String(Int64(info.st_ctimespec.tv_sec) * 1_000_000_000 +
+               Int64(info.st_ctimespec.tv_nsec)),
+    ]
+    return expected == actual.joined(separator: ":")
+}
+
 func launch(_ arguments: [String], workspace: NSWorkspace = .shared,
             applicationLookup: ((String) -> URL?)? = nil) -> Bool {
-    if arguments.count == 2 && arguments[0] == "--check-local" {
-        let path = arguments[1]
-        return path.hasPrefix("/") && isLocallyAvailablePDF(URL(fileURLWithPath: path))
+    var options = arguments
+    var expectedIdentity: String?
+    if options.count >= 2 && options[0] == "--expected-identity" {
+        expectedIdentity = options[1]
+        options.removeFirst(2)
+    }
+    if options.count == 2 && options[0] == "--check-local" {
+        let path = options[1]
+        return path.hasPrefix("/") && identityMatches(path, expected: expectedIdentity)
+            && isLocallyAvailablePDF(URL(fileURLWithPath: path))
     }
     let path: String
     let bundleIdentifier: String?
-    if arguments.count == 1 {
-        path = arguments[0]
+    if options.count == 1 {
+        path = options[0]
         bundleIdentifier = nil
-    } else if arguments.count == 3 && arguments[0] == "--bundle-id" && !arguments[1].isEmpty {
-        bundleIdentifier = arguments[1]
-        path = arguments[2]
+    } else if options.count == 3 && options[0] == "--bundle-id" && !options[1].isEmpty {
+        bundleIdentifier = options[1]
+        path = options[2]
     } else {
         return false
     }
 
-    guard path.hasPrefix("/") else { return false }
+    guard path.hasPrefix("/") && identityMatches(path, expected: expectedIdentity) else {
+        return false
+    }
     var isDirectory: ObjCBool = false
     guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else { return false }
     let target = URL(fileURLWithPath: path)
@@ -150,6 +179,7 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared,
                                                     lookup: lookup) else {
             return false
         }
+        guard identityMatches(path, expected: expectedIdentity) else { return false }
         workspace.open([target], withApplicationAt: appURL, configuration: config) {
             application, error in
             completed.finish(application, error: error)
@@ -162,6 +192,7 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared,
     if isApplication {
         // A direct .app launch must not restart the scan gate itself.
         guard Bundle(url: target)?.bundleIdentifier != openerBundleIdentifier else { return false }
+        guard identityMatches(path, expected: expectedIdentity) else { return false }
         workspace.openApplication(at: target, configuration: config) {
             application, error in
             completed.finish(application, error: error)
@@ -174,6 +205,7 @@ func launch(_ arguments: [String], workspace: NSWorkspace = .shared,
        Bundle(url: handler)?.bundleIdentifier == openerBundleIdentifier {
         return false
     }
+    guard identityMatches(path, expected: expectedIdentity) else { return false }
     return workspace.open(target)
 }
 
