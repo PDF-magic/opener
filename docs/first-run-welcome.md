@@ -109,8 +109,8 @@ accessible setup guidance without implying that an extension is required or
 that a functioning, publicly distributed browser integration exists:
 
 1. **Safari, development/test builds:** Only after installing a properly
-   signed host app containing the Safari extension, open **Safari > Settings >
-   Extensions**, locate PDF Magic Opener, and enable it manually if desired.
+   signed host app containing the Safari extension, open
+   **Safari > Settings > Extensions**, locate PDF Magic Opener, and enable it manually if desired.
    If the extension does not appear, check the installed host app rather than
    bypassing macOS signing or Safari protections. The host app's embedded
    extension is not automatically enabled.
