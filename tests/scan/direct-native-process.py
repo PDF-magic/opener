@@ -75,7 +75,7 @@ class DirectNativeProcessTests(unittest.TestCase):
             )
             harness = folder / "main.swift"
             harness.write_text(
-                'import Foundation\n' + helpers + '''
+                'import Foundation\nimport Darwin\n' + helpers + '''
 let scanner = URL(fileURLWithPath: CommandLine.arguments[1])
 let origin = URL(fileURLWithPath: CommandLine.arguments[2])
 let output = CommandLine.arguments[3]
