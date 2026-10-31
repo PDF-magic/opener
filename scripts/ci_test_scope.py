@@ -53,6 +53,7 @@ MACOS_TESTS = frozenset({
     "test-maximum-memory-limits.py",
     "test-maximum-sanitizer-memory-limits.py",
     "test-maximum-sanitizer-time-limits.py",
+    "test-maximum-sanitizer-network-denial.py",
     "test-maximum-sanitized-copy.py",
     "test-maximum-generated-rescan.py",
     "test-maximum-password-protected.py",
