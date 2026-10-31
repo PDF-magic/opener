@@ -242,6 +242,15 @@ Install local malware scanning for the existing **Allow and Open** Finder action
 bash install-allow-and-open.sh
 ```
 
+To **Repair Installation** from the same complete, trusted source checkout,
+double-click `Repair Installation.command` in Finder or run
+`./Repair\ Installation.command` in Terminal. This explicit, confirmed
+action reruns the existing safe installer to restore missing or damaged
+managed application components; it does not force-reinstall a detected
+ClamAV engine or reset your selected browser, FreshClam configuration,
+signature databases, or Finder customizations. See
+[repair installation](docs/repair-installation.md) for prerequisites and limitations.
+
 The installer runs as your normal macOS account; **do not use sudo**. If a
 supported ClamAV installation is already present, Homebrew is not invoked.
 Otherwise, the installer displays the exact `brew install clamav` command,
