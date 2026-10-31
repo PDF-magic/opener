@@ -50,3 +50,19 @@ Each new result update clears missing contextual fields, and `reset()`
 clears the document name, selected level and prior verdict together. The
 existing portable and macOS rendering suites verify Unicode, privacy,
 inactive-preview explanations, accessible labels and fail-closed reset behavior.
+
+## Malware detection display
+
+The summary always includes an accessible, explicitly labelled malware status.
+A trusted `.malwareDetected` terminal result displays **Malware: Detected**;
+only a trusted `.clean` result displays **Malware: Not detected**. Every
+other terminal outcome and `nil` displays **Malware: Not determined**, never
+mistaking a scanner failure, cancellation or incomplete inspection for a
+negative malware finding. Each new `show` call and `reset()` replaces the
+previous text; a former clean result cannot be carried into another request.
+
+The label is presentation-only and receives the same trusted canonical status
+as the existing heading. It does not infer status from file content, scanner
+logs, document names or user preferences, and it does not grant permission
+to open a PDF. Portable contract tests and the macOS AppKit rendering harness
+cover every canonical outcome, accessibility, isolation and reset in required CI.

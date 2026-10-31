@@ -33,6 +33,13 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("Opening was stopped.", source)
         self.assertIn("setAccessibilityIdentifier", source)
         self.assertIn("NSStackView", source)
+        self.assertIn('let malwareStatusLabel = NSTextField(labelWithString: "Malware: Not determined")', source)
+        self.assertIn('malwareStatus = "Malware: Detected"', source)
+        self.assertIn('malwareStatus = "Malware: Not detected"', source)
+        self.assertIn('malwareStatus = "Malware: Not determined"', source)
+        self.assertIn("malwareStatusLabel.stringValue = malwareStatus", source)
+        self.assertIn("malwareStatusLabel.setAccessibilityLabel(malwareStatus)", source)
+        self.assertIn('setAccessibilityIdentifier("scanResultSummaryMalware")', source)
         for forbidden in ("Process(", "NSWorkspace.shared.open", "remove_quarantine(",
                           "UserDefaults", "scan-and-open.py", "subprocess", "NSAlert("):
             self.assertNotIn(forbidden, source)
@@ -73,6 +80,11 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('Document: März résumé 🦄.pdf', harness)
         self.assertIn('URL(string: "https://example.invalid/secret.pdf")', harness)
         self.assertIn("preview only", harness)
+        self.assertIn("for status in ScanResultSummaryStatus.allCases", harness)
+        self.assertIn('status == .malwareDetected ? "Malware: Detected"', harness)
+        self.assertIn('status == .clean ? "Malware: Not detected" : "Malware: Not determined"', harness)
+        self.assertIn('first.malwareStatusLabel.stringValue == "Malware: Not determined"', harness)
+        self.assertIn('second.malwareStatusLabel.stringValue == "Malware: Not determined"', harness)
 
 
 if __name__ == "__main__":

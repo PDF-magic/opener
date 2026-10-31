@@ -97,6 +97,7 @@ private struct ScanResultSummaryCopy {
 final class ScanResultSummaryView: NSView {
     let headingLabel = NSTextField(labelWithString: "")
     let explanationLabel = NSTextField(wrappingLabelWithString: "")
+    let malwareStatusLabel = NSTextField(labelWithString: "Malware: Not determined")
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
@@ -125,6 +126,9 @@ final class ScanResultSummaryView: NSView {
         explanationLabel.lineBreakMode = .byWordWrapping
         explanationLabel.maximumNumberOfLines = 0
         explanationLabel.setAccessibilityIdentifier("scanResultSummaryExplanation")
+        malwareStatusLabel.font = .systemFont(ofSize: 12)
+        malwareStatusLabel.textColor = .secondaryLabelColor
+        malwareStatusLabel.setAccessibilityIdentifier("scanResultSummaryMalware")
 
         documentNameLabel.font = .systemFont(ofSize: 12)
         documentNameLabel.textColor = .secondaryLabelColor
@@ -136,7 +140,8 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
 
         let stack = NSStackView(views: [
-            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel,
+            malwareStatusLabel, explanationLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -191,6 +196,19 @@ final class ScanResultSummaryView: NSView {
             ?? "Selected protection level: Unavailable"
         selectedProtectionLevelLabel.stringValue = protection
         selectedProtectionLevelLabel.setAccessibilityLabel(protection)
+        // Only a verified clean terminal outcome supports a negative detection
+        // statement. Every other unsuccessful or absent result is inconclusive.
+        let malwareStatus: String
+        switch status {
+        case .malwareDetected:
+            malwareStatus = "Malware: Detected"
+        case .clean:
+            malwareStatus = "Malware: Not detected"
+        default:
+            malwareStatus = "Malware: Not determined"
+        }
+        malwareStatusLabel.stringValue = malwareStatus
+        malwareStatusLabel.setAccessibilityLabel(malwareStatus)
         let copy = ScanResultSummaryCopy.forStatus(status)
         headingLabel.stringValue = copy.heading
         explanationLabel.stringValue = copy.explanation

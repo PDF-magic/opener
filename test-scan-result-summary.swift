@@ -14,6 +14,9 @@ struct ScanResultSummaryComponentTests {
         precondition(first.explanationLabel.stringValue.contains("not authorized"))
         precondition(first.headingLabel.accessibilityIdentifier() == "scanResultSummaryHeading")
         precondition(first.explanationLabel.accessibilityIdentifier() == "scanResultSummaryExplanation")
+        precondition(first.malwareStatusLabel.accessibilityIdentifier() == "scanResultSummaryMalware")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
+        precondition(first.malwareStatusLabel.accessibilityLabel() == "Malware: Not determined")
         precondition(first.documentNameLabel.accessibilityIdentifier() == "scanResultSummaryDocument")
         precondition(first.selectedProtectionLevelLabel.accessibilityIdentifier()
                      == "scanResultSummaryProtectionLevel")
@@ -31,6 +34,10 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            let expectedMalware = status == .malwareDetected ? "Malware: Detected"
+                : status == .clean ? "Malware: Not detected" : "Malware: Not determined"
+            precondition(first.malwareStatusLabel.stringValue == expectedMalware)
+            precondition(first.malwareStatusLabel.accessibilityLabel() == expectedMalware)
             precondition(!first.headingLabel.stringValue.isEmpty)
             precondition(!first.explanationLabel.stringValue.isEmpty)
             precondition(first.headingLabel.accessibilityLabel() == first.headingLabel.stringValue)
@@ -58,10 +65,12 @@ struct ScanResultSummaryComponentTests {
                      == "Selected protection level: Built-in")
         precondition(first.displayedProtectionLevel == .builtIn)
         precondition(first.headingLabel.stringValue == "Scan complete")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
                     selectedProtectionLevel: .enhanced)
         precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("Enhanced"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
@@ -99,8 +108,13 @@ struct ScanResultSummaryComponentTests {
                        selectedProtectionLevel: .builtIn)
             precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         }
+        first.show(.malwareDetected, documentURL: target, selectedProtectionLevel: .builtIn)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Detected")
+        precondition(first.headingLabel.stringValue == "Malware detected")
+        precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
         first.reset()
         precondition(first.displayedStatus == nil)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
