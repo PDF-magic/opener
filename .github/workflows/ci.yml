@@ -553,6 +553,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Verify quarantined PDF opening honors scan and application gates
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
+      - name: Check Finder quarantine and app bundle scanner handoff
+        run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Fail closed and retain quarantine for unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
@@ -1146,6 +1148,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Verify real macOS quarantine on unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
+      - name: Verify quarantined app bundle opening through the Finder action
+        run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py
