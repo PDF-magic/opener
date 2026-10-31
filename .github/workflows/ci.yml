@@ -530,6 +530,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/configuration-boundaries.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Verify quarantined PDF opening honors scan and application gates
+        run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py
@@ -1111,6 +1113,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Test verified opening handoff of actually quarantined PDFs
+        run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py
