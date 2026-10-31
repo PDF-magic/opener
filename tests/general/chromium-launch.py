@@ -73,7 +73,9 @@ class ChromiumLaunchingTests(unittest.TestCase):
         self.assertIn("--alert-encrypted=yes", commands[0])
         self.assertEqual(commands[0][-2:], ["--", str(self.document)])
         self.assertEqual(commands[1], [str(file_launcher.PDF_TARGET_VERIFIER), CHROMIUM_BUNDLE_ID])
-        self.assertEqual(commands[2], [str(file_launcher.NATIVE_LAUNCHER), "--bundle-id",
+        proof = ":".join(map(str, opener.file_identity(self.document)[0][1:]))
+        self.assertEqual(commands[2], [str(file_launcher.NATIVE_LAUNCHER),
+                                       "--expected-identity", proof, "--bundle-id",
                                        CHROMIUM_BUNDLE_ID, str(self.document)])
         with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
             target = db.execute(
@@ -133,9 +135,10 @@ class ChromiumLaunchingTests(unittest.TestCase):
                 patch.object(opener, "remove_quarantine"):
             opener.scan_and_open(self.document, "/scanner")
         self.assertEqual(selected, [CHROMIUM_BUNDLE_ID])
+        proof = ":".join(map(str, opener.file_identity(self.document)[0][1:]))
         self.assertEqual(run.call_args.args[0],
-                         [str(file_launcher.NATIVE_LAUNCHER), "--bundle-id",
-                          CHROMIUM_BUNDLE_ID, str(self.document)])
+                         [str(file_launcher.NATIVE_LAUNCHER), "--expected-identity", proof,
+                          "--bundle-id", CHROMIUM_BUNDLE_ID, str(self.document)])
 
     def test_existing_brave_default_is_unchanged(self):
         self.setting.unlink()

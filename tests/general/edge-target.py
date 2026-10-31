@@ -52,9 +52,10 @@ class MicrosoftEdgeLaunchingTests(unittest.TestCase):
         self.assertEqual(commands[0][0], "/scanner")
         self.assertIn("--alert-encrypted=yes", commands[0])
         self.assertIn([str(launcher.PDF_TARGET_VERIFIER), EDGE_BUNDLE_ID], commands)
+        proof = ":".join(map(str, opener.file_identity(self.document)[0][1:]))
         self.assertEqual(commands[-1], [
-            str(launcher.NATIVE_LAUNCHER), "--bundle-id", EDGE_BUNDLE_ID,
-            str(self.document),
+            str(launcher.NATIVE_LAUNCHER), "--expected-identity", proof,
+            "--bundle-id", EDGE_BUNDLE_ID, str(self.document),
         ])
         self.assertLess(commands.index([str(launcher.PDF_TARGET_VERIFIER), EDGE_BUNDLE_ID]),
                         len(commands) - 1)
@@ -109,7 +110,9 @@ class MicrosoftEdgeLaunchingTests(unittest.TestCase):
                           return_value=subprocess.CompletedProcess([], 0, "file: OK", "")) as run, \
                 patch.object(opener, "remove_quarantine") as quarantine:
             opener.scan_and_open(str(other), "/scanner")
-        self.assertEqual(run.call_args.args[0], [str(launcher.NATIVE_LAUNCHER), str(other)])
+        proof = ":".join(map(str, opener.file_identity(other)[0][1:]))
+        self.assertEqual(run.call_args.args[0], [
+            str(launcher.NATIVE_LAUNCHER), "--expected-identity", proof, str(other)])
         self.assertFalse(any(
             call.args[0][0] == str(launcher.PDF_TARGET_VERIFIER)
             for call in run.call_args_list
