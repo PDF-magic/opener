@@ -50,7 +50,7 @@ def require_executable_path(path, message=EXECUTABLE_UNAVAILABLE_MESSAGE, *,
     directories, special files, and files without execute permission. Never
     reveal the executable's pathname in a caller-visible error.
     """
-    if type(path) not in (str, Path):
+    if not isinstance(path, (str, Path)):
         raise RuntimeError(message)
     try:
         candidate = Path(path)
