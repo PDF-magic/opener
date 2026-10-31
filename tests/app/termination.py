@@ -53,6 +53,8 @@ class TerminationTests(unittest.TestCase):
             'o.verify_launch_target = lambda path, target_app=None: None\n'
             'original_run = subprocess.run\n'
             'def safe_run(command, **kwargs):\n'
+            '    if str(command[0]).endswith("/launch-scanned-file") and "--check-local" in command:\n'
+            '        return subprocess.CompletedProcess(command, 0)\n'
             '    if command[0] == "/usr/bin/open" or str(command[0]).endswith("/launch-scanned-file"):\n'
             '        pathlib.Path(' + repr(str(self.opened)) + ').write_text("opened")\n'
             '        return subprocess.CompletedProcess(command, 0)\n'
@@ -96,6 +98,56 @@ class TerminationTests(unittest.TestCase):
                 child.kill()
                 child.wait(timeout=5)
             child.stderr.close()
+
+    def test_scanner_failures_while_parent_is_shutting_down_fail_closed(self):
+        # The owner's lifetime pipe can close while ClamAV is still running.
+        # Even a scanner that prints a clean-looking result and exits zero in
+        # its SIGTERM handler must not approve a document after cancellation.
+        shutdown_cases = (
+            ('nonzero_shutdown_error',
+             'print("scanner failed during shutdown", file=sys.stderr, flush=True); sys.exit(2)'),
+            ('misleading_clean_shutdown',
+             'print("document.pdf: OK", flush=True); sys.exit(0)'),
+        )
+        for case, shutdown_action in shutdown_cases:
+            with self.subTest(case=case):
+                for marker in (self.started, self.stopped, self.opened,
+                               self.unquarantined, self.cached):
+                    marker.unlink(missing_ok=True)
+                self.scanner.write_text(
+                    '#!' + sys.executable + '\n'
+                    'import signal, sys, time\n'
+                    'from pathlib import Path\n'
+                    'def on_shutdown(signum, frame):\n'
+                    '    Path(' + repr(str(self.stopped)) + ').write_text("shutdown observed")\n'
+                    '    ' + shutdown_action + '\n'
+                    'signal.signal(signal.SIGTERM, on_shutdown)\n'
+                    'Path(' + repr(str(self.started)) + ').write_text("started")\n'
+                    'while True: time.sleep(0.05)\n'
+                )
+                child = self.launch()
+                try:
+                    self.wait_for_start(child)
+                    child.stdin.close()  # Simulate the owning native app closing.
+                    status = child.wait(timeout=8)
+                    self.assertNotEqual(status, 0, 'Shutdown scanner outcome was approved')
+                    self.assertTrue(self.stopped.exists(),
+                                    'Scanner shutdown failure was not exercised')
+                    for marker in (self.opened, self.unquarantined, self.cached):
+                        self.assertFalse(marker.exists(),
+                                         'Shutdown failure changed file safety state')
+                    if self.cache_db.exists():
+                        with sqlite3.connect(self.cache_db) as connection:
+                            self.assertEqual(connection.execute(
+                                'SELECT COUNT(*) FROM clean_scans').fetchone()[0], 0)
+                    self.assertEqual(self.document.read_bytes(), b'%PDF-1.4\ntest document')
+                finally:
+                    if child.poll() is None:
+                        child.kill()
+                        child.wait(timeout=5)
+                    if not child.stdin.closed:
+                        child.stdin.close()
+                    child.stderr.close()
 
     def test_live_parent_allows_original_clean_scan_flow(self):
         child = self.launch(sleep='0.1')
