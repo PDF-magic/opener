@@ -27,10 +27,26 @@ actions triggered by opening the preferences app.
    It may contain user-customized configuration, historical scan metadata,
    signatures or unrelated files; **do not delete the directory wholesale**.
    Do not share private paths, PDF names, logs or proxy credentials.
-3. Record the current macOS PDF handler under **PDF Magic Opener >
-   Preferences > General > Default PDF handler**. Do not assume installing
-   PDF Magic Opener ever made it the default. Confirm you know which viewer
-   should receive PDFs after removal.
+3. **Detect the current macOS PDF handler before any removal or restoration.**
+   While the installed support helpers are still present, run this established
+   read-only status command in Terminal (it uses the PDF-specific Launch
+   Services lookup, not your default web browser or post-scan viewer):
+
+   ```sh
+   python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"
+   ```
+
+   Read the **Current macOS PDF handler** line and record the detected bundle
+   identifier. The tool distinguishes **PDF Magic Opener is the default PDF
+   handler** from **PDF Magic Opener is not the default PDF handler** and names
+   the other application when present. Both known outcomes exit successfully.
+   An unavailable helper, malformed/unreadable association, or failed lookup
+   exits nonzero: **stop uninstallation** rather than guessing, erasing an
+   application, or changing an association. Check
+   **PDF Magic Opener > Preferences > General > Default PDF handler** for a
+   second read-only view if needed, but do not interpret a missing or unknown
+   answer as permission to remove the current PDF handler. Confirm you know
+   which viewer should receive PDFs after removal.
 4. From the trusted source checkout, check whether the managed signature-update
    LaunchAgent is recognized (read-only, does not start or stop anything):
 
@@ -45,20 +61,31 @@ actions triggered by opening the preferences app.
 
 ## 2. Restore a non-PDF-Magic default before removing its handler
 
-In **Preferences > General > Default PDF application**, select **Restore
-Previous Default** if the saved previous handler is still valid. That action
-uses the already installed `pdf-handler-history` utility, which verifies the
-current PDF handler and saved previous application before changing Launch
-Services. If there is no restorable history, deliberately choose another PDF
-viewer using Finder **Get Info > Open with > Change All…**.
+Use the **detected result from step 1** to decide whether restoration is
+needed. If **another application is already the default**, preserve that
+choice without running any restoration action. If **PDF Magic Opener is the
+default**, go to **Preferences > General > Default PDF application** and select
+**Restore Previous Default** only if the saved previous handler is still
+valid. That action uses the already installed `pdf-handler-history` utility,
+which verifies the current PDF handler and saved previous application before
+changing Launch Services. If there is no restorable history, deliberately
+choose another PDF viewer using Finder **Get Info > Open with > Change All…**.
 
-**Verify that PDF Magic Opener is no longer the macOS default for PDFs before
-proceeding.** If the association cannot be verified, or another program has
-already become the default, leave the current user choice untouched; never
-force a restoration or reset all Launch Services associations. Without the
-PDF Magic Opener handler as the default, automatic scan-before-open for Finder
-PDF double-clicks no longer applies. The new PDF viewer may open files without
-a malware scan.
+After any restoration or user-selected change, **re-detect the current handler
+before proceeding to removal** while the installed helper is still present:
+
+```sh
+python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"
+```
+
+**Proceed only when this fresh check names a known non-PDF-Magic default.**
+If it still reports PDF Magic Opener, or the association cannot be determined,
+**stop before removing the app or its helpers**. Do not force a restoration or
+reset all Launch Services associations. If another program was already the
+default, leave the current user choice untouched. Without the PDF Magic
+Opener handler as the default, automatic scan-before-open for Finder PDF
+double-clicks no longer applies. The replacement PDF viewer may open files
+without a malware scan.
 
 ## 3. Restore or disconnect the Finder Quick Action
 
@@ -130,8 +157,10 @@ definitions and update configuration are separate user-managed resources.
 
 ## 6. Remove the verified application and retire its entry points
 
-After confirming steps 2–5 have disconnected the PDF handler, Finder action
-and any opted-in browser registrations, move **only**
+Only after **the fresh step 2 PDF-handler check has reported a known
+non-PDF-Magic default**, and after confirming steps 2–5 have disconnected
+the PDF handler, Finder action and any opted-in browser registrations,
+move **only**
 `~/Applications/PDF Magic Opener.app` to Trash **using Finder**. Before moving
 it, verify in Finder's Get Info that it is the intended app in your own home
 Applications folder; if the bundle is renamed, symlinked, substituted or
@@ -176,7 +205,9 @@ No guaranteed malware safety or data-erasure claim is made.
 `tests/general/uninstall-procedure.py` checks this procedure against the
 real existing default-handler restoration, Finder Quick Action restoration,
 native messaging cleanup, and signature-agent ownership verification paths.
-It also guards the sequence of actions and rules out destructive recursive
-cleanup, silent association changes and automatic deletion of user data.
+It also guards the order and repeatability of the installed read-only PDF
+handler status lookup (including unknown-result refusal), and rules out
+destructive recursive cleanup, silent association changes and automatic
+deletion of user data.
 The required `scanner-tests` CI job executes the check.
 No uninstall commands or OS mutations run during CI.
