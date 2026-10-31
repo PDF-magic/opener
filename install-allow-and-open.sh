@@ -216,9 +216,9 @@ fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
 # Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate_update_agent.py"
-agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
-launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
-launchctl bootstrap "gui/$UID" "$agent"
+# The migrator has verified the agent; reconcile its live launchd label so
+# an older plist registration cannot survive alongside the new registration.
+python3 "$script_dir/scripts/reconcile_update_agent.py"
 
 python3 - "$workflow" <<'PY'
 import os
