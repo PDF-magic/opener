@@ -95,7 +95,16 @@ class ChromeDownloadedQuarantineTests(unittest.TestCase):
             self.assertEqual(pdf.read_bytes(), original_bytes)
             launch_calls.append(Path(path))
 
+        def verify_local(path):
+            """The native --check-local launcher is absent from this test-only job."""
+            self.assertEqual(Path(path).resolve(), pdf.resolve())
+            self.assertTrue(Path(path).is_file() and not Path(path).is_symlink())
+            self.assertEqual(Path(path).read_bytes(), original_bytes)
+
         with ExitStack() as stack:
+            stack.enter_context(patch.object(
+                opener, "verify_local_file_available", side_effect=verify_local
+            ))
             stack.enter_context(patch.object(opener, "CACHE_DB", cache))
             stack.enter_context(patch.object(opener, "SCAN_REQUEST_DB", cache.parent / "audit.sqlite"))
             stack.enter_context(patch.object(opener, "intended_destination",
