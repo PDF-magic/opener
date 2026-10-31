@@ -157,7 +157,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install reviewed optional PDF parser dependency
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check --requirement requirements-enhanced-pdf.txt
       - name: Verify real macOS filesystem sandbox and timed parser
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
 
