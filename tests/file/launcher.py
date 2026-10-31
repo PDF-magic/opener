@@ -25,6 +25,11 @@ class FileLauncherTests(unittest.TestCase):
         setting = patch('file_launcher.TARGET_APP_CONFIG', self.root / 'target-app.txt')
         setting.start()
         self.addCleanup(setting.stop)
+        # Existing launch-routing tests mock Process execution, not installed
+        # native binaries. Dedicated tests below exercise the real path gate.
+        exe = patch("file_launcher.require_executable_path")
+        exe.start()
+        self.addCleanup(exe.stop)
 
     def test_pdf_uses_existing_brave_destination_even_with_uppercase_extension(self):
         pdf = self.root / "a document.PDF"
@@ -217,6 +222,84 @@ class FileLauncherTests(unittest.TestCase):
         self.assertIn('swiftc -O "$script_dir/launch-scanned-file.swift"', script)
         self.assertIn('"$install_dir/launch-scanned-file"', script)
 
+
+
+class ExecutablePathValidationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="exec-path-policy-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.executable = self.root / "native-helper"
+        self.executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+        self.executable.chmod(0o700)
+        self.alias = self.root / "native-link"
+        self.alias.symlink_to(self.executable)
+        self.blocked = self.root / "nonexecutable"
+        self.blocked.write_bytes(b"not executable")
+        self.blocked.chmod(0o600)
+        self.directory = self.root / "directory"
+        self.directory.mkdir()
+        self.socket = self.root / "socket"
+        self.pdf = self.root / "private-name.pdf"
+        self.pdf.write_bytes(b"%PDF-1.4\n")
+
+    def test_accepts_only_absolute_executable_regular_files(self):
+        from file_launcher import require_executable_path
+        self.assertEqual(require_executable_path(self.executable), str(self.executable))
+        self.assertEqual(require_executable_path(str(self.executable)), str(self.executable))
+        self.assertEqual(require_executable_path(self.alias, allow_symlink=True),
+                         str(self.alias))
+
+    def test_rejects_relative_missing_symlink_directory_and_special_paths(self):
+        import socket
+        from file_launcher import require_executable_path
+        dangling = self.root / "dangling"
+        dangling.symlink_to(self.root / "missing")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.bind(str(self.socket))
+            for candidate in (None, 7, "relative-program", "", "/not-installed/program",
+                              self.blocked, self.directory, self.alias, dangling,
+                              self.socket, str(self.executable) + "\x00extra"):
+                with self.subTest(rejected=repr(candidate)):
+                    with self.assertRaisesRegex(RuntimeError,
+                                                "^The required executable is missing or unsafe") as raised:
+                        require_executable_path(candidate)
+                    self.assertNotIn(str(self.root), str(raised.exception))
+
+    def test_native_helpers_fail_before_any_process_or_config_mutation(self):
+        with patch("file_launcher.PDF_TARGET_VERIFIER", self.blocked), \
+                patch("file_launcher.NATIVE_LAUNCHER", self.blocked), \
+                patch("file_launcher.DEFAULT_BROWSER_RESOLVER", self.blocked), \
+                patch("file_launcher.subprocess.run") as start, \
+                patch("file_launcher.sys.platform", "darwin"):
+            from file_launcher import (verify_launch_target, verify_local_file_available,
+                                      launch_clean_file, _resolve_default_browser)
+            for callback in (
+                lambda: verify_launch_target(self.pdf, target_app="com.apple.Preview"),
+                lambda: verify_local_file_available(self.pdf),
+                lambda: launch_clean_file(self.pdf, target_app="com.apple.Preview"),
+                _resolve_default_browser,
+            ):
+                with self.subTest(callback=repr(callback)):
+                    with self.assertRaises(RuntimeError):
+                        callback()
+            start.assert_not_called()
+        self.assertEqual(self.pdf.read_bytes(), b"%PDF-1.4\n")
+
+    def test_validated_helpers_keep_literal_argv_and_customized_destination(self):
+        from file_launcher import launch_clean_file, verify_launch_target
+        with patch("file_launcher.PDF_TARGET_VERIFIER", self.executable), \
+                patch("file_launcher.NATIVE_LAUNCHER", self.executable), \
+                patch("file_launcher.subprocess.run",
+                      return_value=subprocess.CompletedProcess([], 0)) as run:
+            verify_launch_target(self.pdf, target_app="com.apple.Preview")
+            launch_clean_file(self.pdf, target_app="com.apple.Preview")
+        self.assertEqual(run.call_args_list[0].args[0],
+                         [str(self.executable), "com.apple.Preview"])
+        self.assertEqual(run.call_args_list[1].args[0],
+                         [str(self.executable), "--bundle-id", "com.apple.Preview",
+                          str(self.pdf)])
+        self.assertEqual(self.pdf.read_bytes(), b"%PDF-1.4\n")
 
 if __name__ == "__main__":
     unittest.main()

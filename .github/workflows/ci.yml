@@ -606,6 +606,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/browser/download-id.py -v
       - name: Verify supported browser bundle identifier registry
         run: PYTHONPATH=. python3 tests/browser/registry.py -v
+      - name: Verify executable-path admission for scanner and native subprocesses
+        run: |
+          PYTHONPATH=. python3 tests/file/launcher.py -v
+          PYTHONPATH=. python3 tests/scanner/executable-access.py -v
       - name: Verify browser-independent scan engine and launch defaults
         run: PYTHONPATH=. python3 tests/file/launcher.py
       - name: Verify PDF scan gates on external-drive paths
