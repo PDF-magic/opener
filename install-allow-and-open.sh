@@ -53,6 +53,8 @@ if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! 
     python3 "$script_dir/scripts/confirm_clamav_install.py"
     HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav
 fi
+# Verify both installed ClamAV commands before touching opener scripts or settings.
+python3 "$script_dir/scripts/verify_installed_clamav.py"
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
 python3 - "$install_dir/target-app.txt" <<'TARGET_APP'
