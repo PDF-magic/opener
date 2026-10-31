@@ -75,30 +75,41 @@ try {
   assert.match(response.headers()["content-type"] ?? "", /^application\/pdf\b/i);
   assert.match(response.headers()["content-disposition"] ?? "", /^inline\b/i);
 
-  // Brave's built-in Chromium-family PDF viewer exposes a browser-owned
-  // application/pdf embed. Checking the real DOM distinguishes this test from
-  // merely fetching a PDF or loading the PDF Magic Opener extension popup.
-  const viewer = page.locator('embed[type="application/pdf"]').first();
-  try {
-    await viewer.waitFor({ state: "attached", timeout: 15000 });
-  } catch (error) {
-    // Only inspect the generated localhost fixture and browser viewer shell,
-    // never URLs or content from the user's real browsing or PDF documents.
-    const diagnostic = await page.evaluate(() => ({
-      contentType: document.contentType,
-      embedTypes: [...document.querySelectorAll("embed")].map(x => x.type),
-      iframeCount: document.querySelectorAll("iframe").length,
-      domPrefix: document.documentElement?.outerHTML.slice(0, 1800)
-    })).catch(() => ({ inaccessibleViewerDocument: true }));
-    console.log("Synthetic Brave viewer diagnostics:", JSON.stringify({
-      document: diagnostic,
-      frameCount: page.frames().length,
-      pageCount: context.pages().length,
-      downloaded: downloads.length
-    }));
-    throw error;
+  // A real PDF viewer may create an internal browser-owned PDF frame while
+  // the top-level application/pdf document has no ordinary DOM <embed>.
+  // Verify the exact Chromium PDF component, not just a successful download
+  // response or an arbitrary extension frame.
+  const componentId = "mhjfbmdgcfjbbpaeojofohoefgiehjai";
+  let viewerFrame = null;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    viewerFrame = page.frames().find(frame => {
+      try {
+        const address = new URL(frame.url());
+        return address.protocol === "chrome-extension:" &&
+          address.hostname === componentId && address.pathname === "/index.html";
+      } catch {
+        return false;
+      }
+    });
+    if (viewerFrame) break;
+    await page.waitForTimeout(100);
   }
-  assert.equal(await viewer.getAttribute("type"), "application/pdf");
+  if (!viewerFrame) {
+    // Only disclose schemes, component names and paths; never any URL query
+    // values, headers, PDF bytes or user-provided navigation information.
+    const frames = page.frames().map(frame => {
+      try {
+        const address = new URL(frame.url());
+        return { scheme: address.protocol, host: address.hostname,
+          path: address.pathname };
+      } catch {
+        return { scheme: "unavailable" };
+      }
+    });
+    console.log("Synthetic Brave viewer frame diagnostics:", JSON.stringify(frames));
+  }
+  assert.ok(viewerFrame, "Brave must attach its browser-owned PDF viewer frame");
+  assert.equal(await page.evaluate(() => document.contentType), "application/pdf");
   assert.equal(new URL(page.url()).origin, origin);
   assert.ok(requests.includes("/inline.pdf"), "Brave must request the PDF from localhost");
   assert.deepEqual(downloads, [], "The default clean-profile inline PDF must not download");

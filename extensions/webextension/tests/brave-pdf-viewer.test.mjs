@@ -43,8 +43,8 @@ test("Brave's real built-in PDF viewer is exercised in a separate headed CI step
     "brave-browser", "playwright-core", "launchPersistentContext",
     "headless: false", "127.0.0.1", "createBraveViewerTestPdf",
     "Content-Type", "application/pdf", "Content-Disposition",
-    "inline", "page.goto(", 'embed[type="application/pdf"]',
-    'state: "attached"', "downloads", "context?.close()",
+    "inline", "page.goto(", "componentId", "viewerFrame",
+    "document.contentType", "downloads", "context?.close()",
     "rm(profile", "server.close", "chrome.permissions.contains"
   ]) assert.ok(smoke.includes(requirement), requirement);
   for (const requirement of [

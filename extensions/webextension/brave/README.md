@@ -66,8 +66,9 @@ official Brave Stable binary and Playwright runs it **headed**, using a new
 isolated profile. A tiny, deterministic **synthetic** PDF is generated in memory
 and served only from **localhost** (127.0.0.1, ephemeral port). The test
 requests the document with an inline PDF MIME response and verifies that
-Brave's **built-in PDF viewer** attaches an application/pdf embed in the
-original tab, rather than treating a network response alone as a viewer test.
+Brave's **built-in PDF viewer** attaches the exact browser-owned Chromium
+PDF component frame while the original tab reports the PDF MIME type, rather
+than treating a network response alone as a viewer test.
 It checks the PDF response headers, no browser download, no page errors, and
 that the PDF Magic Opener extension still lacks its optional downloads grant.
 No user document, remote PDF URL, native scanner, or existing browser profile
