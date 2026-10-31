@@ -571,6 +571,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
       - name: Run scan-gate and request-metadata tests
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
+      - name: Verify mounted network-volume availability and normal scan requirements
+        run: PYTHONPATH=. python3 tests/scan/network-volumes.py -v
       - name: Verify scan input metadata and hashing use pinned file descriptors
         run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Reject nonexistent scan paths before scanner or launch admission
