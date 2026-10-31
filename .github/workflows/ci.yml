@@ -557,6 +557,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Fail closed and retain quarantine for unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
+      - name: Reject Gatekeeper bypasses and false-positive assessments
+        run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py
@@ -746,6 +748,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify real macOS Gatekeeper rejection of quarantined unsigned apps
+        run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Compile and test the transport-only native messaging host
         run: PYTHONPATH=. python3 tests/native/messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
