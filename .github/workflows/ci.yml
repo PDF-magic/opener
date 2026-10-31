@@ -1039,6 +1039,8 @@ jobs:
           printf '%%PDF-1.4\n' > "$RUNNER_TEMP/downloaded.pdf"
           "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/downloaded.pdf"
           if "$RUNNER_TEMP/LaunchScannedFile" --check-local "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
+      - name: Reject replaced files at the native scan-to-open handoff
+        run: PYTHONPATH=. python3 tests/native/launch-identity.py "$RUNNER_TEMP/LaunchScannedFile"
       - name: Verify native PDF cloud download-state decisions
         run: PYTHONPATH=. python3 tests/native/file-availability.py
       - name: Verify browser names, icons, versions and executable paths

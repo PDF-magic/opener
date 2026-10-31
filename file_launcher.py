@@ -5,6 +5,8 @@ PDF-to-Brave default while allowing a user-selected PDF bundle ID.
 """
 
 from browser_registry import DEFAULT_BROWSER_BUNDLE_ID
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 import os
 import re
@@ -51,6 +53,29 @@ def verify_launch_target(path, target_app=None):
         raise RuntimeError(PDF_TARGET_UNAVAILABLE_MESSAGE)
 
 NATIVE_LAUNCHER = Path(__file__).with_name("launch-scanned-file")
+
+# Each scan's proof belongs only to that request and never to persistent settings.
+_APPROVED_FILE_IDENTITY = ContextVar("approved_file_identity", default=None)
+
+
+@contextmanager
+def scanned_file_identity(identity):
+    """Pin the scanned root's filesystem identity for the native handoff.
+
+    The scanner separately checks all .app members and file bytes. A context
+    variable isolates concurrent requests and preserves the launch API.
+    """
+    if (not isinstance(identity, tuple) or not identity
+            or not isinstance(identity[0], tuple) or len(identity[0]) != 7
+            or identity[0][0] != ""
+            or any(type(value) is not int for value in identity[0][1:])):
+        raise RuntimeError("The scanned file identity is invalid; opening was stopped.")
+    proof = ":".join(str(value) for value in identity[0][1:])
+    token = _APPROVED_FILE_IDENTITY.set(proof)
+    try:
+        yield
+    finally:
+        _APPROVED_FILE_IDENTITY.reset(token)
 
 
 def verify_local_file_available(path):
@@ -170,6 +195,9 @@ def launch_clean_file(path, target_app=None):
     """Launch an already-approved file with the current destination policy."""
     path = Path(path)
     command = [str(NATIVE_LAUNCHER)]
+    identity = _APPROVED_FILE_IDENTITY.get()
+    if identity is not None:
+        command.extend(["--expected-identity", identity])
     if path.suffix.lower() == ".pdf":
         selected = target_app if target_app is not None else pdf_target_application()
         if selected == PDF_OPENER_BUNDLE_ID:

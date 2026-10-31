@@ -15,7 +15,7 @@ from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_VERIFICATION_MESSAGE,
                            intended_destination, launch_clean_file,
-                           pdf_fallback_application,
+                           scanned_file_identity, pdf_fallback_application,
                            verify_launch_target, verify_local_file_available)
 import os
 import signal
@@ -1012,20 +1012,22 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     verify_file_integrity(path, before, identity)
     if is_pdf:
         verify_local_file_available(path)
-    # The scan engine does not select an application or browser.
-    try:
-        launch_clean_file(path, target_app=destination if is_pdf else None)
-    except (OSError, subprocess.SubprocessError, RuntimeError) as error:
-        if verified_fallback is None:
-            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
-        # Recheck the unchanged, locally available PDF before another launch.
-        verify_file_integrity(path, before, identity)
-        verify_local_file_available(path)
-        record_scan_destination(verified_fallback)
+    # Carry the scanned root identity across process creation so the native
+    # helper also rejects byte-identical replacement immediately before opening.
+    with scanned_file_identity(identity):
         try:
-            launch_clean_file(path, target_app=verified_fallback)
-        except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
-            raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
+            launch_clean_file(path, target_app=destination if is_pdf else None)
+        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+            if verified_fallback is None:
+                raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
+            # Recheck the unchanged, locally available PDF before another launch.
+            verify_file_integrity(path, before, identity)
+            verify_local_file_available(path)
+            record_scan_destination(verified_fallback)
+            try:
+                launch_clean_file(path, target_app=verified_fallback)
+            except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
+                raise LaunchFailedError(scan_result, is_pdf=is_pdf) from fallback_error
     # Capture what actually opened, never merely what was requested or scanned.
     # A generated-copy origin is established solely by the validated, forced
     # re-scan entry point, not by user-controlled path or protection metadata.

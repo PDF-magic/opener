@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from file_launcher import (NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID,
+                           scanned_file_identity,
                            PDF_TARGET_VERIFIER, PDF_TARGET_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_VERIFICATION_MESSAGE, launch_clean_file,
                            verify_launch_target, verify_local_file_available)
@@ -85,6 +86,31 @@ class FileLauncherTests(unittest.TestCase):
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(bundle)
         run.assert_called_once_with([str(NATIVE_LAUNCHER), str(bundle)], check=True)
+
+    def test_scanned_identity_is_scoped_and_sent_to_native_launcher(self):
+        pdf = self.root / "report.pdf"
+        pdf.write_bytes(b"%PDF-1.4\\n")
+        info = pdf.lstat()
+        import stat
+        identity = (("", info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode),
+                     info.st_size, info.st_mtime_ns, info.st_ctime_ns),)
+        proof = ":".join(map(str, identity[0][1:]))
+        with patch("file_launcher.subprocess.run") as run:
+            with scanned_file_identity(identity):
+                launch_clean_file(pdf)
+            launch_clean_file(pdf)
+        self.assertEqual(run.call_args_list[0].args[0],
+                         [str(NATIVE_LAUNCHER), "--expected-identity", proof,
+                          "--bundle-id", PDF_DEFAULT_BUNDLE_ID, str(pdf)])
+        self.assertEqual(run.call_args_list[1].args[0],
+                         [str(NATIVE_LAUNCHER), "--bundle-id", PDF_DEFAULT_BUNDLE_ID, str(pdf)])
+
+    def test_invalid_identity_cannot_authorize_opening(self):
+        with patch("file_launcher.subprocess.run") as run:
+            with self.assertRaisesRegex(RuntimeError, "identity is invalid"):
+                with scanned_file_identity((("not root", 1, 2, 3, 4, 5, 6),)):
+                    launch_clean_file(self.root / "report.pdf")
+        run.assert_not_called()
 
     def test_open_failure_is_not_swallowed(self):
         document = self.root / "file.pdf"
