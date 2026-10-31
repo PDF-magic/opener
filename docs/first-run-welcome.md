@@ -18,6 +18,13 @@ failed setup shows a message and leaves the welcome available; it never claims
 the PDF association changed. This action does not replace the chosen PDF viewer
 or alter scanner policy. **Continue to Preferences** skips the optional action.
 
+If the user is offered a change to the macOS default PDF application, they
+may decline and keep their current handler. **Continue to Preferences** is
+not consent to make PDF Magic Opener the default, and the welcome never
+changes the association unless the user explicitly selects the separate
+default-action button. The default PDF handler is independent of the user's
+chosen post-scan PDF application.
+
 Selecting **Continue to Preferences** records the versioned welcome
 acknowledgement in the **preferences app's own UserDefaults** and displays the
 unchanged main Preferences view. Future launches go straight to Preferences.

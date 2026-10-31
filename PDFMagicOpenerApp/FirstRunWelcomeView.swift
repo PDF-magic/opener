@@ -49,6 +49,7 @@ struct FirstRunWelcomeView: View {
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
             Text("Use Preferences to review your selected PDF viewer. This welcome preserves your viewer choice, and macOS’s default PDF association changes only if you explicitly request it below.")
+            Text("You can decline any offer to make PDF Magic Opener your default PDF application and keep your current macOS PDF handler. Continuing to Preferences does not approve or make a default-handler change.")
 
             Label("Existing settings are preserved", systemImage: "gearshape")
               .font(.headline)
