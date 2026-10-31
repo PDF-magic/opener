@@ -18,8 +18,9 @@ actions triggered by opening the preferences app.
 
 ## 1. Inspect and back up before changing anything
 
-1. Quit PDF Magic Opener and stop opening new PDFs with its native handler.
-   Finish or cancel any in-flight scans before continuing.
+1. Stop opening new PDFs with the native handler, and finish or cancel any
+   in-flight scans. Keep Preferences available through step 2, then quit the
+   app before moving its bundle or retiring its helpers.
 2. Back up only the data **you choose** to retain, including your PDF browser
    preference and FreshClam mirror/proxy configuration. The installed support
    directory is `~/Library/Application Support/Studio/allow-and-open`.
@@ -39,7 +40,8 @@ actions triggered by opening the preferences app.
 
    `existing` means the identity and updater command match; `absent` means
    there is no matching agent. An error means the file is unrecognized, unsafe
-   or inaccessible: **stop**, do not move or unload it by guessing.
+   or inaccessible: **stop**, do not move or unload it by guessing. An
+   unrecognized or unsafe component is never permission for a guessed delete.
 
 ## 2. Restore a non-PDF-Magic default before removing its handler
 
