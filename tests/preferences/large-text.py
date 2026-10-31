@@ -58,6 +58,8 @@ class LargeTextPreferencesTests(unittest.TestCase):
     self.assertIn("test-preferences-large-text.swift", ci)
     self.assertIn("tests/preferences/large-text.py -v", ci)
     self.assertIn("PDFMagicOpenerApp/*SettingsView.swift", ci)
+    self.assertIn("PDFMagicOpenerApp/RecentScanHistory.swift", ci)
+    self.assertIn('test-preferences-large-text.swift -lsqlite3', ci)
 
 
 if __name__ == "__main__":
