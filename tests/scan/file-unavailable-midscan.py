@@ -123,7 +123,11 @@ class UnavailableDuringScanTests(unittest.TestCase):
         original_digest = gate.fingerprint(self.pdf)
         original_identity = gate.file_identity(self.pdf)
         self.pdf.unlink()
-        with self.assertRaises(RuntimeError) as result:
+        # The independent network-volume preflight intentionally rejects a
+        # vanished path first. Isolate the content/identity check so this test
+        # verifies its own error translation, not the mounted-volume contract.
+        with patch.object(gate, "require_accessible_volume"), \
+                self.assertRaises(RuntimeError) as result:
             gate.verify_file_integrity(self.pdf, original_digest, original_identity)
         self.assertEqual(str(result.exception),
                          gate.SCAN_INPUT_BECAME_UNAVAILABLE_MESSAGE)
