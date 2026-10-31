@@ -59,8 +59,8 @@ function result(status, invalidated, cancelled = false) {
  * in-flight interceptions and cancel/quarantine it, scoped to this browser.
  * The injected verification and cleanup methods, including their responses,
  * are not security credentials; their provenance MUST be established outside
- * this JavaScript module. No stale localStorage/sessionStorage/page message
- * or browser-restored tab may reconstitute a previously trusted scan.
+ * this JavaScript module. No stale persisted state, page message or
+ * browser-restored tab may reconstitute a previously trusted scan.
  */
 export function createPdfInterceptionBrowserRestartGuard(coordinator) {
   const seenStartups = new Set();
