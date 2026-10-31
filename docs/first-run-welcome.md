@@ -129,3 +129,30 @@ choice, or affects mandatory local scanner checks and quarantine protections.
 The existing required portable first-run CI suite verifies the instructional
 text, accessible heading, read-only behavior, Safari documentation, inactive
 extension manifest, and lack of publicly released extension artifacts.
+
+## Basic installation health check (opener-0982)
+
+The first-run welcome now performs a **read-only basic installation check**
+when it first appears. Users may repeat the inventory with **Check
+Installation Again**. It reports the native PDF Magic Opener scan-handler
+bundle's expected identity, PDF declaration and executable; the presence,
+incompleteness or unsafe metadata state of required ClamAV definition files;
+and whether macOS currently associates PDFs with the PDF Magic Opener
+handler, another application, or an unknown default.
+
+An alternate macOS PDF default is a user choice, **not** permission to change
+that association. A missing scan-handler bundle or absent/unverifiable
+definition files produce an actionable message, not a claim of healthy
+protection. Even a positive basic inventory **does not** validate ClamAV
+installation/version, signature freshness/content, file integrity, quarantine,
+scanner execution, a clean PDF verdict, or authorization to open a document.
+A separate in-progress checklist task, opener-0975, inspects ClamAV
+installation; the health inventory intentionally does not duplicate its
+scanner lookup.
+
+This check runs no process, scanner, installer, updater or network operation,
+and writes no settings. It does not accept PDFs, alter the macOS PDF default,
+or change existing browser/protection customizations. The actual installed
+scanner's fail-closed checks remain authoritative. The existing required
+scanner-tests and macos-build CI jobs now run portable wiring checks and
+native isolated status-matrix tests, respectively.
