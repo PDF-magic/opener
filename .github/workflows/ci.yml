@@ -200,6 +200,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/installation-prerequisites.py -v
       - name: Verify staged PDF handler bundle contents and executable permissions
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
+      - name: Preserve the previously working opener when installation migration fails
+        run: PYTHONPATH=. python3 tests/migration/failed-installation.py -v
       - name: Verify safe Finder Quick Action migration and literal argv forwarding
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
       - name: Reconcile legacy PDF handler registrations without changing user defaults

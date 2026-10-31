@@ -34,6 +34,78 @@ fi
 # This preflight never reads or runs existing user-customized script contents.
 python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
 
+# Preserve the installed scan handler across any failure during migration.
+# Snapshot only files this installer overwrites, never user configuration or PDFs.
+app_name="PDF Magic Opener"
+installed_app="$HOME/Applications/$app_name.app"
+legacy_app="$HOME/Applications/Open PDFs in Brave.app"
+bundle_stage_dir=""
+install_snapshot=""
+snapshot_ready=0
+new_app_installed=0
+legacy_was_moved=0
+migration_committed=0
+
+rollback_installation() {
+    local result=$?
+    local recovered=1
+    trap - EXIT
+    set +e
+    if [ "$migration_committed" -ne 1 ]; then
+        if [ "$new_app_installed" -eq 1 ]; then
+            # Never delete a replacement app before the previous one is safe.
+            if [ -d "$installed_app" ] && [ ! -L "$installed_app" ]; then
+                mv "$installed_app" "$bundle_stage_dir/failed.app" || recovered=0
+            else
+                recovered=0
+            fi
+        fi
+        if [ -n "$bundle_stage_dir" ] && [ -L "$bundle_stage_dir/previous.app" ]; then
+            # Preserve potentially unsafe staged content for manual recovery.
+            recovered=0
+        elif [ -n "$bundle_stage_dir" ] && [ -d "$bundle_stage_dir/previous.app" ]; then
+            if [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
+                mv "$bundle_stage_dir/previous.app" "$installed_app" || recovered=0
+            else
+                recovered=0
+            fi
+        fi
+        if [ "$legacy_was_moved" -eq 1 ]; then
+            if [ -d "$installed_app" ] && [ ! -L "$installed_app" ] && [ ! -e "$legacy_app" ] && [ ! -L "$legacy_app" ]; then
+                mv "$installed_app" "$legacy_app" || recovered=0
+            else
+                recovered=0
+            fi
+        fi
+        if [ "$snapshot_ready" -eq 1 ]; then
+            python3 "$script_dir/scripts/preserve_existing_opener.py" restore "$install_dir" "$install_snapshot" || recovered=0
+        fi
+        if [ "$new_app_installed" -eq 1 ] && [ "$recovered" -eq 1 ]; then
+            local restored_app="$installed_app"
+            if [ "$legacy_was_moved" -eq 1 ]; then
+                restored_app="$legacy_app"
+            fi
+            if [ -d "$restored_app" ]; then
+                /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$restored_app" >/dev/null 2>&1 || true
+            fi
+        fi
+        if [ "$recovered" -ne 1 ]; then
+            echo "Migration failed; automatic recovery was incomplete. Previous files are retained in the private staging directory." >&2
+        fi
+    fi
+    if [ "$migration_committed" -eq 1 ] || [ "$recovered" -eq 1 ]; then
+        if [ -n "$bundle_stage_dir" ]; then rm -rf "$bundle_stage_dir"; fi
+        if [ -n "$install_snapshot" ]; then rm -rf "$install_snapshot"; fi
+    else
+        echo "Recovery staging: $bundle_stage_dir $install_snapshot" >&2
+    fi
+    exit "$result"
+}
+trap rollback_installation EXIT
+install_snapshot="$(mktemp -d "$HOME/.pdf-magic-opener-rollback.XXXXXXXX")"
+python3 "$script_dir/scripts/preserve_existing_opener.py" snapshot "$install_dir" "$install_snapshot"
+snapshot_ready=1
+
 # Inspect the existing database before creating the directory or starting updates.
 # This only reports presence; the scanner still verifies freshness and safety.
 python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"
@@ -126,70 +198,10 @@ else:
 CONFIG
 bash "$install_dir/update-malware-signatures.sh"
 
-app_name="PDF Magic Opener"
-app="$HOME/Applications/$app_name.app"
-legacy_app="$HOME/Applications/Open PDFs in Brave.app"
-# Keep the established bundle ID and runtime paths while renaming the user-facing app.
-# Only move an existing installation after verifying that it belongs to this project.
-python3 - "$legacy_app" "$app" <<'MIGRATE'
-import plistlib
-import sys
-from pathlib import Path
-
-legacy, destination = map(Path, sys.argv[1:])
-expected_id = 'local.studio.brave-pdf-opener'
-
-def check_bundle(path):
-    if path.is_symlink() or not path.is_dir():
-        raise SystemExit(f'Unsafe or invalid application bundle: {path}')
-    try:
-        with (path / 'Contents/Info.plist').open('rb') as stream:
-            identifier = plistlib.load(stream).get('CFBundleIdentifier')
-    except (OSError, ValueError, plistlib.InvalidFileException) as error:
-        raise SystemExit(f'Cannot verify application bundle {path}: {error}')
-    if identifier != expected_id:
-        raise SystemExit(f'Unexpected bundle identifier at {path}; refusing to overwrite or move it.')
-
-if legacy.exists() or legacy.is_symlink():
-    check_bundle(legacy)
-    if destination.exists() or destination.is_symlink():
-        raise SystemExit('Both old and new PDF opener bundles exist; resolve the duplicate before installing.')
-    legacy.rename(destination)
-elif destination.exists() or destination.is_symlink():
-    check_bundle(destination)
-MIGRATE
-# Build away from the installed app so an incomplete or nonexecutable bundle
-# never replaces the working PDF scan handler. Keep staging on the same volume.
-installed_app="$app"
+# Build away from the installed app; keep the verified old bundle recoverable.
+app="$installed_app"
 mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
 bundle_stage_dir="$(mktemp -d "$HOME/Applications/.pdf-magic-opener-build.XXXXXXXX")"
-# The previous application is not obsolete until every migration step succeeds.
-migration_complete=0
-cleanup_bundle_stage() {
-    status=$?
-    trap - EXIT
-    if [ "$status" -eq 0 ] && [ "$migration_complete" -eq 1 ]; then
-        # Only a fully successful migration may discard the previous opener.
-        rm -rf -- "$bundle_stage_dir"
-        return 0
-    fi
-
-    # If promotion did not finish, restore the previous working bundle.
-    # Never overwrite an installed bundle or follow a replacement symlink.
-    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -L "$bundle_stage_dir/previous.app" ] &&
-       [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
-        mv "$bundle_stage_dir/previous.app" "$installed_app" || true
-    fi
-    if [ -e "$bundle_stage_dir/previous.app" ] || [ -L "$bundle_stage_dir/previous.app" ]; then
-        # Preserve a recovery copy when a later migration step fails.
-        echo "Installation incomplete; previous opener retained in staging." >&2
-    else
-        # No previous bundle remains; discard only uncommitted build artifacts.
-        rm -rf -- "$bundle_stage_dir"
-    fi
-    return "$status"
-}
-trap cleanup_bundle_stage EXIT
 app="$bundle_stage_dir/$app_name.app"
 mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS"
 cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
@@ -249,10 +261,53 @@ CONFIG
 # executable permissions, and the ad hoc signature have been checked.
 /usr/bin/codesign --verify "$app"
 python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"
+# The legacy-name migration is deferred until the new bundle is fully verified.
+# A failure after the rename restores its original name and working contents.
+if [ -e "$legacy_app" ] || [ -L "$legacy_app" ]; then
+    legacy_was_present=1
+else
+    legacy_was_present=0
+fi
+app_name="PDF Magic Opener"
+app="$HOME/Applications/$app_name.app"
+legacy_app="$HOME/Applications/Open PDFs in Brave.app"
+# Keep the established bundle ID and runtime paths while renaming the user-facing app.
+# Only move an existing installation after verifying that it belongs to this project.
+python3 - "$legacy_app" "$app" <<'MIGRATE'
+import plistlib
+import sys
+from pathlib import Path
+
+legacy, destination = map(Path, sys.argv[1:])
+expected_id = 'local.studio.brave-pdf-opener'
+
+def check_bundle(path):
+    if path.is_symlink() or not path.is_dir():
+        raise SystemExit(f'Unsafe or invalid application bundle: {path}')
+    try:
+        with (path / 'Contents/Info.plist').open('rb') as stream:
+            identifier = plistlib.load(stream).get('CFBundleIdentifier')
+    except (OSError, ValueError, plistlib.InvalidFileException) as error:
+        raise SystemExit(f'Cannot verify application bundle {path}: {error}')
+    if identifier != expected_id:
+        raise SystemExit(f'Unexpected bundle identifier at {path}; refusing to overwrite or move it.')
+
+if legacy.exists() or legacy.is_symlink():
+    check_bundle(legacy)
+    if destination.exists() or destination.is_symlink():
+        raise SystemExit('Both old and new PDF opener bundles exist; resolve the duplicate before installing.')
+    legacy.rename(destination)
+elif destination.exists() or destination.is_symlink():
+    check_bundle(destination)
+MIGRATE
+if [ "$legacy_was_present" -eq 1 ]; then
+    legacy_was_moved=1
+fi
 if [ -e "$installed_app" ] || [ -L "$installed_app" ]; then
     mv "$installed_app" "$bundle_stage_dir/previous.app"
 fi
 mv "$app" "$installed_app"
+new_app_installed=1
 app="$installed_app"
 # Offer an opt-in Finder action without overwriting user-managed scripts.
 action="$HOME/Applications/Make PDF Magic Opener Default.command"
@@ -373,6 +428,5 @@ python3 "$script_dir/offer-restore-pdf-handler.py" \
 python3 "$install_dir/pdf-handler-status.py"
 # Only record success after all migration operations finish.
 python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"
-# The durable migration journal now certifies this attempt's completion.
-migration_complete=1
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
+migration_committed=1

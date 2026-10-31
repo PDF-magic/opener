@@ -137,7 +137,7 @@ class PreinstallBundleTests(unittest.TestCase):
       'python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"',
       'mv "$app" "$installed_app"',
       'mv "$installed_app" "$bundle_stage_dir/previous.app"',
-      'trap cleanup_bundle_stage EXIT',
+      'trap rollback_installation EXIT',
     ):
       with self.subTest(needed=needed):
         self.assertIn(needed, source)
@@ -145,6 +145,13 @@ class PreinstallBundleTests(unittest.TestCase):
       source.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'),
       source.index('mv "$app" "$installed_app"'),
     )
+    self.assertLess(
+      source.index('python3 "$script_dir/scripts/preserve_existing_opener.py" snapshot'),
+      source.index('cp "$script_dir/allow-and-open.sh"'),
+    )
+    self.assertIn('mv "$bundle_stage_dir/previous.app" "$installed_app"', source)
+    self.assertLess(source.index('mv "$app" "$installed_app"'),
+                    source.index('migration_committed=1'))
     self.assertLess(source.index('codesign --force --sign - "$app"'),
                     source.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'))
     self.assertIn('python3 - "$app" "$install_dir" "$app_name" <<\x27CONFIG\x27', source)
