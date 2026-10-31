@@ -12,6 +12,13 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 install_dir="$HOME/Library/Application Support/Studio/allow-and-open"
 workflow="$HOME/Library/Services/Allow and Open.workflow/Contents/document.wflow"
 
+# Diagnose required tooling before any installation changes or migration journal.
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Cannot install PDF Magic Opener: Python 3 is missing. Install Python 3, then retry." >&2
+    exit 1
+fi
+python3 "$script_dir/scripts/report_install_prerequisites.py"
+
 if [ ! -f "$workflow" ]; then
     echo "The existing Allow and Open Quick Action is not installed." >&2
     exit 1
