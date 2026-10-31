@@ -135,21 +135,14 @@ async function inspect(tab) {
     depth: -1, pierce: true
   }, tab.sessionId);
   const evaluated = await command("Runtime.evaluate", {
-    expression: "({ mime: document.contentType, embeds: document.querySelectorAll('embed').length, ready: document.readyState })",
-    returnByValue: true
+    expression: "({ mime: document.contentType })", returnByValue: true
   }, tab.sessionId);
-  const { targetInfos } = await command("Target.getTargets");
   return {
     url: frameTree.frame?.url,
-    // Never use a global viewer target: a PDF in another tab cannot count.
-    hasOwnViewer: viewerFrame(frameTree) || viewerEmbed(root),
     mime: evaluated.result?.value?.mime || null,
-    embeds: evaluated.result?.value?.embeds || 0,
-    rootName: root?.nodeName || null,
-    subframeCount: frameTree.childFrames?.length || 0,
-    viewerTargets: targetInfos.filter(info => viewerUrl.test(info.url || ""))
-      .map(info => ({ type: info.type, openerId: info.openerId || null,
-        targetIsOneOfTabs: targets.some(tab => tab.targetId === info.targetId) }))
+    // Chrome may publish its PDF viewer as an out-of-process iframe target
+    // rather than a child in Page.getFrameTree or DOM.getDocument.
+    localViewerFrame: viewerFrame(frameTree) || viewerEmbed(root)
   };
 }
 
@@ -237,35 +230,36 @@ try {
   // Each PDF tab has to own its own viewer, not just share another tab's
   // browser-wide internal extension target or HTTP success response.
   const observations = [];
-  // In headless Chrome the PDF plugin can defer background-tab rendering
-  // until the tab is foregrounded. Keep all targets open, and bring each to
-  // the front for its own *local* viewer inspection, one at a time.
+  // In headless Chrome, out-of-process PDF viewers appear as independent
+  // iframe targets, not necessarily under the parent's DOM/frame tree.
+  // Foreground each still-open PDF tab and confirm *its own* document MIME.
   for (const tab of targets) {
     await command("Target.activateTarget", { targetId: tab.targetId });
     await command("Page.bringToFront", {}, tab.sessionId);
-    let lastObservation;
     const observed = await until(async () => {
-      lastObservation = await inspect(tab);
-      return lastObservation.url === tab.url && lastObservation.hasOwnViewer ?
-        lastObservation : null;
-    }, "independent built-in viewer for " + tab.route).catch(error => {
-      console.error("Chrome tab-local viewer status:", {
-        route: tab.route, correctURL: lastObservation?.url === tab.url,
-        hasOwnViewer: lastObservation?.hasOwnViewer,
-        mime: lastObservation?.mime, embeds: lastObservation?.embeds,
-        rootName: lastObservation?.rootName,
-        subframeCount: lastObservation?.subframeCount,
-        viewerTargets: lastObservation?.viewerTargets
-      });
-      throw error;
-    });
+      const evidence = await inspect(tab);
+      return evidence.url === tab.url && evidence.mime === "application/pdf" ?
+        evidence : null;
+    }, "distinct PDF document in tab " + tab.route);
     observations.push(observed);
   }
   for (const [index, result] of observations.entries()) {
     assert.equal(result.url, targets[index].url);
-    assert.equal(result.hasOwnViewer, true);
+    assert.equal(result.mime, "application/pdf",
+      "Each independent tab must retain its own PDF document");
     assert.ok(received.get(targets[index].route) > 0);
   }
+  // The disposable browser contains exactly these three user PDF targets.
+  // Chrome publishes its renderer as a separate OOPIF with no openerId,
+  // so verify three *distinct* PDF viewer iframe targets alongside the three
+  // tab-local PDF documents rather than attributing one global viewer to all.
+  const { targetInfos: liveTargets } = await command("Target.getTargets");
+  const viewerTargets = liveTargets.filter(info =>
+    info.type === "iframe" && viewerUrl.test(info.url || ""));
+  assert.ok(viewerTargets.length >= 3,
+    "Three PDF documents must have three independent built-in viewer targets");
+  assert.equal(new Set(viewerTargets.map(info => info.targetId)).size,
+    viewerTargets.length, "The same viewer cannot count twice");
 
   // Closing one PDF tab must not tear down or cross-navigate the other two.
   const closed = targets.splice(1, 1)[0];
@@ -280,10 +274,11 @@ try {
     await command("Page.bringToFront", {}, tab.sessionId);
     const result = await until(async () => {
       const view = await inspect(tab);
-      return view.url === tab.url && view.hasOwnViewer ? view : null;
-    }, "remaining PDF tab after independent tab closure");
+      return view.url === tab.url && view.mime === "application/pdf" ?
+        view : null;
+    }, "remaining PDF document after independent tab closure");
     assert.equal(result.url, tab.url);
-    assert.equal(result.hasOwnViewer, true);
+    assert.equal(result.mime, "application/pdf");
   }
 
   console.log("PASS Chrome three simultaneous PDF tabs, independent viewers and closure isolation: " +

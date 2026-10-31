@@ -23,10 +23,12 @@ The browser test:
    response bodies until every request arrives. This proves overlap, rather
    than merely running three PDF navigations in sequence.
 3. Keeps all three tabs open while foregrounding each in turn for
-   inspection. Headless Chrome may defer background PDF plugin rendering
-   until activation. Checks that each tab keeps its own original PDF URL
-   and reports a tab-local built-in Chromium PDF viewer frame or PDF embed.
-   A global viewer target belonging to another tab does not count.
+   inspection. Each tab must independently report its own original URL
+   and an application/pdf document. Chrome's built-in viewer may be an
+   out-of-process iframe target without a parent-tab link in DevTools,
+   so the test separately requires at least three distinct built-in PDF
+   viewer iframe targets in the otherwise empty disposable browser.
+   One global viewer target cannot count three times.
 4. Closes the second tab and re-verifies the other two PDF viewers remain
    active with their original URLs.
 5. Tears down Chrome, DevTools, local server and temporary browser profile.

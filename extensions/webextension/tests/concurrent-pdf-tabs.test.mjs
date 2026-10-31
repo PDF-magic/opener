@@ -148,8 +148,8 @@ test("real-browser concurrency CI is mandatory, isolated and cannot enable inter
   assert.match(workflow, /node --test tests\/concurrent-pdf-tabs\.test\.mjs/);
   for (const text of [
     "Target.createTarget", "Page.navigate", "Target.closeTarget",
-    "three overlapping PDF requests", "hasOwnViewer",
-    "127.0.0.1", "mkdtemp", "rm(profile"
+    "three overlapping PDF requests", "viewerTargets",
+    "application/pdf", "127.0.0.1", "mkdtemp", "rm(profile"
   ]) assert.ok(runner.includes(text), text);
   assert.doesNotMatch(runner, /fetch\(\s*["']https?:|sendNativeMessage|downloads\.open|permissions\.request/);
   assert.equal(worker.trimEnd().endsWith("void 0;"), true);
