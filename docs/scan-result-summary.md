@@ -75,8 +75,8 @@ suites now check these states; scanning and preferences remain unchanged.
 The reusable native summary now includes an accessible **Copy Diagnostic Details**
 button that writes a fresh, plain-text report to the macOS clipboard. It contains
 the trusted canonical status code, fixed heading and explanation, a validated
-local document basename (or `Unavailable`), and the selected typed protection
-level with its preview-only warning. A missing result is `unavailable`.
+local document basename (or `Unavailable`), typed protection level with its
+preview-only warning, and trusted sanitization state when available. A missing result is `unavailable`.
 
 For a supplied local document URL, the report says `Document path: [redacted]`
 instead of retaining or exporting the private directory or absolute URL. Absent

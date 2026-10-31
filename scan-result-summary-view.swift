@@ -256,12 +256,14 @@ final class ScanResultSummaryView: NSView {
         let copy = ScanResultSummaryCopy.forStatus(displayedStatus)
         let protection = displayedProtectionLevel?.displayText
             ?? "Selected protection level: Unavailable"
+        let sanitization = displayedSanitization?.displayText ?? "Sanitization: Unavailable"
         return [
             "PDF Magic Opener — Scan diagnostic details",
             "Status: " + (displayedStatus?.rawValue ?? "unavailable"),
             "Document: " + diagnosticDocumentName,
             "Document path: " + (diagnosticHasLocalPath ? "[redacted]" : "Not provided"),
             protection,
+            sanitization,
             "Summary: " + copy.heading,
             "Details: " + copy.explanation,
             "This report is informational; it does not authorize opening."

@@ -80,12 +80,15 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("ScanResultSummaryCopy.forStatus(displayedStatus)", source)
         self.assertIn('displayedStatus?.rawValue ?? "unavailable"', source)
         self.assertIn("documentURL?.isFileURL == true", source)
+        self.assertIn('displayedSanitization?.displayText ?? "Sanitization: Unavailable"', source)
         self.assertIn("diagnosticDocumentName = Self.displayDocumentName(documentURL)", source)
         self.assertIn('"[redacted]"', source)
         self.assertNotIn("rawScannerOutput", source)
         self.assertIn("copyDiagnosticDetailsButton.performClick(nil)", harness)
         self.assertIn("NSPasteboard.general.string(forType: .string)", harness)
         self.assertIn("Document path: [redacted]", harness)
+        self.assertIn("Sanitization: Performed", harness)
+        self.assertIn("Sanitization: Not performed", harness)
         self.assertIn("Document path: Not provided", harness)
 
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
