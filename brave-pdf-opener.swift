@@ -123,12 +123,14 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
 }
 
 // This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(completion: @escaping () -> Void) {
+func deliverBlockedFileNotification(scanFailed: Bool, completion: @escaping () -> Void) {
     let center = UNUserNotificationCenter.current()
     func enqueue() {
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
-        content.body = "A PDF could not be opened because its safety check failed."
+        content.body = scanFailed
+            ? "A PDF scan failed or could not finish. The file was not opened."
+            : "A PDF could not be opened because its safety check failed."
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
         center.add(request) { _ in completion() }
@@ -570,7 +572,11 @@ DispatchQueue.main.async {
                     failure: failure, cancelled: cancelled
                 ) {
                     self.pendingSuccessNotifications += 1
-                    deliverBlockedFileNotification { [weak self] in
+                    deliverBlockedFileNotification(
+                        scanFailed: FailedScanNotificationClassification.shouldShowFailedScanNotice(
+                            failure: failure, cancelled: cancelled
+                        )
+                    ) { [weak self] in
                         DispatchQueue.main.async {
                             guard let self else { return }
                             self.pendingSuccessNotifications -= 1
