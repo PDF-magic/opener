@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createAuthenticatedPdfRoutes } from "./authenticated-pdf-routes.mjs";
+import { createMalformedRemotePdfRoutes } from "./malformed-remote-pdf-routes.mjs";
 import {
   LARGE_REMOTE_PDF_MIN_BYTES, createLargeRemotePdf,
   createLargeRemotePdfRoute
@@ -50,11 +51,13 @@ function makePdf() {
 
 const pdf = makePdf();
 const auth = createAuthenticatedPdfRoutes(pdf);
+const malformed = createMalformedRemotePdfRoutes();
 const large = createLargeRemotePdfRoute(createLargeRemotePdf());
 const routes = ["/built-in-viewer.pdf", "/mime-only"];
 const counts = new Map(routes.map(route => [route, 0]));
 const server = createServer((request, response) => {
   if (auth.handle(request, response)) return;
+  if (malformed.handle(request, response)) return;
   if (large.handle(request, response)) return;
   if (request.method !== "GET" || !counts.has(request.url)) {
     response.writeHead(404, { "Cache-Control": "no-store" });
@@ -258,7 +261,61 @@ try {
   assert.ok(large.size > LARGE_REMOTE_PDF_MIN_BYTES);
   assert.ok(large.snapshot().requests > 0,
     "Firefox must request the large remote PDF via real HTTP");
-  console.log("PASS Firefox built-in PDF.js viewer renders local PDF, MIME-only, authenticated and large remote PDF: " + version);
+
+  // Deliberately unrecoverable PDFs must never become a rendered document.
+  // The actual Firefox PDF.js viewer still opens, but no page may be shown.
+  // Reopen a known-good PDF after each error to verify browser recovery.
+  const malformedProbe = [
+    "return (() => {",
+    "const app = window.PDFViewerApplication;",
+    "const viewer = document.querySelector('#viewerContainer #viewer');",
+    "return {",
+    "reader: !!document.querySelector('#pageNumber') &&",
+    "  !!document.querySelector('#numPages') && !!viewer,",
+    "initialized: app?.initialized === true,",
+    "pages: app?.pdfDocument?.numPages ?? null,",
+    "pageNodes: viewer?.querySelectorAll('.page').length ?? null",
+    "};",
+    "})();"
+  ].join("\n");
+  for (const item of malformed.cases) {
+    const invalidUrl = "http://127.0.0.1:" + pdfPort + item.path;
+    await webdriver("POST", "/session/" + sessionId + "/url",
+      { url: invalidUrl }, 40_000);
+    await until(async () => {
+      const observed = await webdriver("POST",
+        "/session/" + sessionId + "/execute/sync", {
+          script: malformedProbe, args: []
+        }, 12_000);
+      return observed.reader && observed.initialized ? observed : null;
+    }, "Firefox PDF.js reader for malformed remote PDF " + item.reason);
+    // Firefox may show an error or a blank viewer for corrupt input. It
+    // must not expose a successful PDF document or rendered page.
+    await delay(1500);
+    const invalid = await webdriver("POST",
+      "/session/" + sessionId + "/execute/sync", {
+        script: malformedProbe, args: []
+      }, 12_000);
+    assert.equal(invalid.reader, true, "The test must exercise PDF.js");
+    assert.equal(invalid.pages, null, "Malformed input must not load as a PDF");
+    assert.equal(invalid.pageNodes, 0, "Malformed input must not render pages");
+    assert.ok(malformed.snapshot()[item.path] > 0,
+      "Firefox must request the malformed remote PDF over HTTP");
+
+    const recoveryUrl = "http://127.0.0.1:" + pdfPort + routes[0];
+    await webdriver("POST", "/session/" + sessionId + "/url",
+      { url: recoveryUrl }, 40_000);
+    const recovered = await until(async () => {
+      const observed = await webdriver("POST",
+        "/session/" + sessionId + "/execute/sync", {
+          script: viewerProbe, args: []
+        }, 12_000);
+      return observed.readerControls && observed.pages === 1 &&
+        observed.ready && observed.firstPageRendered ? observed : null;
+    }, "normal PDF recovers after malformed remote PDF " + item.reason);
+    assert.equal(recovered.pages, 1);
+  }
+  console.log("PASS Firefox PDF.js viewer loads valid PDFs, rejects malformed remote PDFs and recovers: " + version);
 } catch (error) {
   console.error("Firefox isolated viewer diagnostic:", stderrTail);
   throw error;
