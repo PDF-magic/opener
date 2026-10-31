@@ -65,14 +65,27 @@ chmod 755 "$install_dir/select-custom-pdf-application" "$install_dir/select-cust
     "$script_dir/browser-app-metadata.swift" -o "$install_dir/browser-preference-list"
 chmod 755 "$install_dir/browser-preference-list"
 python3 - "$install_dir" <<'CONFIG'
+import os
+import stat
 import sys
 from pathlib import Path
+
 path = Path(sys.argv[1])
-(path / 'freshclam.conf').write_text(
-    'DatabaseDirectory "' + str(path / 'signatures') + '"\n'
-    'DatabaseMirror database.clamav.net\n'
-    'ScriptedUpdates yes\n'
-)
+config = path / 'freshclam.conf'
+# An existing file can contain working mirror/proxy customizations. Do not
+# read, normalize or overwrite it during an application upgrade.
+try:
+    fd = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+except FileExistsError:
+    if not stat.S_ISREG(config.lstat().st_mode):
+        raise SystemExit('Unsafe existing FreshClam configuration; installation stopped.')
+else:
+    with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        stream.write(
+            'DatabaseDirectory "' + str(path / 'signatures') + '"\n'
+            'DatabaseMirror database.clamav.net\n'
+            'ScriptedUpdates yes\n'
+        )
 CONFIG
 bash "$install_dir/update-malware-signatures.sh"
 
@@ -130,7 +143,9 @@ cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.
     -o "$app/Contents/MacOS/PDFOpener"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
 python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
+import os
 import plistlib
+import stat
 import sys
 from pathlib import Path
 app, install_dir = map(Path, sys.argv[1:3])
@@ -161,8 +176,17 @@ agent = {
     'StandardOutPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.log'),
     'StandardErrorPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.error.log'),
 }
-with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.plist').open('wb') as stream:
-    plistlib.dump(agent, stream)
+# Preserve any existing per-user schedule, including custom update intervals.
+# Only provision the default for a fresh installation; reject unsafe entries.
+agent_path = Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.plist'
+try:
+    fd = os.open(agent_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+except FileExistsError:
+    if not stat.S_ISREG(agent_path.lstat().st_mode):
+        raise SystemExit('Unsafe existing signature update schedule; installation stopped.')
+else:
+    with os.fdopen(fd, 'wb') as stream:
+        plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
 # No installed app is replaced or registered until staged contents, PDF identity,
