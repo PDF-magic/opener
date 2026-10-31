@@ -194,6 +194,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Reject untrusted values in Finder shell command strings
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
+      - name: Detect existing Finder Quick Action and backup without touching user files
+        run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
@@ -828,6 +830,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect existing Finder Quick Action and backup without touching user files
+        run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
       - name: Verify real macOS Gatekeeper rejection of quarantined unsigned apps
         run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Compile and test the transport-only native messaging host
