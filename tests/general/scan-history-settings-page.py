@@ -47,14 +47,18 @@ class ScanHistorySettingsPageTests(unittest.TestCase):
       'accessibilityIdentifier("scanHistoryPrivacySection")',
       'accessibilityIdentifier("scanHistorySettingsPage")',
       "explicitly enables it", "independently verify the user's opt-in",
-      "does not load, list, export, or delete document records",
+      "does not automatically load, export, or delete document records",
       "PDF bytes, document text, attachments, browsing history, or source URLs",
       "not an authorization to open a document",
     ):
       with self.subTest(required=required):
         self.assertIn(required, page)
+    self.assertEqual(page.count("Button("), 1)
+    self.assertIn('Button("Show recent scan results")', page)
+    self.assertIn("recentScanHistory = RecentScanHistoryReader.load()", page)
+    self.assertNotIn(".onAppear", page)
     for forbidden in (
-      "Toggle(", "Button(", "Picker(", "@AppStorage", "UserDefaults",
+      "Toggle(", "Picker(", "@AppStorage", "UserDefaults",
       "FileManager", "FileHandle", "Process(", "NSWorkspace", "URLSession",
       "write(to:", "removeItem(", "clamscan(", "target-app.txt",
       "onAppear", "onOpenURL", "DocumentGroup",

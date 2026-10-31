@@ -18,6 +18,7 @@ struct PreferencesLargeTextTests {
       ("Updates", AnyView(UpdatesSettingsView())),
       ("About and Diagnostics", AnyView(AboutAndDiagnosticsSettingsView())),
       ("Extensions and Integrations", AnyView(ExtensionsAndIntegrationsSettingsView())),
+      ("Scan History", AnyView(ScanHistorySettingsView())),
     ]
 
     let sizes: [DynamicTypeSize] = [.large, .accessibility1, .accessibility3]
