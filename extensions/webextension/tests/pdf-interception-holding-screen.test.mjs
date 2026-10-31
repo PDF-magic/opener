@@ -61,14 +61,19 @@ test("active correlated hold shows fixed accessible scanning presentation", () =
   assert.equal(f.root.attributes.get("aria-busy"), "true");
   assert.equal(f.root.attributes.get("aria-labelledby"),
     "pdf-interception-holding-title");
-  const [indicator, heading, description, warning] = f.root.children[0].children;
+  const [indicator, heading, description, urlLabel, urlText, warning] =
+    f.root.children[0].children;
   assert.equal(indicator.attributes.get("aria-hidden"), "true");
   assert.equal(heading.tagName, "h1");
   assert.equal(heading.id, "pdf-interception-holding-title");
   assert.equal(heading.textContent, PDF_HOLDING_COPY.title);
   assert.equal(description.textContent, PDF_HOLDING_COPY.description);
+  assert.equal(urlLabel.textContent, "Original PDF URL");
+  assert.equal(urlText.id, "holdingScreenOriginalUrl");
+  assert.equal(urlText.attributes.get("aria-labelledby"), urlLabel.id);
+  assert.equal(urlText.textContent, "Original PDF URL unavailable.");
   assert.equal(warning.textContent, PDF_HOLDING_COPY.warning);
-  assert.equal(f.root.children[0].children.length, 4);
+  assert.equal(f.root.children[0].children.length, 6);
   assert.ok(Object.isFrozen(PDF_HOLDING_COPY));
 });
 
@@ -154,6 +159,43 @@ test("clear, mismatched updates and dispose erase scanning text", () => {
   f.screen.dispose();
   denied(f.screen.show(context));
   assert.deepEqual(f.root.children, []);
+});
+
+test("current held scan displays exact original URL but never an opening action", async () => {
+  const f = fixture();
+  const originalUrl = "https://example.test/a%2Fb.pdf?signature=x%2By#page=2";
+  f.coordinator.trustedHoldingScreenReady = true;
+  f.coordinator.readCurrentHoldingId = () => context.navigationId;
+  f.coordinator.readOriginalHoldingUrl = async ({ holdingId }) =>
+    ({ holdingId, originalUrl });
+  assert.equal(f.screen.show(context).authorizesOpen, false);
+  const text = f.root.children[0].children[4];
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(text.textContent, originalUrl);
+  f.screen.clear();
+  assert.equal(text.textContent, "Original PDF URL unavailable.");
+  assert.equal(f.root.hidden, true);
+  denied(f.screen.show({ ...context, scanRequestId: "mismatch" }));
+  assert.equal(f.root.children.length, 0);
+});
+
+test("late original URL reads cannot repaint after holding screen disposal", async () => {
+  const f = fixture();
+  let deliver;
+  f.coordinator.trustedHoldingScreenReady = true;
+  f.coordinator.readCurrentHoldingId = () => context.navigationId;
+  f.coordinator.readOriginalHoldingUrl = () =>
+    new Promise(resolve => { deliver = resolve; });
+  f.screen.show(context);
+  const text = f.root.children[0].children[4];
+  f.screen.dispose();
+  deliver({ holdingId: context.navigationId,
+    originalUrl: "https://example.test/a.pdf?token=secret" });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(text.textContent, "Original PDF URL unavailable.");
+  assert.equal(f.root.hidden, true);
 });
 
 test("inactive browser permissions, scanner and customizations remain untouched", async () => {

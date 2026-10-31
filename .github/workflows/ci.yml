@@ -428,6 +428,9 @@ jobs:
       - name: Enforce explicit PDF download byte-size cap
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-download-size.test.mjs
+      - name: Preserve original PDF URL on the holding screen
+        working-directory: extensions/webextension
+        run: node --test tests/holding-screen-original-url.test.mjs
       - name: Verify automatic PDF scan holding screen stays accessible and fail-closed
         working-directory: extensions/webextension
         run: node --test tests/pdf-interception-holding-screen.test.mjs

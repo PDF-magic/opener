@@ -25,6 +25,7 @@
   line-height: 1.3;
 }
 .pdf-interception-holding__panel p { margin: .65rem 0; }
+#holdingScreenOriginalUrl { overflow-wrap: anywhere; word-break: break-word; }
 .pdf-interception-holding__indicator {
   display: block;
   width: 2rem;

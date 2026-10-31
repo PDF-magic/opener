@@ -1,4 +1,5 @@
 // Passive, not wired into the inactive browser extension.
+import { createHoldingScreenOriginalUrl } from "./holding-screen-original-url.js";
 export const PDF_HOLDING_COPY = Object.freeze({
   title: "Scanning PDF before opening",
   description: "Opening is paused while PDF Magic Opener checks this PDF.",
@@ -62,8 +63,11 @@ export function createPdfInterceptionHoldingScreen(root, coordinator = null) {
     throw new TypeError("An extension-owned holding root is required");
   }
   let disposed = false;
+  let originalUrlView = null;
 
   function clear() {
+    originalUrlView?.dispose();
+    originalUrlView = null;
     root.hidden = true;
     root.replaceChildren();
     for (const attribute of ["role", "aria-live", "aria-busy", "aria-labelledby"]) {
@@ -102,16 +106,26 @@ export function createPdfInterceptionHoldingScreen(root, coordinator = null) {
       heading.textContent = PDF_HOLDING_COPY.title;
       const description = document.createElement("p");
       description.textContent = PDF_HOLDING_COPY.description;
+      const urlLabel = document.createElement("p");
+      urlLabel.id = "pdf-interception-holding-original-url-label";
+      urlLabel.textContent = "Original PDF URL";
+      const urlText = document.createElement("p");
+      urlText.id = "holdingScreenOriginalUrl";
+      urlText.setAttribute("aria-labelledby", urlLabel.id);
       const warning = document.createElement("p");
       warning.className = "pdf-interception-holding__warning";
       warning.textContent = PDF_HOLDING_COPY.warning;
-      panel.replaceChildren(indicator, heading, description, warning);
+      panel.replaceChildren(indicator, heading, description, urlLabel, urlText, warning);
       root.replaceChildren(panel);
       root.setAttribute("role", "status");
       root.setAttribute("aria-live", "polite");
       root.setAttribute("aria-busy", "true");
       root.setAttribute("aria-labelledby", heading.id);
+      originalUrlView = createHoldingScreenOriginalUrl(urlText, coordinator);
       root.hidden = false;
+      // The presenter independently verifies original-URL provenance,
+      // and cancellation disposes it before another hold can be displayed.
+      void originalUrlView.show(navigationId);
       return scanning;
     } catch {
       // Never expose raw native errors, browser URLs or PDF paths.
