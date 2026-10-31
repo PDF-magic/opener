@@ -117,11 +117,12 @@ def check(root=ROOT):
     if package.get(field):
       raise LicenseReviewError("Unreviewed WebExtension dependency: " + field)
   installer = (root / "install-allow-and-open.sh").read_text(encoding="utf-8")
-  # The reviewed Homebrew route now resolves a fixed, validated executable
-  # through opener-0954 before executing the unchanged ClamAV package request.
+  # The reviewed package route requires a validated Homebrew executable and
+  # a separate explicit controlling-terminal approval before installation.
   approved_brew_route = (
     'brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"' in installer
-    and '"$brew_executable" install clamav' in installer
+    and 'python3 "$script_dir/scripts/confirm_clamav_install.py"' in installer
+    and 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav' in installer
     and "if ! [ -x /opt/homebrew/bin/clamscan ]" in installer
   )
   if not approved_brew_route or "clamscan" not in installer:

@@ -94,15 +94,25 @@ class DependencyLicensingTests(unittest.TestCase):
       checker.check(self.root)
 
   def test_rejects_install_route_or_project_license_changes(self):
-    approved = '"$brew_executable" install clamav'
-    self.edit("install-allow-and-open.sh", approved, '"$brew_executable" install unrelated')
+    approved = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
+    self.edit("install-allow-and-open.sh", approved,
+              'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated')
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh", '"$brew_executable" install unrelated', approved)
+    self.edit("install-allow-and-open.sh",
+              'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated', approved)
     self.edit("install-allow-and-open.sh", "scripts/detect_homebrew.py", "scripts/untrusted_brew.py")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
     self.edit("install-allow-and-open.sh", "scripts/untrusted_brew.py", "scripts/detect_homebrew.py")
+    self.edit("install-allow-and-open.sh",
+              'python3 "$script_dir/scripts/confirm_clamav_install.py"',
+              'echo "No consent requested"')
+    with self.assertRaises(checker.LicenseReviewError):
+      checker.check(self.root)
+    self.edit("install-allow-and-open.sh",
+              'echo "No consent requested"',
+              'python3 "$script_dir/scripts/confirm_clamav_install.py"')
     self.edit("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE", "INCOMPATIBLE LICENSE")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)

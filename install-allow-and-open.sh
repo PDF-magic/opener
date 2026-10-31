@@ -1,6 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# This is an exclusively per-user installer. Never let sudo/root write into
+# user services, ClamAV settings, or application bundles.
+if [ "$EUID" -eq 0 ]; then
+    echo "Do not run the PDF Magic Opener installer as root or with sudo." >&2
+    exit 1
+fi
+
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 install_dir="$HOME/Library/Application Support/Studio/allow-and-open"
 workflow="$HOME/Library/Services/Allow and Open.workflow/Contents/document.wflow"
@@ -40,7 +47,11 @@ if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! 
         echo "Homebrew detection failed; install Homebrew to set up ClamAV." >&2
         exit 1
     fi
-    "$brew_executable" install clamav
+    # Homebrew may request administrator authorization. Require a human at
+    # the controlling terminal before any package-manager subprocess runs.
+    # Absent or declined consent fails closed; no noninteractive opt-in.
+    python3 "$script_dir/scripts/confirm_clamav_install.py"
+    HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav
 fi
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
