@@ -34,6 +34,12 @@ class ScanGateTests(unittest.TestCase):
         native = patch.object(opener, 'verify_launch_target')
         native.start()
         self.addCleanup(native.stop)
+        # Test-only process mocks stand in for the uninstalled native helper.
+        # Filesystem executable validation is exercised separately with real
+        # executable, non-executable and special-file fixtures.
+        executable = patch('file_launcher.require_executable_path')
+        executable.start()
+        self.addCleanup(executable.stop)
         version = patch.object(opener.subprocess, 'check_output',
                                side_effect=FileNotFoundError)
         version.start()

@@ -39,6 +39,12 @@ class FallbackTests(unittest.TestCase):
             control.start()
             self.addCleanup(control.stop)
 
+        # These routing tests mock native process execution; the real
+        # executable-filesystem gate is covered by dedicated security tests.
+        executable = patch.object(launcher, "require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
+
     def destinations(self):
         with sqlite3.connect(opener.SCAN_REQUEST_DB) as db:
             return [entry[0] for entry in db.execute(

@@ -35,6 +35,36 @@ PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE = (
 )
 
 
+
+EXECUTABLE_UNAVAILABLE_MESSAGE = (
+    "The required executable is missing or unsafe; opening was stopped."
+)
+
+
+def require_executable_path(path, message=EXECUTABLE_UNAVAILABLE_MESSAGE, *,
+                            allow_symlink=False):
+    """Fail closed for executable paths before starting a child process.
+
+    Preserve trusted Homebrew scanner symlinks when explicitly allowed, but
+    refuse symlinked native launcher utilities, missing/relative paths,
+    directories, special files, and files without execute permission. Never
+    reveal the executable's pathname in a caller-visible error.
+    """
+    if not isinstance(path, (str, Path)):
+        raise RuntimeError(message)
+    try:
+        candidate = Path(path)
+        if (not candidate.is_absolute() or "\0" in str(candidate) or
+                not allow_symlink and candidate.is_symlink()):
+            raise RuntimeError(message)
+        info = candidate.stat()
+        if not stat.S_ISREG(info.st_mode) or not os.access(candidate, os.X_OK):
+            raise RuntimeError(message)
+    except (OSError, ValueError):
+        raise RuntimeError(message) from None
+    return str(candidate)
+
+
 def verify_launch_target(path, target_app=None):
     """Require Launch Services PDF capability for the selected application."""
     if Path(path).suffix.lower() != ".pdf":
@@ -42,6 +72,7 @@ def verify_launch_target(path, target_app=None):
     selected = target_app if target_app is not None else intended_destination(path)
     if selected == PDF_OPENER_BUNDLE_ID:
         raise RuntimeError("PDF Magic Opener cannot launch itself; opening was stopped.")
+    require_executable_path(PDF_TARGET_VERIFIER, PDF_TARGET_VERIFICATION_MESSAGE)
     try:
         completed = subprocess.run(
             [str(PDF_TARGET_VERIFIER), selected],
@@ -87,6 +118,9 @@ def verify_local_file_available(path):
     path = Path(path)
     if path.suffix.lower() != ".pdf" or sys.platform != "darwin":
         return
+    require_executable_path(
+        NATIVE_LAUNCHER, "The requested PDF is not available locally; opening was stopped."
+    )
     try:
         completed = subprocess.run(
             [str(NATIVE_LAUNCHER), "--check-local", str(path)],
@@ -113,6 +147,7 @@ def _valid_bundle_identifier(selected):
 
 def _resolve_default_browser():
     """Pin the current macOS HTTPS handler to one verified destination."""
+    require_executable_path(DEFAULT_BROWSER_RESOLVER, PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE)
     try:
         completed = subprocess.run(
             [str(DEFAULT_BROWSER_RESOLVER)],
@@ -203,4 +238,5 @@ def launch_clean_file(path, target_app=None):
         if selected == PDF_OPENER_BUNDLE_ID:
             raise RuntimeError("PDF Magic Opener cannot launch itself; opening was stopped.")
         command.extend(["--bundle-id", selected])
+    require_executable_path(NATIVE_LAUNCHER)
     subprocess.run([*command, str(path)], check=True)

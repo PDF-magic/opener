@@ -16,7 +16,8 @@ from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_VERIFICATION_MESSAGE,
                            intended_destination, launch_clean_file,
                            scanned_file_identity, pdf_fallback_application,
-                           verify_launch_target, verify_local_file_available)
+                           verify_launch_target, verify_local_file_available,
+                           require_executable_path)
 import os
 import signal
 import re
@@ -426,11 +427,12 @@ def detect_clamav_installation() -> Optional[str]:
     """
     for candidate in CLAMAV_CANDIDATES:
         try:
-            if Path(candidate).is_file() and os.access(candidate, os.X_OK):
-                return candidate
-        except OSError:
-            # Inaccessible installations must never be treated as available.
+            # Known locations only. Homebrew installations may use symlinks.
+            require_executable_path(candidate, allow_symlink=True)
+        except RuntimeError:
+            # Inaccessible or unsafe candidates cannot authorize a scan.
             continue
+        return str(candidate)
     return None
 
 
