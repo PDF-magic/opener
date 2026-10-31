@@ -248,7 +248,9 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
     verify = 'python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'
     self.assertIn(verify, INSTALLER)
     self.assertLess(INSTALLER.index(verify), INSTALLER.index(SWAP_START))
-    self.assertLess(INSTALLER.index(SWAP_START), INSTALLER.index("lsregister -f"))
+    registration = 'python3 "$script_dir/scripts/reconcile_pdf_handler_registration.py"'
+    self.assertIn(registration, INSTALLER)
+    self.assertLess(INSTALLER.index(SWAP_START), INSTALLER.index(registration))
     self.assertLess(INSTALLER.index('python3 "$script_dir/scripts/migrate_update_agent.py"'),
                     INSTALLER.index('python3 "$script_dir/scripts/reconcile_update_agent.py"'))
     self.assertIn('bash "$install_dir/update-malware-signatures.sh"', INSTALLER)
