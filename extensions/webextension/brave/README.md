@@ -90,3 +90,26 @@ built-in PDF viewer, and visit a locally served, non-sensitive PDF. Confirm that
 the PDF appears in the browser tab. Then separately test a download-preferring
 profile and Brave policies; never change an existing user's PDF preferences
 or rely on a viewer display as proof of a verified native scan.
+
+## Denied browser permission verification (opener-0812)
+
+The real Brave Stable extension smoke runs against a disposable browser
+profile and now attempts a **read-only** `chrome.downloads.search` call
+without the optional `downloads` permission. Brave must either expose no
+usable API or reject the call. The test fails on unexpected access and
+checks `chrome.permissions.getAll()` and `contains()` after the refusal,
+confirming that the permission and host-origin lists remain empty. The
+popup must still say **Not active** with **Scan PDF** disabled and no
+verified scan result. Neither a permission prompt nor a download is initiated.
+
+The companion Node regression runs an explicitly denied optional permission
+result through the existing permission-request helper and fail-closed
+denial handler. It verifies monitoring shutdown occurs once, a later
+purported grant cannot restore operation, and errors cannot leak private paths.
+
+**Boundary:** this is real-browser verification of **API denial without a
+grant**, plus a simulated **user refusal** of a future opt-in request. The
+inactive production extension does not expose a permission-request button,
+so this is not a claim that a live permission prompt was displayed and
+dismissed. No browser settings, native **scanner** gates, or **user preferences**
+are changed.
