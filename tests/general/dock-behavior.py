@@ -58,7 +58,7 @@ class DockBehaviorTests(unittest.TestCase):
         scanner = SCANNER.read_text(encoding="utf-8")
         self.assertIn("app.setActivationPolicy(.accessory)", scanner)
         install = INSTALLER.read_text(encoding="utf-8")
-        marker = "python3 - \"$app\" \"$install_dir\" \"$app_name\" <<'CONFIG'\n"
+        marker = "python3 - \"$app\" \"$install_dir\" \"$app_name\" \"$agent_state\" <<'CONFIG'\n"
         self.assertEqual(install.count(marker), 1)
         config = install.split(marker, 1)[1].split("\nCONFIG\n", 1)[0]
         with tempfile.TemporaryDirectory(prefix="opener-dock-policy-") as temp:
@@ -68,7 +68,7 @@ class DockBehaviorTests(unittest.TestCase):
             (home / "Library" / "LaunchAgents").mkdir(parents=True)
             result = subprocess.run(
                 [sys.executable, "-", str(app), str(home / "runtime"),
-                 "PDF Magic Opener"], input=config, text=True,
+                 "PDF Magic Opener", "absent"], input=config, text=True,
                 capture_output=True, env={**os.environ, "HOME": str(home)},
                 check=False)
             self.assertEqual(result.returncode, 0, result.stderr)
