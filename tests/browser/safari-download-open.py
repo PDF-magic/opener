@@ -176,22 +176,37 @@ def test_managed_handoff(pdf, root, *, outcome):
     return events
 
 
+def read_macos_quarantine(pdf):
+    """Read the raw attribute bytes with macOS xattr; Python lacks os.getxattr."""
+    result = subprocess.run(
+        ["/usr/bin/xattr", "-px", QUARANTINE_KEY, str(pdf)],
+        capture_output=True, check=False,
+    )
+    if result.returncode == 0:
+        return bytes.fromhex(result.stdout.decode("ascii"))
+    if b"No such xattr" in result.stderr:
+        return None
+    raise AssertionError("Could not inspect Safari download quarantine")
+
+
 def test_pdf_handoff(pdf, root):
     # An existing Safari quarantine attribute must not be removed. On
     # loopback, Safari may omit it; attach a test-only marker in that case.
     original = None
     if sys.platform == "darwin":
-        try:
-            original = os.getxattr(pdf, QUARANTINE_KEY)
-        except OSError:
-            os.setxattr(pdf, QUARANTINE_KEY, TEST_TAG)
-            original = os.getxattr(pdf, QUARANTINE_KEY)
+        original = read_macos_quarantine(pdf)
+        if original is None:
+            subprocess.run(
+                ["/usr/bin/xattr", "-wx", QUARANTINE_KEY, TEST_TAG.hex(), str(pdf)],
+                capture_output=True, check=True,
+            )
+            original = read_macos_quarantine(pdf)
         assert original
     for result in ("clean", "malware", "scanner-error"):
         assert pdf.read_bytes() == PDF_BYTES
         test_managed_handoff(pdf, root, outcome=result)
         if original is not None:
-            assert os.getxattr(pdf, QUARANTINE_KEY) == original
+            assert read_macos_quarantine(pdf) == original
     assert pdf.read_bytes() == PDF_BYTES
     print("PASS managed open after Safari PDF: clean/cache launch, malicious/error "
           "blocked, quarantine retained; launch only mocked")
