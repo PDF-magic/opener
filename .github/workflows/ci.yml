@@ -670,6 +670,10 @@ jobs:
         run: |
           npm run build
           node --test tests/edge-compatibility.test.mjs
+      - name: Exercise Edge built-in PDF viewer with a local single-page fixture
+        working-directory: extensions/webextension
+        shell: pwsh
+        run: node --test tests/edge-pdf-viewer.test.mjs
 
   macos-build:
     needs: detect-scope

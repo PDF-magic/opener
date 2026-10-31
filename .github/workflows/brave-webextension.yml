@@ -48,7 +48,7 @@ jobs:
         working-directory: extensions/webextension
         run: |
           npm run build
-          node --test tests/brave-compatibility.test.mjs
+          node --test tests/brave-compatibility.test.mjs tests/brave-pdf-viewer.test.mjs
       - name: Install CI-only Brave automation driver
         working-directory: extensions/webextension
         run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
@@ -58,3 +58,11 @@ jobs:
           BRAVE_BROWSER_PATH: /usr/bin/brave-browser
         timeout-minutes: 3
         run: node scripts/smoke-brave.mjs
+      - name: Install virtual display for Brave built-in PDF viewer verification
+        run: sudo apt-get install -y -qq xvfb
+      - name: Exercise Brave built-in PDF viewer with a local synthetic PDF
+        working-directory: extensions/webextension
+        env:
+          BRAVE_BROWSER_PATH: /usr/bin/brave-browser
+        timeout-minutes: 3
+        run: xvfb-run -a node scripts/smoke-brave-pdf-viewer.mjs
