@@ -201,7 +201,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertIn('Text("Not connected")', integration)
     docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
     self.assertIn("Optional browser extensions (opener-0980)", docs)
-    self.assertIn("do not provide an automatic PDF scan", docs)
+    self.assertIn("not provide an automatic PDF scan", docs)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-welcome.py -v", ci)
 
