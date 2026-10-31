@@ -573,6 +573,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
       - name: Verify scan input metadata and hashing use pinned file descriptors
         run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
+      - name: Reject nonexistent scan paths before scanner or launch admission
+        run: PYTHONPATH=. python3 tests/general/nonexistent-file-paths.py -v
       - name: Reject unreadable scan files before scanning or cached opening
         run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
       - name: Reject inaccessible file and application paths before scanner admission
@@ -1152,6 +1154,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Test verified opening handoff of actually quarantined PDFs
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
+      - name: Reject nonexistent local files and dangling links on macOS
+        run: PYTHONPATH=. python3 tests/general/nonexistent-file-paths.py -v
       - name: Verify real macOS quarantine on unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
       - name: Verify quarantined app bundle opening through the Finder action
