@@ -123,7 +123,8 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
 }
 
 // This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool, completion: @escaping () -> Void) {
+func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
+                                    sanitizerFailed: Bool = false, completion: @escaping () -> Void) {
     let center = UNUserNotificationCenter.current()
     func enqueue() {
         let content = UNMutableNotificationContent()
@@ -131,9 +132,11 @@ func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool, com
         // Confirmed malware takes precedence over scan failures.
         content.body = malwareDetected
             ? "Malware was detected. The PDF was blocked and was not opened."
-            : (scanFailed
-                ? "A PDF scan failed or could not finish. The file was not opened."
-                : "A PDF could not be opened because its safety check failed.")
+            : (sanitizerFailed
+                ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
+                : (scanFailed
+                    ? "A PDF scan failed or could not finish. The file was not opened."
+                    : "A PDF could not be opened because its safety check failed."))
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
         center.add(request) { _ in completion() }
@@ -391,6 +394,24 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
+            // Future trusted Maximum producers call the panel failure hook.
+            // Do not confuse their failure with a ClamAV malware verdict or
+            // send an optional notice unless the existing blocked-file setting
+            // is explicitly enabled. Built-in scans never enter this path.
+            panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in
+                guard let self, BlockedFileNotificationPreference.isEnabled() else { return }
+                self.pendingSuccessNotifications += 1
+                deliverBlockedFileNotification(malwareDetected: false, scanFailed: false,
+                                               sanitizerFailed: true) { [weak self] in
+                    DispatchQueue.main.async {
+                        guard let self else { return }
+                        self.pendingSuccessNotifications -= 1
+                        if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                            NSApp.terminate(nil)
+                        }
+                    }
+                }
+            }
         }
         // Prefer a currently scanning file; use a queued request before launch.
         // Sorting makes the displayed filename stable when two scans run together.

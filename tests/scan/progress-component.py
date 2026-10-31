@@ -340,7 +340,13 @@ let sanitizerFailure: [String: Any] = [
 ]
 let sanitizerData = try JSONSerialization.data(withJSONObject: sanitizerFailure)
 precondition(MaximumSanitizationFailureSnapshot.decode(sanitizerData) != nil)
+var sanitizerNotices = 0
+panel.onVerifiedMaximumSanitizationFailure = { sanitizerNotices += 1 }
+precondition(sanitizerNotices == 0)
 panel.updateMaximumSanitizationFailure(from: sanitizerData)
+precondition(sanitizerNotices == 1)
+panel.updateMaximumSanitizationFailure(from: sanitizerData)
+precondition(sanitizerNotices == 1, "The same failure must not notify twice")
 precondition(!panel.maximumSanitizationFailureLabel.isHidden)
 precondition(panel.maximumSanitizationFailureLabel.accessibilityIdentifier() == "maximumSanitizationFailure")
 precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("sanitizer crashed"))
@@ -368,13 +374,19 @@ for unsafe in [
     let data = try JSONSerialization.data(withJSONObject: unsafe)
     precondition(MaximumSanitizationFailureSnapshot.decode(data) == nil)
     panel.updateMaximumSanitizationFailure(from: data)
+    precondition(sanitizerNotices == 1, "Forged failures cannot notify")
     precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("could not be verified"))
     precondition(!panel.maximumSanitizationFailureLabel.stringValue.contains("/private"))
     precondition(!panel.maximumSanitizationFailureLabel.stringValue.contains("malware FOUND"))
     precondition(panel.cancelButton.title == "Close")
 }
 panel.updateMaximumSanitizationFailure(from: Data(repeating: 65, count: 4097))
+precondition(sanitizerNotices == 1)
 precondition(panel.maximumSanitizationFailureLabel.stringValue.contains("could not be verified"))
+panel.updateMaximumSanitizationFailure(from: nil)
+precondition(sanitizerNotices == 1)
+panel.updateMaximumSanitizationFailure(from: sanitizerData)
+precondition(sanitizerNotices == 2, "A fresh verified failure may notify again")
 panel.updateMaximumSanitizationFailure(from: nil)
 precondition(panel.maximumSanitizationFailureLabel.isHidden)
 precondition(panel.maximumSanitizationFailureLabel.stringValue.isEmpty)

@@ -396,6 +396,8 @@ jobs:
           PYTHONPATH=. python3 tests/general/show-blocked-file-notifications.py -v
       - name: Verify failed-scan notices remain private and scanner-gated
         run: PYTHONPATH=. python3 tests/notifications/failed-scan.py -v
+      - name: Verify sanitizer-failure notices only follow validated reports and opt-in
+        run: PYTHONPATH=. python3 tests/notifications/sanitizer-failure.py -v
       - name: Verify confirmed malware-detection notices preserve blocking and privacy
         run: PYTHONPATH=. python3 tests/notifications/malware-detection.py -v
       - name: Verify verified default PDF browser selector
