@@ -126,6 +126,38 @@ enum BlockedFileNotificationPreference {
   }
 }
 
+// Only exact, path-free diagnostics emitted by the installed one-file scan gate
+// can identify an operational scan failure. This is presentation-only: the
+// existing opt-in and mandatory failure alert remain authoritative.
+enum FailedScanNotificationClassification {
+  private static let verifiedFailures: Set<String> = [
+    "Scan request 1: The malware scan could not finish; opening was stopped.\n",
+    "Scan request 1: The malware scan did not confirm a complete scan; opening was stopped.\n",
+    "Scan request 1: The malware scan timed out; opening was stopped.\n",
+    "Scan request 1: ClamAV is unavailable. Run the Allow and Open installer again.\n",
+    "Scan request 1: Malware signatures are unavailable. Run update-malware-signatures.sh.\n",
+    "Scan request 1: Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.\n",
+    "Scan request 1: The malware signature database is incomplete. Run update-malware-signatures.sh.\n",
+    "Scan request 1: ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.\n",
+    "Scan request 1: Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.\n",
+    "The malware scan exceeded its execution timeout; opening was stopped.",
+    "The malware scan could not finish.",
+    "The installed scan helper is missing. Reinstall PDF Magic Opener.",
+    "The scan helper could not start. Reinstall PDF Magic Opener.",
+  ]
+
+  static func shouldShowFailedScanNotice(
+    failure: String?,
+    cancelled: Bool,
+    enabled: Bool = BlockedFileNotificationPreference.isEnabled()
+  ) -> Bool {
+    guard BlockedFileNotificationPreference.shouldNotify(
+      failure: failure, cancelled: cancelled, enabled: enabled
+    ), let failure else { return false }
+    return verifiedFailures.contains(failure)
+  }
+}
+
 // Optional browser-download *scope* preference only. It cannot grant browser
 // permissions, enable monitoring, authorize an open, or alter the mandatory
 // installed ClamAV scanner. Native Finder/file scans are never filtered here.
