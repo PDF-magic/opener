@@ -77,6 +77,32 @@ its own PDF viewer enabled. Test searchable, image-only, fillable, and
 annotated sample PDFs before relying on any viewer-specific feature. Apple's
 separate Preview app may be better suited to editing or rearranging pages.
 
+## Chrome's built-in PDF viewer: automated browser check (opener-0800)
+
+The CI **Chrome package smoke test** now also launches Google's Chrome for
+Testing (stable) in a *separate*, disposable headless profile with no production
+extension loaded. It serves a generated, valid, one-page PDF from a temporary
+`127.0.0.1` HTTP server and performs actual top-level browser navigations to
+both a `.pdf` path and an extensionless URL with `Content-Type:
+application/pdf` and `Content-Disposition: inline`.
+
+The test asserts that Chrome requests the locally served PDF, keeps the
+original URL as the main-frame navigation, and exposes **actual PDF viewer
+evidence**: Chrome's built-in PDF extension frame/target or an embedded PDF
+plugin in the document/shadow DOM. A successful HTTP response, an ordinary
+webpage, a download, or a network error cannot pass merely by returning
+PDF-like metadata. The CI job fails if Chrome cannot open the document in its
+built-in viewer. See
+[`test-chrome-pdf-viewer.mjs`](../extensions/webextension/scripts/test-chrome-pdf-viewer.mjs)
+and its [regression tests](../extensions/webextension/tests/chrome-pdf-viewer.test.mjs).
+
+This verifies Chrome for Testing's built-in **viewing**, not that PDF Magic
+Opener can block the browser's own rendering, scan native bytes beforehand,
+intercept all sources, or provide opening permission. Those remain disabled;
+all user-selected browser/PDF apps, scanner protections, Chrome settings,
+and native host access are unchanged. The test uses only loopback traffic,
+never reads an actual user's PDFs, and removes the disposable profile.
+
 ## Vendor documentation
 
 - [Google Chrome — Manage PDFs](https://support.google.com/chrome/answer/16215622?hl=en)
