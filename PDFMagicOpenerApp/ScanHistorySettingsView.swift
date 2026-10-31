@@ -26,6 +26,23 @@ struct ScanHistorySettingsView: View {
     }
   }
 
+  private var retentionSelection: Binding<Int> {
+    Binding(
+      get: { retentionDays },
+      set: { days in
+        guard retentionReady else { return }
+        guard ScanHistoryRetentionStore.saveDays(days) else {
+          retentionMessage = "Could not safely save history retention."
+          return
+        }
+        retentionDays = days
+        inspectedResult = nil
+        recentScanHistory = nil
+        expireHistory()
+      }
+    )
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -44,23 +61,13 @@ struct ScanHistorySettingsView: View {
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
 
-            Picker("Keep scan history for", selection: $retentionDays) {
+            Picker("Keep scan history for", selection: retentionSelection) {
               ForEach(ScanHistoryRetentionStore.allowedDays, id: \.self) { days in
                 Text("\(days) days").tag(days)
               }
             }
             .disabled(!retentionReady)
             .accessibilityIdentifier("scanHistoryRetentionPicker")
-            .onChange(of: retentionDays) { days in
-              guard retentionReady else { return }
-              guard ScanHistoryRetentionStore.saveDays(days) else {
-                retentionMessage = "Could not safely save history retention."
-                return
-              }
-              inspectedResult = nil
-              recentScanHistory = nil
-              expireHistory()
-            }
 
             if let retentionMessage {
               Text(retentionMessage)
