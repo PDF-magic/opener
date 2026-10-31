@@ -89,53 +89,6 @@ struct FirstRunWelcomeView: View {
     }
   }
 
-  @State private var installedBrowserOptions: [PDFBrowserOption] = []
-  @State private var savedBrowserID = ""
-  @State private var selectedBrowserID = ""
-  @State private var browserChoiceStatus = ""
-  @State private var savingBrowserChoice = false
-  @State private var browserChoiceLoaded = false
-
-  private func loadBrowserChoice() {
-    // Inspect existing preferences only. Merely seeing the welcome must never
-    // replace a previous custom choice or write to scanner configuration.
-    guard !browserChoiceLoaded else { return }
-    browserChoiceLoaded = true
-    installedBrowserOptions = DefaultPDFBrowserPreferences.discover()
-    if let existing = DefaultPDFBrowserPreferences.currentSelection() {
-      savedBrowserID = existing
-      selectedBrowserID = existing
-    } else {
-      browserChoiceStatus = "The current PDF browser preference could not be read. Nothing was changed."
-    }
-  }
-
-  private func saveBrowserChoice() {
-    guard !savingBrowserChoice, selectedBrowserID != savedBrowserID,
-          let option = installedBrowserOptions.first(where: { $0.id == selectedBrowserID }) else {
-      return
-    }
-    savingBrowserChoice = true
-    browserChoiceStatus = "Verifying the selected browser…"
-    // Reuse the existing installed, verified atomic chooser. In particular,
-    // do not write target preferences, bypass PDF verification or change the
-    // macOS default handler from the preferences application.
-    DispatchQueue.global(qos: .userInitiated).async {
-      let saved = DefaultPDFBrowserPreferences.saveVerified(option)
-      DispatchQueue.main.async {
-        savingBrowserChoice = false
-        if saved {
-          savedBrowserID = option.id
-          selectedBrowserID = option.id
-          browserChoiceStatus = "Default PDF browser saved."
-        } else {
-          selectedBrowserID = savedBrowserID
-          browserChoiceStatus = "Could not verify or save that browser. Your previous choice is unchanged. Check that the PDF Magic Opener helper is installed."
-        }
-      }
-    }
-  }
-
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       ScrollView {

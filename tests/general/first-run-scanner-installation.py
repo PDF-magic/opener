@@ -48,6 +48,26 @@ class FirstRunScannerInstallationTests(unittest.TestCase):
     self.assertIn("if welcomePending", welcome)
     self.assertIn("FirstRunWelcomeState.acknowledge()", welcome)
 
+  def test_combined_first_run_does_not_duplicate_merged_browser_declarations(self):
+    welcome = WELCOME.read_text(encoding="utf-8")
+    for declaration in (
+      "@State private var installedBrowserOptions",
+      "@State private var savedBrowserID",
+      "@State private var selectedBrowserID",
+      "@State private var browserChoiceStatus",
+      "@State private var savingBrowserChoice",
+      "@State private var browserChoiceLoaded",
+      "private func loadBrowserChoice()",
+      "private func saveBrowserChoice()",
+    ):
+      with self.subTest(declaration=declaration):
+        self.assertEqual(welcome.count(declaration), 1)
+    # Preserve the other merged first-run checks and the opt-in browser choice.
+    for identifier in ("firstRunPDFBrowserSelector", "firstRunSignatureAvailability",
+                       "Scanning cannot guarantee safety",
+                       "firstRunScannerInstallationStatus"):
+      self.assertIn(identifier, welcome)
+
   def test_native_and_portable_ci_compile_and_execute_the_new_tests(self):
     project = PROJECT.read_text(encoding="utf-8")
     self.assertEqual(project.count("path = FirstRunScannerInstallation.swift;"), 1)
