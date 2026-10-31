@@ -1,78 +1,54 @@
-# Opening Chrome-downloaded PDFs with macOS quarantine (opener-0822)
+# Opening Chrome-downloaded PDFs through the macOS scan gate (opener-0822)
 
-This regression verifies a real file downloaded by Chrome can pass PDF Magic
-Opener's existing local scanner gate, reach a verified application handoff,
-and retain its `com.apple.quarantine` metadata. It also verifies that
-scanner malware, error, and timeout outcomes block the handoff and leave the
-download untouched.
+This regression verifies that **real Chrome-download-manager PDF files** can
+be checked by PDF Magic Opener's existing macOS scan-and-open gate. It uses
+two sequential, isolated CI jobs because Chrome for Testing's renderer crashes
+on both Apple Silicon and Intel GitHub-hosted macOS runners with Mach-port
+rendezvous errors, before a PDF can be downloaded. A macOS Chrome download
+itself is therefore **not** verified by this workflow.
 
-## Real Chrome download and metadata-preserving handoff
+## Step 1 — Real Chrome download on Linux
 
-The existing [real Chrome native download smoke](../extensions/webextension/scripts/test-chrome-native-pdf-download.mjs)
-retrieves two generated PDFs from an ephemeral `127.0.0.1` server via Chrome
-for Testing's actual native download manager. It checks the browser's download
-start and completion events, server-supplied names, byte lengths, and exact
-saved bytes for both `application/pdf` attachment and
-`application/octet-stream` attachment.
+The Ubuntu job launches real Chrome for Testing against a disposable local HTTP
+server. It verifies download start/completion events and exact bytes from both
+`application/pdf` and `application/octet-stream` attachments. The Chrome
+smoke script is unmodified for ordinary runs. For this workflow, the opt-in
+`PDF_MAGIC_CHROME_HANDOFF_DIR` points to a new, empty temporary directory.
 
-Only when `PDF_MAGIC_CHROME_HANDOFF_DIR` is explicitly set to an existing,
-empty, non-symlink temporary directory does that test **rename** the two
-verified Chrome-produced files into the directory. It refuses an occupied
-handoff directory. This uses a same-volume filesystem rename, **not a copy**,
-so any Chrome-set extended attributes stay on the original downloaded files.
-Without this CI-only option, the existing Linux Chrome/Firefox tests behave
-as before and clean up the download profile.
+After Chrome saves and verifies both PDFs, the smoke script moves them from its
+isolated browser profile into the handoff directory via same-filesystem rename.
+No file is copied or opened. The job uploads those two actual downloads as a
+short-lived GitHub Actions artifact; missing files fail the job.
 
-## macOS scanner and opening checks
+## Step 2 — Real macOS quarantine and scan gate
 
-The dedicated `Chrome macOS downloaded PDF safe-open and quarantine` GitHub
-Actions job runs on the Intel `macos-15-intel` runner, launches real Chrome from a disposable profile,
-with the sandbox disabled **only** for this synthetic loopback-only CI browser
-because the arm64 macOS hosted runner denied Chrome's sandboxed Mach-port service.
-The Intel runner avoids relying on that Apple Silicon image's Chrome setup.
-It then runs
-[`tests/general/chrome-downloaded-quarantine.py`](../tests/general/chrome-downloaded-quarantine.py)
-against those exact downloaded files. It verifies the PDFs were actually
-saved and are still byte-identical.
+The macOS 15 job depends on successful Chrome download validation, downloads
+the artifact **from the same workflow run**, then confirms it contains exactly
+the two expected files with identical valid fixture PDF bytes.
 
-Headless Chrome may or may not attach a Gatekeeper quarantine marker to a
-synthetic loopback HTTP download. The test **preserves the browser's existing
-marker if present**; otherwise, it explicitly adds a deterministic test-only
-quarantine marker before scanning. This distinction prevents falsely claiming
-Chrome always produces quarantine in this headless configuration.
+GitHub's artifact archive transport does **not** retain Linux or macOS extended
+attributes. Accordingly the macOS test reads the actual
+`com.apple.quarantine` value through `/usr/bin/xattr`, and when absent
+attaches a deterministic marker **only to the disposable fixture file**. It
+then requires the attribute's **exact bytes** and PDF contents to remain intact
+through the actual production `scan_and_open` decision path.
 
-The Python test invokes the real `scan-and-open.py` scan and opening gate,
-while substituting an isolated, deterministic scanner verdict and a recorded
-launch function. For **each Chrome-downloaded file**, it requires:
+For each downloaded PDF, the test verifies that a clean verdict and a cached
+clean verdict would reach the configured handoff. It also verifies malware
+detections, scanner errors and timeouts never reach the launcher. The external
+scanner, application verification and final launch are replaced by deterministic
+test doubles: no real PDF app is opened and no ClamAV process is invoked.
 
-- A fresh clean verdict, followed by one verified clean-cache hit, both
-  authorizing the configured-target *handoff*, and neither changing PDF bytes
-  nor the original quarantine value.
-- A malware verdict, scanner process failure, and timeout, each preventing
-  the application handoff, retaining the exact quarantine value and leaving
-  the downloaded PDF's bytes unchanged.
-- The scanner command targeting the **actual Chrome-downloaded local path**,
-  the original local-file and integrity checks, and the expected configured
-  destination (injected in the test instead of reading user preferences).
+## Scope and limitations
 
-No production executable, installed PDF application, ClamAV process, network
-service, Finder action, or Launch Services handoff is started by the Python
-test. The real `launch_clean_file` function is replaced by an assertion
-that a safe handoff **would have occurred only after a complete clean scan**;
-it does not assert that a GUI opened or that Gatekeeper's user-facing warning
-appeared. A separate interactive macOS GUI test would be needed to prove
-those external behaviors.
+The test establishes that Chrome-originated downloadable PDF bytes can pass
+the macOS scan gate without stripping a macOS quarantine marker, and that
+blocked scans do not authorize opening. It **does not** establish Chrome's
+Gatekeeper tagging on macOS, macOS Chrome download behavior, a GUI opening
+interaction, or cross-platform preservation of xattrs. Those claims require
+separate real-browser macOS validation on an environment that supports Chrome
+renderer processes.
 
-## Running and safety
-
-GitHub Actions runs the macOS integration in a temporary directory and
-always removes it. The shared WebExtension Node regression suite verifies the
-handoff contract and the CI wiring. For macOS manual reproduction with a
-known Chrome for Testing binary, run the same isolated workflow's two commands
-in an empty temporary directory; do not use user downloads.
-
-The tests do not modify the shipped browser extension, scanner policy,
-quarantine-removal compatibility hook, installed application, scanner database,
-browser defaults, or user preferences. This is solely test coverage for the
-previously separate Chrome native-download and macOS quarantine-retention
-paths. The main production scan gate remains fail-closed.
+No installed extensions, browser profiles, user downloads, opening preferences,
+scanner policies, or production executables are modified. Temporary files are
+created by the workflow and are removed with the runners.

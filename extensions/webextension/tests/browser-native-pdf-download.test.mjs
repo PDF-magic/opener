@@ -135,16 +135,20 @@ test("macOS Chrome download-to-safe-open CI retains actual filesystem quarantine
     "A copying handoff may discard the Chrome download's macOS xattrs");
   for (const required of [
     "chrome-macos-quarantine-open",
-    "runs-on: macos-15-intel",
+    "runs-on: macos-15",
     "PDF_MAGIC_CHROME_HANDOFF_DIR",
     "PDF_MAGIC_CHROME_DOWNLOAD_DIR",
     "tests/general/chrome-downloaded-quarantine.py -v",
-    "browser-actions/setup-chrome@v2"
+    "browser-actions/setup-chrome@v2",
+    "actions/upload-artifact@v4",
+    "actions/download-artifact@v4",
+    "needs: chrome-native-pdf-download",
+    "if-no-files-found: error"
   ]) assert.ok(workflow.includes(required), required);
   for (const required of [
     'QUARANTINE = "com.apple.quarantine"',
-    "os.getxattr(pdf, QUARANTINE)",
-    "os.setxattr(pdf, QUARANTINE, SYNTHETIC_QUARANTINE)",
+    '["/usr/bin/xattr", "-px", QUARANTINE',
+    '["/usr/bin/xattr", "-wx", QUARANTINE',
     "opener.scan_and_open(str(pdf), \"/scanner\")",
     "launch.assert_not_called()",
     '"clean"',

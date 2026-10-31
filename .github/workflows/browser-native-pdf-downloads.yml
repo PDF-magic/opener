@@ -29,7 +29,16 @@ jobs:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
           # Only the disposable CI Chrome profile may use this exception.
           CHROME_TEST_NO_SANDBOX: "1"
-        run: node scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
+          PDF_MAGIC_CHROME_HANDOFF_DIR: ${{ runner.temp }}/chrome-native-downloads
+        run: |
+          mkdir -p "$PDF_MAGIC_CHROME_HANDOFF_DIR"
+          node scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-downloaded-pdfs
+          path: ${{ runner.temp }}/chrome-native-downloads/*.pdf
+          if-no-files-found: error
+          retention-days: 1
 
   firefox-native-pdf-download:
     name: Firefox browser-native PDF downloads
@@ -53,29 +62,18 @@ jobs:
 
   chrome-macos-quarantine-open:
     name: Chrome macOS downloaded PDF safe-open and quarantine
-    # The Apple Silicon runner denies Chrome subprocess Mach-port rendezvous.
-    # Keep a real macOS quarantine check on the supported Intel image.
-    runs-on: macos-15-intel
-    timeout-minutes: 18
+    needs: chrome-native-pdf-download
+    runs-on: macos-15
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # These bytes were downloaded by real Chrome in the Linux job, not
+      # synthesized on macOS. Artifact transport does not preserve xattrs.
+      - uses: actions/download-artifact@v4
         with:
-          node-version: "22"
-      - uses: browser-actions/setup-chrome@v2
-        id: chrome
-        with:
-          chrome-version: stable
+          name: chrome-downloaded-pdfs
+          path: ${{ runner.temp }}/chrome-native-downloads
       - name: Verify opening Chrome-downloaded PDFs retains macOS quarantine
         env:
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          # Isolated loopback-only CI browser: macOS runner Mach-port sandbox denial.
-          CHROME_TEST_NO_SANDBOX: "1"
-        run: |
-          set -euo pipefail
-          handoff="$(mktemp -d "${RUNNER_TEMP}/pdfmagic-chrome-open.XXXXXXXX")"
-          trap 'rm -rf "$handoff"' EXIT
-          PDF_MAGIC_CHROME_HANDOFF_DIR="$handoff" node \
-            extensions/webextension/scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
-          PDF_MAGIC_CHROME_DOWNLOAD_DIR="$handoff" PYTHONPATH=. \
-            python3 tests/general/chrome-downloaded-quarantine.py -v
+          PDF_MAGIC_CHROME_DOWNLOAD_DIR: ${{ runner.temp }}/chrome-native-downloads
+        run: PYTHONPATH=. python3 tests/general/chrome-downloaded-quarantine.py -v
