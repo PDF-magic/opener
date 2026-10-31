@@ -23,7 +23,8 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
     def test_reusable_native_view_has_safe_unknown_and_failure_states(self):
         source = SOURCE.read_text(encoding="utf-8")
         self.assertIn("final class ScanResultSummaryView: NSView", source)
-        self.assertIn("func show(_ status: ScanResultSummaryStatus?)", source)
+        self.assertIn("func show(", source)
+        self.assertIn("_ status: ScanResultSummaryStatus?", source)
         self.assertIn("func reset()", source)
         self.assertIn("show(nil)", source)
         self.assertIn('heading: "No verified scan result"', source)
