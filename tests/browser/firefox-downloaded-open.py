@@ -7,9 +7,7 @@ PDF may be opened and no user's PDF handler, profile or preferences are changed.
 """
 
 from contextlib import ExitStack
-import errno
 import importlib.util
-import os
 from pathlib import Path
 import stat
 import subprocess
@@ -47,20 +45,36 @@ def checked_download(path):
     return data
 
 
+def read_quarantine(path):
+    """Read exact xattr bytes with macOS's native tool, never deleting metadata."""
+    if sys.platform != "darwin":
+        return None
+    result = subprocess.run(
+        ["/usr/bin/xattr", "-px", ATTRIBUTE, str(path)],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return bytes.fromhex(result.stdout.decode("ascii"))
+    if b"No such xattr" in result.stderr:
+        return None
+    raise RuntimeError("The macOS quarantine attribute could not be read")
+
+
 def quarantine_marker(path):
     """Preserve Firefox's native marker, or seed one if this CI profile lacks it."""
     if sys.platform != "darwin":
         return None, "not-applicable"
-    try:
-        existing = os.getxattr(path, ATTRIBUTE)
+    existing = read_quarantine(path)
+    if existing is not None:
         if not existing:
             raise AssertionError("Empty quarantine value is not a valid marker")
         return existing, "firefox-set"
-    except OSError as error:
-        if error.errno not in (errno.ENODATA, getattr(errno, "ENOATTR", -1)):
-            raise
-    os.setxattr(path, ATTRIBUTE, MARKER)
-    return os.getxattr(path, ATTRIBUTE), "seeded-in-test"
+    # Test-only creation, never removal: macOS Python lacks os.setxattr.
+    subprocess.run(
+        ["/usr/bin/xattr", "-w", ATTRIBUTE, MARKER.decode("ascii"), str(path)],
+        capture_output=True, check=True,
+    )
+    return read_quarantine(path), "seeded-in-test"
 
 
 def scenario(path, label, verdict, *, verified=True, timeout=False):
@@ -151,7 +165,7 @@ def verify_download(path):
         scenario(path, name, verdict, verified=verified, timeout=timeout)
         if path.read_bytes() != data:
             raise AssertionError("The download bytes changed during a scan or handoff")
-        if original is not None and os.getxattr(path, ATTRIBUTE) != original:
+        if original is not None and read_quarantine(path) != original:
             raise AssertionError("The existing macOS quarantine marker was changed")
     print("PASS Firefox-downloaded PDF scan-and-open isolation (" + origin + ")")
 

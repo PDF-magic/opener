@@ -30,8 +30,8 @@ test("macOS job runs actual Firefox downloads through the safe-open gate", async
   assert.match(browser, /readFile\(join\(downloadDir, item\.name\)\)/);
   assert.match(browser, /firefox-downloaded-open\.py/);
   assert.match(helper, /opener\.scan_and_open/);
-  assert.match(helper, /os\.getxattr/);
-  assert.match(helper, /os\.setxattr/);
+  assert.match(helper, /"\/usr\/bin\/xattr", "-px"/);
+  assert.match(helper, /"\/usr\/bin\/xattr", "-w"/);
   assert.match(helper, /"org\.mozilla\.firefox"/);
   assert.match(helper, /"malware-blocked"/);
   assert.match(helper, /"missing-target-blocked"/);
@@ -52,7 +52,7 @@ test("macOS handoff is an isolated, mocked launcher test, not uncontrolled openi
   assert.match(helper, /checked_download\(path\)/);
   assert.match(helper, /not stat\.S_ISREG/);
   assert.match(helper, /path\.read_bytes\(\) != data/);
-  assert.match(helper, /os\.getxattr\(path, ATTRIBUTE\) != original/);
+  assert.match(helper, /read_quarantine\(path\) != original/);
   assert.match(helper, /"firefox-set"/);
   assert.match(helper, /"seeded-in-test"/);
   assert.match(helper, /"scan", "verify", "launch", "verify", "launch"/);
