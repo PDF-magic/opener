@@ -86,8 +86,10 @@ class UpdateFailureTests(unittest.TestCase):
     self.assertNotIn("last-failed-update", scanner)
     self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
     installer = (ROOT / "install-allow-and-open.sh").read_text()
-    self.assertIn("'StartInterval': 14400", installer)
-    self.assertIn("'RunAtLoad': True", installer)
+    self.assertIn('python3 "$script_dir/scripts/migrate_update_agent.py"', installer)
+    migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+    self.assertIn('"StartInterval": 14400', migrator)
+    self.assertIn('"RunAtLoad": True', migrator)
 
   def test_display_and_ci_do_not_expose_freshclam_diagnostics(self):
     ui = (ROOT / "PDFMagicOpenerApp/UpdatesSettingsView.swift").read_text()

@@ -189,10 +189,11 @@ class SignatureAgentRestartTests(unittest.TestCase):
 
     def test_launch_agent_startup_and_scanner_policy_remain_intact(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn("'Label': 'local.studio.pdf-malware-signatures'", installer)
-        self.assertIn("'RunAtLoad': True", installer)
-        self.assertIn("'StartInterval': 14400", installer)
-        self.assertIn("'ProgramArguments': ['/bin/bash', str(install_dir / 'update-malware-signatures.sh')]", installer)
+        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
+        self.assertIn('"RunAtLoad": True', migrator)
+        self.assertIn('"StartInterval": 14400', migrator)
+        self.assertIn('"ProgramArguments": ["/bin/bash", str(install_dir / "update-malware-signatures.sh")]', migrator)
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn("fcntl.flock(descriptor, fcntl.LOCK_EX)", script)
         self.assertIn("previous.st_mtime >= started", script)

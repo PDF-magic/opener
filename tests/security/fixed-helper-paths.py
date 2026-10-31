@@ -113,8 +113,10 @@ class FixedHelperPathsTests(unittest.TestCase):
         selected = self.root / "selection.pdf"
         selected.write_bytes(b"%PDF-1.4\n")
         with patch.dict(os.environ, {"PATH": str(self.root)}), \
+                patch.object(file_launcher, "require_executable_path") as validate, \
                 patch.object(file_launcher.subprocess, "run") as run:
             file_launcher.launch_clean_file(selected, target_app="com.brave.Browser")
+            validate.assert_called_once_with(file_launcher.NATIVE_LAUNCHER)
             self.assertEqual(
                 run.call_args.args[0],
                 [str(file_launcher.NATIVE_LAUNCHER), "--bundle-id",
@@ -123,6 +125,8 @@ class FixedHelperPathsTests(unittest.TestCase):
             run.reset_mock()
             run.return_value = subprocess.CompletedProcess([], 0, b"", b"")
             file_launcher.verify_launch_target(selected, target_app="com.brave.Browser")
+            validate.assert_any_call(file_launcher.PDF_TARGET_VERIFIER,
+                                     file_launcher.PDF_TARGET_VERIFICATION_MESSAGE)
             self.assertEqual(
                 run.call_args.args[0],
                 [str(file_launcher.PDF_TARGET_VERIFIER), "com.brave.Browser"],
@@ -130,6 +134,8 @@ class FixedHelperPathsTests(unittest.TestCase):
             run.reset_mock()
             run.return_value = subprocess.CompletedProcess([], 0, b"com.brave.Browser\n", b"")
             self.assertEqual(file_launcher._resolve_default_browser(), "com.brave.Browser")
+            validate.assert_any_call(file_launcher.DEFAULT_BROWSER_RESOLVER,
+                                     file_launcher.PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE)
             self.assertEqual(run.call_args.args[0], [str(file_launcher.DEFAULT_BROWSER_RESOLVER)])
         self.assertEqual(selected.read_bytes(), b"%PDF-1.4\n")
 

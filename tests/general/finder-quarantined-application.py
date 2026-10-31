@@ -229,7 +229,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
         script = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn("PDF_MAGIC_REQUEST_ORIGIN=finder", script)
         self.assertIn("'com.apple.RunShellScript'", script)
-        self.assertIn("actions[0]['ActionParameters']['inputMethod'] = 1", script)
+        self.assertIn("parameters['inputMethod'] = 1", script)
         self.assertIn('"$@"', script)
         self.assertIn('"$script_dir/allow-and-open.sh"', script)
         wrapper = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")
@@ -302,8 +302,10 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
         import file_launcher
         with patch.object(file_launcher, "pdf_target_application",
                           side_effect=AssertionError("PDF preferences were read")), \
+             patch.object(file_launcher, "require_executable_path") as executable, \
              patch.object(file_launcher.subprocess, "run") as run:
             file_launcher.launch_clean_file(self.app)
+        executable.assert_called_once_with(file_launcher.NATIVE_LAUNCHER)
         run.assert_called_once_with(
             [str(file_launcher.NATIVE_LAUNCHER), str(self.app)],
             check=True, timeout=30

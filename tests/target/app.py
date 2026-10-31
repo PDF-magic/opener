@@ -41,6 +41,11 @@ class TargetApplicationTests(unittest.TestCase):
         audit_setting = patch.object(opener, 'SCAN_REQUEST_DB', root / 'request-log.sqlite3')
         audit_setting.start()
         self.addCleanup(audit_setting.stop)
+        # Application-routing tests use synthetic scanner/launcher processes;
+        # separate real-file fixtures verify executable-path safety.
+        executable = patch.object(launcher, "require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
 
     def expected_launch(self, path, bundle_id=None):
         # Assert the native helper receives precisely the scanned file identity

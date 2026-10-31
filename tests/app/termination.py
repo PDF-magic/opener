@@ -52,6 +52,10 @@ class TerminationTests(unittest.TestCase):
             'o.remember_clean = lambda *args: pathlib.Path(' + repr(str(self.cached)) + ').write_text("cached")\n'
             'o.remove_quarantine = lambda path: pathlib.Path(' + repr(str(self.unquarantined)) + ').write_text("removed")\n'
             'o.verify_launch_target = lambda path, target_app=None: None\n'
+            # This process-lifetime integration test launches a real fake
+            # ClamAV but mocks the native PDF application handoff below.
+            'import file_launcher\n'
+            'file_launcher.require_executable_path = lambda *args, **kwargs: str(args[0])\n'
             # The shutdown test launches a real synthetic subprocess from a
             # temporary installation without a ClamAV signature database.
             # Keep cancellation real while testing Seatbelt separately.

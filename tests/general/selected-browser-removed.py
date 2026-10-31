@@ -43,6 +43,7 @@ class RemovedSelectedBrowserTests(unittest.TestCase):
 
             with patch.object(launcher, "TARGET_APP_CONFIG", saved), \
                     patch.object(launcher, "FALLBACK_APP_CONFIG", root / "missing-fallback.txt"), \
+                    patch.object(launcher, "require_executable_path"), \
                     patch.object(scanner, "CACHE_DB", root / "cache.sqlite3"), \
                     patch.object(scanner, "SCAN_REQUEST_DB", root / "requests.sqlite3"), \
                     patch.object(scanner, "scanner_path", return_value="/scanner"), \
