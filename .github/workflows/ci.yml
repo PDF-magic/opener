@@ -250,6 +250,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/update-times.py -v
       - name: Preserve usable ClamAV signatures across failed and overlapping updates
         run: PYTHONPATH=. python3 tests/general/preserve-signature-database.py -v
+      - name: Verify compatible existing ClamAV signature migration is fail-closed
+        run: PYTHONPATH=. python3 tests/signature/existing-migration.py -v
       - name: Verify staged signatures before activation
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permission failures and rollback
