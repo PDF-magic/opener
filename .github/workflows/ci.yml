@@ -310,6 +310,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/clamav/install-consent.py -v
       - name: Exercise explicitly confirmed repair installation action
         run: PYTHONPATH=. python3 tests/general/repair-installation.py -v
+      - name: Verify repair retains usable ClamAV signature databases
+        run: PYTHONPATH=. python3 tests/signature/repair-preserves-database.py -v
       - name: Verify ClamAV scanner and updater after dependency installation
         run: PYTHONPATH=. python3 tests/clamav/post-install-verification.py -v
       - name: Keep Homebrew optional for existing compatible ClamAV installations
