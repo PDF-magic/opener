@@ -45,7 +45,7 @@ if not stage.is_dir():
 mode = os.environ["FAKE_SIGNATURE_RESULT"]
 if mode == "failed":
     (stage / "main.cvd").write_bytes(b"corrupted stage only")
-    (stage / "daily.cld").unlink()
+    (stage / "daily.cld").unlink(missing_ok=True)
     raise SystemExit(23)
 if mode == "incomplete":
     (stage / "daily.cld").unlink()
