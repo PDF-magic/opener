@@ -5,7 +5,7 @@ optional automatic interception. The shared browser extension is currently
 inactive: its background worker has no listeners, host permissions, or native
 scanner connection. This change does not claim otherwise.
 
-## Detection and response
+## Unsupported viewer detection and response
 
 A separately authenticated browser coordinator may call
 `assessUnsupportedPdfViewer(browserId, context)` with its **trusted
