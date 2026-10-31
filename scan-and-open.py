@@ -48,6 +48,7 @@ PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
 
 UNREADABLE_SCAN_INPUT_MESSAGE = 'The selected file is unreadable; opening was stopped.'
 NONEXISTENT_SCAN_INPUT_MESSAGE = 'The selected file or application does not exist; opening was stopped.'
+MOUNTED_VOLUME_UNAVAILABLE_MESSAGE = 'The selected filesystem volume is unavailable; opening was stopped.'
 SCAN_INPUT_BECAME_UNAVAILABLE_MESSAGE = 'The selected file became unavailable during scanning; opening was stopped.'
 
 # Only these fixed, path-free errors may appear in scan diagnostics.
@@ -59,6 +60,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     UNREADABLE_SCAN_INPUT_MESSAGE,
     NONEXISTENT_SCAN_INPUT_MESSAGE,
+    MOUNTED_VOLUME_UNAVAILABLE_MESSAGE,
     SCAN_INPUT_BECAME_UNAVAILABLE_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
@@ -233,6 +235,19 @@ def parse_scan_requests(args):
     return [BrowserDownloadRequest(path) for path in args]
 
 
+def require_accessible_volume(path):
+    """Policy for local and mounted network volumes: require a usable mount.
+
+    A mounted SMB/NFS regular file receives the same mandatory scanner,
+    integrity and verified-opening checks as a local file. Never fetch a
+    remote URL or assume a cached verdict makes an inaccessible mount safe.
+    """
+    try:
+        os.statvfs(path)
+    except (OSError, ValueError):
+        raise RuntimeError(MOUNTED_VOLUME_UNAVAILABLE_MESSAGE) from None
+
+
 def require_readable_file(path):
     """Fail closed when a selected file cannot be read or an app enumerated.
 
@@ -269,6 +284,7 @@ def validate_scan_request(item):
         raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from error
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
+    require_accessible_volume(path)
     require_readable_file(path)
     return path
 
@@ -524,6 +540,43 @@ def fingerprint(path):
     return digest.digest()
 
 
+def symbolic_link_identity(item):
+    """Snapshot each symlink traversed by the original user-selected path.
+
+    Link chains are expanded one hop at a time so changing an intermediate
+    alias cannot hide behind a previously resolved canonical scan target.
+    The snapshot is ephemeral, never a scan-cache key or diagnostic.
+    """
+    try:
+        pending = Path(os.fspath(item)).expanduser().absolute()
+        links = []
+        for _ in range(40):
+            for component in reversed((pending, *pending.parents)):
+                info = component.lstat()
+                if not stat.S_ISLNK(info.st_mode):
+                    continue
+                target = os.readlink(component)
+                links.append((str(component), info.st_dev, info.st_ino,
+                              info.st_mtime_ns, info.st_ctime_ns, target))
+                next_path = Path(target)
+                if not next_path.is_absolute():
+                    next_path = component.parent / next_path
+                pending = next_path / pending.relative_to(component)
+                break
+            else:
+                return pending.resolve(strict=True), tuple(links)
+    except FileNotFoundError:
+        # Preserve missing-file errors even when OS-managed ancestor links
+        # (for example macOS /var -> /private/var) were traversed. A dangling
+        # user-selected symlink still represents a changed selection.
+        if not Path(os.fspath(item)).expanduser().is_symlink():
+            raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from None
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.') from None
+    except (OSError, ValueError, RuntimeError):
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.') from None
+    raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+
+
 def file_identity(path, include_ctime=True):
     """Capture filesystem identity for a file and every app-bundle entry.
 
@@ -547,6 +600,7 @@ def file_identity(path, include_ctime=True):
 def verify_file_integrity(path, original_digest, original_identity,
                           allow_ctime_change=False):
     """Revalidate bytes and filesystem identity before any launch."""
+    require_accessible_volume(path)
     expected = (tuple(entry[:-1] for entry in original_identity)
                 if allow_ctime_change else original_identity)
     def current_identity():
@@ -556,10 +610,10 @@ def verify_file_integrity(path, original_digest, original_identity,
                 or current_identity() != expected):
             raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     except OSError as error:
-        # A selected file, bundle member, or parent directory can disappear
-        # or become inaccessible while ClamAV is running. Do not propagate
-        # system path details, accept its verdict, cache it, or launch.
+        # The file or app member can disappear or lose access during a scan.
+        # Never leak the OS path, accept a verdict, reuse a cache, or open it.
         raise RuntimeError(SCAN_INPUT_BECAME_UNAVAILABLE_MESSAGE) from error
+    require_accessible_volume(path)
 
 
 def cache_key(digest, is_pdf):
@@ -883,19 +937,25 @@ def supported_request_path(item):
         raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from error
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
+    require_accessible_volume(path)
     require_readable_file(path)
     return path
 
 
 def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                    browser_download_identifier=None, policy_snapshot=None,
-                   force_rescan=False, expected_fingerprint=None, scan_only=False):
+                   force_rescan=False, expected_fingerprint=None, scan_only=False,
+                   expected_selection=None):
     # The admission-time snapshot persists across queue waits and handoff.
     if policy_snapshot is None:
         policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
     if type(policy_snapshot) is not ScanSecurityPolicySnapshot:
         raise TypeError('Invalid scan security policy snapshot.')
     path = validate_scan_request(item)
+    selection = symbolic_link_identity(item)
+    if selection[0] != path or (expected_selection is not None and
+                                selection != expected_selection):
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     request_kwargs = {'source_url': source_url}
     if protection_level is not None:
         request_kwargs['protection_level'] = protection_level
@@ -938,8 +998,23 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     before = fingerprint(path)
     if expected_fingerprint is not None and before != expected_fingerprint:
         raise RuntimeError(GENERATED_OUTPUT_CHANGED_MESSAGE)
-    if file_identity(path) != identity:
+    if file_identity(path) != identity or symbolic_link_identity(item) != selection:
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+
+    def verify_selected_file():
+        try:
+            if symbolic_link_identity(item) != selection:
+                raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+            verify_file_integrity(path, before, identity)
+            if symbolic_link_identity(item) != selection:
+                raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+        except RuntimeError as error:
+            # Missing selected paths after admission cannot silently reuse a
+            # clean cache. Preserve distinct changed-symlink and volume errors.
+            if str(error) != NONEXISTENT_SCAN_INPUT_MESSAGE:
+                raise
+            raise RuntimeError(SCAN_INPUT_BECAME_UNAVAILABLE_MESSAGE) from error
+
     cache_id = policy_cache_key(before, is_pdf, policy_snapshot)
     performed_scan = False
     scanner_version = None
@@ -958,7 +1033,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     if requires_scan():
         with active_scan_lock(cache_id):
             # Recheck after waiting: the selected file may have changed.
-            verify_file_integrity(path, before, identity)
+            verify_selected_file()
             # Only a completed clean result under this exact policy is reusable.
             if requires_scan():
                 signature_version_before = read_signature_database_version()
@@ -967,9 +1042,9 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                                 else policy_snapshot.other_timeout_seconds))
                 except subprocess.TimeoutExpired:
                     raise RuntimeError('The malware scan timed out; opening was stopped.')
-                # Check the input before interpreting any scanner verdict. An
-                # unavailable path is never a complete scan or a malware claim.
-                verify_file_integrity(path, before, identity)
+                # Revalidate before interpreting even an unclean scanner result:
+                # a vanished file is neither a clean scan nor a malware claim.
+                verify_selected_file()
                 detection = capture_detection(scan)
                 decision = decide_opening(detection)
                 if not decision.allowed:
@@ -982,7 +1057,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                 performed_scan = True
                 scanner_version = scan_engine_version(scanner)
                 remember_clean(cache_id, scanner_version, signature_version)
-    verify_file_integrity(path, before, identity)
+    verify_selected_file()
     if force_rescan and not performed_scan:
         raise RuntimeError('The malware scan did not confirm a complete scan; opening was stopped.')
     # Preserve the completed scan outcome before attempting to launch the file.
@@ -1000,7 +1075,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
         # recording, or launching an application. No opening audit is emitted.
         if scan_result.from_cache is not False:
             raise RuntimeError('A fresh generated PDF scan is required.')
-        verify_file_integrity(path, before, identity)
+        verify_selected_file()
         return scan_result
     # Verify a destination before opening; keep OS quarantine in place.
     # Fallback never overrides a failed scan, missing local bytes or a changed file.
@@ -1027,7 +1102,12 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     # Stable legacy hook: leave com.apple.quarantine and Gatekeeper protections intact.
     remove_quarantine(path)
     # Quarantine is no longer stripped; reject unexpected metadata/ctime changes.
+    # Keep the explicit final file-integrity call visible to the launch guard.
+    if symbolic_link_identity(item) != selection:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     verify_file_integrity(path, before, identity)
+    if symbolic_link_identity(item) != selection:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     if is_pdf:
         verify_local_file_available(path)
     # Carry the scanned root identity across process creation so the native
@@ -1039,7 +1119,7 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
             if verified_fallback is None:
                 raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
             # Recheck the unchanged, locally available PDF before another launch.
-            verify_file_integrity(path, before, identity)
+            verify_selected_file()
             verify_local_file_available(path)
             record_scan_destination(verified_fallback)
             try:
@@ -1136,17 +1216,26 @@ def scan_generated_copy_without_open(item, offer):
 def scan_and_open(item, scanner, *, source_url=None, protection_level=None, browser_download_identifier=None):
     # Reject unsupported requests before allocating shared scanner queue slots.
     path = supported_request_path(item)
+    # Capture the original alias before the queue wait; canonicalizing for
+    # ClamAV and the launcher must not lose symlink substitutions.
+    selection = symbolic_link_identity(item)
+    if selection[0] != path:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     # Freeze policy before waiting for a slot, not after starting the scanner.
     # Changes are visible to new requests only.
     policy_snapshot = ACTIVE_SCAN_POLICY.snapshot()
     # Both Finder and the native PDF opener must respect the same process-wide cap.
     with scan_slot():
+        if symbolic_link_identity(item) != selection:
+            raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
         if source_url is None and protection_level is None and browser_download_identifier is None:
-            return _scan_and_open(path, scanner, policy_snapshot=policy_snapshot)
-        return _scan_and_open(path, scanner, source_url=source_url,
+            return _scan_and_open(item, scanner, policy_snapshot=policy_snapshot,
+                                  expected_selection=selection)
+        return _scan_and_open(item, scanner, source_url=source_url,
                               protection_level=protection_level,
                               browser_download_identifier=browser_download_identifier,
-                              policy_snapshot=policy_snapshot)
+                              policy_snapshot=policy_snapshot,
+                              expected_selection=selection)
 
 
 def safe_scan_failure(error):

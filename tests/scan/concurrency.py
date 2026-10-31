@@ -32,8 +32,10 @@ class ScanConcurrencyTests(unittest.TestCase):
         peak = 0
         seen = []
 
-        def fake_scan(item, _scanner, *, policy_snapshot):
+        def fake_scan(item, _scanner, *, policy_snapshot, expected_selection):
             self.assertIsInstance(policy_snapshot, opener.ScanSecurityPolicySnapshot)
+            # The caller's symlink identity must survive the scan queue wait.
+            self.assertEqual(expected_selection, opener.symbolic_link_identity(item))
             nonlocal active, peak
             with mutex:
                 active += 1
