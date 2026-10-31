@@ -41,7 +41,15 @@ def require_gatekeeper_enabled(result):
 def require_rejected_unsigned_app(result):
     """An accepted result, spctl usage error, or unavailable service is not proof."""
     output = result.stdout + "\n" + result.stderr
-    if result.returncode == 0 or not re.search(r"\b(rejected|denied)\b", output, re.I):
+    # macOS can report either a plain denial or a specific invalid-signature
+    # diagnosis, such as a broken resource seal, for this unsigned fixture.
+    # An unknown error or spctl usage failure is never treated as a denial.
+    rejected = re.search(
+        r"\b(rejected|denied)\b"
+        r"|code (?:object is not signed|has no resources but signature indicates)",
+        output, re.I,
+    )
+    if result.returncode != 1 or not rejected:
         raise AssertionError(
             f"Gatekeeper did not explicitly reject unsigned app "
             f"(status={result.returncode}, output={output[:800]!r})")
@@ -114,6 +122,11 @@ class GatekeeperProtectionTests(unittest.TestCase):
                         subprocess.CompletedProcess([], code, "", output))
         require_rejected_unsigned_app(subprocess.CompletedProcess(
             [], 1, "", "UntrustedFixture.app: rejected\nsource=no usable signature"))
+        require_rejected_unsigned_app(subprocess.CompletedProcess(
+            [], 1, "", "code has no resources but signature indicates they must be present"))
+        with self.assertRaises(AssertionError):
+            require_rejected_unsigned_app(subprocess.CompletedProcess(
+                [], 1, "", "could not contact assessment service"))
 
     def test_runtime_must_not_add_gatekeeper_disable_calls(self):
         # Reuse the quarantine auditor's tracked-runtime/secret-path filtering.
