@@ -55,8 +55,7 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("displayedSanitization = sanitization", source)
         self.assertIn("sanitizationLabel.setAccessibilityLabel", source)
         self.assertNotIn("selectedProtectionLevel == .maximum", source)
-        # Sanitization evidence may not be inferred from scan cleanliness.
-        # Other presentation fields (opening) can legitimately gate on clean.
+        # Check the sanitization display code, not unrelated opening semantics.
         sanitization_block = source.split("let sanitizationCopy =", 1)[1].split(
             "let document =", 1
         )[0]
@@ -95,6 +94,16 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertNotIn("blockingMessage:", source)
 
 
+        self.assertIn("private(set) var technicalDetailsExpanded", source)
+        self.assertIn("ScanResultSummaryTechnicalCopy.forStatus(status)", source)
+        self.assertIn("technicalDetailsButton.isHidden = technicalCopy == nil", source)
+        self.assertIn("technicalDetailsLabel.setAccessibilityLabel(technicalCopy ??", source)
+        self.assertIn('case .clean, .cancelled:', source)
+        self.assertIn("technicalDetailsExpanded = false", source)
+        self.assertIn("#selector(toggleTechnicalDetails(_:))", source)
+        self.assertIn("invalidateIntrinsicContentSize()", source)
+        self.assertNotIn("scannerOutput", source)
+
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
         workflow = CI.read_text(encoding="utf-8")
         self.assertIn("python3 tests/scan/result-summary-component.py -v", workflow)
@@ -109,6 +118,11 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('Document: März résumé 🦄.pdf', harness)
         self.assertIn('URL(string: "https://example.invalid/secret.pdf")', harness)
         self.assertIn("preview only", harness)
+        self.assertIn("first.technicalDetailsButton.performClick(nil)", harness)
+        self.assertIn("second.technicalDetailsButton.performClick(nil)", harness)
+        self.assertIn("first.technicalDetailsLabel.isHidden", harness)
+        self.assertIn("second.show(nil)", harness)
+        self.assertIn("technicalDetailsButton.accessibilityLabel()", harness)
         self.assertIn("sanitization: .performed", harness)
         self.assertIn("sanitization: .notPerformed", harness)
         self.assertIn('ScanResultSummarySanitization(rawValue: "attempted") == nil', harness)
@@ -120,6 +134,7 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('File blocked: Yes', harness)
         self.assertIn("first.displayedOpeningOutcome == nil", harness)
         self.assertIn("first.displayedOpeningOutcome == .blocked", harness)
+
 
 
 

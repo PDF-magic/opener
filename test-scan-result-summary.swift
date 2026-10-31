@@ -26,6 +26,14 @@ struct ScanResultSummaryComponentTests {
         precondition(first.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Unavailable")
         precondition(first.displayedSanitization == nil)
+        precondition(first.technicalDetailsButton.accessibilityIdentifier()
+                     == "scanResultSummaryTechnicalDetailsToggle")
+        precondition(first.technicalDetailsLabel.accessibilityIdentifier()
+                     == "scanResultSummaryTechnicalDetails")
+        precondition(first.technicalDetailsButton.isHidden)
+        precondition(first.technicalDetailsLabel.isHidden)
+        precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!first.technicalDetailsExpanded)
         precondition(first.fileOpenedLabel.accessibilityIdentifier() == "scanResultSummaryFileOpened")
         precondition(first.fileBlockedLabel.accessibilityIdentifier() == "scanResultSummaryFileBlocked")
         precondition(first.blockingReasonLabel.accessibilityIdentifier()
@@ -79,6 +87,35 @@ struct ScanResultSummaryComponentTests {
             if status != .malwareDetected {
                 precondition(!first.headingLabel.stringValue.contains("Malware detected"))
             }
+            if status == .clean || status == .cancelled {
+                precondition(first.technicalDetailsButton.isHidden)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+            } else {
+                precondition(!first.technicalDetailsButton.isHidden)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(!first.technicalDetailsExpanded)
+                precondition(first.technicalDetailsButton.title == "Show technical details")
+                precondition(first.technicalDetailsLabel.stringValue.contains(
+                    "Result code: " + status.rawValue))
+                precondition(first.technicalDetailsLabel.stringValue.contains(
+                    "Opening was not authorized."))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("/Users/"))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("secret.pdf"))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("stderr"))
+                first.technicalDetailsButton.performClick(nil)
+                precondition(first.technicalDetailsExpanded)
+                precondition(!first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsButton.title == "Hide technical details")
+                precondition(first.technicalDetailsButton.accessibilityLabel()
+                             == "Hide technical details")
+                precondition(first.technicalDetailsLabel.accessibilityLabel()
+                             == first.technicalDetailsLabel.stringValue)
+                first.technicalDetailsButton.performClick(nil)
+                precondition(!first.technicalDetailsExpanded)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsButton.title == "Show technical details")
+            }
         }
 
         let target = URL(fileURLWithPath: "/Users/example/Private scans/März résumé 🦄.pdf")
@@ -131,6 +168,11 @@ struct ScanResultSummaryComponentTests {
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains(
             "Built-in scanning remains active"))
+        precondition(!second.technicalDetailsButton.isHidden)
+        second.technicalDetailsButton.performClick(nil)
+        precondition(second.technicalDetailsExpanded)
+        precondition(second.technicalDetailsLabel.stringValue.contains("scanFailed"))
+        precondition(first.technicalDetailsButton.isHidden)
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Built-in")
         precondition(first.headingLabel.stringValue == "Scan complete",
@@ -196,6 +238,28 @@ struct ScanResultSummaryComponentTests {
         precondition(ScanResultSummaryProtectionLevel(rawValue: "custom") == nil)
         first.show(.fileChanged, documentURL: URL(string: "https://example.invalid/secret.pdf"),
                    selectedProtectionLevel: nil)
+        precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
+        precondition(first.selectedProtectionLevelLabel.stringValue
+                     == "Selected protection level: Unavailable")
+        for unsafe in [
+            "/tmp/line\nspoof.pdf",
+            "/tmp/\u{202E}fdp.dab.pdf",
+            "/tmp/" + String(repeating: "a", count: 260) + ".pdf"
+        ] {
+            first.show(.scanFailed, documentURL: URL(fileURLWithPath: unsafe),
+                       selectedProtectionLevel: .builtIn)
+            precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
+        }
+        first.reset()
+        precondition(first.displayedStatus == nil)
+        precondition(first.displayedProtectionLevel == nil)
+        precondition(first.displayedOpeningOutcome == nil)
+        precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
+        precondition(first.fileBlockedLabel.stringValue == "File blocked: Not confirmed")
+        precondition(ScanResultSummaryProtectionLevel(rawValue: "disabled") == nil)
+        precondition(ScanResultSummaryProtectionLevel(rawValue: "custom") == nil)
+        first.show(.fileChanged, documentURL: URL(string: "https://example.invalid/secret.pdf"),
+                   selectedProtectionLevel: nil)
         precondition(first.displayedSanitization == nil)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
         precondition(first.sanitizationLabel.accessibilityLabel()
@@ -206,7 +270,16 @@ struct ScanResultSummaryComponentTests {
         precondition(first.headingLabel.stringValue == "No verified scan result")
         precondition(first.explanationLabel.stringValue.contains("not authorized"),
                      "reset must not leave stale clean status visible")
+        precondition(first.technicalDetailsButton.isHidden)
+        precondition(first.technicalDetailsLabel.isHidden)
+        precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!first.technicalDetailsExpanded)
+        precondition(second.technicalDetailsExpanded, "separate instances must retain state")
         precondition(second.headingLabel.stringValue == "Scan failed")
+        second.show(nil)
+        precondition(second.technicalDetailsButton.isHidden)
+        precondition(second.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!second.technicalDetailsExpanded)
         print("Reusable scan result summary component passed")
     }
 }
