@@ -23,7 +23,9 @@ class FailedScanNotificationTests(unittest.TestCase):
     self.assertIn("print(f'Scan request {index}: {safe_scan_failure(error)}'", SCANNER)
 
   def test_path_free_notification_preserves_mandatory_failure_alert(self):
-    for required in ("deliverBlockedFileNotification(scanFailed: Bool",
+    for required in ("deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool",
+                     "malwareDetected: blockedNotificationKind == .malwareDetected",
+                     "Malware was detected. The PDF was blocked and was not opened.",
                      "FailedScanNotificationClassification.shouldShowFailedScanNotice(",
                      "A PDF scan failed or could not finish. The file was not opened.",
                      "A PDF could not be opened because its safety check failed.",

@@ -82,8 +82,20 @@ enum SuccessfulScanNotificationPreference {
   }
 }
 
+// The scanner emits the fixed, path-free diagnostic below only for a validated
+// non-heuristic ClamAV malware verdict. The native handler invokes this scanner
+// with exactly one file per child process, so the request index is always 1.
+// Never infer malware from a substring, arbitrary stderr, or a failed exit alone.
+enum BlockedFileNotificationKind: Equatable {
+  case none
+  case blocked
+  case malwareDetected
+}
+
 // Optional blocked-open alert delivery; scanner verdicts and warnings never depend on it.
 enum BlockedFileNotificationPreference {
+  private static let confirmedMalwareFailure =
+    "Scan request 1: Malware was detected; opening was stopped.\n"
   static let suiteName = ScanProgressPreference.suiteName
   static let key = "showBlockedFileNotifications"
 
@@ -102,6 +114,15 @@ enum BlockedFileNotificationPreference {
 
   static func shouldNotify(failure: String?, cancelled: Bool, enabled: Bool = isEnabled()) -> Bool {
     return enabled && failure != nil && !cancelled
+  }
+
+  static func notificationKind(
+    failure: String?, cancelled: Bool, enabled: Bool = isEnabled()
+  ) -> BlockedFileNotificationKind {
+    guard shouldNotify(failure: failure, cancelled: cancelled, enabled: enabled) else {
+      return .none
+    }
+    return failure == confirmedMalwareFailure ? .malwareDetected : .blocked
   }
 }
 

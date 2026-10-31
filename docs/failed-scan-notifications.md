@@ -24,3 +24,7 @@ connected.
 
 Linux and macOS CI validate the exact-result classifier, opt-in, cancellation,
 path-free delivery, mandatory alert retention and isolated preference behavior.
+
+Confirmed malware retains the dedicated notification introduced in merged
+PR #612 and takes priority over the operational failed-scan message. Both
+categories reuse one opt-in notification dispatch, not duplicate alerts.

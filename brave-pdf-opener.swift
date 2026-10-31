@@ -123,14 +123,17 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
 }
 
 // This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(scanFailed: Bool, completion: @escaping () -> Void) {
+func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool, completion: @escaping () -> Void) {
     let center = UNUserNotificationCenter.current()
     func enqueue() {
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
-        content.body = scanFailed
-            ? "A PDF scan failed or could not finish. The file was not opened."
-            : "A PDF could not be opened because its safety check failed."
+        // Confirmed malware takes precedence over scan failures.
+        content.body = malwareDetected
+            ? "Malware was detected. The PDF was blocked and was not opened."
+            : (scanFailed
+                ? "A PDF scan failed or could not finish. The file was not opened."
+                : "A PDF could not be opened because its safety check failed.")
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
         center.add(request) { _ in completion() }
@@ -568,11 +571,13 @@ DispatchQueue.main.async {
                 self.processLock.lock()
                 let cancelled = self.cancelledRequests.contains(path)
                 self.processLock.unlock()
-                if BlockedFileNotificationPreference.shouldNotify(
+                let blockedNotificationKind = BlockedFileNotificationPreference.notificationKind(
                     failure: failure, cancelled: cancelled
-                ) {
+                )
+                if blockedNotificationKind != .none {
                     self.pendingSuccessNotifications += 1
                     deliverBlockedFileNotification(
+                        malwareDetected: blockedNotificationKind == .malwareDetected,
                         scanFailed: FailedScanNotificationClassification.shouldShowFailedScanNotice(
                             failure: failure, cancelled: cancelled
                         )
