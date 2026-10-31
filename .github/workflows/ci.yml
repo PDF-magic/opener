@@ -188,12 +188,16 @@ jobs:
           PY
       - name: Verify safe versioned configuration loading
         run: PYTHONPATH=. python3 tests/configuration/loading.py -v
+      - name: Detect pre-existing scan entry points without changing installation state
+        run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify staged PDF handler bundle contents and executable permissions
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
-      - name: Reject untrusted values in Finder shell command strings
+      - name: Verify safe Finder Quick Action migration and literal argv forwarding
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
+      - name: Detect existing Finder Quick Action and backup without touching user files
+        run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
@@ -250,6 +254,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/update-times.py -v
       - name: Preserve usable ClamAV signatures across failed and overlapping updates
         run: PYTHONPATH=. python3 tests/general/preserve-signature-database.py -v
+      - name: Verify compatible existing ClamAV signature migration is fail-closed
+        run: PYTHONPATH=. python3 tests/signature/existing-migration.py -v
       - name: Verify staged signatures before activation
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permission failures and rollback
@@ -262,7 +268,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
         run: PYTHONPATH=. python3 tests/signature/network-interruptions.py -v
-      - name: Detect installed signature-update LaunchAgents without changing user settings
+      - name: Detect existing signature-update LaunchAgents safely before installation
         run: PYTHONPATH=. python3 tests/signature/existing-agent-detection.py -v
       - name: Recover the signature update agent after a simulated system restart
         run: PYTHONPATH=. python3 tests/signature/agent-restart.py -v
@@ -392,7 +398,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/settings-page.py -v
       - name: Verify persistent configuration storage location and user customizations
         run: PYTHONPATH=. python3 tests/configuration/location.py -v
-      - name: Verify upgrade preserves the installed PDF browser choice
+      - name: Verify installation migration preserves browser, FreshClam and update schedule settings
         run: PYTHONPATH=. python3 tests/general/persistent-installer-preferences.py -v
       - name: Verify versioned configuration contract without rewriting preferences
         run: PYTHONPATH=. python3 tests/configuration/schema.py -v
@@ -575,6 +581,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/default-user-action.py -v
       - name: Verify application naming and migration
         run: PYTHONPATH=. python3 tests/app/name.py
+      - name: Detect legacy PDF apps and local.studio identifiers without modifying installations
+        run: PYTHONPATH=. python3 tests/general/existing-installation-detection.py -v
       - name: Verify generic PDF default-handler utility naming
         run: PYTHONPATH=. python3 tests/pdf/default-handler-name.py -v
       - name: Verify opt-in PDF handler restoration offer
@@ -828,6 +836,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect existing Finder Quick Action and backup without touching user files
+        run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
       - name: Verify real macOS Gatekeeper rejection of quarantined unsigned apps
         run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Compile and test the transport-only native messaging host
@@ -912,6 +922,8 @@ jobs:
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/pdf-magic-native-host"
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/launch-scanned-file"
           test ! -e "$app/Contents/Helpers"
+      - name: Smoke-test staged macOS app from a fresh uninstalled location
+        run: python3 tests/app/fresh-launch.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
       - name: Test native notifications after quitting the built Settings application
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission
