@@ -116,3 +116,48 @@ test("dedicated Chrome and Firefox download CI jobs inspect actual saved files",
   assert.deepEqual(manifest.host_permissions, []);
   assert.deepEqual(manifest.optional_permissions, ["downloads"]);
 });
+
+test("macOS Chrome download-to-safe-open CI retains actual filesystem quarantine", async () => {
+  const [chrome, safeOpen, workflow, retention] = await Promise.all([
+    load("../scripts/test-chrome-native-pdf-download.mjs"),
+    load("../../../tests/general/chrome-downloaded-quarantine.py"),
+    load("../../../.github/workflows/browser-native-pdf-downloads.yml"),
+    load("../../../tests/general/retain-os-quarantine.py")
+  ]);
+  for (const required of [
+    "PDF_MAGIC_CHROME_HANDOFF_DIR",
+    "await rename(source, destination)",
+    "handoff.isDirectory() && !handoff.isSymbolicLink()",
+    "Handoff must be empty",
+    "Transferred Chrome download must retain its exact original bytes"
+  ]) assert.ok(chrome.includes(required), required);
+  assert.ok(!chrome.includes("copyFile("),
+    "A copying handoff may discard the Chrome download's macOS xattrs");
+  for (const required of [
+    "chrome-macos-quarantine-open",
+    "runs-on: macos-15",
+    "PDF_MAGIC_CHROME_HANDOFF_DIR",
+    "PDF_MAGIC_CHROME_DOWNLOAD_DIR",
+    "tests/general/chrome-downloaded-quarantine.py -v",
+    "browser-actions/setup-chrome@v2"
+  ]) assert.ok(workflow.includes(required), required);
+  for (const required of [
+    'QUARANTINE = "com.apple.quarantine"',
+    "os.getxattr(pdf, QUARANTINE)",
+    "os.setxattr(pdf, QUARANTINE, SYNTHETIC_QUARANTINE)",
+    "opener.scan_and_open(str(pdf), \"/scanner\")",
+    "launch.assert_not_called()",
+    '"clean"',
+    '"malware"',
+    '"failure"',
+    '"timeout"',
+    "pdfmagic-attachment.pdf",
+    "pdfmagic-octet.pdf",
+    "patch.object(opener, \"launch_clean_file\"",
+    "patch.object(opener, \"intended_destination\""
+  ]) assert.ok(safeOpen.includes(required), required);
+  assert.ok(!safeOpen.includes("subprocess.run([\"open\""),
+    "No real macOS PDF opener must launch during the test");
+  assert.ok(!safeOpen.includes("os.removexattr("));
+  assert.ok(retention.includes("test_macos_quarantine_attribute_survives_blocked_pdf"));
+});

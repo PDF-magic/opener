@@ -50,3 +50,28 @@ jobs:
         env:
           FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
         run: node scripts/test-firefox-native-pdf-download.mjs "$FIREFOX_PATH"
+
+  chrome-macos-quarantine-open:
+    name: Chrome macOS downloaded PDF safe-open and quarantine
+    runs-on: macos-15
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: Verify opening Chrome-downloaded PDFs retains macOS quarantine
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          set -euo pipefail
+          handoff="$(mktemp -d "${RUNNER_TEMP}/pdfmagic-chrome-open.XXXXXXXX")"
+          trap 'rm -rf "$handoff"' EXIT
+          PDF_MAGIC_CHROME_HANDOFF_DIR="$handoff" node \
+            extensions/webextension/scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
+          PDF_MAGIC_CHROME_DOWNLOAD_DIR="$handoff" PYTHONPATH=. \
+            python3 tests/general/chrome-downloaded-quarantine.py -v
