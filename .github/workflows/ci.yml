@@ -400,6 +400,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/persistent-installer-preferences.py -v
       - name: Preserve and safely migrate existing signature update agents
         run: PYTHONPATH=. python3 tests/general/update-agent-migration.py -v
+      - name: Detect preexisting ClamAV signature databases without modifying them
+        run: PYTHONPATH=. python3 tests/migration/existing-signature-database.py -v
       - name: Verify versioned configuration contract without rewriting preferences
         run: PYTHONPATH=. python3 tests/configuration/schema.py -v
       - name: Verify active scan count reports launched scans only

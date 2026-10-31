@@ -18,6 +18,9 @@ if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! 
     brew install clamav
 fi
 
+# Inspect the existing database before creating the directory or starting updates.
+# This only reports presence; the scanner still verifies freshness and safety.
+python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
 python3 - "$install_dir/target-app.txt" <<'TARGET_APP'
