@@ -51,8 +51,17 @@ function makePdf() {
 const pdf = makePdf();
 const auth = createAuthenticatedPdfRoutes(pdf);
 const large = createLargeRemotePdfRoute(createLargeRemotePdf());
-const routes = ["/built-in-viewer.pdf", "/mime-only"];
-const counts = new Map(routes.map(path => [path, 0]));
+const routes = ["/built-in-viewer.pdf", "/mime-only", "/framed-a.pdf", "/framed-b.pdf"];
+const htmlRoutes = new Map([
+  ["/embedded-frames.html", [
+    "<!doctype html><title>Local PDF frame verification</title>",
+    '<iframe id="pdf-a" src="/framed-a.pdf" width="480" height="360"></iframe>',
+    '<iframe id="pdf-b" src="/framed-b.pdf" width="480" height="360"></iframe>',
+    '<iframe id="ordinary-frame" src="/ordinary-frame.html"></iframe>'
+  ].join("")],
+  ["/ordinary-frame.html", "<!doctype html><title>Not a PDF</title><p>HTML control frame</p>"]
+]);
+const counts = new Map([...routes, ...htmlRoutes.keys()].map(path => [path, 0]));
 const server = createServer((request, response) => {
   if (auth.handle(request, response)) return;
   if (large.handle(request, response)) return;
@@ -63,6 +72,15 @@ const server = createServer((request, response) => {
     return;
   }
   counts.set(request.url, counts.get(request.url) + 1);
+  if (htmlRoutes.has(request.url)) {
+    response.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff"
+    });
+    response.end(htmlRoutes.get(request.url));
+    return;
+  }
   response.writeHead(200, {
     "Content-Type": "application/pdf",
     "Content-Disposition": "inline",
@@ -189,7 +207,7 @@ try {
   };
   await command("Target.setDiscoverTargets", { discover: true });
 
-  for (const route of routes) {
+  for (const route of routes.slice(0, 2)) {
     const url = "http://127.0.0.1:" + port + route;
     const { targetId } = await command("Target.createTarget", { url: "about:blank" });
     try {
@@ -307,7 +325,61 @@ try {
     await command("Target.closeTarget", { targetId: largeTargetId });
   }
 
-  console.log("PASS Chrome built-in PDF viewer opens local PDF, MIME-only, authenticated and large remote PDF: " + version);
+  {
+    const pageUrl = "http://127.0.0.1:" + port + "/embedded-frames.html";
+    const pdfUrls = ["/framed-a.pdf", "/framed-b.pdf"].map(
+      path => "http://127.0.0.1:" + port + path
+    );
+    const { targetId } = await command("Target.createTarget", { url: "about:blank" });
+    try {
+      const { sessionId } = await command("Target.attachToTarget", {
+        targetId, flatten: true
+      });
+      await command("Page.enable", {}, sessionId);
+      const navigation = await command("Page.navigate", { url: pageUrl }, sessionId);
+      assert.equal(navigation.errorText, undefined, "Embedded HTML navigation failed");
+
+      // A 200 PDF response alone is not a viewer test. Require the top-level
+      // page to remain HTML, two distinct real PDF child frames, and the
+      // browser's own viewer/plugin surface rather than just the iframe tags.
+      const state = await until(async () => {
+        const { frameTree } = await command("Page.getFrameTree", {}, sessionId);
+        if (frameTree.frame?.url !== pageUrl) return null;
+        const frames = [];
+        function collect(tree) {
+          if (!tree) return;
+          frames.push(tree.frame?.url);
+          for (const child of tree.childFrames || []) collect(child);
+        }
+        collect(frameTree);
+        if (!pdfUrls.every(url => frames.includes(url))) return null;
+        if (!frames.includes("http://127.0.0.1:" + port + "/ordinary-frame.html")) {
+          return null;
+        }
+        const { root } = await command("DOM.getDocument", {
+          depth: -1, pierce: true
+        }, sessionId);
+        const { targetInfos } = await command("Target.getTargets");
+        const hasBrowserViewer = hasViewerFrame(frameTree) ||
+          hasViewerEmbed(root) ||
+          targetInfos.some(info => builtinViewer.test(info.url || ""));
+        if (!hasBrowserViewer) return null;
+        if (!["/framed-a.pdf", "/framed-b.pdf", "/ordinary-frame.html",
+          "/embedded-frames.html"].every(path => counts.get(path) > 0)) return null;
+        return { frameTree, frames, hasBrowserViewer };
+      }, "two independently fetched PDF iframes with a browser viewer");
+      assert.equal(state.frameTree.frame.url, pageUrl,
+        "Embedded PDFs must not replace the containing HTML page");
+      assert.equal(state.frames.filter(url => pdfUrls.includes(url)).length, 2,
+        "Both embedded PDF documents must have distinct child frames");
+      assert.equal(state.hasBrowserViewer, true);
+      console.log("PASS two embedded PDF child frames and HTML control: " + version);
+    } finally {
+      await command("Target.closeTarget", { targetId });
+    }
+  }
+
+  console.log("PASS Chrome built-in PDF viewer opens local, MIME-only, authenticated, large and embedded PDF frames: " + version);
 } catch (error) {
   // Only local disposable Chrome diagnostics; never log user file contents.
   console.error("Chrome local viewer diagnostic:", stderrTail);
