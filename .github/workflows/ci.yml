@@ -60,6 +60,12 @@ jobs:
           # Applies only to a disposable, no-user-profile CI browser.
           CHROME_TEST_NO_SANDBOX: "1"
         run: node scripts/test-chrome-pdf-viewer.mjs "$CHROME_PATH"
+      - name: Verify independent PDF viewers in three simultaneous Chrome tabs
+        working-directory: extensions/webextension
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_TEST_NO_SANDBOX: "1"
+        run: node scripts/test-chrome-concurrent-pdf-tabs.mjs "$CHROME_PATH"
 
 
   firefox-pdf-viewer-smoke:
@@ -396,6 +402,9 @@ jobs:
           npm run package:firefox
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
+      - name: Verify three concurrent PDF tab correlation and closure isolation
+        working-directory: extensions/webextension
+        run: node --test tests/concurrent-pdf-tabs.test.mjs
       - name: Reject unsupported data URLs before PDF candidate selection
         working-directory: extensions/webextension
         run: node --test tests/pdf-data-url.test.mjs
