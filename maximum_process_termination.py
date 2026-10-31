@@ -113,6 +113,9 @@ def run_limited_worker(
     if (os.name != "posix" or
             type(command) is not tuple or len(command) < 2 or
             any(type(arg) is not str or not arg or "\x00" in arg for arg in command) or
+            # A helper name or relative path would search PATH / depend on cwd.
+            not os.path.isabs(command[0]) or
+            os.path.normpath(command[0]) != command[0] or
             type(contents) is not bytes or not 0 < len(contents) <= MAX_INPUT_BYTES or
             type(timeout_seconds) is not int or not 1 <= timeout_seconds <= MAX_WALL_SECONDS or
             type(environment) is not dict or

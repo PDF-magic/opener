@@ -431,6 +431,10 @@ def run_limited_converter(
         or type(command) is not tuple
         or not command
         or any(type(arg) is not str or not arg or "\x00" in arg for arg in command)
+        # The trusted converter must be identified by a fixed, absolute path;
+        # the Linux wrapper's exec must not resolve names through PATH.
+        or not os.path.isabs(command[0])
+        or os.path.normpath(command[0]) != command[0]
         or type(input_bytes) is not bytes
         or not 0 < len(input_bytes) <= MAX_INPUT_BYTES
         or type(timeout_seconds) is not int

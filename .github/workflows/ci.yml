@@ -608,6 +608,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/browser/registry.py -v
       - name: Verify browser-independent scan engine and launch defaults
         run: PYTHONPATH=. python3 tests/file/launcher.py
+      - name: Enforce fixed executable paths for trusted subprocess helpers
+        run: PYTHONPATH=. python3 tests/security/fixed-helper-paths.py -v
       - name: Verify PDF scan gates on external-drive paths
         run: PYTHONPATH=. python3 tests/general/external-drives.py -v
       - name: Verify download-availability launch gate
@@ -1164,6 +1166,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Detect selected symlink changes on macOS
         run: PYTHONPATH=. python3 tests/scanner/symbolic-link-changes.py -v
+      - name: Verify trusted subprocess helper paths on macOS
+        run: PYTHONPATH=. python3 tests/security/fixed-helper-paths.py -v
       - name: Test maximum-length and overlong PDF filenames on macOS
         run: PYTHONPATH=. python3 tests/scan/long-filenames.py -v
       - name: Test verified opening handoff of actually quarantined PDFs
