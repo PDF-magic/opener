@@ -388,6 +388,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
       - name: Verify first-run welcome screen and navigation safety
         run: PYTHONPATH=. python3 tests/general/first-run-welcome.py -v
+      - name: Verify first-run installed browser detection is read-only
+        run: PYTHONPATH=. python3 tests/general/first-run-browsers.py -v
       - name: Verify Scan History page is conditional and passive
         run: PYTHONPATH=. python3 tests/general/scan-history-settings-page.py -v
       - name: Verify three accessible protection preview cards never change active scan policy
@@ -1138,6 +1140,13 @@ jobs:
           "$RUNNER_TEMP/TestFirstRunWelcome"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
           "$RUNNER_TEMP/TestSelectedProtectionProfile"
+      - name: Test first-run browser detection with isolated macOS application bundles
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors \
+            PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
+            PDFMagicOpenerApp/ScanProgressPreference.swift \
+            test-first-run-browsers.swift -o "$RUNNER_TEMP/TestFirstRunBrowsers"
+          "$RUNNER_TEMP/TestFirstRunBrowsers"
       - name: Verify existing installations retain Standard without changing active Built-in policy
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"

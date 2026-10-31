@@ -25,3 +25,22 @@ even if the user never acknowledges the welcome.
 CI tests the native window's wiring and accessible labels, while an isolated
 UserDefaults suite verifies first-run, repeat-launch and acknowledgement
 behavior without accessing any installed user settings.
+
+## First-run browser detection (opener-0972)
+
+While the welcome is visible, it checks for supported browser applications
+**registered with macOS** using the same read-only
+`DefaultPDFBrowserPreferences.discover()` inventory as the General browser
+selector. Discovery validates the exact supported bundle identifiers, real
+application bundles and executable presence. It shows the recognizable browser
+names, an explicit empty result when none are found, and a checking state. It
+does not assert that all installed or unregistered custom browsers are covered.
+
+The inventory is informational only: no browser is opened or selected, no
+browser or system PDF preference changes, no permission is requested, and no
+scan or network request is started. Existing custom PDF destinations remain
+untouched. An installed browser is not proof of compatible PDF handling or an
+authorized scanner handoff. The welcome acknowledgement still requires an
+explicit **Continue to Preferences** action; discovery never acknowledges it.
+The separate native scan, integrity, signature-freshness, and quarantine
+requirements remain unchanged.

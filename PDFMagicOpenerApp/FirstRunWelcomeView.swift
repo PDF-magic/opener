@@ -26,6 +26,15 @@ struct FirstRunWelcomeGate<Content: View>: View {
 
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
+  @State private var installedBrowsers: [PDFBrowserOption] = []
+  @State private var hasCheckedBrowsers = false
+
+  private func detectInstalledBrowsers() {
+    // Reuse the validated, read-only preferences inventory. Never infer that
+    // detection grants permission to scan, select, or launch an application.
+    installedBrowsers = DefaultPDFBrowserPreferences.discover()
+    hasCheckedBrowsers = true
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -48,6 +57,28 @@ struct FirstRunWelcomeView: View {
               .font(.headline)
             Text("Use Preferences to review your selected PDF application and macOS default-handler status. This welcome does not change either selection.")
 
+            Label("Installed browsers", systemImage: "globe")
+              .font(.headline)
+            Text("PDF Magic Opener checks for supported browsers registered with macOS. This is an inventory, not a browser selection or a PDF opening test.")
+            if !hasCheckedBrowsers {
+              Text("Checking for installed browsers…")
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("firstRunBrowserDetectionPending")
+            } else if installedBrowsers.isEmpty {
+              Text("No supported registered browsers were detected. You can review browser options later in Preferences.")
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("firstRunNoBrowsersDetected")
+            } else {
+              ForEach(installedBrowsers) { browser in
+                Label(browser.name, systemImage: "globe")
+                  .accessibilityIdentifier("firstRunDetectedBrowser-\(browser.id)")
+              }
+            }
+            Text("Detection does not open browsers, request permissions, change your preferred PDF application, or start a scan.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .accessibilityIdentifier("firstRunBrowserDetectionPrivacy")
+
             Label("Existing settings are preserved", systemImage: "gearshape")
               .font(.headline)
             Text("Continuing only opens Preferences. It does not install software, start scans, alter protection settings, or reset your customizations.")
@@ -69,5 +100,6 @@ struct FirstRunWelcomeView: View {
     .padding(28)
     .frame(minWidth: 680, minHeight: 420)
     .accessibilityIdentifier("firstRunWelcomeScreen")
+    .onAppear(perform: detectInstalledBrowsers)
   }
 }
