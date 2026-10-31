@@ -31,13 +31,21 @@ classes = classes.replace(
                  "Failure must explain why opening stopped")
     precondition(!alert.informativeText.contains("resolved.pdf"),
                  "Never replace the alias with the canonical scanner filename")
-    if ProcessInfo.processInfo.environment["SCAN_TEST_EMPTY"] == "1" {
+    let mode = ProcessInfo.processInfo.environment["SCAN_TEST_MODE"] ?? ""
+    if mode == "empty" {
         precondition(alert.informativeText.contains("returned no additional error details"),
                      "Empty scanner stderr must yield a useful explanation")
+    } else if mode == "known" {
+        precondition(alert.informativeText.contains("Malware was detected; opening was stopped."),
+                     "Known scanner denials must remain understandable")
     } else {
-        precondition(alert.informativeText.contains("Simulated ClamAV signature failure"),
-                     "Failure must preserve the scanner-provided diagnostic")
+        precondition(alert.informativeText.contains("unexpected error; opening was stopped"),
+                     "Unknown scanner diagnostics must use safe fixed wording")
     }
+    precondition(!alert.informativeText.contains("PRIVATE_TRACEBACK_MARKER"))
+    precondition(!alert.informativeText.contains("/private/internal.pdf"))
+    precondition(!alert.informativeText.contains("Traceback (most recent call last)"))
+    precondition(!alert.informativeText.contains("Simulated ClamAV signature failure"))
     print("PASS: native failure alert identifies requested PDF and explains the error")
     // The progress panel intentionally stays open after a blocked scan.
     // The test harness must acknowledge it just as a user would.
@@ -58,7 +66,12 @@ with tempfile.TemporaryDirectory(prefix="opener-failure-presentation-") as direc
     gate = work / "gate.py"
     gate.write_text(
         "import os, sys\n"
-        "if os.environ.get('SCAN_TEST_EMPTY') != '1':\n"
+        "mode = os.environ.get('SCAN_TEST_MODE')\n"
+        "if mode == 'traceback':\n"
+        "    raise RuntimeError('PRIVATE_TRACEBACK_MARKER /private/internal.pdf')\n"
+        "if mode == 'known':\n"
+        "    sys.stderr.write('Scan request 1: Malware was detected; opening was stopped.\\n')\n"
+        "elif mode == 'unexpected':\n"
         "    sys.stderr.write('Simulated ClamAV signature failure\\n')\n"
         "sys.exit(7)\n"
     )
@@ -89,13 +102,13 @@ app.run()
     subprocess.run(["/usr/bin/xcrun", "swiftc", "-warnings-as-errors",
                     str(swift), "-o", str(binary)], check=True)
 
-    for empty in (False, True):
+    for mode in ("empty", "unexpected", "known", "traceback"):
         environment = os.environ.copy()
-        environment["SCAN_TEST_EMPTY"] = "1" if empty else "0"
+        environment["SCAN_TEST_MODE"] = mode
         run = subprocess.run([str(binary)], env=environment,
                              capture_output=True, text=True, timeout=15)
         assert run.returncode == 0, run.stdout + run.stderr
         assert "PASS: native failure alert identifies requested PDF and explains the error" in run.stdout, (
             run.stdout + run.stderr
         )
-    print("PASS: scanner diagnostics and empty stderr produce actionable native failure alerts.")
+    print("PASS: native errors remain actionable without displaying raw scanner tracebacks.")
