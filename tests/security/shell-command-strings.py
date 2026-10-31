@@ -39,7 +39,10 @@ class FinderCommandStringSafetyTests(unittest.TestCase):
             {"action": {
                 "BundleIdentifier": "com.apple.RunShellScript",
                 "ActionParameters": {
-                    "COMMAND_STRING": "user's original Finder action",
+                    "COMMAND_STRING": (
+                        '/bin/bash "$HOME/Library/Application Support/Studio/'
+                        'allow-and-open/allow-and-open.sh" "$@"\n'
+                    ),
                     "shell": "/bin/zsh",
                     "inputMethod": 0,
                     "customization": "must-stay",
@@ -117,6 +120,65 @@ class FinderCommandStringSafetyTests(unittest.TestCase):
                 self.assertFalse(
                     self.workflow.with_name("document.wflow.before-brave").exists()
                 )
+
+
+    def test_user_authored_shell_command_is_never_overwritten(self):
+        original = self.write_workflow()
+        original["actions"][0]["action"]["ActionParameters"]["COMMAND_STRING"] = (
+            "echo user customization; exit 0"
+        )
+        self.workflow.write_bytes(plistlib.dumps(original))
+        before = self.workflow.read_bytes()
+        result = self.run_workflow_update()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.workflow.read_bytes(), before)
+        self.assertFalse(self.workflow.with_name("document.wflow.before-brave").exists())
+
+    def test_repeated_migration_preserves_workflow_and_original_backup(self):
+        original = self.write_workflow()
+        self.assertEqual(self.run_workflow_update().returncode, 0)
+        backup = self.workflow.with_name("document.wflow.before-brave")
+        self.assertEqual(plistlib.loads(backup.read_bytes()), original)
+        first_bytes = self.workflow.read_bytes()
+        first_stat = self.workflow.stat()
+        self.assertEqual(self.run_workflow_update().returncode, 0)
+        self.assertEqual(self.workflow.read_bytes(), first_bytes)
+        self.assertEqual(self.workflow.stat().st_ino, first_stat.st_ino)
+        self.assertEqual(plistlib.loads(backup.read_bytes()), original)
+
+    def test_workflow_and_backup_symlinks_are_rejected(self):
+        self.write_workflow()
+        original = self.workflow.read_bytes()
+        target = self.root / "user-workflow.plist"
+        target.write_bytes(original)
+        self.workflow.unlink()
+        self.workflow.symlink_to(target)
+        self.assertNotEqual(self.run_workflow_update().returncode, 0)
+        self.assertEqual(target.read_bytes(), original)
+        self.workflow.unlink()
+        self.workflow.write_bytes(original)
+
+        backup = self.workflow.with_name("document.wflow.before-brave")
+        backup.symlink_to(self.root / "absent-user-backup")
+        self.assertNotEqual(self.run_workflow_update().returncode, 0)
+        self.assertEqual(self.workflow.read_bytes(), original)
+        self.assertTrue(backup.is_symlink())
+
+    def test_malformed_workflow_is_left_unchanged(self):
+        self.workflow.write_bytes(b"not a property list")
+        before = self.workflow.read_bytes()
+        self.assertNotEqual(self.run_workflow_update().returncode, 0)
+        self.assertEqual(self.workflow.read_bytes(), before)
+        self.assertFalse(self.workflow.with_name("document.wflow.before-brave").exists())
+
+    def test_binary_workflow_preserves_other_actions_and_format(self):
+        original = self.write_workflow()
+        self.workflow.write_bytes(plistlib.dumps(original, fmt=plistlib.FMT_BINARY))
+        self.assertEqual(self.run_workflow_update().returncode, 0)
+        self.assertTrue(self.workflow.read_bytes().startswith(b"bplist00"))
+        result = plistlib.loads(self.workflow.read_bytes())
+        self.assertEqual(result["actions"][1], original["actions"][1])
+        self.assertEqual(result["otherPreferences"], original["otherPreferences"])
 
 
 if __name__ == "__main__":
