@@ -166,3 +166,19 @@ shows a failure message, without modifying the chosen PDF viewer, browser
 selection, signature database, or scan policy.
 
 Continuing to Preferences without selecting this action preserves the existing macOS PDF association, scanner requirements, and user-selected browser.
+
+## Optional Finder Quick Action offer (opener-0979)
+
+On first run, the welcome optionally offers **Configure Finder Quick Action…**.
+This expands a setup explanation and links to the existing
+[installation instructions](https://github.com/PDF-magic/opener#installation-and-usage).
+It explains that the existing installer requires an “Allow and Open” Automator
+Quick Action, must be run from a trusted checkout without sudo, and does not
+silently replace unrecognized or customized Finder workflows.
+
+Users can choose **Not now** to collapse the instructions or **Continue to
+Preferences** without setting up Finder. Viewing the offer or opening its
+instructions makes no configuration change and never records the welcome
+acknowledgement. Actual Finder setup remains the separate, explicitly invoked
+installer and its existing safety checks; the welcome does not launch an
+installer, modify files, change scanner policy, or alter user preferences.
