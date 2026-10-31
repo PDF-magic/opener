@@ -312,6 +312,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/executable-access.py -v
       - name: Verify fail-closed responses for missing protection dependencies
         run: PYTHONPATH=. python3 tests/general/missing-dependency-policy.py -v
+      - name: Verify managed versus bundled dependency delivery decision
+        run: PYTHONPATH=. python3 tests/dependencies/delivery-evaluation.py -v
       - name: Verify explicit no-exceptions policy cannot bypass required scanner gates
         run: PYTHONPATH=. python3 tests/protection/exceptions-decision.py -v
       - name: Review the read-only empty protection exceptions list without altering scan safety
