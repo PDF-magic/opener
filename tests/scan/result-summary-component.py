@@ -33,6 +33,13 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("Opening was stopped.", source)
         self.assertIn("setAccessibilityIdentifier", source)
         self.assertIn("NSStackView", source)
+        self.assertIn('let malwareStatusLabel = NSTextField(labelWithString: "Malware: Not determined")', source)
+        self.assertIn('malwareStatus = "Malware: Detected"', source)
+        self.assertIn('malwareStatus = "Malware: Not detected"', source)
+        self.assertIn('malwareStatus = "Malware: Not determined"', source)
+        self.assertIn("malwareStatusLabel.stringValue = malwareStatus", source)
+        self.assertIn("malwareStatusLabel.setAccessibilityLabel(malwareStatus)", source)
+        self.assertIn('setAccessibilityIdentifier("scanResultSummaryMalware")', source)
         for forbidden in ("Process(", "NSWorkspace.shared.open", "remove_quarantine(",
                           "UserDefaults", "scan-and-open.py", "subprocess", "NSAlert("):
             self.assertNotIn(forbidden, source)
@@ -55,11 +62,11 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("displayedSanitization = sanitization", source)
         self.assertIn("sanitizationLabel.setAccessibilityLabel", source)
         self.assertNotIn("selectedProtectionLevel == .maximum", source)
-        # Check the sanitization display code, not unrelated opening semantics.
-        sanitization_block = source.split("let sanitizationCopy =", 1)[1].split(
-            "let document =", 1
-        )[0]
-        self.assertNotIn("status == .clean", sanitization_block)
+        # Sanitization display must depend only on trusted conversion evidence.
+        sanitization_assignment = next(
+            line for line in source.splitlines() if "let sanitizationCopy =" in line
+        )
+        self.assertNotIn("status == .clean", sanitization_assignment)
         self.assertIn("url.isFileURL", source)
         self.assertIn("url.lastPathComponent", source)
         self.assertIn("CharacterSet.controlCharacters.contains", source)
@@ -104,6 +111,16 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("invalidateIntrinsicContentSize()", source)
         self.assertNotIn("scannerOutput", source)
 
+        self.assertIn("private(set) var technicalDetailsExpanded", source)
+        self.assertIn("ScanResultSummaryTechnicalCopy.forStatus(status)", source)
+        self.assertIn("technicalDetailsButton.isHidden = technicalCopy == nil", source)
+        self.assertIn("technicalDetailsLabel.setAccessibilityLabel(technicalCopy ??", source)
+        self.assertIn('case .clean, .cancelled:', source)
+        self.assertIn("technicalDetailsExpanded = false", source)
+        self.assertIn("#selector(toggleTechnicalDetails(_:))", source)
+        self.assertIn("invalidateIntrinsicContentSize()", source)
+        self.assertNotIn("scannerOutput", source)
+
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
         workflow = CI.read_text(encoding="utf-8")
         self.assertIn("python3 tests/scan/result-summary-component.py -v", workflow)
@@ -136,6 +153,12 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("first.displayedOpeningOutcome == .blocked", harness)
 
 
+
+        self.assertIn("for status in ScanResultSummaryStatus.allCases", harness)
+        self.assertIn('status == .malwareDetected ? "Malware: Detected"', harness)
+        self.assertIn('status == .clean ? "Malware: Not detected" : "Malware: Not determined"', harness)
+        self.assertIn('first.malwareStatusLabel.stringValue == "Malware: Not determined"', harness)
+        self.assertIn('second.malwareStatusLabel.stringValue == "Malware: Not determined"', harness)
 
 
 if __name__ == "__main__":

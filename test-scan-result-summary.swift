@@ -14,6 +14,9 @@ struct ScanResultSummaryComponentTests {
         precondition(first.explanationLabel.stringValue.contains("not authorized"))
         precondition(first.headingLabel.accessibilityIdentifier() == "scanResultSummaryHeading")
         precondition(first.explanationLabel.accessibilityIdentifier() == "scanResultSummaryExplanation")
+        precondition(first.malwareStatusLabel.accessibilityIdentifier() == "scanResultSummaryMalware")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
+        precondition(first.malwareStatusLabel.accessibilityLabel() == "Malware: Not determined")
         precondition(first.documentNameLabel.accessibilityIdentifier() == "scanResultSummaryDocument")
         precondition(first.selectedProtectionLevelLabel.accessibilityIdentifier()
                      == "scanResultSummaryProtectionLevel")
@@ -52,6 +55,10 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            let expectedMalware = status == .malwareDetected ? "Malware: Detected"
+                : status == .clean ? "Malware: Not detected" : "Malware: Not determined"
+            precondition(first.malwareStatusLabel.stringValue == expectedMalware)
+            precondition(first.malwareStatusLabel.accessibilityLabel() == expectedMalware)
             precondition(first.displayedSanitization == nil)
             precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(!first.headingLabel.stringValue.isEmpty)
@@ -135,6 +142,7 @@ struct ScanResultSummaryComponentTests {
                      == "Selected protection level: Built-in")
         precondition(first.displayedProtectionLevel == .builtIn)
         precondition(first.headingLabel.stringValue == "Scan complete")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         // The trusted post-handoff signal is the only path to displaying opened.
         first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
@@ -160,6 +168,7 @@ struct ScanResultSummaryComponentTests {
         precondition(second.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Not performed")
         precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(second.fileBlockedLabel.stringValue == "File blocked: Yes")
         precondition(second.blockingReasonLabel.stringValue
                      == "Blocking reason: Required scanning failed.")
@@ -197,6 +206,7 @@ struct ScanResultSummaryComponentTests {
         first.show(.clean, documentURL: target, selectedProtectionLevel: .maximum)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
         first.show(.malwareDetected, sanitization: .performed)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Detected")
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
         precondition(first.headingLabel.stringValue == "Malware detected")
         precondition(first.explanationLabel.stringValue.contains("Opening was stopped"))
@@ -230,6 +240,7 @@ struct ScanResultSummaryComponentTests {
         }
         first.reset()
         precondition(first.displayedStatus == nil)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
         precondition(first.displayedOpeningOutcome == nil)
         precondition(first.fileOpenedLabel.stringValue == "File opened: Not confirmed")
