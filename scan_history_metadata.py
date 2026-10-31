@@ -5,6 +5,7 @@ protection tiers. History preference/record-format owners integrate separately.
 """
 import json
 import math
+from enum import Enum
 import os
 import time
 from pathlib import Path
@@ -206,3 +207,50 @@ def store_scan_metadata(*, scanned_at, final_status, scanner_version=None,
         raise ScanHistoryStorageError(
             "Optional scan history metadata could not be stored."
         ) from error
+
+
+class BrowserScanContext(Enum):
+    """Verified browsing mode supplied only by a trusted native integration.
+
+    Strings, arbitrary browser metadata and absent/unknown context are never
+    proof that an event came from a regular (nonprivate) browser session.
+    """
+    REGULAR = "regular"
+    PRIVATE = "private"
+    UNKNOWN = "unknown"
+
+
+def store_browser_scan_metadata(*, scanned_at, final_status, scanner_version=None,
+                                protection_profile_id=EFFECTIVE_POLICY_ID,
+                                database_path=None,
+                                browsing_context=BrowserScanContext.UNKNOWN,
+                                history_enabled=False):
+    """Conditionally persist browser-origin scan metadata, never by default.
+
+    A trusted *native* integration must independently establish both an
+    explicitly enabled optional history preference and the browser's current
+    regular-session identity for this individual operation. Browser-provided
+    strings, extension permissions, private-session consent, a prior clean
+    verdict, and a stored history database are not sufficient evidence.
+
+    Private and unknown contexts are always memory-only, including when a
+    user has enabled history for regular scans. Suppression occurs before
+    validation and before any filesystem/SQLite access. Return True only
+    after an accepted regular-session record is successfully committed;
+    False means suppressed, NOT a successful scan or authorization to open.
+    Native scanner decisions and the operational scan cache are unaffected.
+    """
+    if (browsing_context is not BrowserScanContext.REGULAR
+            or history_enabled is not True):
+        return False
+
+    # Keep the existing strict schema and private file checks; no browser
+    # provenance or URL, filename, session ID or PDF payload is persisted.
+    store_scan_metadata(
+        scanned_at=scanned_at,
+        final_status=final_status,
+        scanner_version=scanner_version,
+        protection_profile_id=protection_profile_id,
+        database_path=database_path,
+    )
+    return True

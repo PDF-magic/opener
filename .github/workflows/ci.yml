@@ -757,6 +757,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/history-metadata.py -v
       - name: Verify configurable optional scan-history retention and automatic expiry
         run: PYTHONPATH=. python3 tests/scan/history-retention.py -v
+      - name: Verify private-browsing sessions never persist optional scan history
+        run: PYTHONPATH=. python3 tests/scan/private-browsing-history.py -v
       - name: Verify optional scan history excludes private document and browsing data
         run: PYTHONPATH=. python3 tests/scan/history-privacy.py -v
       - name: Verify recent scan-history display is on demand, bounded and private
