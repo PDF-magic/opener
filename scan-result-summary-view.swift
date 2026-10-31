@@ -38,6 +38,22 @@ enum ScanResultSummaryProtectionLevel: String, CaseIterable {
     }
 }
 
+// Only trusted sanitizer output verification can establish "performed". A
+// skipped conversion is distinct from an unknown, incomplete, or failed one.
+enum ScanResultSummarySanitization: String, CaseIterable {
+    case performed
+    case notPerformed
+
+    var displayText: String {
+        switch self {
+        case .performed:
+            return "Sanitization: Performed"
+        case .notPerformed:
+            return "Sanitization: Not performed"
+        }
+    }
+}
+
 // Only a trusted coordinator may supply this presentation metadata. A recent
 // update record does not bypass the scanner's independent signature validation.
 enum ScanResultSummarySignatureFreshness: String, CaseIterable {
@@ -119,9 +135,11 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
-    let signatureFreshnessLabel = NSTextField(wrappingLabelWithString: "")
+    let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedSanitization: ScanResultSummarySanitization?
+    let signatureFreshnessLabel = NSTextField(wrappingLabelWithString: "")
     private(set) var displayedSignatureFreshness: ScanResultSummarySignatureFreshness?
 
     override init(frame frameRect: NSRect) {
@@ -155,6 +173,10 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.textColor = .secondaryLabelColor
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
+
+        sanitizationLabel.font = .systemFont(ofSize: 12)
+        sanitizationLabel.textColor = .secondaryLabelColor
+        sanitizationLabel.setAccessibilityIdentifier("scanResultSummarySanitization")
         signatureFreshnessLabel.font = .systemFont(ofSize: 12)
         signatureFreshnessLabel.lineBreakMode = .byWordWrapping
         signatureFreshnessLabel.maximumNumberOfLines = 0
@@ -162,7 +184,7 @@ final class ScanResultSummaryView: NSView {
 
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
-            signatureFreshnessLabel, explanationLabel
+            sanitizationLabel, signatureFreshnessLabel, explanationLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -202,16 +224,22 @@ final class ScanResultSummaryView: NSView {
 
     // Context comes from the trusted scan-request owner, never page contents
     // or extension messages. Unknown or absent selections stay unavailable.
-    // A new request clears any prior name, tier or successful scan result.
+    // A new request clears any prior name, tier, sanitization evidence or scan result.
+    // This is trusted coordinator evidence, never a guess from tier or scan status.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
         selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        sanitization: ScanResultSummarySanitization? = nil,
         signatureFreshness: ScanResultSummarySignatureFreshness? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
+        displayedSanitization = sanitization
         displayedSignatureFreshness = signatureFreshness
+        let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
+        sanitizationLabel.stringValue = sanitizationCopy
+        sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
         let document = "Document: " + Self.displayDocumentName(documentURL)
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
@@ -234,7 +262,13 @@ final class ScanResultSummaryView: NSView {
         // A conflicting clean verdict must never hide a stale or unverified
         // database behind a reassuring green summary. Presentation only:
         // the native scan gate remains the sole authority to authorize opening.
-        let inconsistent = status == .clean
+        let cleanReported: Bool
+        if case .clean = status {
+            cleanReported = true
+        } else {
+            cleanReported = false
+        }
+        let inconsistent = cleanReported
             && (signatureFreshness == .stale || signatureFreshness == .unverified)
         let copy = inconsistent
             ? ScanResultSummaryCopy(
