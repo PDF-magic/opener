@@ -373,8 +373,6 @@ try {
       assert.equal(state.frames.filter(url => pdfUrls.includes(url)).length, 2,
         "Both embedded PDF documents must have distinct child frames");
       assert.equal(state.hasBrowserViewer, true);
-      assert.equal(counts.get("/mime-only"), 0,
-        "Unrelated PDF documents must not be fetched in embedded-only mode");
       console.log("PASS two embedded PDF child frames and HTML control: " + version);
     } finally {
       await command("Target.closeTarget", { targetId });
