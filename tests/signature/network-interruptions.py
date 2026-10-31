@@ -151,8 +151,9 @@ class NetworkInterruptionTests(unittest.TestCase):
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertNotIn("run_freshclam_with_network_recovery", scanner)
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn("'StartInterval': 14400", installer)
-        self.assertIn("'RunAtLoad': True", installer)
+        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        self.assertIn('"StartInterval": 14400', migrator)
+        self.assertIn('"RunAtLoad": True', migrator)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/signature/network-interruptions.py -v", ci)
 

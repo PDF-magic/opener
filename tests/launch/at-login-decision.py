@@ -54,9 +54,10 @@ class LaunchAtLoginDecisionTests(unittest.TestCase):
     self.assertIn("'CFBundleIdentifier': 'local.studio.brave-pdf-opener'", installer)
     self.assertIn("'LSItemContentTypes': ['com.adobe.pdf']", installer)
     self.assertIn("'CFBundleExecutable': 'PDFOpener'", installer)
-    self.assertIn("'Label': 'local.studio.pdf-malware-signatures'", installer)
-    self.assertIn("'StartInterval': 14400", installer)
-    self.assertIn("'RunAtLoad': True", installer)
+    migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+    self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
+    self.assertIn('"StartInterval": 14400', migrator)
+    self.assertIn('"RunAtLoad": True', migrator)
     self.assertIn("'update-malware-signatures.sh'", installer)
     # Do not mistake the existing updater agent for a preferences login item.
     agent = installer.split("agent = {", 1)[1].split("\n}", 1)[0]
