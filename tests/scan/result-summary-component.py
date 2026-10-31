@@ -43,7 +43,19 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("explanationLabel.stringValue = copy.explanation", source)
         self.assertNotIn("func show(_ status: String)", source)
         self.assertNotIn("scannerOutput", source)
-        self.assertNotIn("filename", source.lower())
+        self.assertIn("documentURL: URL? = nil", source)
+        self.assertIn("selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil", source)
+        self.assertIn("url.isFileURL", source)
+        self.assertIn("url.lastPathComponent", source)
+        self.assertIn("CharacterSet.controlCharacters.contains", source)
+        self.assertIn("bidiControls.contains", source)
+        self.assertIn('Document: Unavailable', source)
+        self.assertIn('Selected protection level: Unavailable', source)
+        self.assertIn("preview only; Built-in scanning remains active", source)
+        self.assertIn('documentNameLabel.setAccessibilityLabel', source)
+        self.assertIn('selectedProtectionLevelLabel.setAccessibilityLabel', source)
+        self.assertNotIn("UserDefaults", source)
+        self.assertNotIn("scannerOutput", source)
         self.assertIn("private(set) var displayedStatus", source)
 
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
@@ -55,7 +67,11 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("@main", harness)
         self.assertIn("ScanResultSummaryStatus.allCases", harness)
         self.assertIn("first.reset()", harness)
-        self.assertIn("second.show(.scanFailed)", harness)
+        self.assertIn("second.show(.scanFailed, documentURL:", harness)
+        self.assertIn("first.displayedProtectionLevel == nil", harness)
+        self.assertIn('Document: März résumé 🦄.pdf', harness)
+        self.assertIn('URL(string: "https://example.invalid/secret.pdf")', harness)
+        self.assertIn("preview only", harness)
 
 
 if __name__ == "__main__":

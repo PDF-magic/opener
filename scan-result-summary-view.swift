@@ -16,6 +16,28 @@ enum ScanResultSummaryStatus: String, CaseIterable {
     case cancelled
 }
 
+// The user's selected presentation tier is separate from the enforced Built-in
+// scanner. Planned profiles never activate unimplemented protection controls.
+enum ScanResultSummaryProtectionLevel: String, CaseIterable {
+    case builtIn = "built-in"
+    case standard
+    case enhanced
+    case maximum
+
+    var displayText: String {
+        switch self {
+        case .builtIn:
+            return "Selected protection level: Built-in"
+        case .standard:
+            return "Selected protection level: Standard (preview only; Built-in scanning remains active)"
+        case .enhanced:
+            return "Selected protection level: Enhanced (preview only; Built-in scanning remains active)"
+        case .maximum:
+            return "Selected protection level: Maximum (preview only; Built-in scanning remains active)"
+        }
+    }
+}
+
 private struct ScanResultSummaryCopy {
     let heading: String
     let explanation: String
@@ -75,7 +97,11 @@ private struct ScanResultSummaryCopy {
 final class ScanResultSummaryView: NSView {
     let headingLabel = NSTextField(labelWithString: "")
     let explanationLabel = NSTextField(wrappingLabelWithString: "")
+    let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
+    let selectedProtectionLevelLabel = NSTextField(
+        wrappingLabelWithString: "Selected protection level: Unavailable")
     private(set) var displayedStatus: ScanResultSummaryStatus?
+    private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -100,7 +126,18 @@ final class ScanResultSummaryView: NSView {
         explanationLabel.maximumNumberOfLines = 0
         explanationLabel.setAccessibilityIdentifier("scanResultSummaryExplanation")
 
-        let stack = NSStackView(views: [headingLabel, explanationLabel])
+        documentNameLabel.font = .systemFont(ofSize: 12)
+        documentNameLabel.textColor = .secondaryLabelColor
+        documentNameLabel.lineBreakMode = .byTruncatingMiddle
+        documentNameLabel.setAccessibilityIdentifier("scanResultSummaryDocument")
+        selectedProtectionLevelLabel.font = .systemFont(ofSize: 12)
+        selectedProtectionLevelLabel.textColor = .secondaryLabelColor
+        selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
+        selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
+
+        let stack = NSStackView(views: [
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel
+        ])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 5
@@ -115,11 +152,45 @@ final class ScanResultSummaryView: NSView {
         explanationLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     }
 
-    // An absence of a trusted terminal status must clear any earlier success.
-    // The fixed display vocabulary never includes document paths, scanner
-    // stderr, untrusted explanations, or a claim of authorization to open.
-    func show(_ status: ScanResultSummaryStatus?) {
+    // Only a trusted local URL is accepted. Display its basename, never the
+    // directory or raw path; control and bidi characters cannot spoof labels.
+    private static func displayDocumentName(_ url: URL?) -> String {
+        guard let url, url.isFileURL else { return "Unavailable" }
+        let name = url.lastPathComponent
+        let bidiControls: Set<UInt32> = [
+            0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+            0x2066, 0x2067, 0x2068, 0x2069
+        ]
+        guard !name.isEmpty, name != ".", name != "..",
+              name.utf8.count <= 255,
+              !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !name.contains("/"), !name.contains("\\"),
+              !name.unicodeScalars.contains(where: {
+                  CharacterSet.controlCharacters.contains($0)
+                      || bidiControls.contains($0.value)
+              }) else {
+            return "Unavailable"
+        }
+        return name
+    }
+
+    // Context comes from the trusted scan-request owner, never page contents
+    // or extension messages. Unknown or absent selections stay unavailable.
+    // A new request clears any prior name, tier or successful scan result.
+    func show(
+        _ status: ScanResultSummaryStatus?,
+        documentURL: URL? = nil,
+        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil
+    ) {
         displayedStatus = status
+        displayedProtectionLevel = selectedProtectionLevel
+        let document = "Document: " + Self.displayDocumentName(documentURL)
+        documentNameLabel.stringValue = document
+        documentNameLabel.setAccessibilityLabel(document)
+        let protection = selectedProtectionLevel?.displayText
+            ?? "Selected protection level: Unavailable"
+        selectedProtectionLevelLabel.stringValue = protection
+        selectedProtectionLevelLabel.setAccessibilityLabel(protection)
         let copy = ScanResultSummaryCopy.forStatus(status)
         headingLabel.stringValue = copy.heading
         explanationLabel.stringValue = copy.explanation
