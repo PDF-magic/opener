@@ -22,6 +22,12 @@ unchanged main Preferences view. Future launches go straight to Preferences.
 Closing the window without continuing leaves the welcome pending. The macOS
 Settings window remains directly accessible through Command-comma.
 
+If the user is offered a change to the macOS default PDF application, they
+may decline and keep their current handler. **Continue to Preferences** is
+not consent to make PDF Magic Opener the default, and the welcome never
+changes the association. The default PDF handler is independent of the user's
+chosen post-scan PDF application.
+
 The welcome neither changes the configured PDF browser nor macOS PDF default,
 starts malware scans, provisions dependencies, changes protection policies,
 updates signatures, or replaces any user customization. The separate native
