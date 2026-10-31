@@ -78,6 +78,8 @@ class IndividualResultInspectionTests(unittest.TestCase):
     )[0]
     self.assertIn("B21300000000000000000001,", src)
     self.assertIn("tests/scan/individual-result-inspection.py -v", CI)
+    self.assertIn("PDFMagicOpenerApp/ScanHistoryResultDetailView.swift \\", CI)
+    self.assertIn("PDFMagicOpenerApp/RecentScanHistory.swift \\", CI)
     self.assertIn("macos-build:", CI)
     self.assertIn("scanner-tests:", CI)
 
