@@ -31,7 +31,7 @@ class FirstRunSignatureAvailabilityTests(unittest.TestCase):
                    "S_IFREG", "S_IFDIR", "st_size", ".unsafe",
                    "Validity and freshness are not verified"):
       self.assertIn(marker, section)
-    for forbidden in ("Process(", "read(", "write(", "subprocess",
+    for forbidden in ("Process(", "open(", "Data(contentsOf:", "write(", "subprocess",
                       "last-successful-update", "target-app.txt",
                       "UserDefaults", "clamscan("):
       with self.subTest(forbidden=forbidden):
