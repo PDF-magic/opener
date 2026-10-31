@@ -64,7 +64,7 @@ class IndividualResultInspectionTests(unittest.TestCase):
   def test_reader_enforces_private_metadata_with_a_bounded_list(self):
     for needle in (
       "struct RecentScanHistoryRow: Identifiable", "maximumResults = 20",
-      "SQLITE_OPEN_READONLY", "SQLITE_OPEN_NOFOLLOW", "hasExactSchema(database)",
+      "SQLITE_OPEN_READONLY", "O_NOFOLLOW", "matchesPinnedFile()", "hasExactSchema(database)",
       "statuses.contains(status)", 'profile == "built-in"',
       'case "clean": return "Clean scan (opening not verified)"',
     ):

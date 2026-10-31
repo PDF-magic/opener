@@ -30,7 +30,10 @@ class RecentScanHistoryDisplayTests(unittest.TestCase):
 
     def test_exact_private_schema_read_only_and_bounded(self):
         self.assertIn('SQLITE_OPEN_READONLY', MODEL)
-        self.assertIn('SQLITE_OPEN_NOFOLLOW', MODEL)
+        self.assertIn('O_RDONLY | O_NOFOLLOW | O_CLOEXEC', MODEL)
+        self.assertIn('fstat(descriptor, &pinned)', MODEL)
+        self.assertIn('current.st_dev == pinned.st_dev && current.st_ino == pinned.st_ino', MODEL)
+        self.assertIn('matchesPinnedFile(), sqlite3_db_readonly', MODEL)
         self.assertIn('databaseURL.deletingLastPathComponent().resolvingSymlinksInPath()', MODEL)
         self.assertIn('isPrivate(resolvedDatabase.path, directory: false) == true', MODEL)
         self.assertIn('sqlite3_db_readonly(database, "main") == 1', MODEL)

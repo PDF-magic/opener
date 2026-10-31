@@ -109,17 +109,38 @@ enum RecentScanHistoryReader {
       return .unavailable
     }
 
+    // Pin the already validated regular file through a kernel-level
+    // O_NOFOLLOW read descriptor. SQLite's NOFOLLOW open flag can fail on
+    // some macOS filesystem paths even for genuine private databases.
+    let descriptor = Darwin.open(resolvedDatabase.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+    guard descriptor >= 0 else { return .unavailable }
+    defer { _ = Darwin.close(descriptor) }
+    var pinned = stat()
+    guard fstat(descriptor, &pinned) == 0,
+          (pinned.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+          pinned.st_uid == getuid(),
+          (pinned.st_mode & mode_t(0o077)) == 0 else { return .unavailable }
+    func matchesPinnedFile() -> Bool {
+      var current = stat()
+      return lstat(resolvedDatabase.path, &current) == 0
+        && (current.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG)
+        && current.st_dev == pinned.st_dev && current.st_ino == pinned.st_ino
+        && current.st_uid == pinned.st_uid
+        && (current.st_mode & mode_t(0o077)) == 0
+    }
+    guard matchesPinnedFile() else { return .unavailable }
+
     var opened: OpaquePointer?
-    // NOFOLLOW refuses a swapped final-file symlink. READONLY never creates
-    // the optional store or grants any scanner or file-open authorization.
-    let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW
+    // This SQLite connection is strictly read-only, cannot create the store,
+    // and is never used by the scanner or document-opening authorization gate.
+    let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
     guard sqlite3_open_v2(resolvedDatabase.path, &opened, flags, nil) == SQLITE_OK,
           let database = opened else {
       if let opened { sqlite3_close(opened) }
       return .unavailable
     }
     defer { sqlite3_close(database) }
-    guard sqlite3_db_readonly(database, "main") == 1,
+    guard matchesPinnedFile(), sqlite3_db_readonly(database, "main") == 1,
           hasExactSchema(database) else { return .unavailable }
 
     var query: OpaquePointer?

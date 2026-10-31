@@ -43,10 +43,13 @@ struct RecentScanHistoryTests {
     var probe: OpaquePointer?
     let resolvedDatabase = databaseURL.deletingLastPathComponent()
       .resolvingSymlinksInPath().appendingPathComponent(databaseURL.lastPathComponent)
+    let pinned = Darwin.open(resolvedDatabase.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+    precondition(pinned >= 0, "Private synthetic history must open without following final symlinks")
+    precondition(Darwin.close(pinned) == 0)
     let probeCode = sqlite3_open_v2(resolvedDatabase.path, &probe,
-        SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW, nil)
+        SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil)
     if probeCode != SQLITE_OK {
-      fatalError("SQLite readonly/no-follow open failed (code \(probeCode), version \(version))")
+      fatalError("SQLite readonly open failed (code \(probeCode), version \(version))")
     }
     if let probe { precondition(sqlite3_close(probe) == SQLITE_OK) }
     expectEmpty(RecentScanHistoryReader.load(databaseURL: databaseURL), stage: "empty canonical table")
