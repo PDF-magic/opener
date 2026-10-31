@@ -41,7 +41,7 @@ class FinderCommandStringSafetyTests(unittest.TestCase):
                 "ActionParameters": {
                     "COMMAND_STRING": (
                         '/bin/bash "$HOME/Library/Application Support/Studio/'
-                        'allow-and-open/allow-and-open.sh" "$@"\\n'
+                        'allow-and-open/allow-and-open.sh" "$@"\n'
                     ),
                     "shell": "/bin/zsh",
                     "inputMethod": 0,
