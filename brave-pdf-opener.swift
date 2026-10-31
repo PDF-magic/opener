@@ -389,13 +389,13 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             return
         }
         if panel == nil {
-            let newPanel = ScanProgressPanel(
+            panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
             // Future trusted Maximum producers call the panel failure hook.
             // Do not confuse their failure with a ClamAV malware verdict or
             // send an optional notice unless the existing blocked-file setting
             // is explicitly enabled. Built-in scans never enter this path.
-            newPanel.onVerifiedMaximumSanitizationFailure = { [weak self] in
+            panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in
                 guard let self, BlockedFileNotificationPreference.isEnabled() else { return }
                 self.pendingSuccessNotifications += 1
                 deliverBlockedFileNotification(malwareDetected: false, sanitizerFailed: true) { [weak self] in
@@ -408,7 +408,6 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     }
                 }
             }
-            panel = newPanel
         }
         // Prefer a currently scanning file; use a queued request before launch.
         // Sorting makes the displayed filename stable when two scans run together.
