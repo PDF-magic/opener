@@ -27,7 +27,7 @@ struct TestFirstRunInstallationHealth {
     precondition(absent.summary.contains("missing or unverifiable"))
     precondition(absent.handlerDetail.contains("missing or cannot be verified"))
 
-    for association in [Health.PDFAssociation.anotherApplication, .unknown] {
+    for association in [Health.PDFAssociation.anotherApplication, Health.PDFAssociation.unknown] {
       let status = Health.assess(handlerInstalled: true,
                                  signatureFiles: .present,
                                  pdfAssociation: association)
