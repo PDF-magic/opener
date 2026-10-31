@@ -69,15 +69,18 @@ struct RecentScanHistoryTests {
 
     var changed: OpaquePointer?
     precondition(sqlite3_open_v2(databaseURL.path, &changed, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK)
-    guard let changed else { fatalError("Could not open synthetic history for corruption test") }
-    execute(changed, "UPDATE scan_history SET final_status = 'unrecognized' WHERE id = 25")
-    precondition(sqlite3_close(changed) == SQLITE_OK)
+    guard let corruptionDatabase = changed else {
+      fatalError("Could not open synthetic history for corruption test")
+    }
+    execute(corruptionDatabase, "UPDATE scan_history SET final_status = 'unrecognized' WHERE id = 25")
+    precondition(sqlite3_close(corruptionDatabase) == SQLITE_OK)
     expectUnavailable(RecentScanHistoryReader.load(databaseURL: databaseURL))
 
+    changed = nil
     precondition(sqlite3_open_v2(databaseURL.path, &changed, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK)
-    guard let changed = changed else { fatalError("Could not edit schema") }
-    execute(changed, "ALTER TABLE scan_history ADD COLUMN source_url TEXT")
-    precondition(sqlite3_close(changed) == SQLITE_OK)
+    guard let schemaDatabase = changed else { fatalError("Could not edit schema") }
+    execute(schemaDatabase, "ALTER TABLE scan_history ADD COLUMN source_url TEXT")
+    precondition(sqlite3_close(schemaDatabase) == SQLITE_OK)
     expectUnavailable(RecentScanHistoryReader.load(databaseURL: databaseURL))
     print("PASS: recent scan history is explicit, private, bounded, canonical, and read-only")
   }
