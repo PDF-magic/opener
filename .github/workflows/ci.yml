@@ -145,6 +145,22 @@ jobs:
       - name: Verify dependency-map behavior
         run: PYTHONPATH=. python3 tests/general/ci-test-scope.py -v
 
+  parser-filesystem-macos:
+    # Kernel-level Seatbelt denial must be exercised on a real macOS runner.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: PDF parser filesystem confinement (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install reviewed optional PDF parser dependency
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Verify real macOS filesystem sandbox and timed parser
+        run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
+
   scanner-tests:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     runs-on: ubuntu-latest
