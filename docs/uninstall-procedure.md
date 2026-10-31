@@ -37,9 +37,9 @@ actions triggered by opening the preferences app.
    ```
 
    Read the **Current macOS PDF handler** line and record the detected bundle
-   identifier. The tool distinguishes **PDF Magic Opener is the default PDF
-   handler** from **PDF Magic Opener is not the default PDF handler** and names
-   the other application when present. Both known outcomes exit successfully.
+   identifier. The tool reports **PDF Magic Opener is the default PDF handler**
+   or **PDF Magic Opener is not the default PDF handler**, naming the other
+   application when present. Both known outcomes exit successfully.
    An unavailable helper, malformed/unreadable association, or failed lookup
    exits nonzero: **stop uninstallation** rather than guessing, erasing an
    application, or changing an association. Check
@@ -62,8 +62,8 @@ actions triggered by opening the preferences app.
 ## 2. Restore a non-PDF-Magic default before removing its handler
 
 Use the **detected result from step 1** to decide whether restoration is
-needed. If **another application is already the default**, preserve that
-choice without running any restoration action. If **PDF Magic Opener is the
+needed. If **another application is already the default**, preserve that choice
+without running any restoration action. If **PDF Magic Opener is the
 default**, go to **Preferences > General > Default PDF application** and select
 **Restore Previous Default** only if the saved previous handler is still
 valid. That action uses the already installed `pdf-handler-history` utility,
@@ -78,7 +78,8 @@ before proceeding to removal** while the installed helper is still present:
 python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"
 ```
 
-**Proceed only when this fresh check names a known non-PDF-Magic default.**
+**Verify PDF Magic Opener is no longer the macOS default for PDFs.** Proceed
+only when this fresh check names a known non-PDF-Magic default.
 If it still reports PDF Magic Opener, or the association cannot be determined,
 **stop before removing the app or its helpers**. Do not force a restoration or
 reset all Launch Services associations. If another program was already the
