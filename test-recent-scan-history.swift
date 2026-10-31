@@ -4,9 +4,12 @@ import Darwin
 
 @main
 struct RecentScanHistoryTests {
-  static func expectEmpty(_ result: RecentScanHistoryLoad) {
+  static func expectEmpty(_ result: RecentScanHistoryLoad, stage: String) {
     if case .empty = result { return }
-    fatalError("An absent or empty store must have an empty state")
+    if case .unavailable = result {
+      fatalError("Expected empty scan history at \(stage), got unavailable")
+    }
+    fatalError("Expected empty scan history at \(stage), got entries")
   }
 
   static func expectUnavailable(_ result: RecentScanHistoryLoad) {
@@ -26,7 +29,7 @@ struct RecentScanHistoryTests {
     defer { try? FileManager.default.removeItem(at: root) }
 
     let databaseURL = root.appendingPathComponent("scan-history.sqlite3")
-    expectEmpty(RecentScanHistoryReader.load(databaseURL: databaseURL))
+    expectEmpty(RecentScanHistoryReader.load(databaseURL: databaseURL), stage: "database absent")
     precondition(!FileManager.default.fileExists(atPath: databaseURL.path))
 
     var database: OpaquePointer?
@@ -36,7 +39,15 @@ struct RecentScanHistoryTests {
     execute(database, "CREATE TABLE scan_history (id INTEGER PRIMARY KEY, scanned_at REAL NOT NULL, final_status TEXT NOT NULL, scanner_version TEXT, protection_profile_id TEXT NOT NULL)")
     precondition(sqlite3_close(database) == SQLITE_OK)
     precondition(chmod(databaseURL.path, 0o600) == 0)
-    expectEmpty(RecentScanHistoryReader.load(databaseURL: databaseURL))
+    let version = String(cString: sqlite3_libversion())
+    var probe: OpaquePointer?
+    let probeCode = sqlite3_open_v2(databaseURL.path, &probe,
+        SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW, nil)
+    if probeCode != SQLITE_OK {
+      fatalError("SQLite readonly/no-follow open failed (code \(probeCode), version \(version))")
+    }
+    if let probe { precondition(sqlite3_close(probe) == SQLITE_OK) }
+    expectEmpty(RecentScanHistoryReader.load(databaseURL: databaseURL), stage: "empty canonical table")
 
     // Only synthetic metadata is inserted; never touch real user history.
     var writer: OpaquePointer?
