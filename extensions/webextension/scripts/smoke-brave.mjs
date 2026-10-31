@@ -89,7 +89,51 @@ try {
   assert.equal(downloadsGranted, false,
     "Brave must not silently grant the optional downloads permission");
 
-  console.log("Brave MV3 smoke passed: loaded worker and popup; privileges absent; Scan PDF disabled.");
+  // opener-0812: Call a real privileged browser API while permission is
+  // absent. This is an API refusal, NOT a simulated false grant and NOT an
+  // interactive permission prompt. No downloads are started or inspected.
+  // Some Brave/Chromium versions hide the API entirely without a grant;
+  // others expose it and reject calls through runtime.lastError.
+  const deniedDownloadAccess = await worker.evaluate(async () => {
+    if (typeof chrome.downloads?.search !== "function") {
+      return { outcome: "unavailable" };
+    }
+    return await new Promise((resolve) => {
+      try {
+        chrome.downloads.search({}, () => {
+          const denied = Boolean(chrome.runtime.lastError);
+          resolve({ outcome: denied ? "denied" : "unexpected-access" });
+        });
+      } catch {
+        resolve({ outcome: "denied" });
+      }
+    });
+  });
+  assert.ok(["denied", "unavailable"].includes(deniedDownloadAccess.outcome),
+    "Brave must reject downloads API usage without optional permission");
+
+  // The failed privileged call must not prompt, upgrade permissions, open a
+  // PDF, or change the extension's originally inactive scanner controls.
+  const grantsAfterDenial = await worker.evaluate(async () => {
+    const current = await chrome.permissions.getAll();
+    return {
+      downloadsGranted: await chrome.permissions.contains({
+        permissions: ["downloads"]
+      }),
+      permissions: current.permissions,
+      origins: current.origins
+    };
+  });
+  assert.equal(grantsAfterDenial.downloadsGranted, false);
+  assert.deepEqual(grantsAfterDenial.permissions, []);
+  assert.deepEqual(grantsAfterDenial.origins, []);
+  assert.equal(await scanButton.isDisabled(), true);
+  assert.equal(await popup.locator(".heading .status").innerText(), "Not active");
+  assert.equal(await popup.locator("#explicitPdfScanResult").innerText(),
+    "No verified scan result is available.");
+  assert.deepEqual(errors, [], "Denied browser privileges cannot break the popup");
+
+  console.log("Brave MV3 smoke passed: absent downloads permission denied real API access; Scan PDF disabled.");
 } finally {
   try { await context?.close(); } finally {
     await rm(profile, { recursive: true, force: true });
