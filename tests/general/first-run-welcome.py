@@ -35,7 +35,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
       "ClamAV", "blocks opening",
       "does not change either selection",
       "does not install software",
-      'Button("Continue to Preferences", action: onContinue)',
+      'Button("Continue to Preferences", action: finishSetup)',
       'accessibilityIdentifier("firstRunWelcomeScreen")',
       'accessibilityIdentifier("firstRunContinueButton")',
     ):
@@ -130,6 +130,162 @@ class FirstRunWelcomeTests(unittest.TestCase):
                       "NSWorkspace(", "target-app.txt"):
       self.assertNotIn(forbidden, source)
 
+  def test_initial_protection_choice_is_explicit_and_non_enforcing(self):
+    view = WELCOME.read_text(encoding="utf-8")
+    shared = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(
+      encoding="utf-8")
+    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    for expected in (
+      "Choose your initial protection preference",
+      "Built-in ClamAV scanning and fail-closed opening remain the only active protection.",
+      "Preferred future protection profile",
+      "PreferredProtectionLevel.standard",
+      "PreferredProtectionLevel.enhanced",
+      "PreferredProtectionLevel.maximum",
+      'accessibilityIdentifier("firstRunProtectionProfilePicker")',
+      "InitialProtectionProfileChoice.save(initialProfile)",
+      ".disabled(initialProfile == nil)",
+      'accessibilityIdentifier("firstRunProtectionSaveError")',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, view)
+    self.assertLess(view.index("InitialProtectionProfileChoice.save(initialProfile)"),
+                    view.index("onContinue()"))
+    self.assertIn("guard let choice else { return false }", shared)
+    self.assertIn(
+      "PlannedProtectionLevelPreference.saveExplicitChoice(choice, defaults: defaults)",
+      shared)
+    self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn",
+                  shared)
+    self.assertNotIn("SelectedProtectionProfilePreference.save(", view)
+    self.assertIn("if not cached_clean(cache_id):", scanner)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("test-first-run-profile-choice.swift", ci)
+
+  def test_first_run_explains_scanning_is_not_a_safety_guarantee(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    warning = (
+      "A verified clean scan reduces risk, but ClamAV cannot detect every threat. "
+      "A clean result does not guarantee that a PDF is safe; only open "
+      "documents from sources you trust."
+    )
+    self.assertIn('Label("Scanning cannot guarantee safety", systemImage: "exclamationmark.shield")', source)
+    self.assertIn('Text("' + warning + '")', source)
+    self.assertLess(source.index('Label("Local malware scanning"'),
+                    source.index('Label("Scanning cannot guarantee safety"'))
+    self.assertLess(source.index('Label("Scanning cannot guarantee safety"'),
+                    source.index('Label("Your choice of PDF application"'))
+    # This is a disclosure, not a scanner bypass or a change to its fail-closed gate.
+    self.assertIn("If a scan cannot be verified, the handler blocks opening.", source)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("cannot guarantee", docs)
+    self.assertIn("clean scan", docs)
+
+  def test_optional_browser_extensions_explanation_is_visible_and_accurate(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    group = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    for expected in (
+      "Browser extensions are optional.",
+      "installed native PDF handler can scan files opened through it",
+      "without any browser extension",
+      "Current browser extensions are not active:",
+      "cannot scan, sanitize, or open PDFs",
+      "no verified browser-to-scanner connection",
+      "does not automatically protect PDFs viewed directly in a browser",
+      "does not install or enable extensions",
+      "request browser permissions",
+      "change browser settings",
+      "continue without an extension",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, group)
+    self.assertLess(source.index('GroupBox("Default PDF browser")'),
+                    source.index('GroupBox("Optional browser extensions")'))
+    self.assertLess(source.index('GroupBox("Optional browser extensions")'),
+                    source.index('Button("Continue to Preferences", action: finishSetup)'))
+    self.assertIn('accessibilityIdentifier("firstRunOptionalBrowserExtensions")', source)
+
+  def test_optional_extension_explanation_cannot_activate_integration(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    group = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    for forbidden in (
+      "Button(", "Toggle(", "Picker(", "onAppear(", "onChange(", "Process(",
+      "NSWorkspace", "FileManager", "saveVerified", "UserDefaults", "permissions.",
+      "scanAndOpen", "openURL", "sheet(", "Link(",
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, group)
+    manifest = (ROOT / "extensions/webextension/manifest.json").read_text(
+      encoding="utf-8"
+    )
+    extension = (ROOT / "extensions/webextension/src/background.js").read_text(
+      encoding="utf-8"
+    )
+    integration = (ROOT / "PDFMagicOpenerApp/ExtensionsAndIntegrationsSettingsView.swift").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn("Not active; cannot scan, sanitize, or open PDF files.", manifest)
+    self.assertIn("Inactive shared WebExtensions background entry point", extension)
+    self.assertIn('Text("Not connected")', integration)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("Optional browser extensions (opener-0980)", docs)
+    self.assertIn("not provide an automatic PDF scan", docs)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("tests/general/first-run-welcome.py -v", ci)
+
+  def test_first_run_displays_accurate_extension_setup_steps(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    section = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    instructions = section.split('Label("Extension setup instructions"', 1)[1]
+    for expected in (
+      'systemImage: "list.number"',
+      'accessibilityIdentifier("firstRunExtensionSetupInstructions")',
+      "Safari (test builds):",
+      "properly signed PDF Magic Opener app with its Safari extension",
+      "Settings > Extensions",
+      "enable it manually if you choose",
+      "check the installed host app",
+      "Chrome, Edge, Firefox, and other browsers:",
+      "No public extension release is available",
+      "for development and testing",
+      "An enabled test extension still shows Not active",
+      "cannot scan or approve PDFs",
+      "installed native PDF handler for scanned opening",
+      "no extension installation or activation is performed here",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, instructions)
+    self.assertLess(section.index("Browser extensions are optional."),
+                    section.index('Label("Extension setup instructions"'))
+    for forbidden in ("Button(", "Toggle(", "Picker(", "Link(", "openURL(",
+                      "NSWorkspace", "Process(", "UserDefaults", "requestPermission",
+                      "scanAndOpen", "saveVerified("):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, instructions)
+
+    safari = (ROOT / "extensions/safari/README.md").read_text(encoding="utf-8")
+    distribution = (ROOT / "docs/browser-extension-distribution.md").read_text(
+      encoding="utf-8"
+    )
+    manifest = (ROOT / "extensions/webextension/manifest.json").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn("Safari > Settings > Extensions", safari)
+    self.assertIn("NOT RELEASE READY", distribution)
+    self.assertIn("Not active; cannot scan, sanitize, or open PDF files.", manifest)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("Extension setup instructions (opener-0981)", docs)
+    self.assertIn("Safari > Settings > Extensions", docs)
+    self.assertIn("no public release", docs)
+    self.assertIn("tests/general/first-run-welcome.py -v",
+                  CI.read_text(encoding="utf-8"))
+
   def test_default_offer_is_opt_in_and_delegates_to_verified_handler(self):
     source = WELCOME.read_text(encoding="utf-8")
     action = (ROOT / "PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift").read_text(
@@ -171,27 +327,6 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertIn("Continue to Preferences", source)
     self.assertNotIn("UserDefaults.standard.set", source)
     self.assertNotIn("scan-and-open.py", source)
-
-  def test_default_handler_change_is_optional_not_accepted_on_continue(self):
-    source = WELCOME.read_text(encoding="utf-8")
-    opt_out = (
-      "You can decline any offer to make PDF Magic Opener your default PDF "
-      "application and keep your current macOS PDF handler."
-    )
-    no_consent = (
-      "Continuing to Preferences does not approve or make a "
-      "default-handler change."
-    )
-    self.assertIn('Text("' + opt_out + " " + no_consent + '")', source)
-    self.assertLess(source.index('Label("Your choice of PDF application"'),
-                    source.index(opt_out))
-    self.assertLess(source.index(no_consent),
-                    source.index('Label("Existing settings are preserved"'))
-    # This is disclosure only. No file-association or scanner operation.
-    for forbidden in ("LSSetDefaultRoleHandlerForContentType",
-                      "LSSetDefaultHandlerForURLScheme", "Process(",
-                      "NSWorkspace(", "target-app.txt"):
-      self.assertNotIn(forbidden, source)
 
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
