@@ -296,6 +296,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/failure-exception-boundary.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
         run: PYTHONPATH=. python3 tests/clamav/installation.py -v
+      - name: Require explicit consent before Homebrew operations
+        run: PYTHONPATH=. python3 tests/clamav/install-consent.py -v
       - name: Keep Homebrew optional for existing compatible ClamAV installations
         run: PYTHONPATH=. python3 tests/clamav/homebrew-policy.py -v
       - name: Reject non-regular ClamAV scanner executables before scanning
