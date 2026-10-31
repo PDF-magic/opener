@@ -371,6 +371,9 @@ jobs:
       - name: Verify trusted explicit PDF scan results appear safely in the extension
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-scan-result-display.test.mjs
+      - name: Verify ownership and policy-safe temporary explicit PDF cleanup
+        working-directory: extensions/webextension
+        run: node --test tests/explicit-pdf-temporary-cleanup.test.mjs
       - name: Verify opt-in explicit PDF acquisition through browser downloads
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-download-acquisition.test.mjs
