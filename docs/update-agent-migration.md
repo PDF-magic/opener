@@ -1,6 +1,7 @@
 # Existing signature update-agent migration (opener-0942)
 
-The installer validates and migrates the existing per-user LaunchAgent after
+The installer preserves the exclusive-create fresh-install agent provisioning and
+validates/migrates the existing per-user LaunchAgent after
 verifying the staged application, but before stopping or bootstrapping agents.
 
 * Fresh installs create the established trusted four-hour FreshClam agent.

@@ -229,7 +229,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
         script = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn("PDF_MAGIC_REQUEST_ORIGIN=finder", script)
         self.assertIn("'com.apple.RunShellScript'", script)
-        self.assertIn("actions[0]['ActionParameters']['inputMethod'] = 1", script)
+        self.assertIn("parameters['inputMethod'] = 1", script)
         self.assertIn('"$@"', script)
         self.assertIn('"$script_dir/allow-and-open.sh"', script)
         wrapper = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")

@@ -10,6 +10,10 @@ if [ ! -f "$workflow" ]; then
     exit 1
 fi
 
+# Discover existing scan entry points before touching installed scripts or settings.
+# This preflight never reads or runs existing user-customized script contents.
+python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
+
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
     brew install clamav
 fi
@@ -61,14 +65,27 @@ chmod 755 "$install_dir/select-custom-pdf-application" "$install_dir/select-cust
     "$script_dir/browser-app-metadata.swift" -o "$install_dir/browser-preference-list"
 chmod 755 "$install_dir/browser-preference-list"
 python3 - "$install_dir" <<'CONFIG'
+import os
+import stat
 import sys
 from pathlib import Path
+
 path = Path(sys.argv[1])
-(path / 'freshclam.conf').write_text(
-    'DatabaseDirectory "' + str(path / 'signatures') + '"\n'
-    'DatabaseMirror database.clamav.net\n'
-    'ScriptedUpdates yes\n'
-)
+config = path / 'freshclam.conf'
+# An existing file can contain working mirror/proxy customizations. Do not
+# read, normalize or overwrite it during an application upgrade.
+try:
+    fd = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+except FileExistsError:
+    if not stat.S_ISREG(config.lstat().st_mode):
+        raise SystemExit('Unsafe existing FreshClam configuration; installation stopped.')
+else:
+    with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        stream.write(
+            'DatabaseDirectory "' + str(path / 'signatures') + '"\n'
+            'DatabaseMirror database.clamav.net\n'
+            'ScriptedUpdates yes\n'
+        )
 CONFIG
 bash "$install_dir/update-malware-signatures.sh"
 
@@ -126,7 +143,9 @@ cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.
     -o "$app/Contents/MacOS/PDFOpener"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
 python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
+import os
 import plistlib
+import stat
 import sys
 from pathlib import Path
 app, install_dir = map(Path, sys.argv[1:3])
@@ -148,6 +167,26 @@ info = {
 }
 with (app / 'Contents/Info.plist').open('wb') as stream:
     plistlib.dump(info, stream)
+agent = {
+    'Label': 'local.studio.pdf-malware-signatures',
+    'ProgramArguments': ['/bin/bash', str(install_dir / 'update-malware-signatures.sh')],
+    'StartInterval': 14400,
+    'RunAtLoad': True,
+    'ProcessType': 'Background',
+    'StandardOutPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.log'),
+    'StandardErrorPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.error.log'),
+}
+# Preserve any existing per-user schedule, including custom update intervals.
+# Only provision the default for a fresh installation; reject unsafe entries.
+agent_path = Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.plist'
+try:
+    fd = os.open(agent_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+except FileExistsError:
+    if not stat.S_ISREG(agent_path.lstat().st_mode):
+        raise SystemExit('Unsafe existing signature update schedule; installation stopped.')
+else:
+    with os.fdopen(fd, 'wb') as stream:
+        plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
 # No installed app is replaced or registered until staged contents, PDF identity,
@@ -166,39 +205,105 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
     chmod 755 "$action"
 fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
-# Keep the existing update cadence, opt-out and safe log preferences on upgrades.
-# An unsafe or unrecognized agent is left intact and never bootstrapped.
+# Validate and migrate the existing trusted signature-update agent before launchctl.
+# Unsafe definitions abort without being overwritten or bootstrapped.
 python3 "$script_dir/scripts/migrate_update_agent.py"
 agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID" "$agent"
 
 python3 - "$workflow" <<'PY'
+import os
 import plistlib
+import stat
 import sys
+import tempfile
 from pathlib import Path
 
 path = Path(sys.argv[1])
-with path.open('rb') as stream:
-    workflow = plistlib.load(stream)
-actions = [entry['action'] for entry in workflow['actions']
-           if entry['action'].get('BundleIdentifier') == 'com.apple.RunShellScript']
-if len(actions) != 1:
-    raise SystemExit('Expected exactly one Run Shell Script action; workflow left unchanged.')
 backup = path.with_name('document.wflow.before-brave')
-if not backup.exists():
-    backup.write_bytes(path.read_bytes())
-# This must be static shell source: document paths are forwarded only as
-# positional arguments, never interpolated into Finder's COMMAND_STRING.
-actions[0]['ActionParameters']['COMMAND_STRING'] = (
+fixed_command = (
     'export PDF_MAGIC_REQUEST_ORIGIN=finder\n'
     'exec /bin/bash "$HOME/Library/Application Support/Studio/'
     'allow-and-open/allow-and-open.sh" "$@"\n'
 )
-actions[0]['ActionParameters']['inputMethod'] = 1
-actions[0]['ActionParameters']['shell'] = '/bin/bash'
-with path.open('wb') as stream:
-    plistlib.dump(workflow, stream)
+# Recognize only the product's previously installed command strings, not
+# arbitrary user-maintained Finder scripts.
+legacy_commands = {
+    fixed_command,
+    'exec /bin/bash "$HOME/Library/Application Support/Studio/'
+    'allow-and-open/allow-and-open.sh" "$@"\n',
+    '/bin/bash "$HOME/Library/Application Support/Studio/'
+    'allow-and-open/allow-and-open.sh" "$@"\n',
+}
+
+# Refuse symlinks/other file kinds before reading or writing Quick Action data.
+metadata = path.lstat()
+if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+    raise SystemExit('Unsafe Finder Quick Action file; migration refused.')
+if backup.is_symlink() or (backup.exists() and not backup.is_file()):
+    raise SystemExit('Unsafe Finder Quick Action backup; migration refused.')
+
+original = path.read_bytes()
+workflow = plistlib.loads(original)
+if not isinstance(workflow, dict) or not isinstance(workflow.get('actions'), list):
+    raise SystemExit('Invalid Finder Quick Action; workflow left unchanged.')
+actions = [
+    entry['action'] for entry in workflow['actions']
+    if isinstance(entry, dict) and isinstance(entry.get('action'), dict)
+    and entry['action'].get('BundleIdentifier') == 'com.apple.RunShellScript'
+]
+if len(actions) != 1:
+    raise SystemExit('Expected exactly one Run Shell Script action; workflow left unchanged.')
+parameters = actions[0].get('ActionParameters')
+if not isinstance(parameters, dict):
+    raise SystemExit('Invalid Finder shell parameters; workflow left unchanged.')
+command = parameters.get('COMMAND_STRING')
+if command not in legacy_commands:
+    # The user may have installed an unrelated/custom workflow with this name.
+    # Neither its shell source nor its saved backup belongs to this migration.
+    print('Preserving customized Finder Quick Action; no migration performed.')
+    raise SystemExit(0)
+
+if (command == fixed_command and parameters.get('inputMethod') == 1
+        and parameters.get('shell') == '/bin/bash'):
+    print('Finder Quick Action already migrated.')
+    raise SystemExit(0)
+
+parameters['COMMAND_STRING'] = fixed_command
+parameters['inputMethod'] = 1  # Pass Finder input as argv, never shell interpolation.
+parameters['shell'] = '/bin/bash'
+fmt = plistlib.FMT_BINARY if original.startswith(b'bplist00') else plistlib.FMT_XML
+updated = plistlib.dumps(workflow, fmt=fmt)
+
+# Preserve the first pre-migration copy. Never follow or overwrite an existing
+# backup, including a dangling symlink. This also leaves unrelated actions intact.
+if not backup.exists():
+    with backup.open('xb') as stream:
+        stream.write(original)
+
+# Stage in the same directory; a failed serialization or write must not leave
+# a truncated Quick Action. Preserve the workflow's original permission bits.
+staged = None
+try:
+    with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.document.wflow.',
+                                     delete=False) as stream:
+        staged = Path(stream.name)
+        stream.write(updated)
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.chmod(staged, stat.S_IMODE(metadata.st_mode))
+    # Do not replace a link swapped into place while staging.
+    current = path.lstat()
+    if (not stat.S_ISREG(current.st_mode) or current.st_ino != metadata.st_ino
+            or current.st_dev != metadata.st_dev):
+        raise RuntimeError('Finder Quick Action changed during migration.')
+    os.replace(staged, path)
+finally:
+    if staged is not None:
+        staged.unlink(missing_ok=True)
+print('Migrated existing Finder Quick Action to the scan-gated PDF Magic opener.')
+
 PY
 
 # Only after explicit consent, preserve the user's previous PDF handler before

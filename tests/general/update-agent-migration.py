@@ -120,7 +120,10 @@ class UpdateAgentMigrationTests(unittest.TestCase):
         self.assertLess(installer.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py"'),
                         installer.index(migration))
         self.assertLess(installer.index(migration), installer.index('launchctl bootout "gui/$UID"'))
-        self.assertNotIn("plistlib.dump(agent, stream)", installer)
+        # Fresh-install provisioning is exclusive-create; the migrator owns upgrades.
+        self.assertIn("os.O_EXCL | os.O_NOFOLLOW", installer)
+        self.assertIn("except FileExistsError:", installer)
+        self.assertNotIn("agent_path.write_bytes(", installer)
         self.assertIn("migrate_update_agent.py", installer)
 
 
