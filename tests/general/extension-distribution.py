@@ -12,6 +12,7 @@ DIST = WEB / "dist"
 DOC = ROOT / "docs" / "browser-extension-distribution.md"
 FILES = (
   "manifest.json", "background.js", "popup.html", "popup.css",
+  "intercept-scan-failed.html", "intercept-scan-failed.css",
   "icons/icon-16.png", "icons/icon-32.png", "icons/icon-48.png", "icons/icon-128.png",
 )
 CHANNELS = (
