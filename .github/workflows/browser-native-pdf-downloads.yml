@@ -53,7 +53,9 @@ jobs:
 
   chrome-macos-quarantine-open:
     name: Chrome macOS downloaded PDF safe-open and quarantine
-    runs-on: macos-15
+    # The Apple Silicon runner denies Chrome subprocess Mach-port rendezvous.
+    # Keep a real macOS quarantine check on the supported Intel image.
+    runs-on: macos-15-intel
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
