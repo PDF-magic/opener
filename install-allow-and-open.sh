@@ -10,6 +10,12 @@ if [ ! -f "$workflow" ]; then
     exit 1
 fi
 
+# Identify the existing signature updater before changing installed files or schedules.
+agent_state="$(python3 "$script_dir/signature_update_launchagent.py")"
+if [ "$agent_state" = "existing" ]; then
+    echo "Existing signature-update LaunchAgent detected; preserving its configuration."
+fi
+
 # Discover existing scan entry points before touching installed scripts or settings.
 # This preflight never reads or runs existing user-customized script contents.
 python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
@@ -208,8 +214,7 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
     chmod 755 "$action"
 fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
-# Validate and migrate the existing trusted signature-update agent before launchctl.
-# Unsafe definitions abort without being overwritten or bootstrapped.
+# Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate_update_agent.py"
 agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
