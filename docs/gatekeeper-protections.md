@@ -14,7 +14,7 @@ Run `PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v`.
   assessments disabled, unavailable, or ambiguous, or when the execution
   assessment is accepted or returns a usage error. An audit also fails if
   tracked runtime sources try to disable Gatekeeper via `spctl`.
-- Native macOS CI compiles a harmless, unsigned (or ad-hoc-only) Mach-O in a
+- Native macOS CI compiles a harmless, truly unsigned Mach-O (removing any auto-applied ad-hoc signature) in a
   disposable `.app` bundle, attaches a **real** `com.apple.quarantine`
   marker, confirms `spctl --status` reports assessments enabled, and
   assesses its execution with `spctl --assess --type execute`.
