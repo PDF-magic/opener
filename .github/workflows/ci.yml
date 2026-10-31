@@ -551,6 +551,8 @@ jobs:
           PYTHONPATH=. python3 tests/browser/safari-download-open-contract.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Detect changes to selected filesystem symlinks
+        run: PYTHONPATH=. python3 tests/scanner/symbolic-link-changes.py -v
       - name: Verify quarantined PDF opening honors scan and application gates
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Check Finder quarantine and app bundle scanner handoff
@@ -1156,6 +1158,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Detect selected symlink changes on macOS
+        run: PYTHONPATH=. python3 tests/scanner/symbolic-link-changes.py -v
       - name: Test verified opening handoff of actually quarantined PDFs
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Reject nonexistent local files and dangling links on macOS
