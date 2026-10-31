@@ -148,3 +148,68 @@ struct SignatureUpdateStatus {
     return Date(timeIntervalSince1970: seconds)
   }
 }
+
+
+// First-run display-only presence check. Never read definition payloads or
+// infer that signatures are valid, recent, or sufficient to authorize opening.
+enum FirstRunSignatureAvailability: Equatable {
+  case available
+  case missing
+  case incomplete
+  case unsafe
+
+  var explanation: String {
+    switch self {
+    case .available:
+      return "ClamAV main and daily signature files were found. Validity and freshness are not verified by this check."
+    case .missing:
+      return "No installed ClamAV signature directory was found. Signatures must be installed and verified before PDF opening."
+    case .incomplete:
+      return "Required ClamAV main and daily signature files are missing or incomplete. Update signatures before opening PDFs."
+    case .unsafe:
+      return "The installed signature location cannot be checked safely. PDF opening remains subject to the scanner's independent checks."
+    }
+  }
+
+  static func readInstalled() -> Self {
+    let directory = FileManager.default.homeDirectoryForCurrentUser
+      .appendingPathComponent("Library/Application Support/Studio/allow-and-open/signatures",
+                            isDirectory: true)
+    return read(from: directory)
+  }
+
+  // Check only fixed expected filenames using lstat (no symlink traversal at
+  // the signature directory or signature files). No content is opened or read.
+  static func read(from directory: URL) -> Self {
+    var directoryMetadata = stat()
+    guard lstat(directory.path, &directoryMetadata) == 0 else {
+      return errno == ENOENT ? .missing : .unsafe
+    }
+    guard (directoryMetadata.st_mode & mode_t(S_IFMT)) == mode_t(S_IFDIR) else {
+      return .unsafe
+    }
+
+    for name in ["main", "daily"] {
+      var count = 0
+      var hasEmptyFile = false
+      for suffix in [".cvd", ".cld"] {
+        let path = directory.appendingPathComponent(name + suffix).path
+        var metadata = stat()
+        if lstat(path, &metadata) != 0 {
+          if errno == ENOENT { continue }
+          return .unsafe
+        }
+        guard (metadata.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG) else {
+          return .unsafe
+        }
+        if metadata.st_size == 0 {
+          hasEmptyFile = true
+        } else {
+          count += 1
+        }
+      }
+      if count != 1 || hasEmptyFile { return .incomplete }
+    }
+    return .available
+  }
+}
