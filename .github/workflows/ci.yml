@@ -192,7 +192,7 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify staged PDF handler bundle contents and executable permissions
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
-      - name: Reject untrusted values in Finder shell command strings
+      - name: Verify safe Finder Quick Action migration and literal argv forwarding
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
