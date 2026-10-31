@@ -1174,6 +1174,9 @@ jobs:
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: PYTHONPATH=. python3 tests/native/cancellation.py
+      - name: Verify scanner failures during app shutdown on macOS
+        timeout-minutes: 2
+        run: PYTHONPATH=. python3 tests/app/termination.py -v
       - name: Verify hidden progress does not bypass native scan dispatch
         run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS
