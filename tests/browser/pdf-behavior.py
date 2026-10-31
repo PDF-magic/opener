@@ -57,6 +57,12 @@ class PerBrowserPDFTests(unittest.TestCase):
             p.start()
             self.addCleanup(p.stop)
 
+        # These routing tests mock native process execution; the real
+        # executable-filesystem gate is covered by dedicated security tests.
+        executable = patch.object(launcher, "require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
+
     def remove_quarantine(self, path):
         self.events.append(("quarantine", path))
 

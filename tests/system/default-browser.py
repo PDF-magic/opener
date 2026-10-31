@@ -36,6 +36,12 @@ class SystemDefaultBrowserTests(unittest.TestCase):
             control.start()
             self.addCleanup(control.stop)
 
+        # These routing tests mock native process execution; the real
+        # executable-filesystem gate is covered by dedicated security tests.
+        executable = patch.object(launcher, "require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
+
     def test_pins_selected_browser_through_scan_preflight_and_launch(self):
         commands = []
 
