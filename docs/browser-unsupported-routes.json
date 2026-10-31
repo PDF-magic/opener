@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "task": "opener-0813",
+  "scope": "PDF Magic Opener automatic native scan-before-render only; not browser ability to view a PDF",
+  "effectiveInterceptionEnabled": false,
+  "allPathsBlocked": false,
+  "statusDefinitions": {
+    "uncontrolled": "No proven PDF Magic Opener veto for this entry route; the browser or OS may still open it.",
+    "unverified": "Candidate mechanism or route behavior needs further authenticated per-browser/version verification; not active or authorized."
+  },
+  "routes": [
+    {
+      "id": "network-main-frame",
+      "kind": "canonical",
+      "status": "unverified",
+      "limitation": "Network navigation and MIME detection do not establish a synchronous native scan-before-render hold.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.md",
+        "docs/browser-interception-apis.md"
+      ]
+    },
+    {
+      "id": "inline-browser-viewer",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "A browser may render an inline PDF before any extension scan; viewing tests are not interception tests.",
+      "evidence": [
+        "docs/browser-pdf-viewers.md",
+        "extensions/webextension/src/pdf-unsupported-viewer.md"
+      ]
+    },
+    {
+      "id": "embedded-pdf",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "Frames, objects and embeds are not guaranteed to pass through an authenticated holding gate.",
+      "evidence": [
+        "extensions/webextension/src/pdf-unsupported-viewer.md",
+        "extensions/webextension/tests/pdf-iframe.test.mjs"
+      ]
+    },
+    {
+      "id": "pdfjs-page",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "Firefox PDF.js and site-hosted PDF.js may render from viewer-owned resources or script-controlled content.",
+      "evidence": [
+        "extensions/webextension/src/pdf-unsupported-viewer.md",
+        "extensions/webextension/tests/pdf-js-viewer.test.mjs"
+      ]
+    },
+    {
+      "id": "redirected-response",
+      "kind": "canonical",
+      "status": "unverified",
+      "limitation": "Redirect chains and changed response identities can defeat initial URL classification or request correlation.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.md",
+        "extensions/webextension/tests/pdf-redirect-links.test.mjs"
+      ]
+    },
+    {
+      "id": "blob-url",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "Document-generated blob: PDFs can bypass network-request matching.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.md",
+        "extensions/webextension/tests/pdf-blob.test.mjs"
+      ]
+    },
+    {
+      "id": "data-url",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "Inline data: bytes do not require an interceptable HTTP(S) request.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.md",
+        "extensions/webextension/tests/pdf-data-url.test.mjs"
+      ]
+    },
+    {
+      "id": "file-url",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "Local file: PDFs and local browser viewer paths cannot be universally mediated by a network extension.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.md",
+        "extensions/webextension/tests/pdf-local-file-urls.test.mjs"
+      ]
+    },
+    {
+      "id": "cached-pdf",
+      "kind": "canonical",
+      "status": "unverified",
+      "limitation": "A cache hit, service worker or browser-internal resource may not produce the network interception event assumed by a gate.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.md",
+        "docs/browser-automatic-interception-research.md"
+      ]
+    },
+    {
+      "id": "attachment-download",
+      "kind": "canonical",
+      "status": "uncontrolled",
+      "limitation": "Content-Disposition attachment and download events do not veto browser downloads UI, local availability or native opening.",
+      "evidence": [
+        "docs/download-opening-browser-support.md",
+        "extensions/webextension/tests/pdf-response-attachment.test.mjs"
+      ]
+    },
+    {
+      "id": "unmatched-or-redirected-network-requests",
+      "kind": "bypass",
+      "status": "unverified",
+      "limitation": "URL rules may miss suffixless, rewritten, signed or redirected PDF responses.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.js"
+      ]
+    },
+    {
+      "id": "inline-or-cached-pdf-rendering",
+      "kind": "bypass",
+      "status": "uncontrolled",
+      "limitation": "Inline, browser-cached and internal viewer rendering are outside proven native scan-before-render control.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.js"
+      ]
+    },
+    {
+      "id": "blob-data-and-file-urls",
+      "kind": "bypass",
+      "status": "uncontrolled",
+      "limitation": "Synthetic, embedded and filesystem URLs can avoid an HTTP response interception point.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.js"
+      ]
+    },
+    {
+      "id": "browser-auto-open-and-other-extensions",
+      "kind": "bypass",
+      "status": "uncontrolled",
+      "limitation": "Browser automatic opening, downloads UI, and another extension's actions are independent of this extension.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.js",
+        "docs/download-automatic-browser-opening-test.md"
+      ]
+    },
+    {
+      "id": "finder-and-other-operating-system-apps",
+      "kind": "bypass",
+      "status": "uncontrolled",
+      "limitation": "Finder, the default file association and other apps are not subject to a WebExtension open veto.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-point-assessment.js",
+        "docs/browser-pdf-viewers.md"
+      ]
+    },
+    {
+      "id": "extensionless-mime-or-filename",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "PDF MIME may not match .pdf suffix and downloaded filenames may be misleading.",
+      "evidence": [
+        "extensions/webextension/tests/pdf-extensionless.test.mjs",
+        "extensions/webextension/tests/download-misleading-extension.test.mjs"
+      ]
+    },
+    {
+      "id": "cross-origin-frame-and-context-menu",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Cross-origin frames, site grants and embedded context menus need per-frame and permission verification.",
+      "evidence": [
+        "extensions/webextension/tests/pdf-iframe.test.mjs",
+        "extensions/webextension/tests/embedded-pdf-context-menu.test.mjs"
+      ]
+    },
+    {
+      "id": "privileged-internal-or-custom-viewer",
+      "kind": "additional",
+      "status": "uncontrolled",
+      "limitation": "Browser-owned privileged viewers, plugin renderers and custom canvases are not verified interception points.",
+      "evidence": [
+        "extensions/webextension/src/pdf-unsupported-viewer.md"
+      ]
+    },
+    {
+      "id": "authenticated-cookie-or-signed-url",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Browser-held cookies, SSO, expiring signed URLs and protected PDF endpoints cannot be assumed available to the native scanner.",
+      "evidence": [
+        "docs/browser-authenticated-pdf-endpoints.md",
+        "extensions/webextension/tests/expired-pdf-url.test.mjs"
+      ]
+    },
+    {
+      "id": "dynamic-or-page-generated-pdf",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Generated PDF responses and page-controlled sources do not guarantee an early or complete byte stream for native scanning.",
+      "evidence": [
+        "docs/browser-automatic-interception-research.md",
+        "extensions/webextension/tests/pdf-blob.test.mjs"
+      ]
+    },
+    {
+      "id": "native-download-and-open-controls",
+      "kind": "additional",
+      "status": "uncontrolled",
+      "limitation": "Native browser download handling, user gestures, auto-open preferences and warning dialogs are not overridden by scan-event observers.",
+      "evidence": [
+        "docs/download-opening-browser-support.md",
+        "docs/browser-native-pdf-downloads.md"
+      ]
+    },
+    {
+      "id": "malformed-or-oversized-remote-pdf",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Malformed responses, oversized bodies, range requests and interrupted transfer paths need independent full-byte and bounds checks.",
+      "evidence": [
+        "docs/browser-malformed-remote-pdf.md",
+        "docs/browser-large-remote-pdf.md"
+      ]
+    },
+    {
+      "id": "worker-extension-or-browser-restart",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Worker termination, extension reload and browser restart can discard volatile scan state; no live trusted coordinator is installed.",
+      "evidence": [
+        "extensions/webextension/src/pdf-interception-worker-suspension.md",
+        "extensions/webextension/src/pdf-interception-browser-restart.md"
+      ]
+    },
+    {
+      "id": "denied-revoked-or-missing-permission",
+      "kind": "additional",
+      "status": "uncontrolled",
+      "limitation": "Missing or revoked host/download permissions cannot be treated as monitored, blocked or successfully scanned.",
+      "evidence": [
+        "docs/automatic-pdf-interception-option.md",
+        "docs/browser-interception-apis.md"
+      ]
+    },
+    {
+      "id": "enterprise-policy-or-competing-extension",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Managed blocking APIs or other extensions' browser rules are not evidence of a working normal-installation scan gate.",
+      "evidence": [
+        "docs/browser-automatic-interception-research.md",
+        "docs/browser-interception-apis.md"
+      ]
+    },
+    {
+      "id": "scanner-unavailable-or-identity-mismatch",
+      "kind": "additional",
+      "status": "uncontrolled",
+      "limitation": "Disconnected native hosts, incomplete/dirty scans or changed bytes must not be interpreted as clean opening authorization.",
+      "evidence": [
+        "extensions/webextension/src/automatic-interception-reliability.md",
+        "extensions/webextension/src/pdf-interception-assurance.md"
+      ]
+    },
+    {
+      "id": "unsupported-browser-or-unknown-entry",
+      "kind": "additional",
+      "status": "unverified",
+      "limitation": "Unknown browser IDs, custom viewers and unclassified paths have no authenticated interception coverage.",
+      "evidence": [
+        "extensions/webextension/src/pdf-unsupported-viewer.md",
+        "extensions/webextension/src/automatic-interception-reliability.md"
+      ]
+    }
+  ]
+}

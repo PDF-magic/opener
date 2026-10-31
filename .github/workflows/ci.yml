@@ -419,6 +419,9 @@ jobs:
       - name: Verify three concurrent PDF tab correlation and closure isolation
         working-directory: extensions/webextension
         run: node --test tests/concurrent-pdf-tabs.test.mjs
+      - name: Verify every known unsupported PDF route is documented and fail-closed
+        working-directory: extensions/webextension
+        run: node --test tests/browser-unsupported-routes.test.mjs
       - name: Reject unsupported data URLs before PDF candidate selection
         working-directory: extensions/webextension
         run: node --test tests/pdf-data-url.test.mjs
