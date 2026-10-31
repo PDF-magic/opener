@@ -328,6 +328,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
       - name: Verify automatic PDF interception preference is browser-gated and inert
         run: PYTHONPATH=. python3 tests/general/automatic-pdf-interception-option.py -v
+      - name: Verify effective automatic PDF interception status never follows opt-in
+        run: PYTHONPATH=. python3 tests/general/automatic-pdf-interception-status.py -v
       - name: Verify opt-in non-PDF download scan preference surface
         run: PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v
       - name: Verify opt-in browser download failed-scan notifications remain safety-neutral

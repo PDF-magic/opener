@@ -14,6 +14,14 @@ const disabledCurrentPdfControl =
   '<button id="scanThisPDF" type="button" disabled aria-disabled="true" aria-describedby="scanThisPDFUnavailable">Scan This PDF</button>';
 const disabledCurrentPdfExplanation =
   '<p id="scanThisPDFUnavailable">Scan This PDF is unavailable until a verified native scanner and trusted current-PDF selection are connected.</p>';
+const interceptionStatusSection =
+  '<section class="interception-state" aria-labelledby="interception-state-title">';
+const interceptionStatusTitle =
+  '<h2 id="interception-state-title">Automatic PDF interception</h2>';
+const interceptionStatusValue =
+  '<p id="automaticInterceptionEffectiveStatus" role="status">Status: Inactive</p>';
+const interceptionStatusExplanation =
+  '<p>No verified browser interception or native scan-before-render connection is active. Saved opt-in preferences do not change this status.</p>';
 const scanResultSection = '<section class="scan-result" aria-labelledby="explicit-pdf-result-title">';
 const scanResultTitle = '<h2 id="explicit-pdf-result-title">Scan result</h2>';
 const scanResultPlaceholder = '<p id="explicitPdfScanResult" role="status" aria-live="polite">No verified scan result is available.</p>';
@@ -24,6 +32,10 @@ export function validatePopupAsset(name, content) {
       !content || content.length > 8192 ||
       (name === "popup.html"
         ? (content.split(preferencesAction).length !== 2 ||
+           content.split(interceptionStatusSection).length !== 2 ||
+           content.split(interceptionStatusTitle).length !== 2 ||
+           content.split(interceptionStatusValue).length !== 2 ||
+           content.split(interceptionStatusExplanation).length !== 2 ||
            content.split(scanResultSection).length !== 2 ||
            content.split(scanResultTitle).length !== 2 ||
            content.split(scanResultPlaceholder).length !== 2 ||
@@ -37,6 +49,10 @@ export function validatePopupAsset(name, content) {
              .replace(disabledScanExplanation, "")
              .replace(disabledCurrentPdfControl, "")
              .replace(disabledCurrentPdfExplanation, "")
+             .replace(interceptionStatusSection, "")
+             .replace(interceptionStatusTitle, "")
+             .replace(interceptionStatusValue, "")
+             .replace(interceptionStatusExplanation, "")
              .replace(scanResultSection, "")
              .replace(scanResultTitle, "")
              .replace(scanResultPlaceholder, "")))

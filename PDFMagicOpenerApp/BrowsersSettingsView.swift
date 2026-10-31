@@ -74,6 +74,10 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  // No shipped WebExtension has a verified before-render interception gate.
+  // This is effective deployment status, NEVER the saved opt-in preference.
+  // A future integration must replace this value only after live verification.
+  private let effectiveAutomaticInterceptionStatus = "Inactive"
   @State private var automaticInterceptionBrowsers: [PDFBrowserOption] = []
   @State private var automaticInterceptionOptIns: [String: Bool] = [:]
   @State private var automaticInterceptionStatus: String?
@@ -301,6 +305,13 @@ struct BrowsersSettingsView: View {
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
 
+            LabeledContent("Effective interception status", value: effectiveAutomaticInterceptionStatus)
+              .accessibilityIdentifier("automaticPDFInterceptionEffectiveStatus")
+            Text("No browser has a verified automatic PDF scan-before-render connection. The opt-in toggles below only save future preferences.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
             ForEach(automaticInterceptionBrowsers) { browser in
               VStack(alignment: .leading, spacing: 4) {
                 Text(browser.name)
@@ -310,6 +321,9 @@ struct BrowsersSettingsView: View {
                   set: { updateAutomaticInterceptionOptIn($0, browserID: browser.id) }
                 ))
                 .accessibilityIdentifier("enableAutomaticPDFInterceptionToggle-\(browser.id)")
+                LabeledContent("Interception status", value: effectiveAutomaticInterceptionStatus)
+                  .font(.footnote)
+                  .accessibilityIdentifier("automaticPDFInterceptionEffectiveStatus-\(browser.id)")
               }
             }
 
