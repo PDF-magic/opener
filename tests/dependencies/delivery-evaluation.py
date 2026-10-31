@@ -78,7 +78,7 @@ class DependencyDeliveryDecisionTests(unittest.TestCase):
         versions = [line.strip() for line in requirements.splitlines()
                     if line.strip() and not line.lstrip().startswith("#")]
         self.assertEqual(len(versions), 1)
-        self.assertRegex(versions[0], r"^pypdf==[0-9]+\\.[0-9]+\\.[0-9]+$")
+        self.assertRegex(versions[0], r"^pypdf==[0-9]+\.[0-9]+\.[0-9]+$")
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertNotIn("pip install", installer)
         self.assertNotIn("requirements-enhanced-pdf", installer)
