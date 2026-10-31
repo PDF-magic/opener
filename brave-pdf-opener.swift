@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import UserNotifications
+import CryptoKit
 import Darwin
 
 // BEGIN NATIVE DIRECT PROCESS GATE
@@ -93,27 +94,51 @@ func recordNativeScanOrigin(script: URL, path: String, environment: [String: Str
 }
 // END NATIVE DIRECT PROCESS GATE
 
-// The native PDF owner (not the standalone Settings app) requests macOS
-// notification authorization on the first opted-in successful handoff.
-// Notification delivery is best effort, never part of the scan verdict.
-// Never put document paths, names, or scan diagnostics in notifications.
-func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
+// Stable opaque identifiers let the notification center recognize repeated
+// notices for the same canonical document and result, even across helper runs.
+// Never embed document names, paths, scanner diagnostics, or browser choices.
+func scanNotificationIdentifier(path: String, kind: String) -> String {
+    let digest = SHA256.hash(data: Data(path.utf8))
+    let opaquePath = digest.map { String(format: "%02x", $0) }.joined()
+    return "pdf-magic-opener.scan.\(kind).\(opaquePath)"
+}
+
+// Notification delivery is optional and cannot change a scan verdict or
+// mandatory failure alert. Ignore recent delivered or still-pending notices.
+private func deliverScanNotification(body: String, identifier: String,
+                                     completion: @escaping () -> Void) {
     let center = UNUserNotificationCenter.current()
-    func enqueue() {
-        let content = UNMutableNotificationContent()
-        content.title = "PDF Magic Opener"
-        content.body = "A PDF passed scanning and was handed off to your chosen application."
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                            content: content, trigger: nil)
-        center.add(request) { _ in completion() }
+    func enqueueIfUnique() {
+        center.getDeliveredNotifications { delivered in
+            center.getPendingNotificationRequests { pending in
+                let recent = delivered.map {
+                    (identifier: $0.request.identifier, date: $0.date)
+                }
+                guard ScanNotificationDeduplication.shouldQueue(
+                    identifier: identifier,
+                    delivered: recent,
+                    pendingIdentifiers: pending.map { $0.identifier },
+                    now: Date()
+                ) else {
+                    completion()
+                    return
+                }
+                let content = UNMutableNotificationContent()
+                content.title = "PDF Magic Opener"
+                content.body = body
+                let request = UNNotificationRequest(identifier: identifier,
+                                                    content: content, trigger: nil)
+                center.add(request) { _ in completion() }
+            }
+        }
     }
     center.getNotificationSettings { settings in
         switch settings.authorizationStatus {
         case .authorized, .provisional:
-            enqueue()
+            enqueueIfUnique()
         case .notDetermined:
             center.requestAuthorization(options: [.alert]) { allowed, _ in
-                if allowed { enqueue() } else { completion() }
+                if allowed { enqueueIfUnique() } else { completion() }
             }
         default:
             // Denied or restricted by macOS: never bypass system permissions.
@@ -122,32 +147,22 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
     }
 }
 
-// This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool, completion: @escaping () -> Void) {
-    let center = UNUserNotificationCenter.current()
-    func enqueue() {
-        let content = UNMutableNotificationContent()
-        content.title = "PDF Magic Opener"
-        // Confirmed malware takes precedence over scan failures.
-        content.body = malwareDetected
-            ? "Malware was detected. The PDF was blocked and was not opened."
-            : (scanFailed
-                ? "A PDF scan failed or could not finish. The file was not opened."
-                : "A PDF could not be opened because its safety check failed.")
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                            content: content, trigger: nil)
-        center.add(request) { _ in completion() }
-    }
-    center.getNotificationSettings { settings in
-        switch settings.authorizationStatus {
-        case .authorized, .provisional: enqueue()
-        case .notDetermined:
-            center.requestAuthorization(options: [.alert]) { allowed, _ in
-                if allowed { enqueue() } else { completion() }
-            }
-        default: completion()
-        }
-    }
+func deliverSuccessfulScanNotification(identifier: String,
+                                       completion: @escaping () -> Void) {
+    deliverScanNotification(
+        body: "A PDF passed scanning and was handed off to your chosen application.",
+        identifier: identifier, completion: completion)
+}
+
+// Confirmed malware takes precedence over scan failures; never deliver both.
+func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
+                                    identifier: String, completion: @escaping () -> Void) {
+    let body = malwareDetected
+        ? "Malware was detected. The PDF was blocked and was not opened."
+        : (scanFailed
+            ? "A PDF scan failed or could not finish. The file was not opened."
+            : "A PDF could not be opened because its safety check failed.")
+    deliverScanNotification(body: body, identifier: identifier, completion: completion)
 }
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
@@ -328,6 +343,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
     private var pendingSuccessNotifications = 0
+    // Short-lived, synchronized reservation closes in-process callback races.
+    private let notificationReservations = ScanNotificationReservation()
 
     func applicationWillTerminate(_ notification: Notification) {
         terminating = true
@@ -575,18 +592,25 @@ DispatchQueue.main.async {
                     failure: failure, cancelled: cancelled
                 )
                 if blockedNotificationKind != .none {
-                    self.pendingSuccessNotifications += 1
-                    deliverBlockedFileNotification(
-                        malwareDetected: blockedNotificationKind == .malwareDetected,
-                        scanFailed: FailedScanNotificationClassification.shouldShowFailedScanNotice(
-                            failure: failure, cancelled: cancelled
-                        )
-                    ) { [weak self] in
-                        DispatchQueue.main.async {
-                            guard let self else { return }
-                            self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
-                                NSApp.terminate(nil)
+                    let scanFailed = FailedScanNotificationClassification.shouldShowFailedScanNotice(
+                        failure: failure, cancelled: cancelled
+                    )
+                    let kind = blockedNotificationKind == .malwareDetected
+                        ? "malware" : (scanFailed ? "failed" : "blocked")
+                    let identifier = scanNotificationIdentifier(path: path, kind: kind)
+                    if self.notificationReservations.reserve(identifier) {
+                        self.pendingSuccessNotifications += 1
+                        deliverBlockedFileNotification(
+                            malwareDetected: blockedNotificationKind == .malwareDetected,
+                            scanFailed: scanFailed,
+                            identifier: identifier
+                        ) { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self else { return }
+                                self.pendingSuccessNotifications -= 1
+                                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                                    NSApp.terminate(nil)
+                                }
                             }
                         }
                     }
@@ -594,13 +618,16 @@ DispatchQueue.main.async {
                 if SuccessfulScanNotificationPreference.shouldNotify(
                     failure: failure, cancelled: cancelled
                 ) {
-                    self.pendingSuccessNotifications += 1
-                    deliverSuccessfulScanNotification { [weak self] in
-                        DispatchQueue.main.async {
-                            guard let self else { return }
-                            self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
-                                NSApp.terminate(nil)
+                    let identifier = scanNotificationIdentifier(path: path, kind: "success")
+                    if self.notificationReservations.reserve(identifier) {
+                        self.pendingSuccessNotifications += 1
+                        deliverSuccessfulScanNotification(identifier: identifier) { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self else { return }
+                                self.pendingSuccessNotifications -= 1
+                                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                                    NSApp.terminate(nil)
+                                }
                             }
                         }
                     }

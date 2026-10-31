@@ -42,6 +42,46 @@ enum ScanProgressPreference {
 }
 
 
+// Presentation-only duplicate suppression. This never persists scan paths,
+// alters user preferences, or controls blocking/scan decisions. The 30-second
+// window only suppresses repeats of the same document AND outcome.
+enum ScanNotificationDeduplication {
+  static let repeatWindow: TimeInterval = 30
+
+  static func shouldQueue(
+    identifier: String,
+    delivered: [(identifier: String, date: Date)],
+    pendingIdentifiers: [String],
+    now: Date
+  ) -> Bool {
+    if pendingIdentifiers.contains(identifier) { return false }
+    return !delivered.contains { notice in
+      guard notice.identifier == identifier else { return false }
+      let age = now.timeIntervalSince(notice.date)
+      return age >= 0 && age < repeatWindow
+    }
+  }
+}
+
+// Reserve before asynchronous permission/delivery callbacks to prevent
+// simultaneous attempts in one helper process. No disk writes or path storage.
+final class ScanNotificationReservation {
+  private let lock = NSLock()
+  private var recent: [String: Date] = [:]
+
+  func reserve(_ identifier: String, now: Date = Date()) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    recent = recent.filter { _, timestamp in
+      let age = now.timeIntervalSince(timestamp)
+      return age >= 0 && age < ScanNotificationDeduplication.repeatWindow
+    }
+    guard recent[identifier] == nil else { return false }
+    recent[identifier] = now
+    return true
+  }
+}
+
 // Opt-in presentation only: the scan gate never consults this setting.
 // The same suite is readable by the separately installed PDF opener.
 enum SuccessfulScanNotificationPreference {
