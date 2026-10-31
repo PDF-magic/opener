@@ -109,10 +109,12 @@ class NonexistentFilePathTests(unittest.TestCase):
         existing.write_bytes(original)
         alias = self.root / "valid alias.pdf"
         alias.symlink_to(existing)
+        canonical = existing.resolve(strict=True)
+        # macOS temporary directories may use /var -> /private/var aliases.
         for path in (existing, alias):
             with self.subTest(path=path.name):
-                self.assertEqual(gate.validate_scan_request(path), existing)
-                self.assertEqual(gate.supported_request_path(path), existing)
+                self.assertEqual(gate.validate_scan_request(path), canonical)
+                self.assertEqual(gate.supported_request_path(path), canonical)
         self.assertEqual(existing.read_bytes(), original)
 
 
