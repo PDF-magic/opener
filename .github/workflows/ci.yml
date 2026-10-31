@@ -262,6 +262,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
         run: PYTHONPATH=. python3 tests/signature/network-interruptions.py -v
+      - name: Detect installed signature-update LaunchAgents without changing user settings
+        run: PYTHONPATH=. python3 tests/signature/existing-agent-detection.py -v
       - name: Recover the signature update agent after a simulated system restart
         run: PYTHONPATH=. python3 tests/signature/agent-restart.py -v
       - name: Keep scanned document contents out of ClamAV update traffic
