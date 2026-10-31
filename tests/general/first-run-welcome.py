@@ -67,6 +67,48 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertNotIn("automatically sets your default", source.lower())
     self.assertNotIn("guarantees safety", source.lower())
 
+  def test_first_run_browser_choice_reuses_verified_selector_only_on_save(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    helper = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text(
+      encoding="utf-8"
+    )
+    for expected in (
+      'GroupBox("Default PDF browser")',
+      'Picker("Browser for scanned PDFs", selection: $selectedBrowserID)',
+      "DefaultPDFBrowserPreferences.discover()",
+      "DefaultPDFBrowserPreferences.currentSelection()",
+      "savedBrowserID = existing",
+      "selectedBrowserID = existing",
+      "Existing custom or unavailable selection (preserved)",
+      'Button("Save browser choice", action: saveBrowserChoice)',
+      "selectedBrowserID != savedBrowserID",
+      "installedBrowserOptions.first(where: { $0.id == selectedBrowserID })",
+      "DefaultPDFBrowserPreferences.saveVerified(option)",
+      "selectedBrowserID = savedBrowserID",
+      ".disabled(savingBrowserChoice)",
+      ".onAppear(perform: loadBrowserChoice)",
+      'accessibilityIdentifier("firstRunPDFBrowserSelector")',
+      'accessibilityIdentifier("firstRunSavePDFBrowserButton")',
+      'accessibilityIdentifier("firstRunPDFBrowserStatus")',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, source)
+
+    loading = source.split("private func loadBrowserChoice()", 1)[1].split(
+      "private func saveBrowserChoice()", 1
+    )[0]
+    self.assertNotIn("saveVerified(", loading)
+    self.assertNotIn("FirstRunWelcomeState.acknowledge()", loading)
+    saving = source.split("private func saveBrowserChoice()", 1)[1].split(
+      "var body: some View", 1
+    )[0]
+    self.assertIn("if saved {", saving)
+    self.assertIn("} else {", saving)
+    self.assertNotIn("FirstRunWelcomeState.acknowledge()", saving)
+    self.assertIn("select-custom-pdf-application.py", helper)
+    self.assertIn("values.isSymbolicLink != true", helper)
+    self.assertNotIn("LSSetDefault", source)
+
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
     self.assertIn('acknowledgementKey = "firstRunWelcomeAcknowledged.v1"', state)
