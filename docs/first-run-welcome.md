@@ -10,15 +10,24 @@ It then explains the existing local scanner gate, the user's selected PDF
 application, and where to review settings. It does **not** claim that ClamAV
 is installed, that a PDF has already been scanned, or that scans guarantee safety.
 
+The welcome also offers an optional **Set PDF Magic Opener as Default** button.
+Only selecting that button invokes the already installed, verified PDF handler
+registration helper. The helper rejects missing or invalid installations and
+requires a successful Launch Services read-back before reporting success. A
+failed setup shows a message and leaves the welcome available; it never claims
+the PDF association changed. This action does not replace the chosen PDF viewer
+or alter scanner policy. **Continue to Preferences** skips the optional action.
+
 Selecting **Continue to Preferences** records the versioned welcome
 acknowledgement in the **preferences app's own UserDefaults** and displays the
 unchanged main Preferences view. Future launches go straight to Preferences.
 Closing the window without continuing leaves the welcome pending. The macOS
 Settings window remains directly accessible through Command-comma.
 
-The welcome neither changes the configured PDF browser nor macOS PDF default,
-starts malware scans, provisions dependencies, changes protection policies,
-updates signatures, or replaces any user customization. The separate native
+Simply displaying or continuing past the welcome does not change the configured
+PDF browser or macOS PDF default, start malware scans, provision dependencies,
+change protection policies, update signatures, or replace user customizations.
+The macOS PDF association can change only through the separate explicit button. The separate native
 PDF handler and its fail-closed scanner admission continue to work independently
 even if the user never acknowledges the welcome.
 

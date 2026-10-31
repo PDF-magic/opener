@@ -26,6 +26,8 @@ struct FirstRunWelcomeGate<Content: View>: View {
 
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
+  @State private var isSettingDefault = false
+  @State private var defaultResultMessage: String?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -46,11 +48,37 @@ struct FirstRunWelcomeView: View {
 
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
-            Text("Use Preferences to review your selected PDF application and macOS default-handler status. This welcome does not change either selection.")
+            Text("Use Preferences to review your selected PDF viewer. This welcome preserves your viewer choice, and macOS’s default PDF association changes only if you explicitly request it below.")
 
             Label("Existing settings are preserved", systemImage: "gearshape")
               .font(.headline)
             Text("Continuing only opens Preferences. It does not install software, start scans, alter protection settings, or reset your customizations.")
+          }
+          .fixedSize(horizontal: false, vertical: true)
+
+          VStack(alignment: .leading, spacing: 10) {
+            Label("Default PDF app (optional)", systemImage: "doc.badge.gearshape")
+              .font(.headline)
+            Text("Make the installed PDF Magic Opener scan handler the macOS default for PDFs, or skip this step. Your chosen PDF viewer and scanning preferences are not changed.")
+              .foregroundStyle(.secondary)
+            Button("Set PDF Magic Opener as Default") {
+              setDefaultPDFAppOnUserRequest()
+            }
+            .disabled(isSettingDefault)
+            .accessibilityIdentifier("firstRunSetDefaultPDFAppButton")
+            .accessibilityHint("Changes the macOS PDF association only when you choose this button.")
+
+            if isSettingDefault {
+              ProgressView("Verifying the installed PDF scan handler…")
+            }
+
+            if let defaultResultMessage {
+              Text(defaultResultMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("firstRunDefaultPDFAppResult")
+            }
           }
           .fixedSize(horizontal: false, vertical: true)
         }
@@ -69,5 +97,25 @@ struct FirstRunWelcomeView: View {
     .padding(28)
     .frame(minWidth: 680, minHeight: 420)
     .accessibilityIdentifier("firstRunWelcomeScreen")
+  }
+
+  private func setDefaultPDFAppOnUserRequest() {
+    guard !isSettingDefault else { return }
+    isSettingDefault = true
+    defaultResultMessage = nil
+    // Reuse the installed scan-handler verifier; never register the
+    // standalone preferences app or bypass the existing safety checks.
+    PDFDefaultApplicationAction.request(
+      at: PDFDefaultApplicationAction.installedHandler,
+      runHelper: PDFDefaultApplicationAction.launchInstalledHelper,
+      currentPDFHandler: PDFDefaultApplicationAction.currentPDFHandler
+    ) { success in
+      DispatchQueue.main.async {
+        isSettingDefault = false
+        defaultResultMessage = success
+          ? "PDF Magic Opener is now the macOS default PDF application."
+          : "The default could not be verified. Install the PDF Magic Opener scan handler or review the default PDF app in Preferences."
+      }
+    }
   }
 }
