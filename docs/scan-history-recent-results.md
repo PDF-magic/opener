@@ -21,7 +21,8 @@ state, not invented scan outcomes.
 
 The reader validates a user-owned private directory (0700 or more restrictive),
 a regular user-owned private database (0600 or more restrictive), refuses
-symlinks and unexpected columns, and validates every displayed status,
+symlinks via a no-follow read descriptor and verifies file identity around the
+SQLite read, rejects unexpected columns, and validates every displayed status,
 timestamp, version and profile. It never reads document contents, filenames,
 paths, URL histories or embedded attachments.
 
