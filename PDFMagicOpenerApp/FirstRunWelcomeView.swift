@@ -26,6 +26,7 @@ struct FirstRunWelcomeGate<Content: View>: View {
 
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
+  @State private var showingFinderQuickActionSetup = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -51,6 +52,35 @@ struct FirstRunWelcomeView: View {
             Label("Existing settings are preserved", systemImage: "gearshape")
               .font(.headline)
             Text("Continuing only opens Preferences. It does not install software, start scans, alter protection settings, or reset your customizations.")
+
+            Label("Optional Finder Quick Action", systemImage: "folder")
+              .font(.headline)
+            Text("Would you like to configure the Finder “Allow and Open” Quick Action? This is optional. Your existing Finder actions are not changed by this welcome.")
+            Button("Configure Finder Quick Action…") {
+              showingFinderQuickActionSetup = true
+            }
+            .accessibilityIdentifier("firstRunConfigureFinderQuickActionButton")
+
+            if showingFinderQuickActionSetup {
+              VStack(alignment: .leading, spacing: 10) {
+                Text("Finder Quick Action setup")
+                  .font(.headline)
+                Text("The installer requires an existing “Allow and Open” Quick Action. If it is missing, create a Quick Action with that name in Automator before installing. Do not replace a customized workflow.")
+                Text("From a trusted PDF Magic Opener checkout, run bash install-allow-and-open.sh as your regular macOS user, without sudo. Follow its prompts. An unrecognized or customized Finder action is not silently replaced.")
+                Link(
+                  "Read the installation instructions",
+                  destination: URL(string: "https://github.com/PDF-magic/opener#installation-and-usage")!
+                )
+                Button("Not now") {
+                  showingFinderQuickActionSetup = false
+                }
+                .accessibilityIdentifier("firstRunDeferFinderQuickActionButton")
+              }
+              .padding(12)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+              .accessibilityIdentifier("firstRunFinderQuickActionInstructions")
+            }
           }
           .fixedSize(horizontal: false, vertical: true)
         }

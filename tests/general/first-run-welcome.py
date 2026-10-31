@@ -67,6 +67,35 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertNotIn("automatically sets your default", source.lower())
     self.assertNotIn("guarantees safety", source.lower())
 
+  def test_finder_quick_action_is_offered_without_silent_configuration(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    for expected in (
+      'Label("Optional Finder Quick Action"',
+      'Button("Configure Finder Quick Action…")',
+      'showingFinderQuickActionSetup = true',
+      'if showingFinderQuickActionSetup',
+      'The installer requires an existing “Allow and Open” Quick Action.',
+      'install-allow-and-open.sh',
+      'without sudo',
+      'unrecognized or customized Finder action is not silently replaced',
+      'Button("Not now")',
+      'showingFinderQuickActionSetup = false',
+      'accessibilityIdentifier("firstRunConfigureFinderQuickActionButton")',
+      'accessibilityIdentifier("firstRunFinderQuickActionInstructions")',
+      'https://github.com/PDF-magic/opener#installation-and-usage',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, source)
+    # Merely showing the offer, deferring it, or following the guide must
+    # never acknowledge first run or touch the scanning/installation path.
+    setup = source.split('Label("Optional Finder Quick Action"', 1)[1].split(
+      "\n          }\n          .fixedSize", 1)[0]
+    for forbidden in ("FirstRunWelcomeState.acknowledge()", "Process(",
+                      "NSWorkspace", "FileManager", "UserDefaults", "clamscan",
+                      "scan_and_open", "LSSetDefault", "write(to:"):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, setup)
+
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
     self.assertIn('acknowledgementKey = "firstRunWelcomeAcknowledged.v1"', state)
