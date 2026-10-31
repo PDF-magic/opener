@@ -105,3 +105,23 @@ as the existing heading. It does not infer status from file content, scanner
 logs, document names or user preferences, and it does not grant permission
 to open a PDF. Portable contract tests and the macOS AppKit rendering harness
 cover every canonical outcome, accessibility, isolation and reset in required CI.
+
+
+## Copy Diagnostic Details (opener-0886)
+
+The reusable native summary now includes an accessible **Copy Diagnostic Details**
+button that writes a fresh, plain-text report to the macOS clipboard. It contains
+the trusted canonical status code, fixed heading and explanation, a validated
+local document basename (or `Unavailable`), typed protection level with its
+preview-only warning, and trusted sanitization state when available. A missing result is `unavailable`.
+
+For a supplied local document URL, the report says `Document path: [redacted]`
+instead of retaining or exporting the private directory or absolute URL. Absent
+and remote URLs say `Not provided`. The report is built from typed values and
+fixed strings, not raw scanner stdout/stderr, PDF content, exception messages,
+mutable UI labels or arbitrary diagnostics. Reset and each new result discard
+the preceding path flag and document name. Copying does not authorize opening,
+run a scanner, change preferences or collect telemetry.
+
+The existing portable and macOS CI suites test accessibility, actual clipboard
+writes, status parity, path redaction, unsafe names and reset semantics.

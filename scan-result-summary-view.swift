@@ -150,6 +150,11 @@ final class ScanResultSummaryView: NSView {
     let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
     let technicalDetailsButton = NSButton(title: "Show technical details", target: nil, action: nil)
     let technicalDetailsLabel = NSTextField(wrappingLabelWithString: "")
+    let copyDiagnosticDetailsButton = NSButton(
+        title: "Copy Diagnostic Details", target: nil, action: nil)
+    // Retain only safe presentation data, never the private directory or URL.
+    private var diagnosticDocumentName = "Unavailable"
+    private var diagnosticHasLocalPath = false
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
     private(set) var displayedSanitization: ScanResultSummarySanitization?
@@ -203,10 +208,16 @@ final class ScanResultSummaryView: NSView {
         technicalDetailsLabel.maximumNumberOfLines = 0
         technicalDetailsLabel.setAccessibilityIdentifier("scanResultSummaryTechnicalDetails")
 
+        copyDiagnosticDetailsButton.setAccessibilityIdentifier("scanResultSummaryCopyDiagnostics")
+        copyDiagnosticDetailsButton.setAccessibilityLabel("Copy Diagnostic Details")
+        copyDiagnosticDetailsButton.bezelStyle = .rounded
+        copyDiagnosticDetailsButton.target = self
+        copyDiagnosticDetailsButton.action = #selector(copyDiagnosticDetails(_:))
+
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
             sanitizationLabel, malwareStatusLabel, explanationLabel,
-            technicalDetailsButton, technicalDetailsLabel
+            technicalDetailsButton, technicalDetailsLabel, copyDiagnosticDetailsButton
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -275,7 +286,9 @@ final class ScanResultSummaryView: NSView {
         let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
         sanitizationLabel.stringValue = sanitizationCopy
         sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
-        let document = "Document: " + Self.displayDocumentName(documentURL)
+        diagnosticDocumentName = Self.displayDocumentName(documentURL)
+        diagnosticHasLocalPath = documentURL?.isFileURL == true
+        let document = "Document: " + diagnosticDocumentName
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
         let protection = selectedProtectionLevel?.displayText
@@ -318,6 +331,32 @@ final class ScanResultSummaryView: NSView {
         default:
             headingLabel.textColor = .systemOrange
         }
+    }
+
+    // Copy only canonical result values and fixed explanations, never raw scanner
+    // output, exception text, PDF contents, filesystem paths or mutable labels.
+    func diagnosticDetailsForCopy() -> String {
+        let copy = ScanResultSummaryCopy.forStatus(displayedStatus)
+        let protection = displayedProtectionLevel?.displayText
+            ?? "Selected protection level: Unavailable"
+        let sanitization = displayedSanitization?.displayText ?? "Sanitization: Unavailable"
+        return [
+            "PDF Magic Opener — Scan diagnostic details",
+            "Status: " + (displayedStatus?.rawValue ?? "unavailable"),
+            "Document: " + diagnosticDocumentName,
+            "Document path: " + (diagnosticHasLocalPath ? "[redacted]" : "Not provided"),
+            protection,
+            sanitization,
+            "Summary: " + copy.heading,
+            "Details: " + copy.explanation,
+            "This report is informational; it does not authorize opening."
+        ].joined(separator: "\n")
+    }
+
+    @objc private func copyDiagnosticDetails(_ sender: Any?) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(diagnosticDetailsForCopy(), forType: .string)
     }
 
     func reset() {
