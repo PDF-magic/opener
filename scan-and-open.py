@@ -1039,7 +1039,12 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
     # Stable legacy hook: leave com.apple.quarantine and Gatekeeper protections intact.
     remove_quarantine(path)
     # Quarantine is no longer stripped; reject unexpected metadata/ctime changes.
-    verify_selected_file()
+    # Keep the explicit final file-integrity call visible to the launch guard.
+    if symbolic_link_identity(item) != selection:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    verify_file_integrity(path, before, identity)
+    if symbolic_link_identity(item) != selection:
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
     if is_pdf:
         verify_local_file_available(path)
     # The scan engine does not select an application or browser.
