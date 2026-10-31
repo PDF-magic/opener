@@ -138,7 +138,7 @@ class TerminationTests(unittest.TestCase):
                         with sqlite3.connect(self.cache_db) as connection:
                             self.assertEqual(connection.execute(
                                 'SELECT COUNT(*) FROM clean_scans').fetchone()[0], 0)
-                    self.assertEqual(self.document.read_bytes(), b'%PDF-1.4\\ntest document')
+                    self.assertEqual(self.document.read_bytes(), b'%PDF-1.4\ntest document')
                 finally:
                     if child.poll() is None:
                         child.kill()
