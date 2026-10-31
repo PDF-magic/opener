@@ -44,7 +44,7 @@ class NotificationsWhileMainAppClosedTests(unittest.TestCase):
     workflow = WORKFLOW.read_text()
     self.assertIn("tests/notifications/main-app-closed.py -v", workflow)
     self.assertIn("tests/notifications/main-app-closed.py --live -v", workflow)
-    self.assertIn("test-notifications-main-app-closed.swift", workflow)
+    self.assertTrue((ROOT / "test-notifications-main-app-closed.swift").is_file())
     self.assertIn("Build SwiftUI application target without registering PDF handling", workflow)
 
   @unittest.skipUnless(sys.platform == "darwin" and "--live" in sys.argv,
