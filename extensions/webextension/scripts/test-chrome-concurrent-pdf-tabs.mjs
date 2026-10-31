@@ -134,10 +134,22 @@ async function inspect(tab) {
   const { root } = await command("DOM.getDocument", {
     depth: -1, pierce: true
   }, tab.sessionId);
+  const evaluated = await command("Runtime.evaluate", {
+    expression: "({ mime: document.contentType, embeds: document.querySelectorAll('embed').length, ready: document.readyState })",
+    returnByValue: true
+  }, tab.sessionId);
+  const { targetInfos } = await command("Target.getTargets");
   return {
     url: frameTree.frame?.url,
     // Never use a global viewer target: a PDF in another tab cannot count.
-    hasOwnViewer: viewerFrame(frameTree) || viewerEmbed(root)
+    hasOwnViewer: viewerFrame(frameTree) || viewerEmbed(root),
+    mime: evaluated.result?.value?.mime || null,
+    embeds: evaluated.result?.value?.embeds || 0,
+    rootName: root?.nodeName || null,
+    subframeCount: frameTree.childFrames?.length || 0,
+    viewerTargets: targetInfos.filter(info => viewerUrl.test(info.url || ""))
+      .map(info => ({ type: info.type, openerId: info.openerId || null,
+        targetIsOneOfTabs: targets.some(tab => tab.targetId === info.targetId) }))
   };
 }
 
@@ -239,7 +251,11 @@ try {
     }, "independent built-in viewer for " + tab.route).catch(error => {
       console.error("Chrome tab-local viewer status:", {
         route: tab.route, correctURL: lastObservation?.url === tab.url,
-        hasOwnViewer: lastObservation?.hasOwnViewer
+        hasOwnViewer: lastObservation?.hasOwnViewer,
+        mime: lastObservation?.mime, embeds: lastObservation?.embeds,
+        rootName: lastObservation?.rootName,
+        subframeCount: lastObservation?.subframeCount,
+        viewerTargets: lastObservation?.viewerTargets
       });
       throw error;
     });
