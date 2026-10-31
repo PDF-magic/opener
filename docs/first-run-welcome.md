@@ -27,11 +27,23 @@ helper; if it is unavailable, saving fails without weakening scan protections.
 The picker never changes the macOS default PDF handler. Users may skip it and
 continue with all settings untouched.
 
-Selecting **Continue to Preferences** records the versioned welcome
-acknowledgement in the **preferences app's own UserDefaults** and displays the
-unchanged main Preferences view. Future launches go straight to Preferences.
-Closing the window without continuing leaves the welcome pending. The macOS
-Settings window remains directly accessible through Command-comma.
+Before continuing, the user must explicitly choose **Standard**, **Enhanced**
+or **Maximum** as an initial *future-profile preference*. The choice is saved
+only when **Continue to Preferences** is selected, using the existing
+`preferredProtectionLevel` preference and its schema and safety validation.
+Previously selected preferences are displayed without being overwritten. An
+invalid or missing choice, unsupported configuration or failed save does not
+complete the welcome. The versioned welcome acknowledgement is then recorded
+in the **preferences app's own UserDefaults** and the unchanged main Preferences
+view opens. Future launches go straight to Preferences. Closing the window
+without continuing leaves the welcome pending. The macOS Settings window
+remains directly accessible through Command-comma.
+
+This initial choice is **not an active scanner protection profile**. The
+currently installed scanner only enforces Built-in ClamAV and fail-closed
+handoff. Standard, Enhanced and Maximum have planned controls and cannot be
+activated as effective protection until those controls are implemented and
+verified.
 
 If the user is offered a change to the macOS default PDF application, they
 may decline and keep their current handler. **Continue to Preferences** is
@@ -41,14 +53,16 @@ chosen post-scan PDF application.
 
 Without an explicit, verified browser save, the welcome neither changes the configured
 PDF browser nor macOS PDF default,
-starts malware scans, provisions dependencies, changes protection policies,
-updates signatures, or replaces any user customization. The separate native
+starts malware scans, provisions dependencies, activates planned protection
+policies, updates signatures, or replaces any other user customization. The separate native
 PDF handler and its fail-closed scanner admission continue to work independently
 even if the user never acknowledges the welcome.
 
 CI tests the native window's wiring and accessible labels, while an isolated
 UserDefaults suite verifies first-run, repeat-launch and acknowledgement
-behavior without accessing any installed user settings.
+behavior without accessing any installed user settings. A separate native
+regression tests explicit first-run protection choices, persistence after
+restart, and rejection without altering active scanner settings.
 
 ## Signature availability check (opener-0976)
 

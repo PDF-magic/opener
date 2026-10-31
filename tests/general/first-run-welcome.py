@@ -35,7 +35,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
       "ClamAV", "blocks opening",
       "does not change either selection",
       "does not install software",
-      'Button("Continue to Preferences", action: onContinue)',
+      'Button("Continue to Preferences", action: finishSetup)',
       'accessibilityIdentifier("firstRunWelcomeScreen")',
       'accessibilityIdentifier("firstRunContinueButton")',
     ):
@@ -129,6 +129,38 @@ class FirstRunWelcomeTests(unittest.TestCase):
                       "LSSetDefaultHandlerForURLScheme", "Process(",
                       "NSWorkspace(", "target-app.txt"):
       self.assertNotIn(forbidden, source)
+
+  def test_initial_protection_choice_is_explicit_and_non_enforcing(self):
+    view = WELCOME.read_text(encoding="utf-8")
+    shared = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(
+      encoding="utf-8")
+    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    for expected in (
+      "Choose your initial protection preference",
+      "Built-in ClamAV scanning and fail-closed opening remain the only active protection.",
+      "Preferred future protection profile",
+      "PreferredProtectionLevel.standard",
+      "PreferredProtectionLevel.enhanced",
+      "PreferredProtectionLevel.maximum",
+      'accessibilityIdentifier("firstRunProtectionProfilePicker")',
+      "InitialProtectionProfileChoice.save(initialProfile)",
+      ".disabled(initialProfile == nil)",
+      'accessibilityIdentifier("firstRunProtectionSaveError")',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, view)
+    self.assertLess(view.index("InitialProtectionProfileChoice.save(initialProfile)"),
+                    view.index("onContinue()"))
+    self.assertIn("guard let choice else { return false }", shared)
+    self.assertIn(
+      "PlannedProtectionLevelPreference.saveExplicitChoice(choice, defaults: defaults)",
+      shared)
+    self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn",
+                  shared)
+    self.assertNotIn("SelectedProtectionProfilePreference.save(", view)
+    self.assertIn("if not cached_clean(cache_id):", scanner)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("test-first-run-profile-choice.swift", ci)
 
   def test_first_run_explains_scanning_is_not_a_safety_guarantee(self):
     source = WELCOME.read_text(encoding="utf-8")
