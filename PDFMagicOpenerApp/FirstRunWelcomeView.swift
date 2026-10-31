@@ -26,6 +26,7 @@ struct FirstRunWelcomeGate<Content: View>: View {
 
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
+  @State private var signatureAvailability = FirstRunSignatureAvailability.readInstalled()
   @State private var initialProfile: PreferredProtectionLevel? =
     PlannedProtectionLevelPreference.selected()
   @State private var failedToSaveProfile = false
@@ -57,9 +58,19 @@ struct FirstRunWelcomeView: View {
               .font(.headline)
             Text("When PDFs are opened through the installed scan handler, a supported ClamAV scanner and recent malware definitions are required. If a scan cannot be verified, the handler blocks opening.")
 
+            Label("Signature availability", systemImage: "checkmark.shield")
+              .font(.headline)
+            Text(signatureAvailability.explanation)
+              .accessibilityIdentifier("firstRunSignatureAvailability")
+            Button("Check Signature Files Again") {
+              signatureAvailability = FirstRunSignatureAvailability.readInstalled()
+            }
+            .accessibilityIdentifier("firstRunRecheckSignatures")
+
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
             Text("Use Preferences to review your selected PDF application and macOS default-handler status. This welcome does not change either selection.")
+            Text("You can decline any offer to make PDF Magic Opener your default PDF application and keep your current macOS PDF handler. Continuing to Preferences does not approve or make a default-handler change.")
 
             Label("Existing settings are preserved", systemImage: "gearshape")
               .font(.headline)
@@ -73,23 +84,6 @@ struct FirstRunWelcomeView: View {
             Text("Built-in ClamAV scanning and fail-closed opening remain the only active protection. Standard, Enhanced and Maximum are future-profile preferences, not available scanner modes. Choosing one here does not enable its planned checks.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
-
-            Picker("Preferred future protection profile", selection: $initialProfile) {
-              Text("Not selected").tag(nil as PreferredProtectionLevel?)
-              Text("Standard — baseline safeguards").tag(Optional(PreferredProtectionLevel.standard))
-              Text("Enhanced — additional PDF checks planned").tag(Optional(PreferredProtectionLevel.enhanced))
-              Text("Maximum — isolated analysis planned").tag(Optional(PreferredProtectionLevel.maximum))
-            }
-            .pickerStyle(.radioGroup)
-            .accessibilityIdentifier("firstRunProtectionProfilePicker")
-
-            if failedToSaveProfile {
-              Text("Could not save your preference. Existing protection and settings are unchanged; please try again.")
-                .foregroundStyle(.red)
-                .accessibilityIdentifier("firstRunProtectionSaveError")
-            }
-          }
-          .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }

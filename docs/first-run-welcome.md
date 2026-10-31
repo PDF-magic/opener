@@ -28,6 +28,12 @@ handoff. Standard, Enhanced and Maximum have planned controls and cannot be
 activated as effective protection until those controls are implemented and
 verified.
 
+If the user is offered a change to the macOS default PDF application, they
+may decline and keep their current handler. **Continue to Preferences** is
+not consent to make PDF Magic Opener the default, and the welcome never
+changes the association. The default PDF handler is independent of the user's
+chosen post-scan PDF application.
+
 The welcome neither changes the configured PDF browser nor macOS PDF default,
 starts malware scans, provisions dependencies, activates planned protection
 policies, updates signatures, or replaces any other user customization. The separate native
@@ -39,3 +45,18 @@ UserDefaults suite verifies first-run, repeat-launch and acknowledgement
 behavior without accessing any installed user settings. A separate native
 regression tests explicit first-run protection choices, persistence after
 restart, and rejection without altering active scanner settings.
+
+## Signature availability check (opener-0976)
+
+On first run, the welcome inspects only metadata for the established installed
+ClamAV signature directory and its main/daily .cvd or .cld files. It reports
+whether both required nonempty regular files are present, missing/incomplete,
+or unsafe/unreadable (including linked files). The user may recheck after
+installing or updating definitions; no update starts automatically.
+
+**Presence is not validity, freshness, or proof of a safe document.** This
+display-only check never reads the definition payload, runs a scanner, changes
+the installed database, or touches existing browser/protection preferences.
+The separate PDF scan gate continues to require validated, recent definitions
+and a clean scan before authorizing document opening. Native isolated tests
+and portable CI wiring checks exercise this behavior.
