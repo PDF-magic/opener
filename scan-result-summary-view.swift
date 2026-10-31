@@ -100,8 +100,10 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
+    let structureAnalysisLabel = NSTextField(labelWithString: "Structure analysis: Unavailable")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedStructureAnalysisCompleted: Bool?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -134,9 +136,13 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.textColor = .secondaryLabelColor
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
+        structureAnalysisLabel.font = .systemFont(ofSize: 12)
+        structureAnalysisLabel.textColor = .secondaryLabelColor
+        structureAnalysisLabel.setAccessibilityIdentifier("scanResultSummaryStructureAnalysis")
 
         let stack = NSStackView(views: [
-            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel,
+            structureAnalysisLabel, explanationLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -176,14 +182,18 @@ final class ScanResultSummaryView: NSView {
 
     // Context comes from the trusted scan-request owner, never page contents
     // or extension messages. Unknown or absent selections stay unavailable.
-    // A new request clears any prior name, tier or successful scan result.
+    // Completion comes from the trusted coordinator, never from the scan
+    // verdict or an inactive protection-level preview. Unknown stays unknown.
+    // A new request clears prior context and completion evidence.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
-        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil
+        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        structureAnalysisCompleted: Bool? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
+        displayedStructureAnalysisCompleted = structureAnalysisCompleted
         let document = "Document: " + Self.displayDocumentName(documentURL)
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
@@ -191,6 +201,11 @@ final class ScanResultSummaryView: NSView {
             ?? "Selected protection level: Unavailable"
         selectedProtectionLevelLabel.stringValue = protection
         selectedProtectionLevelLabel.setAccessibilityLabel(protection)
+        let structure = structureAnalysisCompleted.map {
+            $0 ? "Structure analysis: Completed" : "Structure analysis: Not completed"
+        } ?? "Structure analysis: Unavailable"
+        structureAnalysisLabel.stringValue = structure
+        structureAnalysisLabel.setAccessibilityLabel(structure)
         let copy = ScanResultSummaryCopy.forStatus(status)
         headingLabel.stringValue = copy.heading
         explanationLabel.stringValue = copy.explanation

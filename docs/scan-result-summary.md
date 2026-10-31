@@ -50,3 +50,19 @@ Each new result update clears missing contextual fields, and `reset()`
 clears the document name, selected level and prior verdict together. The
 existing portable and macOS rendering suites verify Unicode, privacy,
 inactive-preview explanations, accessible labels and fail-closed reset behavior.
+
+## Structure analysis completion
+
+The optional `structureAnalysisCompleted: Bool?` parameter of `show` must
+come from a **trusted, request-correlated structure-analysis completion result**.
+`true` displays `Structure analysis: Completed`, `false` displays `Structure
+analysis: Not completed`, and `nil` displays `Structure analysis: Unavailable`.
+Unknown is the default and never means that analysis completed. The field
+is independently accessible and does not infer structural completion from
+any malware scan verdict or selected preview protection level.
+
+Each new `show` and `reset()` clears previously displayed completion if the
+caller provides no completion result. This presentation-only field does not
+launch or skip analysis, grant opening permission, modify scanner policy, or
+change stored preferences. Required macOS rendering and portable contract
+tests cover all three states, stale-state clearing, and instance isolation.

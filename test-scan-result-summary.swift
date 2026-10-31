@@ -20,6 +20,12 @@ struct ScanResultSummaryComponentTests {
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
+        precondition(first.structureAnalysisLabel.accessibilityIdentifier()
+                     == "scanResultSummaryStructureAnalysis")
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
+        precondition(first.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Unavailable")
+        precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         let expected = [
@@ -31,6 +37,9 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            precondition(first.displayedStructureAnalysisCompleted == nil)
+            precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
+                         "a scan verdict alone must not imply structural completion")
             precondition(!first.headingLabel.stringValue.isEmpty)
             precondition(!first.explanationLabel.stringValue.isEmpty)
             precondition(first.headingLabel.accessibilityLabel() == first.headingLabel.stringValue)
@@ -47,7 +56,8 @@ struct ScanResultSummaryComponentTests {
         }
 
         let target = URL(fileURLWithPath: "/Users/example/Private scans/März résumé 🦄.pdf")
-        first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn)
+        first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
+                   structureAnalysisCompleted: true)
         precondition(first.documentNameLabel.stringValue == "Document: März résumé 🦄.pdf")
         precondition(!first.documentNameLabel.stringValue.contains("/Users/"))
         precondition(first.documentNameLabel.accessibilityLabel()
@@ -57,11 +67,21 @@ struct ScanResultSummaryComponentTests {
         precondition(first.selectedProtectionLevelLabel.accessibilityLabel()
                      == "Selected protection level: Built-in")
         precondition(first.displayedProtectionLevel == .builtIn)
+        precondition(first.displayedStructureAnalysisCompleted == true)
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Completed")
+        precondition(first.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Completed")
         precondition(first.headingLabel.stringValue == "Scan complete")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
-                    selectedProtectionLevel: .enhanced)
+                    selectedProtectionLevel: .enhanced, structureAnalysisCompleted: false)
         precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(second.displayedStructureAnalysisCompleted == false)
+        precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Not completed")
+        precondition(second.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Not completed")
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Completed",
+                     "separate instances must not share completion state")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("Enhanced"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
@@ -90,6 +110,9 @@ struct ScanResultSummaryComponentTests {
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
+        precondition(first.displayedStructureAnalysisCompleted == nil)
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
+                     "new results without structural evidence must clear old completion")
         for unsafe in [
             "/tmp/line\nspoof.pdf",
             "/tmp/\u{202E}fdp.dab.pdf",
@@ -102,6 +125,10 @@ struct ScanResultSummaryComponentTests {
         first.reset()
         precondition(first.displayedStatus == nil)
         precondition(first.displayedProtectionLevel == nil)
+        precondition(first.displayedStructureAnalysisCompleted == nil)
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
+        precondition(first.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Unavailable")
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
@@ -109,6 +136,7 @@ struct ScanResultSummaryComponentTests {
         precondition(first.explanationLabel.stringValue.contains("not authorized"),
                      "reset must not leave stale clean status visible")
         precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Not completed")
         print("Reusable scan result summary component passed")
     }
 }
