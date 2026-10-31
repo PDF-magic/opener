@@ -11,8 +11,9 @@ struct TestFirstRunProfileChoice {
     defer { defaults.removePersistentDomain(forName: suite) }
 
     defaults.set("org.mozilla.firefox", forKey: "customPDFBrowser")
-    defaults.set(false, forKey: ScanProgressPreference.key)
     precondition(InitialConfiguration.createIfNeeded(defaults: defaults))
+    // An existing scan-progress key would make this a legacy installation.
+    defaults.set(false, forKey: ScanProgressPreference.key)
     let originalProfile = defaults.string(forKey: SelectedProtectionProfilePreference.key)
     precondition(originalProfile == "built-in")
     precondition(defaults.string(forKey: PlannedProtectionLevelPreference.key) ==
