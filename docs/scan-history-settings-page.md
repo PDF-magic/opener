@@ -10,8 +10,8 @@ log, or clean-scan cache must never be interpreted as consent.
 When enabled by a future, independently verified feature integration, the
 sidebar exposes a labeled **Scan History** destination and a passive page
 explaining its availability, privacy, and independent scanner safeguards.
-Keyboard next/previous navigation uses only visible destinations. If a stale
-history selection is encountered while disabled, the page is not rendered.
+Keyboard next/previous navigation uses only visible destinations. The
+selection starts in General, and the disabled history row cannot be selected.
 
 This task creates **no** history opt-in toggle, persistence, record-list
 viewer, export/clear action, retention policy, or change to existing

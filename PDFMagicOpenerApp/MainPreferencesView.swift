@@ -236,12 +236,7 @@ struct MainPreferencesView: View {
     case .privacyAndLogs:
       PrivacyAndLogsSettingsView()
     case .scanHistory:
-      // A stale selection must not expose history content when unavailable.
-      if scanHistoryEnabled {
-        ScanHistorySettingsView()
-      } else {
-        PrivacyAndLogsSettingsView()
-      }
+      ScanHistorySettingsView()
     }
   }
 }

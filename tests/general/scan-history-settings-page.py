@@ -21,7 +21,7 @@ class ScanHistorySettingsPageTests(unittest.TestCase):
     self.assertIn('case .scanHistory: return "Scan History"', main)
     self.assertIn('case .scanHistory: return "clock.arrow.circlepath"', main)
     self.assertIn("if section != .scanHistory || scanHistoryEnabled {", main)
-    self.assertRegex(main, r"(?s)case \.scanHistory:\s+.*?if scanHistoryEnabled \{\s+ScanHistorySettingsView\(\)")
+    self.assertRegex(main, r"case \.scanHistory:\s+ScanHistorySettingsView\(\)")
     self.assertNotIn("@AppStorage", main)
     self.assertNotIn("UserDefaults", main)
 
