@@ -19,17 +19,6 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
 
-class FailingReader:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        return False
-
-    def read(self, size=-1):
-        raise OSError("Private original filepath: source cannot be read")
-
-
 class UnreadableScanInputTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(prefix="unreadable-scan-")
@@ -39,7 +28,7 @@ class UnreadableScanInputTests(unittest.TestCase):
         self.contents = b"%PDF-1.4\nreadable document"
         self.pdf.write_bytes(self.contents)
 
-    def mock_file_open(self, target, *, fail_after=0, read_failure=False):
+    def mock_file_open(self, target, *, fail_after=0):
         original = Path.open
         calls = [0]
 
@@ -48,8 +37,6 @@ class UnreadableScanInputTests(unittest.TestCase):
             if path == target and mode == "rb":
                 calls[0] += 1
                 if calls[0] > fail_after:
-                    if read_failure:
-                        return FailingReader()
                     raise PermissionError("Private filename: access denied")
             return original(path, *args, **kwargs)
 
@@ -100,7 +87,7 @@ class UnreadableScanInputTests(unittest.TestCase):
         quarantine.assert_not_called()
 
     def test_read_failure_during_fingerprint_is_not_a_clean_verdict(self):
-        with self.mock_file_open(self.pdf, read_failure=True):
+        with patch.object(gate.os, "fdopen", side_effect=OSError("private read failure")):
             with self.assertRaises(RuntimeError) as failure:
                 gate.fingerprint(self.pdf)
         self.assertEqual(str(failure.exception), gate.UNREADABLE_SCAN_INPUT_MESSAGE)
@@ -108,7 +95,8 @@ class UnreadableScanInputTests(unittest.TestCase):
     def test_permission_revoked_after_admission_still_blocks_opening(self):
         # supported_request_path and validate_scan_request both succeed, but
         # the next read of the actual contents fails before cache or ClamAV.
-        with self.mock_file_open(self.pdf, fail_after=2, read_failure=True), \
+        with self.mock_file_open(self.pdf, fail_after=2), \
+                patch.object(gate.os, "fdopen", side_effect=OSError("private read failure")), \
                 patch.object(gate, "scan_slot", return_value=nullcontext()), \
                 patch.object(gate, "verify_local_file_available"), \
                 patch.object(gate, "intended_destination", return_value="com.brave.Browser"), \
@@ -129,7 +117,7 @@ class UnreadableScanInputTests(unittest.TestCase):
         member = bundle / "Contents" / "MacOS" / "viewer"
         member.parent.mkdir(parents=True)
         member.write_bytes(b"test executable")
-        with self.mock_file_open(member, read_failure=True):
+        with patch.object(gate.os, "fdopen", side_effect=OSError("private read failure")):
             with self.assertRaises(RuntimeError) as failure:
                 gate.fingerprint(bundle)
         self.assertEqual(str(failure.exception), gate.UNREADABLE_SCAN_INPUT_MESSAGE)

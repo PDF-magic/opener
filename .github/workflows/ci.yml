@@ -567,6 +567,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
       - name: Run scan-gate and request-metadata tests
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
+      - name: Verify scan input metadata and hashing use pinned file descriptors
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Reject unreadable scan files before scanning or cached opening
         run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
       - name: Reject inaccessible file and application paths before scanner admission
@@ -751,6 +753,8 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
+      - name: Verify descriptor-pinned scan inputs on macOS
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permissions on macOS
