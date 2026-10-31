@@ -10,6 +10,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createAuthenticatedPdfRoutes } from "./authenticated-pdf-routes.mjs";
+import {
+  LARGE_REMOTE_PDF_MIN_BYTES, createLargeRemotePdf,
+  createLargeRemotePdfRoute
+} from "./large-remote-pdf-fixture.mjs";
 
 const firefox = process.argv[2] || process.env.FIREFOX_PATH;
 const driverBinary = process.argv[3] || process.env.GECKODRIVER_PATH || "geckodriver";
@@ -46,10 +50,12 @@ function makePdf() {
 
 const pdf = makePdf();
 const auth = createAuthenticatedPdfRoutes(pdf);
+const large = createLargeRemotePdfRoute(createLargeRemotePdf());
 const routes = ["/built-in-viewer.pdf", "/mime-only"];
 const counts = new Map(routes.map(route => [route, 0]));
 const server = createServer((request, response) => {
   if (auth.handle(request, response)) return;
+  if (large.handle(request, response)) return;
   if (request.method !== "GET" || !counts.has(request.url)) {
     response.writeHead(404, { "Cache-Control": "no-store" });
     response.end();
@@ -235,7 +241,24 @@ try {
   assert.equal(protectedViewer.pages, 1);
   assert.ok(auth.snapshot().granted > 0,
     "Firefox must fetch the PDF using the browser session cookie");
-  console.log("PASS Firefox built-in PDF.js viewer renders local PDF and MIME-only PDF, including authenticated PDF: " + version);
+  // A large remote PDF must be loaded and its first page rendered by the
+  // browser's bundled PDF.js, not only fetched or classified from its URL.
+  const largeUrl = "http://127.0.0.1:" + pdfPort + large.path;
+  await webdriver("POST", "/session/" + sessionId + "/url",
+    { url: largeUrl }, 70_000);
+  const largeViewer = await until(async () => {
+    const observed = await webdriver("POST",
+      "/session/" + sessionId + "/execute/sync", {
+        script: viewerProbe, args: []
+      }, 12_000);
+    return observed.readerControls && observed.pages === 1 &&
+      observed.ready && observed.firstPageRendered ? observed : null;
+  }, "rendered large remote PDF in Firefox PDF.js", 75_000);
+  assert.equal(largeViewer.pages, 1);
+  assert.ok(large.size > LARGE_REMOTE_PDF_MIN_BYTES);
+  assert.ok(large.snapshot().requests > 0,
+    "Firefox must request the large remote PDF via real HTTP");
+  console.log("PASS Firefox built-in PDF.js viewer renders local PDF, MIME-only, authenticated and large remote PDF: " + version);
 } catch (error) {
   console.error("Firefox isolated viewer diagnostic:", stderrTail);
   throw error;
