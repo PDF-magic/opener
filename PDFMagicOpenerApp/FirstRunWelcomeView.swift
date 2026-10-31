@@ -92,6 +92,10 @@ struct FirstRunWelcomeView: View {
               .font(.headline)
             Text("When PDFs are opened through the installed scan handler, a supported ClamAV scanner and recent malware definitions are required. If a scan cannot be verified, the handler blocks opening.")
 
+            Label("Scanning cannot guarantee safety", systemImage: "exclamationmark.shield")
+              .font(.headline)
+            Text("A verified clean scan reduces risk, but ClamAV cannot detect every threat. A clean result does not guarantee that a PDF is safe; only open documents from sources you trust.")
+
             Label("Signature availability", systemImage: "checkmark.shield")
               .font(.headline)
             Text(signatureAvailability.explanation)
