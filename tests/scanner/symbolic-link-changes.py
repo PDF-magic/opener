@@ -123,6 +123,13 @@ class SelectedSymlinkChangesTests(unittest.TestCase):
         scanner.assert_not_called()
         launched.assert_not_called()
 
+    def test_missing_leaf_under_symlinked_parent_keeps_missing_diagnostic(self):
+        parent_alias = self.root / "parent-alias"
+        parent_alias.symlink_to(self.root, target_is_directory=True)
+        missing = parent_alias / "missing.pdf"
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            gate.symbolic_link_identity(missing)
+
     def test_dangling_and_cyclic_links_are_path_free_errors(self):
         self.alias.unlink()
         self.alias.symlink_to(self.root / "missing.pdf")

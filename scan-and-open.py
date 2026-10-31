@@ -548,10 +548,10 @@ def symbolic_link_identity(item):
             else:
                 return pending.resolve(strict=True), tuple(links)
     except FileNotFoundError:
-        # Preserve the existing missing-file policy when an ordinary source
-        # disappears after initial admission. A now-dangling symlink is still
-        # a changed selection, not permission to scan or launch its old target.
-        if not links:
+        # Preserve missing-file errors even when OS-managed ancestor links
+        # (for example macOS /var -> /private/var) were traversed. A dangling
+        # user-selected symlink still represents a changed selection.
+        if not Path(os.fspath(item)).expanduser().is_symlink():
             raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from None
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.') from None
     except (OSError, ValueError, RuntimeError):
