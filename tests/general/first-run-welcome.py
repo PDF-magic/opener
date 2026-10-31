@@ -204,7 +204,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertLess(source.index('GroupBox("Default PDF browser")'),
                     source.index('GroupBox("Optional browser extensions")'))
     self.assertLess(source.index('GroupBox("Optional browser extensions")'),
-                    source.index('Button("Continue to Preferences", action: onContinue)'))
+                    source.index('Button("Continue to Preferences", action: finishSetup)'))
     self.assertIn('accessibilityIdentifier("firstRunOptionalBrowserExtensions")', source)
 
   def test_optional_extension_explanation_cannot_activate_integration(self):
@@ -236,6 +236,55 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertIn("not provide an automatic PDF scan", docs)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-welcome.py -v", ci)
+
+  def test_first_run_displays_accurate_extension_setup_steps(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    section = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    instructions = section.split('Label("Extension setup instructions"', 1)[1]
+    for expected in (
+      'systemImage: "list.number"',
+      'accessibilityIdentifier("firstRunExtensionSetupInstructions")',
+      "Safari (test builds):",
+      "properly signed PDF Magic Opener app with its Safari extension",
+      "Settings > Extensions",
+      "enable it manually if you choose",
+      "check the installed host app",
+      "Chrome, Edge, Firefox, and other browsers:",
+      "No public extension release is available",
+      "for development and testing",
+      "An enabled test extension still shows Not active",
+      "cannot scan or approve PDFs",
+      "installed native PDF handler for scanned opening",
+      "no extension installation or activation is performed here",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, instructions)
+    self.assertLess(section.index("Browser extensions are optional."),
+                    section.index('Label("Extension setup instructions"'))
+    for forbidden in ("Button(", "Toggle(", "Picker(", "Link(", "openURL(",
+                      "NSWorkspace", "Process(", "UserDefaults", "requestPermission",
+                      "scanAndOpen", "saveVerified("):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, instructions)
+
+    safari = (ROOT / "extensions/safari/README.md").read_text(encoding="utf-8")
+    distribution = (ROOT / "docs/browser-extension-distribution.md").read_text(
+      encoding="utf-8"
+    )
+    manifest = (ROOT / "extensions/webextension/manifest.json").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn("Safari > Settings > Extensions", safari)
+    self.assertIn("NOT RELEASE READY", distribution)
+    self.assertIn("Not active; cannot scan, sanitize, or open PDF files.", manifest)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("Extension setup instructions (opener-0981)", docs)
+    self.assertIn("Safari > Settings > Extensions", docs)
+    self.assertIn("no public release", docs)
+    self.assertIn("tests/general/first-run-welcome.py -v",
+                  CI.read_text(encoding="utf-8"))
 
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
