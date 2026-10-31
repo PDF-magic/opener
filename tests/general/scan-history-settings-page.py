@@ -47,7 +47,7 @@ class ScanHistorySettingsPageTests(unittest.TestCase):
       'accessibilityIdentifier("scanHistoryPrivacySection")',
       'accessibilityIdentifier("scanHistorySettingsPage")',
       "explicitly enables it", "independently verify the user's opt-in",
-      "does not automatically load, export, or delete document records",
+      "does not automatically display, export, or clear all saved results",
       "PDF bytes, document text, attachments, browsing history, or source URLs",
       "not an authorization to open a document",
     ):
@@ -62,8 +62,15 @@ class ScanHistorySettingsPageTests(unittest.TestCase):
     self.assertIn('.confirmationDialog(', page)
     self.assertIn("recentScanHistory = RecentScanHistoryReader.load()", page)
     self.assertNotIn(".onAppear", page)
+    self.assertIn('Picker("Keep scan history for", selection: retentionSelection)', page)
+    self.assertIn("private var retentionSelection: Binding<Int>", page)
+    self.assertNotIn(".onChange(of: retentionDays)", page)
+    self.assertIn('accessibilityIdentifier("scanHistoryRetentionPicker")', page)
+    self.assertIn('ScanHistoryRetentionStore.saveDays(days)', page)
+    self.assertIn('ScanHistoryRetentionStore.removeExpired()', page)
+    self.assertIn('.task {', page)
     for forbidden in (
-      "Toggle(", "Picker(", "@AppStorage", "UserDefaults",
+      "Toggle(", "@AppStorage", "UserDefaults",
       "FileManager", "FileHandle", "Process(", "NSWorkspace", "URLSession",
       "write(to:", "removeItem(", "clamscan(", "target-app.txt",
       "onAppear", "onOpenURL", "DocumentGroup",

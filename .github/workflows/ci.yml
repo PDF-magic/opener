@@ -755,6 +755,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/history-record.py -v
       - name: Verify private optional scan-history metadata storage
         run: PYTHONPATH=. python3 tests/scan/history-metadata.py -v
+      - name: Verify configurable optional scan-history retention and automatic expiry
+        run: PYTHONPATH=. python3 tests/scan/history-retention.py -v
       - name: Verify private-browsing sessions never persist optional scan history
         run: PYTHONPATH=. python3 tests/scan/private-browsing-history.py -v
       - name: Verify optional scan history excludes private document and browsing data
@@ -859,6 +861,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift test-clear-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
           "$RUNNER_TEMP/TestClearScanHistory"
+      - name: Exercise automatic native scan-history retention with private synthetic SQLite rows
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ScanHistoryRetention.swift test-scan-history-retention.swift -lsqlite3 -o "$RUNNER_TEMP/TestScanHistoryRetention"
+          "$RUNNER_TEMP/TestScanHistoryRetention"
       - name: Verify native stale-signature warning at the scanner age boundary
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
@@ -931,6 +937,7 @@ jobs:
             PDFMagicOpenerApp/RecentScanHistory.swift \
             PDFMagicOpenerApp/ScanHistoryResultDetailView.swift \
             PDFMagicOpenerApp/ClearScanHistory.swift \
+            PDFMagicOpenerApp/ScanHistoryRetention.swift \
             test-preferences-large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
