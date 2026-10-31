@@ -87,7 +87,8 @@ try {
     "--proxy-bypass-list=<-loopback>", "--remote-debugging-port=0",
     "--user-data-dir=" + profile, "about:blank"
   ];
-  // The exception is limited to a disposable CI test browser running as root.
+  // Test-only escape hatch for isolated CI runners lacking sandbox permissions.
+  // Never enable for an installed browser or untrusted/non-loopback content.
   if (process.env.CHROME_TEST_NO_SANDBOX === "1") args.unshift("--no-sandbox");
   browser = spawn(binary, args, { stdio: ["ignore", "ignore", "pipe"] });
   browser.stderr.on("data", bytes => {

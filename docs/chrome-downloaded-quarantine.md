@@ -27,7 +27,9 @@ as before and clean up the download profile.
 
 The dedicated `Chrome macOS downloaded PDF safe-open and quarantine` GitHub
 Actions job runs on `macos-15`, launches real Chrome from a disposable profile,
-and then runs
+with the sandbox disabled **only** for this synthetic loopback-only CI browser
+because the macOS hosted runner denies Chrome's sandboxed Mach-port service.
+It then runs
 [`tests/general/chrome-downloaded-quarantine.py`](../tests/general/chrome-downloaded-quarantine.py)
 against those exact downloaded files. It verifies the PDFs were actually
 saved and are still byte-identical.

@@ -67,6 +67,8 @@ jobs:
       - name: Verify opening Chrome-downloaded PDFs retains macOS quarantine
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          # Isolated loopback-only CI browser: macOS runner Mach-port sandbox denial.
+          CHROME_TEST_NO_SANDBOX: "1"
         run: |
           set -euo pipefail
           handoff="$(mktemp -d "${RUNNER_TEMP}/pdfmagic-chrome-open.XXXXXXXX")"
