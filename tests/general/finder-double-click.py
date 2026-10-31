@@ -9,7 +9,6 @@ import json
 import os
 from pathlib import Path
 import plistlib
-import shlex
 import subprocess
 import tempfile
 import time
@@ -22,7 +21,7 @@ PREFERENCE_SOURCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"
 HANDLER_READER = ROOT / "identify-pdf-handler.swift"
 SCRIPT_ANCHOR = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
-    '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")'
+    '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
 )
 
 
@@ -48,14 +47,15 @@ def main():
             (ROOT / "twilight-reading.png").read_bytes()
         )
         receipt = root / "scan-receipt.txt"
-        gate = root / "fake-clean-gate.sh"
+        gate = root / "fake-clean-gate.py"
         gate.write_text(
-            "#!/bin/bash\nset -euo pipefail\n"
-            "printf '%s\\n' \"$1\" > " + shlex.quote(str(receipt)) + "\n",
+            "import pathlib, sys\n"
+            "pathlib.Path(" + repr(str(receipt)) + ").write_text("
+            "sys.argv[1] + '\\n', encoding='utf-8')\n",
             encoding="utf-8",
         )
-        # The real UI and queue remain unchanged. Only the scanner path is
-        # replaced with a harmless receipt writer in this temporary build.
+        # The real UI and queue remain unchanged. Only the direct Python scan
+        # target is replaced with a harmless receipt writer in this test app.
         harness = root / "finder-opener.swift"
         harness.write_text(
             source.replace(SCRIPT_ANCHOR, "URL(fileURLWithPath: " + json.dumps(str(gate)) + ")") + "\n" +

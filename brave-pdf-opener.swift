@@ -2,6 +2,41 @@ import AppKit
 import Carbon.HIToolbox
 import UserNotifications
 
+// BEGIN NATIVE DIRECT PROCESS GATE
+// The native app uses Foundation's Process directly, not a shell script.
+// Finder's Run Shell Script action remains a separate macOS integration.
+func makeNativeScanProcess(script: URL, path: String, lifetime: Pipe,
+                           errors: Pipe, environment: [String: String]) -> Process {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    process.arguments = [script.path, path]
+    process.standardInput = lifetime
+    process.standardError = errors
+    process.standardOutput = FileHandle.nullDevice
+    process.environment = environment
+    return process
+}
+
+// Preserve the existing best-effort anonymous origin record without routing
+// the actual scanner through Bash. Metadata failure must not block scanning.
+func recordNativeScanOrigin(script: URL, path: String, environment: [String: String]) {
+    guard FileManager.default.fileExists(atPath: script.path) else { return }
+    let recorder = Process()
+    recorder.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    recorder.arguments = [script.path, path]
+    recorder.standardInput = FileHandle.nullDevice
+    recorder.standardOutput = FileHandle.nullDevice
+    recorder.standardError = FileHandle.nullDevice
+    recorder.environment = environment
+    do {
+        try recorder.run()
+        recorder.waitUntilExit()
+    } catch {
+        // Origin recording is advisory, never a second scanner policy.
+    }
+}
+// END NATIVE DIRECT PROCESS GATE
+
 // The native PDF owner (not the standalone Settings app) requests macOS
 // notification authorization on the first opted-in successful handoff.
 // Notification delivery is best effort, never part of the scan verdict.
@@ -311,23 +346,21 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private func startScan(_ path: String) {
         let origin = requestOrigins[path] ?? "unknown"
         let script = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
+            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")
+        let originScript = script.deletingLastPathComponent()
+            .appendingPathComponent("record-scan-origin.py")
         let lifetime = Pipe()
         scanLifetimes[path] = lifetime
         DispatchQueue.global(qos: .userInitiated).async {
             let failure = withScanErrorPipe { errors -> String? in
-                let process = Process()
-                process.standardInput = lifetime
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = [script.path, path]
-                process.standardError = errors
-                process.standardOutput = FileHandle.nullDevice
                 var environment = ProcessInfo.processInfo.environment
                 environment["PDF_MAGIC_NATIVE_CANCEL"] = "1"
                 environment["PDF_MAGIC_PARENT_LIFETIME"] = "1"
                 environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"
                 environment["PDF_MAGIC_REQUEST_ORIGIN"] = origin
-                process.environment = environment
+                let process = makeNativeScanProcess(
+                    script: script, path: path, lifetime: lifetime,
+                    errors: errors, environment: environment)
 
                 // Synchronize launching with Cancel. Workers already dispatched
                 // to the background cannot launch after a cancelled request.
@@ -346,6 +379,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     try process.run()
                     self.activeProcesses[path] = process
                     self.processLock.unlock()
+                    // Retain the wrapper's best-effort origin audit, but use
+                    // a direct Python process instead of an additional shell.
+                    recordNativeScanOrigin(script: originScript, path: path,
+                                           environment: environment)
                     DispatchQueue.main.async {
                         // Cancel or completion may have already hidden the panel.
                         self.processLock.lock()

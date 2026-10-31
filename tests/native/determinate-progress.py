@@ -27,16 +27,16 @@ class NativeDeterminateProgressTests(unittest.TestCase):
             second = root / "second.pdf"
             first.write_bytes(b"%PDF-1.4\n")
             second.write_bytes(b"%PDF-1.4\n")
-            gate = root / "gate.sh"
+            gate = root / "gate.py"
             gate.write_text(
-                "#!/bin/bash\n"
-                f'printf started > "{root}/$(basename "$1").started"\n'
-                f'while [ ! -f "{root}/$(basename "$1").released" ]; do sleep 0.05; done\n'
-                "exit 0\n"
+                "import pathlib, sys, time\n"
+                "pathlib.Path(sys.argv[1] + '.started').write_text('started')\n"
+                "while not pathlib.Path(sys.argv[1] + '.released').exists():\n"
+                "    time.sleep(0.05)\n"
             )
             old_gate = (
                 'FileManager.default.homeDirectoryForCurrentUser\n'
-                '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")'
+                '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
             )
             self.assertEqual(native.count(old_gate), 1)
             native = native.replace(old_gate, f'URL(fileURLWithPath: "{gate}")')

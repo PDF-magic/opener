@@ -17,17 +17,17 @@ with tempfile.TemporaryDirectory(prefix="opener-hidden-progress-") as work:
     marker = root / "scanner-was-run"
     pdf = root / "scanned.pdf"
     pdf.write_bytes(b"%PDF-1.4\n")
-    gate = root / "scan.sh"
+    gate = root / "scan.py"
     gate.write_text(
-        '#!/bin/bash\n'
-        f'printf "%s\\n" "$1" > "{marker}"\n'
-        '/bin/sleep 1\n'
-        'exit 0\n'
+        "import pathlib, sys, time\n"
+        "pathlib.Path(" + repr(str(marker)) + ").write_text("
+        "sys.argv[1] + '\\n', encoding='utf-8')\n"
+        "time.sleep(1)\n"
     )
     suite = "local.studio.pdf-magic-opener.test.hidden." + uuid.uuid4().hex
     old = (
         'FileManager.default.homeDirectoryForCurrentUser\n'
-        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")'
+        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
     )
     assert native.count(old) == 1
     native = native.replace(old, f'URL(fileURLWithPath: "{gate}")')
