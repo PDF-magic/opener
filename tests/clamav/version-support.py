@@ -27,12 +27,10 @@ class ClamAVVersionSupportTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.pdf = Path(temporary.name) / "private example.pdf"
         self.pdf.write_bytes(b"%PDF-1.4\nexample\n")
-        # Installation discovery requires a regular executable file.
-        file_check = patch.object(opener.Path, "is_file", return_value=True)
-        file_check.start()
-        self.addCleanup(file_check.stop)
-        executable = patch.object(opener.os, "access",
-                                  side_effect=lambda path, mode: path == SCANNER)
+        # These tests isolate ClamAV version policy from the separate real
+        # executable-path admission tests; the installation path is synthetic.
+        executable = patch.object(opener, "require_executable_path",
+                                  return_value=SCANNER)
         executable.start()
         self.addCleanup(executable.stop)
 
