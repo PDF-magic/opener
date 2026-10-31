@@ -379,6 +379,9 @@ jobs:
       - name: webextension / automatic-scan-failure-page / Verify inert blocking page and browser packages
         working-directory: extensions/webextension
         run: node --test tests/intercept-scan-failed-page.test.mjs
+      - name: webextension / worker-suspension / Verify fail-closed lifecycle and native cleanup fencing
+        working-directory: extensions/webextension
+        run: node --test tests/pdf-interception-worker-suspension.test.mjs
       - name: Verify ownership and policy-safe temporary explicit PDF cleanup
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-temporary-cleanup.test.mjs
