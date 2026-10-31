@@ -45,6 +45,12 @@ class ChromiumLaunchingTests(unittest.TestCase):
         version.start()
         self.addCleanup(version.stop)
 
+        # These routing tests mock native process execution; the real
+        # executable-filesystem gate is covered by dedicated security tests.
+        executable = patch.object(file_launcher, "require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
+
     def test_chromium_preflight_then_native_launch_after_clean_scan(self):
         calls = []
 

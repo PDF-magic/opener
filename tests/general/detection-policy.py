@@ -43,6 +43,10 @@ class DetectionDecisionTests(unittest.TestCase):
         local = patch.object(opener, 'verify_local_file_available')
         local.start()
         self.addCleanup(local.stop)
+        # Native launch is a synthetic subprocess in this verdict-policy suite.
+        executable = patch('file_launcher.require_executable_path')
+        executable.start()
+        self.addCleanup(executable.stop)
 
     def test_detection_contains_only_evidence_and_cannot_be_modified(self):
         raw = result(1, 'file: Malware FOUND')

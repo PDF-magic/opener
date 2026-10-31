@@ -39,6 +39,12 @@ class MicrosoftEdgeLaunchingTests(unittest.TestCase):
             setting.start()
             self.addCleanup(setting.stop)
 
+        # These routing tests mock native process execution; the real
+        # executable-filesystem gate is covered by dedicated security tests.
+        executable = patch.object(launcher, "require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
+
     def test_edge_runs_only_after_clean_scan_and_pdf_verification(self):
         def execute(command, *args, **kwargs):
             return subprocess.CompletedProcess(command, 0, "file: OK", "")
