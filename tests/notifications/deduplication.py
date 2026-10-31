@@ -49,6 +49,12 @@ class NotificationDeduplicationTests(unittest.TestCase):
                           "FileManager", "scanRequests", "NSAlert"):
       self.assertNotIn(private_value, notifier)
 
+  def test_native_origin_harness_compiles_shared_notification_helpers(self):
+    origin = (ROOT / "tests/native/request-origin.py").read_text()
+    self.assertIn("str(shared_preferences)", origin)
+    self.assertIn("harness = root / 'main.swift'", origin)
+    self.assertIn("ScanProgressPreference.swift", origin)
+
   def test_both_ci_suites_run_behavioral_regressions(self):
     self.assertIn("tests/notifications/deduplication.py -v", CI)
     self.assertIn("test-notification-deduplication.swift", CI)
