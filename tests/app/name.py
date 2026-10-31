@@ -20,7 +20,7 @@ def embedded_script(marker, terminator):
 
 
 MIGRATION = embedded_script('python3 - "$legacy_app" "$app" <<\'MIGRATE\'\n', "MIGRATE")
-PLIST_SCRIPT = embedded_script('python3 - "$app" "$install_dir" "$app_name" <<\'CONFIG\'\n', "CONFIG")
+PLIST_SCRIPT = embedded_script('python3 - "$app" "$install_dir" "$app_name" "$agent_state" <<\'CONFIG\'\n', "CONFIG")
 
 
 def write_app(path, identifier=BUNDLE_ID):
@@ -53,7 +53,7 @@ class ApplicationNameTests(unittest.TestCase):
             app = home / "Applications" / (APP_NAME + ".app")
             (app / "Contents").mkdir(parents=True)
             (home / "Library" / "LaunchAgents").mkdir(parents=True)
-            result = invoke(PLIST_SCRIPT, app, home / "runtime", APP_NAME, home=home)
+            result = invoke(PLIST_SCRIPT, app, home / "runtime", APP_NAME, "absent", home=home)
             self.assertEqual(result.returncode, 0, result.stderr)
             with (app / "Contents" / "Info.plist").open("rb") as stream:
                 info = plistlib.load(stream)
