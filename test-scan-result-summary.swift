@@ -20,6 +20,12 @@ struct ScanResultSummaryComponentTests {
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
+        precondition(first.sanitizationLabel.accessibilityIdentifier()
+                     == "scanResultSummarySanitization")
+        precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
+        precondition(first.sanitizationLabel.accessibilityLabel()
+                     == "Sanitization: Unavailable")
+        precondition(first.displayedSanitization == nil)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         let expected = [
@@ -31,6 +37,8 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            precondition(first.displayedSanitization == nil)
+            precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(!first.headingLabel.stringValue.isEmpty)
             precondition(!first.explanationLabel.stringValue.isEmpty)
             precondition(first.headingLabel.accessibilityLabel() == first.headingLabel.stringValue)
@@ -47,7 +55,12 @@ struct ScanResultSummaryComponentTests {
         }
 
         let target = URL(fileURLWithPath: "/Users/example/Private scans/März résumé 🦄.pdf")
-        first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn)
+        first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
+                   sanitization: .performed)
+        precondition(first.displayedSanitization == .performed)
+        precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
+        precondition(first.sanitizationLabel.accessibilityLabel()
+                     == "Sanitization: Performed")
         precondition(first.documentNameLabel.stringValue == "Document: März résumé 🦄.pdf")
         precondition(!first.documentNameLabel.stringValue.contains("/Users/"))
         precondition(first.documentNameLabel.accessibilityLabel()
@@ -60,7 +73,11 @@ struct ScanResultSummaryComponentTests {
         precondition(first.headingLabel.stringValue == "Scan complete")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
-                    selectedProtectionLevel: .enhanced)
+                    selectedProtectionLevel: .enhanced, sanitization: .notPerformed)
+        precondition(second.displayedSanitization == .notPerformed)
+        precondition(second.sanitizationLabel.stringValue == "Sanitization: Not performed")
+        precondition(second.sanitizationLabel.accessibilityLabel()
+                     == "Sanitization: Not performed")
         precondition(second.headingLabel.stringValue == "Scan failed")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("Enhanced"))
@@ -77,12 +94,24 @@ struct ScanResultSummaryComponentTests {
             (.maximum, "Maximum")
         ] {
             first.show(.incompleteScan, documentURL: target, selectedProtectionLevel: level)
+            precondition(first.displayedSanitization == nil)
+            precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(first.selectedProtectionLevelLabel.stringValue.contains(title))
             precondition(first.selectedProtectionLevelLabel.stringValue.contains("preview only"))
             precondition(first.selectedProtectionLevelLabel.stringValue.contains(
                 "Built-in scanning remains active"))
             precondition(first.headingLabel.stringValue != "Scan complete")
         }
+        precondition(ScanResultSummarySanitization(rawValue: "attempted") == nil)
+        precondition(ScanResultSummarySanitization(rawValue: "failed") == nil)
+        // Neither a clean verdict nor a preview-only Maximum selection proves conversion.
+        first.show(.clean, documentURL: target, selectedProtectionLevel: .maximum)
+        precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
+        first.show(.malwareDetected, sanitization: .performed)
+        precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
+        precondition(first.headingLabel.stringValue == "Malware detected")
+        precondition(first.explanationLabel.stringValue.contains("Opening was stopped"))
+        precondition(second.sanitizationLabel.stringValue == "Sanitization: Not performed")
         precondition(ScanResultSummaryProtectionLevel(rawValue: "disabled") == nil)
         precondition(ScanResultSummaryProtectionLevel(rawValue: "custom") == nil)
         first.show(.fileChanged, documentURL: URL(string: "https://example.invalid/secret.pdf"),
@@ -102,6 +131,10 @@ struct ScanResultSummaryComponentTests {
         first.reset()
         precondition(first.displayedStatus == nil)
         precondition(first.displayedProtectionLevel == nil)
+        precondition(first.displayedSanitization == nil)
+        precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
+        precondition(first.sanitizationLabel.accessibilityLabel()
+                     == "Sanitization: Unavailable")
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
