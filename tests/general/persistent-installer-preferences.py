@@ -25,11 +25,11 @@ class PersistentInstallerPreferenceTests(unittest.TestCase):
       raise AssertionError("Installer's existing preference initializer not found")
     cls.initializer = match.group(1)
     freshclam = re.search(
-      r"python3 - \"\\$install_dir\" <<'CONFIG'\\n(.*?)\\nCONFIG",
+      r"python3 - \"\$install_dir\" <<'CONFIG'\n(.*?)\nCONFIG",
       installer, re.DOTALL,
     )
     agent = re.search(
-      r"python3 - \"\\$app\" \"\\$install_dir\" \"\\$app_name\" <<'CONFIG'\\n(.*?)\\nCONFIG",
+      r"python3 - \"\$app\" \"\$install_dir\" \"\$app_name\" <<'CONFIG'\n(.*?)\nCONFIG",
       installer, re.DOTALL,
     )
     if not freshclam or not agent:
