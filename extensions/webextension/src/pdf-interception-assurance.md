@@ -45,7 +45,7 @@ trusted coordinator. A future coordinator must establish enforcement using
 verified evidence rather than promoting an observed event or opted-in setting.
 
 No native scan, browser listener, browser permission, on-disk setting or user
-preference is changed. The existing scanner safety gates and chosen PDF
+preferences are changed. The existing scanner safety gates and chosen PDF
 application remain authoritative. The source is included in the ordinary
 WebExtensions \`npm test\` CI wildcard; the regression suite tests all nine
 registered browsers, conditional API distinctions, falsely claimed blocking,

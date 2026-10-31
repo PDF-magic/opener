@@ -74,10 +74,10 @@ const UNKNOWN_OBSERVATION = browserId =>
  * No browser events are subscribed, no permissions requested, no scanned PDF
  * opened, and no user configuration is read or changed.
  */
-export function describePdfInterceptionAssurance(browserId, observation = null) {
+export function describePdfInterceptionAssurance(browserId, observation) {
   const assessment = getPdfInterceptionPointAssessment(browserId);
   if (assessment.browserId === null) return UNKNOWN_BROWSER;
-  if (observation === null) {
+  if (arguments.length < 2 || observation === null) {
     return result(browserId, null, "inactive", "inactive");
   }
   if (typeof observation !== "string") return UNKNOWN_OBSERVATION(browserId);
