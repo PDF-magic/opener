@@ -92,13 +92,13 @@ class FinderCommandStringSafetyTests(unittest.TestCase):
             '> "$HOME/captured.bin"\n',
             encoding="utf-8",
         )
-        path = self.root / 'filename ; $(touch "$HOME/injected") & " # \n☁.pdf'
+        path = self.root / 'filename ; $(touch injected) & " # \n☁.pdf'
         original = b"%PDF-1.4\nnever execute a PDF\n"
         path.write_bytes(original)
         result = subprocess.run(
             ["/bin/bash", "-c", command, "finder", str(path)],
             env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
-            capture_output=True, timeout=5,
+            cwd=home, capture_output=True, timeout=5,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((home / "captured.bin").read_bytes(),
