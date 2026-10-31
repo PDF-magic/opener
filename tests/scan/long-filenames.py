@@ -107,9 +107,28 @@ class ExtremelyLongFilenamesTests(unittest.TestCase):
         for unicode in (False, True):
             with self.subTest(unicode=unicode):
                 path = self.root / self.filename(unicode=unicode, excess=1)
-                with self.assertRaises(OSError) as filesystem_failure:
-                    path.write_bytes(b"%PDF-1.4\n")
-                self.assertEqual(filesystem_failure.exception.errno, errno.ENAMETOOLONG)
+                # Filesystem limits differ: APFS may allow multibyte UTF-8
+                # names beyond PC_NAME_MAX bytes when their Unicode component
+                # length is still within the filesystem's native limit.
+                content = b"%PDF-1.4\n% over-byte-limit name\n"
+                try:
+                    path.write_bytes(content)
+                except OSError as filesystem_failure:
+                    self.assertEqual(filesystem_failure.errno, errno.ENAMETOOLONG)
+                else:
+                    self.assertTrue(unicode, "Over-limit ASCII must be rejected")
+                    with ExitStack() as stack:
+                        scanner, launcher, _ = self.mocked_gate(stack)
+                        self.assertEqual(gate.validate_scan_request(path), path)
+                        self.assertEqual(gate.supported_request_path(path), path)
+                        self.assertEqual(gate.scan_and_open(path, "/scanner").status, "clean")
+                        scanner.assert_called_once()
+                        self.assertEqual(scanner.call_args.args[0][-1], str(path))
+                        launcher.assert_called_once()
+                        self.assertEqual(launcher.call_args.args[0], path)
+                    self.assertEqual(path.read_bytes(), content)
+                    path.unlink()
+                    continue
                 for admission in (gate.validate_scan_request, gate.supported_request_path):
                     with self.subTest(admission=admission.__name__):
                         with self.assertRaises((OSError, RuntimeError)) as failure:
@@ -128,8 +147,8 @@ class ExtremelyLongFilenamesTests(unittest.TestCase):
                     self.assertNotIn(path.name, gate.safe_scan_failure(failure.exception))
                 for side_effect in (queue, cache, scanner, remember, launcher, quarantine):
                     side_effect.assert_not_called()
-                # On Python 3.11 Path.exists() itself raises ENAMETOOLONG.
-                # Inspect the containing directory to prove no entry was created.
+                # Python 3.11 Path.exists() can raise ENAMETOOLONG.
+                # Check the directory instead and validate the same OS limit.
                 self.assertNotIn(path.name, os.listdir(self.root))
                 with self.assertRaises(OSError) as stat_failure:
                     path.stat()
