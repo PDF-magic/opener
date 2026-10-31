@@ -63,10 +63,10 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         source = SOURCE.read_text(encoding="utf-8")
         native = SWIFT_TEST.read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        self.assertRegex(scanner, r"MAX_DATABASE_AGE\\s*=\\s*48\\s*\\*\\s*60\\s*\\*\\s*60")
+        self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertIn("enum ScanResultSummarySignatureFreshness: String, CaseIterable", source)
         for case in ("recentUpdate", "stale", "unverified"):
-            self.assertRegex(source, rf"case {case}\\b")
+            self.assertRegex(source, rf"case {case}\b")
         self.assertIn("signatureFreshness: ScanResultSummarySignatureFreshness? = nil", source)
         self.assertIn("Signature database STALE", source)
         self.assertIn("No successful update within 48 hours", source)
