@@ -28,12 +28,13 @@ class HomebrewDependencyDecisionTests(unittest.TestCase):
         for candidate in TRUSTED_SCANNERS:
             with self.subTest(candidate=candidate):
                 self.assertIn(f"[ -x {candidate} ]", fallback)
-        # A validated Homebrew executable is discovered before provisioning.
-        command = '"$brew_executable" install clamav'
-        self.assertIn('scripts/detect_homebrew.py', fallback)
+        command = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
         self.assertIn(command, fallback)
         self.assertEqual(source.count(command), 1)
         self.assertNotIn(command, source[:start])
+        self.assertIn("scripts/detect_homebrew.py", fallback)
+        self.assertLess(fallback.index("scripts/detect_homebrew.py"),
+                        fallback.index(command))
 
     def test_non_homebrew_installs_use_the_same_fail_closed_scan_gate(self):
         runtime = SCANNER.read_text(encoding="utf-8")

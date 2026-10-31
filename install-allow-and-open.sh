@@ -1,9 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 
+# This is an exclusively per-user installer. Never let sudo/root write into
+# user services, ClamAV settings, or application bundles.
+if [ "$EUID" -eq 0 ]; then
+    echo "Do not run the PDF Magic Opener installer as root or with sudo." >&2
+    exit 1
+fi
+
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 install_dir="$HOME/Library/Application Support/Studio/allow-and-open"
 workflow="$HOME/Library/Services/Allow and Open.workflow/Contents/document.wflow"
+
+# Diagnose required tooling before any installation changes or migration journal.
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Cannot install PDF Magic Opener: Python 3 is missing. Install Python 3, then retry." >&2
+    exit 1
+fi
+python3 "$script_dir/scripts/report_install_prerequisites.py"
 
 if [ ! -f "$workflow" ]; then
     echo "The existing Allow and Open Quick Action is not installed." >&2
@@ -105,8 +119,14 @@ if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! 
         echo "Homebrew detection failed; install Homebrew to set up ClamAV." >&2
         exit 1
     fi
-    "$brew_executable" install clamav
+    # Homebrew may request administrator authorization. Require a human at
+    # the controlling terminal before any package-manager subprocess runs.
+    # Absent or declined consent fails closed; no noninteractive opt-in.
+    python3 "$script_dir/scripts/confirm_clamav_install.py"
+    HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav
 fi
+# Verify both installed ClamAV commands before touching opener scripts or settings.
+python3 "$script_dir/scripts/verify_installed_clamav.py"
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
 python3 - "$install_dir/target-app.txt" <<'TARGET_APP'

@@ -22,7 +22,9 @@ struct PDFMagicOpenerApp: App {
 
   var body: some Scene {
     WindowGroup("PDF Magic Opener") {
-      MainPreferencesView()
+      FirstRunWelcomeGate {
+        MainPreferencesView()
+      }
         .onOpenURL { url in
           // Only raise the existing preferences window. Never scan or open URL data.
           guard url.absoluteString == "pdfmagicopener://preferences" else { return }

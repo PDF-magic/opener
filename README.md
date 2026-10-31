@@ -242,6 +242,25 @@ Install local malware scanning for the existing **Allow and Open** Finder action
 bash install-allow-and-open.sh
 ```
 
+To **Repair Installation** from the same complete, trusted source checkout,
+double-click `Repair Installation.command` in Finder or run
+`./Repair\ Installation.command` in Terminal. This explicit, confirmed
+action reruns the existing safe installer to restore missing or damaged
+managed application components; it does not force-reinstall a detected
+ClamAV engine or reset your selected browser, FreshClam configuration,
+signature databases, or Finder customizations. See
+[repair installation](docs/repair-installation.md) for prerequisites and limitations.
+
+The installer runs as your normal macOS account; **do not use sudo**. If a
+supported ClamAV installation is already present, Homebrew is not invoked.
+Otherwise, the installer displays the exact `brew install clamav` command,
+explains that Homebrew may require administrator authorization, and requires
+you to type `INSTALL` at a controlling terminal before it calls Homebrew.
+Without a terminal or affirmative consent it stops, leaving ClamAV installation
+to you (for example, run `brew install clamav` yourself and retry). The
+installer never automatically elevates itself, installs Homebrew, or updates
+existing scanner packages. See [installation privilege and consent](docs/clamav-install-consent.md).
+
 Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default).
 For the Finder double-click verification procedure and its automated Launch Services
 regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf/drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
