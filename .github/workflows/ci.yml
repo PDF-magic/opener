@@ -513,6 +513,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/configuration-boundaries.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Inventory quarantine-removal calls and reject any mutators
+        run: |
+          python3 tools/audit_quarantine_removal.py
+          PYTHONPATH=. python3 tests/general/quarantine-removal-inventory.py -v
       - name: Verify Standard baseline parity with the existing scanner
         run: PYTHONPATH=. python3 tests/general/standard-scanner-parity.py -v
       - name: Reject zero-length files before scanning, caching, or opening
@@ -1086,6 +1090,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Inventory quarantine-removal calls and reject any mutators
+        run: |
+          python3 tools/audit_quarantine_removal.py
+          PYTHONPATH=. python3 tests/general/quarantine-removal-inventory.py -v
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
         run: PYTHONPATH=. python3 tests/scan/resource-cleanup.py
