@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """opener-0861: real unexpectedly exiting helpers must never authorize a PDF open."""
+from contextlib import nullcontext
 import importlib.util
 from pathlib import Path
 import signal
@@ -33,6 +34,15 @@ class UnexpectedHelperExitTests(unittest.TestCase):
             p = patch.object(gate, name, value)
             p.start()
             self.addCleanup(p.stop)
+        # This suite exercises real synthetic scanner process exits, but its
+        # executable and database are intentionally not an installed ClamAV.
+        # Keep the child subprocess real; only the separate Seatbelt admission
+        # boundary is mocked. Kernel-denial tests cover the production sandbox.
+        sandbox = patch.object(
+            gate, "confined_scanner",
+            side_effect=lambda command, *, scan: nullcontext((command, {})))
+        sandbox.start()
+        self.addCleanup(sandbox.stop)
 
     def executable(self, name, body):
         path = self.root / name

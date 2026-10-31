@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression for opener-0277: keep operating-system quarantine after scanning."""
 
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 import importlib.util
 import os
 from pathlib import Path
@@ -55,6 +55,10 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
                     return subprocess.CompletedProcess(command, 0, "downloaded.pdf: OK", "")
                 return subprocess.CompletedProcess(command, 1,
                                                    "downloaded.pdf: Eicar-Test-Signature FOUND", "")
+            # The synthetic /scanner is a test double; real Seatbelt enforcement
+            # is exercised separately against the macOS kernel.
+            stack.enter_context(patch.object(opener, "confined_scanner",
+                side_effect=lambda command, *, scan: nullcontext((command, {}))))
             stack.enter_context(patch.object(opener.subprocess, "run", side_effect=run))
             if verdict == 0:
                 fresh = opener.scan_and_open(str(path), "/scanner")
