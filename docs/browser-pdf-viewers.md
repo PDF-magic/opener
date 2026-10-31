@@ -106,11 +106,11 @@ never reads an actual user's PDFs, and removes the disposable profile.
 ## Safari's PDF viewing: real browser verification (opener-0804)
 
 CI's **Real Safari PDF viewer behavior** check uses Apple's own
-\`/usr/bin/safaridriver\` on a disposable macOS runner. It enables
+`/usr/bin/safaridriver` on a disposable macOS runner. It enables
 remote automation for that runner, creates an isolated Safari WebDriver
-window and visits two pages hosted solely on \`127.0.0.1\`: a \`.pdf\`
-URL and an extensionless URL with \`Content-Type: application/pdf\`.
-Both responses have \`Content-Disposition: inline\` and contain a
+window and visits two pages hosted solely on `127.0.0.1`: a `.pdf`
+URL and an extensionless URL with `Content-Type: application/pdf`.
+Both responses have `Content-Disposition: inline` and contain a
 generated, harmless, single-page PDF; each renders a large, different
 colored rectangle.
 
