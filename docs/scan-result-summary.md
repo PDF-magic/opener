@@ -69,6 +69,43 @@ request. Conversion does not authorize opening or replace scanning and
 file-integrity checks. The existing required portable and macOS rendering
 suites now check these states; scanning and preferences remain unchanged.
 
+## Optional technical details
+
+Blocked or failed results offer an accessible **Show technical details** button
+below the short explanation. The optional panel is **collapsed by default**.
+Expanding shows the canonical result code and its fixed technical category,
+along with the fact that opening was not authorized. The button changes to
+**Hide technical details** and can be toggled without affecting the scan result.
+
+A clean result, a cancelled request, or an absent trusted result has no
+additional technical report and shows no disclosure. Every `show(...)`
+replaces the detail and collapses it, even when the preceding result was
+expanded. `reset()` clears the report and hides the button; separate view
+instances cannot reveal each other's reports. Only trusted, typed status values
+are accepted—no document content, arbitrary error text, scanner logs, absolute
+paths, or user preferences enter this view. The details do not authorize a file
+to open or claim that an inactive protection profile was enforced.
+
+The existing Linux presentation contract and native macOS interaction harness
+exercise availability, accessibility, status-specific codes, expand/collapse,
+isolation, safety boundaries and reset; both remain wired to required CI.
+
+## Malware detection display
+
+The summary always includes an accessible, explicitly labelled malware status.
+A trusted `.malwareDetected` terminal result displays **Malware: Detected**;
+only a trusted `.clean` result displays **Malware: Not detected**. Every
+other terminal outcome and `nil` displays **Malware: Not determined**, never
+mistaking a scanner failure, cancellation or incomplete inspection for a
+negative malware finding. Each new `show` call and `reset()` replaces the
+previous text; a former clean result cannot be carried into another request.
+
+The label is presentation-only and receives the same trusted canonical status
+as the existing heading. It does not infer status from file content, scanner
+logs, document names or user preferences, and it does not grant permission
+to open a PDF. Portable contract tests and the macOS AppKit rendering harness
+cover every canonical outcome, accessibility, isolation and reset in required CI.
+
 
 ## Copy Diagnostic Details (opener-0886)
 

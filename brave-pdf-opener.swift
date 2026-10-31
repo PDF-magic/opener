@@ -123,12 +123,14 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
 }
 
 // This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(completion: @escaping () -> Void) {
+func deliverBlockedFileNotification(malwareDetected: Bool, completion: @escaping () -> Void) {
     let center = UNUserNotificationCenter.current()
     func enqueue() {
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
-        content.body = "A PDF could not be opened because its safety check failed."
+        content.body = malwareDetected
+            ? "Malware was detected. The PDF was blocked and was not opened."
+            : "A PDF could not be opened because its safety check failed."
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
         center.add(request) { _ in completion() }
@@ -219,14 +221,65 @@ func currentRequestSource() -> String {
     return "unknown"
 }
 
+// The installed Python scan gate emits fixed, path-free denials, sometimes
+// prefixed with a trusted request index. Never render arbitrary stderr:
+// Python tracebacks can contain private paths, source lines and PDF metadata.
+// Unknown diagnostics remain failures but receive a fixed explanation.
+private enum NativeScanFailureDetails {
+    static let unexpected = "The scanner returned an unexpected error; opening was stopped."
+    static let empty = "The scan or file handoff returned no additional error details."
+
+    private static let approved: Set<String> = [
+        "Malware was detected; opening was stopped.",
+        "Malware or an unscannable item was detected; opening was stopped.",
+        "The scanner flagged a suspicious or unscannable item; opening was stopped.",
+        "The malware scan could not finish; opening was stopped.",
+        "The malware scan did not confirm a complete scan; opening was stopped.",
+        "The malware scan timed out; opening was stopped.",
+        "The scan was cancelled; opening was stopped.",
+        "The request could not be processed; opening was stopped.",
+        "The requested PDF is not available locally; opening was stopped.",
+        "The selected file is unreadable; opening was stopped.",
+        "The selected file or application does not exist; opening was stopped.",
+        "The selected filesystem volume is unavailable; opening was stopped.",
+        "The selected file became unavailable during scanning; opening was stopped.",
+        "The file changed while checking it; opening was stopped. Try again.",
+        "The file exceeds the 512 MB scan limit; opening was stopped.",
+        "A zero-length file cannot be scanned; opening was stopped.",
+        "The clean scan cache could not be verified; opening was stopped.",
+        "Unable to record the scan destination; opening was stopped.",
+        "The scan queue is unavailable; opening was stopped.",
+        "Application bundle contains a link outside the bundle; opening was stopped.",
+        "Only regular files and application bundles can be scanned.",
+        "Select a file or application, rather than a folder."
+    ]
+
+    static func display(_ details: String) -> String {
+        let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
+        if reason.isEmpty { return empty }
+        if let known = ScannerInitializationError.displayedMessage(for: reason) {
+            return known
+        }
+        var candidate = reason
+        if candidate.hasPrefix("Scan request ") {
+            let fields = candidate.dropFirst("Scan request ".count)
+                .split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            guard fields.count == 2,
+                  let index = Int(fields[0]), index > 0,
+                  String(index) == String(fields[0]),
+                  fields[1].hasPrefix(" ") else { return unexpected }
+            candidate = String(fields[1].dropFirst())
+        }
+        return approved.contains(candidate) ? candidate : unexpected
+    }
+}
+
 // Present the requested filename, not the canonical scan target or a generic
 // progress count. Failure alerts remain visible even if progress is disabled.
 func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
     let filename = URL(fileURLWithPath: requestedPath).lastPathComponent
     let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
-    let explanation = reason.isEmpty
-        ? "The scan or file handoff returned no additional error details."
-        : String(reason.prefix(1600))
+    let explanation = NativeScanFailureDetails.display(reason)
     let alert = NSAlert()
     alert.alertStyle = .critical
     alert.messageText = "PDF could not be opened"
@@ -515,11 +568,14 @@ DispatchQueue.main.async {
                 self.processLock.lock()
                 let cancelled = self.cancelledRequests.contains(path)
                 self.processLock.unlock()
-                if BlockedFileNotificationPreference.shouldNotify(
+                let blockedNotificationKind = BlockedFileNotificationPreference.notificationKind(
                     failure: failure, cancelled: cancelled
-                ) {
+                )
+                if blockedNotificationKind != .none {
                     self.pendingSuccessNotifications += 1
-                    deliverBlockedFileNotification { [weak self] in
+                    deliverBlockedFileNotification(
+                        malwareDetected: blockedNotificationKind == .malwareDetected
+                    ) { [weak self] in
                         DispatchQueue.main.async {
                             guard let self else { return }
                             self.pendingSuccessNotifications -= 1

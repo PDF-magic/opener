@@ -14,6 +14,9 @@ struct ScanResultSummaryComponentTests {
         precondition(first.explanationLabel.stringValue.contains("not authorized"))
         precondition(first.headingLabel.accessibilityIdentifier() == "scanResultSummaryHeading")
         precondition(first.explanationLabel.accessibilityIdentifier() == "scanResultSummaryExplanation")
+        precondition(first.malwareStatusLabel.accessibilityIdentifier() == "scanResultSummaryMalware")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
+        precondition(first.malwareStatusLabel.accessibilityLabel() == "Malware: Not determined")
         precondition(first.documentNameLabel.accessibilityIdentifier() == "scanResultSummaryDocument")
         precondition(first.selectedProtectionLevelLabel.accessibilityIdentifier()
                      == "scanResultSummaryProtectionLevel")
@@ -26,6 +29,14 @@ struct ScanResultSummaryComponentTests {
         precondition(first.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Unavailable")
         precondition(first.displayedSanitization == nil)
+        precondition(first.technicalDetailsButton.accessibilityIdentifier()
+                     == "scanResultSummaryTechnicalDetailsToggle")
+        precondition(first.technicalDetailsLabel.accessibilityIdentifier()
+                     == "scanResultSummaryTechnicalDetails")
+        precondition(first.technicalDetailsButton.isHidden)
+        precondition(first.technicalDetailsLabel.isHidden)
+        precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!first.technicalDetailsExpanded)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         precondition(first.copyDiagnosticDetailsButton.title == "Copy Diagnostic Details")
@@ -46,8 +57,14 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            let expectedMalware = status == .malwareDetected ? "Malware: Detected"
+                : status == .clean ? "Malware: Not detected" : "Malware: Not determined"
+            precondition(first.malwareStatusLabel.stringValue == expectedMalware)
+            precondition(first.malwareStatusLabel.accessibilityLabel() == expectedMalware)
             precondition(first.diagnosticDetailsForCopy().contains("Status: " + status.rawValue))
             precondition(!first.diagnosticDetailsForCopy().contains("[redacted]"))
+            precondition(first.displayedSanitization == nil)
+            precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(first.displayedSanitization == nil)
             precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(!first.headingLabel.stringValue.isEmpty)
@@ -62,6 +79,35 @@ struct ScanResultSummaryComponentTests {
             }
             if status != .malwareDetected {
                 precondition(!first.headingLabel.stringValue.contains("Malware detected"))
+            }
+            if status == .clean || status == .cancelled {
+                precondition(first.technicalDetailsButton.isHidden)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+            } else {
+                precondition(!first.technicalDetailsButton.isHidden)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(!first.technicalDetailsExpanded)
+                precondition(first.technicalDetailsButton.title == "Show technical details")
+                precondition(first.technicalDetailsLabel.stringValue.contains(
+                    "Result code: " + status.rawValue))
+                precondition(first.technicalDetailsLabel.stringValue.contains(
+                    "Opening was not authorized."))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("/Users/"))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("secret.pdf"))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("stderr"))
+                first.technicalDetailsButton.performClick(nil)
+                precondition(first.technicalDetailsExpanded)
+                precondition(!first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsButton.title == "Hide technical details")
+                precondition(first.technicalDetailsButton.accessibilityLabel()
+                             == "Hide technical details")
+                precondition(first.technicalDetailsLabel.accessibilityLabel()
+                             == first.technicalDetailsLabel.stringValue)
+                first.technicalDetailsButton.performClick(nil)
+                precondition(!first.technicalDetailsExpanded)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsButton.title == "Show technical details")
             }
         }
 
@@ -95,6 +141,7 @@ struct ScanResultSummaryComponentTests {
         precondition(NSPasteboard.general.string(forType: .string) == safeCopy,
                      "button must copy only the privacy-safe snapshot")
         precondition(first.headingLabel.stringValue == "Scan complete")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
                     selectedProtectionLevel: .enhanced, sanitization: .notPerformed)
@@ -103,6 +150,7 @@ struct ScanResultSummaryComponentTests {
         precondition(second.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Not performed")
         precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
         precondition(second.diagnosticDetailsForCopy().contains("Status: scanFailed"))
         precondition(second.diagnosticDetailsForCopy().contains("Sanitization: Not performed"))
@@ -112,6 +160,11 @@ struct ScanResultSummaryComponentTests {
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains(
             "Built-in scanning remains active"))
+        precondition(!second.technicalDetailsButton.isHidden)
+        second.technicalDetailsButton.performClick(nil)
+        precondition(second.technicalDetailsExpanded)
+        precondition(second.technicalDetailsLabel.stringValue.contains("scanFailed"))
+        precondition(first.technicalDetailsButton.isHidden)
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Built-in")
         precondition(first.headingLabel.stringValue == "Scan complete",
@@ -136,6 +189,7 @@ struct ScanResultSummaryComponentTests {
         first.show(.clean, documentURL: target, selectedProtectionLevel: .maximum)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
         first.show(.malwareDetected, sanitization: .performed)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Detected")
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
         precondition(first.headingLabel.stringValue == "Malware detected")
         precondition(first.explanationLabel.stringValue.contains("Opening was stopped"))
@@ -148,7 +202,6 @@ struct ScanResultSummaryComponentTests {
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
         precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
-
         precondition(!first.diagnosticDetailsForCopy().contains("example.invalid"))
         for unsafe in [
             "/tmp/line\nspoof.pdf",
@@ -174,6 +227,7 @@ struct ScanResultSummaryComponentTests {
         first.copyDiagnosticDetailsButton.performClick(nil)
         precondition(NSPasteboard.general.string(forType: .string)
                      == first.diagnosticDetailsForCopy())
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
         precondition(first.displayedSanitization == nil)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
@@ -185,7 +239,16 @@ struct ScanResultSummaryComponentTests {
         precondition(first.headingLabel.stringValue == "No verified scan result")
         precondition(first.explanationLabel.stringValue.contains("not authorized"),
                      "reset must not leave stale clean status visible")
+        precondition(first.technicalDetailsButton.isHidden)
+        precondition(first.technicalDetailsLabel.isHidden)
+        precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!first.technicalDetailsExpanded)
+        precondition(second.technicalDetailsExpanded, "separate instances must retain state")
         precondition(second.headingLabel.stringValue == "Scan failed")
+        second.show(nil)
+        precondition(second.technicalDetailsButton.isHidden)
+        precondition(second.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!second.technicalDetailsExpanded)
         print("Reusable scan result summary component passed")
     }
 }
