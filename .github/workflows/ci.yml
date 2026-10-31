@@ -196,6 +196,8 @@ jobs:
         run: python3 scripts/check_dependency_licenses.py
       - name: Verify license checker rejects unreviewed dependencies and missing notices
         run: PYTHONPATH=. python3 tests/general/dependency-licensing.py -v
+      - name: Report missing installation prerequisites clearly before mutation
+        run: PYTHONPATH=. python3 tests/general/installation-prerequisites.py -v
       - name: Verify staged PDF handler bundle contents and executable permissions
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Verify safe Finder Quick Action migration and literal argv forwarding
