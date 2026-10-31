@@ -192,6 +192,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Check declared dependency license obligations before optional installs
+        run: python3 scripts/check_dependency_licenses.py
+      - name: Verify license checker rejects unreviewed dependencies and missing notices
+        run: PYTHONPATH=. python3 tests/general/dependency-licensing.py -v
       - name: Verify staged PDF handler bundle contents and executable permissions
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Preserve the previously working opener when installation migration fails
@@ -200,6 +204,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
       - name: Detect existing Finder Quick Action and backup without touching user files
         run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
+      - name: Detect interrupted installation migrations and verify safe retries
+        run: PYTHONPATH=. python3 tests/migration/repeatable-state.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
@@ -292,6 +298,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/failure-exception-boundary.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
         run: PYTHONPATH=. python3 tests/clamav/installation.py -v
+      - name: Keep Homebrew optional for existing compatible ClamAV installations
+        run: PYTHONPATH=. python3 tests/clamav/homebrew-policy.py -v
       - name: Reject non-regular ClamAV scanner executables before scanning
         run: PYTHONPATH=. python3 tests/scanner/executable-access.py -v
       - name: Verify fail-closed responses for missing protection dependencies

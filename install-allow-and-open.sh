@@ -89,13 +89,15 @@ install_snapshot="$(mktemp -d "$HOME/.pdf-magic-opener-rollback.XXXXXXXX")"
 python3 "$script_dir/scripts/preserve_existing_opener.py" snapshot "$install_dir" "$install_snapshot"
 snapshot_ready=1
 
-if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
-    brew install clamav
-fi
-
 # Inspect the existing database before creating the directory or starting updates.
 # This only reports presence; the scanner still verifies freshness and safety.
 python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"
+# Journal before installer mutations; the marker never certifies signatures.
+migration_attempt="$(python3 "$script_dir/scripts/migration_state.py" --home "$HOME" begin)"
+
+if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
+    brew install clamav
+fi
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
 python3 - "$install_dir/target-app.txt" <<'TARGET_APP'
@@ -287,9 +289,9 @@ fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
 # Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate_update_agent.py"
-agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
-launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
-launchctl bootstrap "gui/$UID" "$agent"
+# The migrator has verified the agent; reconcile its live launchd label so
+# an older plist registration cannot survive alongside the new registration.
+python3 "$script_dir/scripts/reconcile_update_agent.py"
 
 python3 - "$workflow" <<'PY'
 import os
@@ -392,5 +394,7 @@ python3 "$script_dir/offer-restore-pdf-handler.py" \
     "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
 # Display the effective association whether restoration was accepted or not.
 python3 "$install_dir/pdf-handler-status.py"
+# Only record success after all migration operations finish.
+python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
 migration_committed=1
