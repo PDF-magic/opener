@@ -53,6 +53,13 @@ jobs:
           mkdir -p "$PACKAGE_DIR"
           unzip -q "dist/chrome/pdf-magic-opener-chrome-$(node -p 'require("./manifest.json").version').zip" -d "$PACKAGE_DIR"
           node scripts/test-chrome.mjs "$CHROME_PATH" "$PACKAGE_DIR"
+      - name: Verify Chrome's built-in PDF viewer with local PDFs
+        working-directory: extensions/webextension
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          # Applies only to a disposable, no-user-profile CI browser.
+          CHROME_TEST_NO_SANDBOX: "1"
+        run: node scripts/test-chrome-pdf-viewer.mjs "$CHROME_PATH"
 
 
   detect-scope:
