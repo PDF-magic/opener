@@ -74,6 +74,44 @@ struct BrowsersSettingsView: View {
     }
   }
 
+  @State private var automaticInterceptionBrowsers: [PDFBrowserOption] = []
+  @State private var automaticInterceptionOptIns: [String: Bool] = [:]
+  @State private var automaticInterceptionStatus: String?
+
+  private func refreshAutomaticInterceptionOptions() {
+    let installed = DefaultPDFBrowserPreferences.discover()
+    let supported = BrowserAutomaticPDFInterceptionPreference.eligibleBrowserIDs(
+      installedIDs: Set(installed.map(\.id))
+    )
+    automaticInterceptionBrowsers = installed.filter { supported.contains($0.id) }
+    automaticInterceptionOptIns = Dictionary(
+      uniqueKeysWithValues: automaticInterceptionBrowsers.map {
+        ($0.id, BrowserAutomaticPDFInterceptionPreference.isOptedIn(for: $0.id))
+      }
+    )
+  }
+
+  private func updateAutomaticInterceptionOptIn(_ optedIn: Bool, browserID: String) {
+    // Recheck discovery on every write: disappearing or unsupported browsers
+    // must never acquire saved consent from stale UI state.
+    let installedIDs = Set(DefaultPDFBrowserPreferences.discover().map(\.id))
+    guard BrowserAutomaticPDFInterceptionPreference.eligibleBrowserIDs(
+      installedIDs: installedIDs
+    ).contains(browserID) else {
+      refreshAutomaticInterceptionOptions()
+      automaticInterceptionStatus = "Browser is unavailable or unsupported; no change was saved."
+      return
+    }
+    if BrowserAutomaticPDFInterceptionPreference.saveOptIn(optedIn, for: browserID) {
+      automaticInterceptionOptIns[browserID] = optedIn
+      automaticInterceptionStatus = "Preference saved only. Automatic interception remains inactive."
+    } else {
+      automaticInterceptionOptIns[browserID] =
+        BrowserAutomaticPDFInterceptionPreference.isOptedIn(for: browserID)
+      automaticInterceptionStatus = "Could not save this preference; your previous choice is unchanged."
+    }
+  }
+
   @State private var browserMonitoringRows: [BrowserMonitoringStatusRow] = []
 
   private func refreshBrowserMonitoringStatus() {
@@ -255,6 +293,48 @@ struct BrowsersSettingsView: View {
           .padding(8)
         }
         .accessibilityIdentifier("browserIntegrationTestSection")
+
+        GroupBox("Automatic PDF interception") {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("This opt-in is available only for installed Chrome, Microsoft Edge, and Firefox browsers with documented candidate interception APIs. It is a preference for future support, not an active security feature.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(automaticInterceptionBrowsers) { browser in
+              VStack(alignment: .leading, spacing: 4) {
+                Text(browser.name)
+                  .font(.headline)
+                Toggle("Enable Automatic PDF Interception", isOn: Binding(
+                  get: { automaticInterceptionOptIns[browser.id] ?? false },
+                  set: { updateAutomaticInterceptionOptIn($0, browserID: browser.id) }
+                ))
+                .accessibilityIdentifier("enableAutomaticPDFInterceptionToggle-\(browser.id)")
+              }
+            }
+
+            if automaticInterceptionBrowsers.isEmpty {
+              Text("No installed browser qualifies for this optional setting.")
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("automaticPDFInterceptionNoEligibleBrowser")
+            }
+
+            Text("Automatic interception is not active in any browser. A saved choice does not request browser permissions, intercept PDFs, start a scan, or override your selected PDF application. Full native scan-before-open enforcement would require a separately verified integration and explicit browser permissions.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let automaticInterceptionStatus {
+              Text(automaticInterceptionStatus)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("automaticPDFInterceptionStatus")
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
+        }
+        .accessibilityIdentifier("automaticPDFInterceptionSection")
+        .onAppear(perform: refreshAutomaticInterceptionOptions)
 
         GroupBox("Browser downloads") {
           VStack(alignment: .leading, spacing: 8) {

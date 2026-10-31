@@ -326,6 +326,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/download-monitoring-limits.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
+      - name: Verify automatic PDF interception preference is browser-gated and inert
+        run: PYTHONPATH=. python3 tests/general/automatic-pdf-interception-option.py -v
       - name: Verify opt-in non-PDF download scan preference surface
         run: PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v
       - name: Verify opt-in browser download failed-scan notifications remain safety-neutral
@@ -770,6 +772,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
           "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
+      - name: Verify isolated per-browser automatic interception opt-ins
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-automatic-pdf-interception.swift -o "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
+          "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
       - name: Verify browser failed-scan notification preference in isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"
