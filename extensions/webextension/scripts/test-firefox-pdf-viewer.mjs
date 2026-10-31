@@ -9,6 +9,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { createAuthenticatedPdfRoutes } from "./authenticated-pdf-routes.mjs";
 
 const firefox = process.argv[2] || process.env.FIREFOX_PATH;
 const driverBinary = process.argv[3] || process.env.GECKODRIVER_PATH || "geckodriver";
@@ -44,9 +45,11 @@ function makePdf() {
 }
 
 const pdf = makePdf();
+const auth = createAuthenticatedPdfRoutes(pdf);
 const routes = ["/built-in-viewer.pdf", "/mime-only"];
 const counts = new Map(routes.map(route => [route, 0]));
 const server = createServer((request, response) => {
+  if (auth.handle(request, response)) return;
   if (request.method !== "GET" || !counts.has(request.url)) {
     response.writeHead(404, { "Cache-Control": "no-store" });
     response.end();
@@ -187,7 +190,52 @@ try {
     assert.equal(found.pages, 1);
     assert.ok(counts.get(route) > 0, "Firefox must request the actual loopback PDF");
   }
-  console.log("PASS Firefox built-in PDF.js viewer renders local PDF and MIME-only PDF: " + version);
+  // Check that a protected PDF is withheld before browser sign-in.
+  // Firefox, not this test's HTTP client, must retain and send the HttpOnly
+  // session cookie when its internal PDF.js viewer fetches the document.
+  const authPdf = "http://127.0.0.1:" + pdfPort + auth.pdfRoute;
+  const authLogin = "http://127.0.0.1:" + pdfPort + auth.loginRoute;
+  await webdriver("POST", "/session/" + sessionId + "/url",
+    { url: authPdf }, 40_000);
+  await until(async () => {
+    const visible = await webdriver("POST",
+      "/session/" + sessionId + "/execute/sync", {
+        script: 'return document.readyState === "complete" && ' +
+          'document.body?.textContent?.includes("Authentication required");',
+        args: []
+      }, 12_000);
+    return visible === true;
+  }, "401 response before Firefox authentication");
+  assert.equal(auth.snapshot().denied, 1);
+  assert.equal(auth.snapshot().granted, 0);
+
+  await webdriver("POST", "/session/" + sessionId + "/url",
+    { url: authLogin }, 40_000);
+  await until(async () => {
+    const signedIn = await webdriver("POST",
+      "/session/" + sessionId + "/execute/sync", {
+        script: 'return document.readyState === "complete" && ' +
+          'document.body?.textContent?.includes("Signed in") && document.cookie === "";',
+        args: []
+      }, 12_000);
+    return signedIn === true;
+  }, "Firefox browser-managed HttpOnly authentication cookie");
+  assert.equal(auth.snapshot().signedIn, 1);
+
+  await webdriver("POST", "/session/" + sessionId + "/url",
+    { url: authPdf }, 40_000);
+  const protectedViewer = await until(async () => {
+    const observed = await webdriver("POST",
+      "/session/" + sessionId + "/execute/sync", {
+        script: viewerProbe, args: []
+      }, 12_000);
+    return observed.readerControls && observed.pages === 1 &&
+      observed.ready && observed.firstPageRendered ? observed : null;
+  }, "rendered authenticated PDF in Firefox PDF.js", 45_000);
+  assert.equal(protectedViewer.pages, 1);
+  assert.ok(auth.snapshot().granted > 0,
+    "Firefox must fetch the PDF using the browser session cookie");
+  console.log("PASS Firefox built-in PDF.js viewer renders local PDF and MIME-only PDF, including authenticated PDF: " + version);
 } catch (error) {
   console.error("Firefox isolated viewer diagnostic:", stderrTail);
   throw error;
