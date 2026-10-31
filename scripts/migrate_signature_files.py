@@ -51,6 +51,7 @@ def _regular_file(path, *, database):
       header = stream.read(512 if database else 1)
     if database and (before.st_size < 512 or not header.startswith(b"ClamAV-VDB:")):
       raise MigrationError("Unsupported ClamAV signature database format")
+    os.lseek(descriptor, 0, os.SEEK_SET)
     return descriptor, before
   except BaseException:
     os.close(descriptor)
