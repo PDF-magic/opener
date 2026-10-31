@@ -31,6 +31,8 @@ class RecentScanHistoryDisplayTests(unittest.TestCase):
     def test_exact_private_schema_read_only_and_bounded(self):
         self.assertIn('SQLITE_OPEN_READONLY', MODEL)
         self.assertIn('SQLITE_OPEN_NOFOLLOW', MODEL)
+        self.assertIn('databaseURL.deletingLastPathComponent().resolvingSymlinksInPath()', MODEL)
+        self.assertIn('isPrivate(resolvedDatabase.path, directory: false) == true', MODEL)
         self.assertIn('sqlite3_db_readonly(database, "main") == 1', MODEL)
         self.assertIn('hasExactSchema(database)', MODEL)
         self.assertIn('lstat(path, &metadata)', MODEL)

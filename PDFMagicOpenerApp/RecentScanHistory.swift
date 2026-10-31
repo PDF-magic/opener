@@ -98,11 +98,22 @@ enum RecentScanHistoryReader {
     guard let filePrivate = isPrivate(databaseURL.path, directory: false) else { return .empty }
     guard filePrivate else { return .unavailable }
 
+    // macOS temporary and home directories may have trusted symlinked
+    // ancestors (for example /var -> /private/var). Resolve *only* the parent
+    // directories, never the database filename. Revalidate the resolved owner
+    // and permissions before SQLite opens the final component with NOFOLLOW.
+    let resolvedParent = databaseURL.deletingLastPathComponent().resolvingSymlinksInPath()
+    let resolvedDatabase = resolvedParent.appendingPathComponent(databaseURL.lastPathComponent)
+    guard isPrivate(resolvedParent.path, directory: true) == true,
+          isPrivate(resolvedDatabase.path, directory: false) == true else {
+      return .unavailable
+    }
+
     var opened: OpaquePointer?
-    // NOFOLLOW refuses a swapped final-path symlink. READONLY never creates the
-    // optional store. SQLite must not be allowed to turn a read into a write.
+    // NOFOLLOW refuses a swapped final-file symlink. READONLY never creates
+    // the optional store or grants any scanner or file-open authorization.
     let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW
-    guard sqlite3_open_v2(databaseURL.path, &opened, flags, nil) == SQLITE_OK,
+    guard sqlite3_open_v2(resolvedDatabase.path, &opened, flags, nil) == SQLITE_OK,
           let database = opened else {
       if let opened { sqlite3_close(opened) }
       return .unavailable

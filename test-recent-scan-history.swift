@@ -41,7 +41,9 @@ struct RecentScanHistoryTests {
     precondition(chmod(databaseURL.path, 0o600) == 0)
     let version = String(cString: sqlite3_libversion())
     var probe: OpaquePointer?
-    let probeCode = sqlite3_open_v2(databaseURL.path, &probe,
+    let resolvedDatabase = databaseURL.deletingLastPathComponent()
+      .resolvingSymlinksInPath().appendingPathComponent(databaseURL.lastPathComponent)
+    let probeCode = sqlite3_open_v2(resolvedDatabase.path, &probe,
         SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW, nil)
     if probeCode != SQLITE_OK {
       fatalError("SQLite readonly/no-follow open failed (code \(probeCode), version \(version))")
