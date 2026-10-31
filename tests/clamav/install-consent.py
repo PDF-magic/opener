@@ -98,10 +98,13 @@ class InstallationConsentTests(unittest.TestCase):
         self.assertIn("[ -x /usr/local/clamav/bin/clamscan ]", fallback)
         consent = 'python3 "$script_dir/scripts/confirm_clamav_install.py"'
         self.assertIn(consent, fallback)
-        self.assertIn("HOMEBREW_NO_AUTO_UPDATE=1 brew install clamav", fallback)
-        self.assertLess(fallback.index(consent), fallback.index("brew install clamav"))
-        self.assertEqual(source.count("brew install clamav"), 1)
-        self.assertNotIn("brew install clamav", source[:start])
+        command = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
+        self.assertIn(command, fallback)
+        self.assertIn("scripts/detect_homebrew.py", fallback)
+        self.assertLess(fallback.index("scripts/detect_homebrew.py"), fallback.index(consent))
+        self.assertLess(fallback.index(consent), fallback.index(command))
+        self.assertEqual(source.count(command), 1)
+        self.assertNotIn(command, source[:start])
 
     def test_normal_installer_path_and_scan_gates_remain_present(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")

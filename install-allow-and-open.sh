@@ -34,11 +34,17 @@ python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"
 migration_attempt="$(python3 "$script_dir/scripts/migration_state.py" --home "$HOME" begin)"
 
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
+    # Detect Homebrew before attempting to install ClamAV, failing without
+    # modifying existing user settings if the package manager is unavailable.
+    if ! brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"; then
+        echo "Homebrew detection failed; install Homebrew to set up ClamAV." >&2
+        exit 1
+    fi
     # Homebrew may request administrator authorization. Require a human at
     # the controlling terminal before any package-manager subprocess runs.
     # Absent or declined consent fails closed; no noninteractive opt-in.
     python3 "$script_dir/scripts/confirm_clamav_install.py"
-    HOMEBREW_NO_AUTO_UPDATE=1 brew install clamav
+    HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav
 fi
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
@@ -148,12 +154,31 @@ MIGRATE
 installed_app="$app"
 mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
 bundle_stage_dir="$(mktemp -d "$HOME/Applications/.pdf-magic-opener-build.XXXXXXXX")"
+# The previous application is not obsolete until every migration step succeeds.
+migration_complete=0
 cleanup_bundle_stage() {
-    # Restore the prior handler if the installation rename did not complete.
-    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
+    status=$?
+    trap - EXIT
+    if [ "$status" -eq 0 ] && [ "$migration_complete" -eq 1 ]; then
+        # Only a fully successful migration may discard the previous opener.
+        rm -rf -- "$bundle_stage_dir"
+        return 0
+    fi
+
+    # If promotion did not finish, restore the previous working bundle.
+    # Never overwrite an installed bundle or follow a replacement symlink.
+    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -L "$bundle_stage_dir/previous.app" ] &&
+       [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
         mv "$bundle_stage_dir/previous.app" "$installed_app" || true
     fi
-    rm -rf "$bundle_stage_dir"
+    if [ -e "$bundle_stage_dir/previous.app" ] || [ -L "$bundle_stage_dir/previous.app" ]; then
+        # Preserve a recovery copy when a later migration step fails.
+        echo "Installation incomplete; previous opener retained in staging." >&2
+    else
+        # No previous bundle remains; discard only uncommitted build artifacts.
+        rm -rf -- "$bundle_stage_dir"
+    fi
+    return "$status"
 }
 trap cleanup_bundle_stage EXIT
 app="$bundle_stage_dir/$app_name.app"
@@ -226,7 +251,10 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
     cp "$script_dir/make-pdf-magic-default.command" "$action"
     chmod 755 "$action"
 fi
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+# Reconcile only the old and new scan-handler registrations; leave the user
+# selected default PDF application and unrelated app registrations untouched.
+python3 "$script_dir/scripts/reconcile_pdf_handler_registration.py" \
+    "$app" "$legacy_app" "$script_dir/scripts/list_registered_pdf_openers.swift"
 # Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate_update_agent.py"
 # The migrator has verified the agent; reconcile its live launchd label so
@@ -336,4 +364,6 @@ python3 "$script_dir/offer-restore-pdf-handler.py" \
 python3 "$install_dir/pdf-handler-status.py"
 # Only record success after all migration operations finish.
 python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"
+# The durable migration journal now certifies this attempt's completion.
+migration_complete=1
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."

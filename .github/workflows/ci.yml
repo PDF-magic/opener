@@ -200,8 +200,12 @@ jobs:
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Verify safe Finder Quick Action migration and literal argv forwarding
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
+      - name: Reconcile legacy PDF handler registrations without changing user defaults
+        run: PYTHONPATH=. python3 tests/migration/handler-registration.py -v
       - name: Detect existing Finder Quick Action and backup without touching user files
         run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
+      - name: Preserve previous opener files until migration completes successfully
+        run: PYTHONPATH=. python3 tests/migration/obsolete-cleanup.py -v
       - name: Detect interrupted installation migrations and verify safe retries
         run: PYTHONPATH=. python3 tests/migration/repeatable-state.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
@@ -294,6 +298,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/fixed-safety-parameters.py -v
       - name: Keep scanner failures distinct from rejected feature exceptions
         run: PYTHONPATH=. python3 tests/protection/failure-exception-boundary.py -v
+      - name: Detect Homebrew safely before dependency installation
+        run: PYTHONPATH=. python3 tests/general/homebrew-availability.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
         run: PYTHONPATH=. python3 tests/clamav/installation.py -v
       - name: Require explicit consent before Homebrew operations
@@ -595,6 +601,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/default-user-action.py -v
       - name: Verify application naming and migration
         run: PYTHONPATH=. python3 tests/app/name.py
+      - name: Exercise Brave-only installation upgrade without touching user state
+        run: PYTHONPATH=. python3 tests/migration/brave-only-upgrade.py -v
       - name: Detect legacy PDF apps and local.studio identifiers without modifying installations
         run: PYTHONPATH=. python3 tests/general/existing-installation-detection.py -v
       - name: Verify generic PDF default-handler utility naming

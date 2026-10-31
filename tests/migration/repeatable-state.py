@@ -133,7 +133,7 @@ class MigrationStateTests(unittest.TestCase):
     finish = 'python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"'
     self.assertIn(begin, installer)
     self.assertIn(finish, installer)
-    self.assertLess(installer.index(begin), installer.index('brew install clamav'))
+    self.assertLess(installer.index(begin), installer.index('"$brew_executable" install clamav'))
     self.assertLess(installer.index(finish), installer.index('echo "Installed local malware scanning'))
     self.assertGreater(installer.index(finish), installer.index('python3 "$install_dir/pdf-handler-status.py"'))
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
