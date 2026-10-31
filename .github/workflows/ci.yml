@@ -599,6 +599,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/default-user-action.py -v
       - name: Verify application naming and migration
         run: PYTHONPATH=. python3 tests/app/name.py
+      - name: Exercise Brave-only installation upgrade without touching user state
+        run: PYTHONPATH=. python3 tests/migration/brave-only-upgrade.py -v
       - name: Detect legacy PDF apps and local.studio identifiers without modifying installations
         run: PYTHONPATH=. python3 tests/general/existing-installation-detection.py -v
       - name: Verify generic PDF default-handler utility naming
