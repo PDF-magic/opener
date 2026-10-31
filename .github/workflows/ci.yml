@@ -569,6 +569,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
       - name: Reject unreadable scan files before scanning or cached opening
         run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
+      - name: Reject inaccessible file and application paths before scanner admission
+        run: PYTHONPATH=. python3 tests/scan/inaccessible-paths.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents

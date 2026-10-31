@@ -230,17 +230,21 @@ def parse_scan_requests(args):
 
 
 def require_readable_file(path):
-    """Fail closed when the selected regular file cannot actually be read.
+    """Fail closed when a selected file cannot be read or an app enumerated.
 
-    Opening and reading one byte checks access under the current process identity,
-    rather than relying on permission bits or os.access(). This does not replace
-    full-byte hashing or the scanner's independent complete-scan verdict.
+    Check access under the current process identity, not permission bits or
+    os.access(). The subsequent full-byte hash and scanner verdict are still
+    mandatory, including for each member of an application bundle.
     """
-    if not path.is_file():
-        return
     try:
-        with path.open('rb') as stream:
-            stream.read(1)
+        if path.is_dir():
+            # An .app can have a valid directory entry but deny enumeration.
+            # Reject it at admission, before the scan queue or cache is touched.
+            with os.scandir(path) as entries:
+                next(entries, None)
+        elif path.is_file():
+            with path.open('rb') as stream:
+                stream.read(1)
     except OSError as error:
         raise RuntimeError(UNREADABLE_SCAN_INPUT_MESSAGE) from error
 
