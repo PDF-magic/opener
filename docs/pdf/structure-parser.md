@@ -219,3 +219,30 @@ future Enhanced activation still needs independent process isolation.
 The offline `test-pdf-decompressed-size.py` suite verifies inclusive per-stream
 and cumulative limits, over-limit compressed streams and implicit cross-reference
 stream decoding, settings restoration, and unchanged Built-in scanner isolation.
+
+
+### Parser filesystem confinement (opener-0856)
+
+The optional `parse_pdf_structure_timed(bytes)` worker now installs **kernel-enforced,
+deny-by-default filesystem restrictions** before loading pypdf or reading PDF
+bytes from stdin. On macOS it installs an Apple Seatbelt profile inside the
+worker; on Linux it applies Landlock read/write restrictions with
+`no_new_privs`. If the applicable OS facility is unavailable, the worker
+fails closed and the parent returns its existing fixed blocking error. There
+is no unsandboxed fallback or PDF-controlled sandbox configuration.
+
+Read access is limited to the trusted parser/support source files, the
+interpreter's Python runtime prefixes, required operating-system libraries,
+and minimal device nodes. Filesystem writes, private files outside those
+runtime roots, and symlink redirects to disallowed paths are denied. No PDF
+pathname is passed to the worker. The macOS Seatbelt profile also denies
+network and child-process creation; Linux Landlock addresses filesystem
+permissions only, so it must not be misrepresented as a network/process
+sandbox. Landlock does not prevent all metadata-only filesystem inspection,
+and the read-only Python prefix remains trusted. Neither mechanism makes the
+direct **in-process** `parse_pdf_structure(bytes)` helper a sandbox.
+
+The existing scanner, policy selection, user preferences, quarantine, and
+launch handoff remain unchanged. The already-registered timed-parser CI suite
+now exercises real kernel-denied read, symlink and write operations on
+synthetic private files on both macOS and Linux, as well as normal timed parsing.

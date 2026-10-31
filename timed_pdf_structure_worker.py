@@ -17,6 +17,11 @@ def main():
   # trusted repository folder, never the caller's cwd or an input PDF path.
   sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
+  # Install OS-enforced read-only access before any untrusted PDF parsing.
+  # Refuse the request when confinement cannot be established.
+  from parser_filesystem_confinement import confine_parser_filesystem
+  confine_parser_filesystem()
+
   from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, parse_pdf_structure
 
   contents = sys.stdin.buffer.read(MAX_STRUCTURE_INPUT_BYTES + 1)
