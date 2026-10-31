@@ -110,29 +110,8 @@ class MaximumTemporaryOutput:
             if self.path != directory / file_name:
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
             try:
-                # Check the directory *before* opening and use a descriptor to
-                # prevent symlink traversal during the file deletion.
-                directory_stat = os.stat(directory, follow_symlinks=False)
-                if (_identity(directory_stat) != directory_identity or
-                        not _is_private_directory(directory_stat)):
-                    raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-                flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-                flags |= getattr(os, "O_CLOEXEC", 0)
-                directory_fd = os.open(directory, flags)
-                try:
-                    if _identity(os.fstat(directory_fd)) != directory_identity:
-                        raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-                    item = os.stat(file_name, dir_fd=directory_fd,
-                                   follow_symlinks=False)
-                    if (_file_identity(item) != file_identity or
-                            not _is_private_file(item)):
-                        raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
-                    os.unlink(file_name, dir_fd=directory_fd)
-                    # Never recursively clear unknown contents. A foreign
-                    # entry makes rmdir fail instead of being deleted.
-                    os.rmdir(directory)
-                finally:
-                    os.close(directory_fd)
+                _remove_owned_output(directory, directory_identity, file_name,
+                                     file_identity)
             except (OSError, ValueError, MaximumTemporaryOutputError):
                 raise MaximumTemporaryOutputError(BLOCK_MESSAGE) from None
             _LEASES.pop(self, None)
@@ -144,6 +123,51 @@ class MaximumTemporaryOutput:
     def __exit__(self, exc_type, exc, traceback):
         self.release()
 
+
+
+
+def _remove_owned_output(directory, directory_identity, file_name=None,
+                         file_identity=None):
+    """Remove an owned staging entry through pinned private-directory handles.
+
+    Paths may be replaced between failure and cleanup. Do not unlink through a
+    mutable absolute path or recursively delete unexpected directory contents.
+    """
+    if directory.parent != _PRIVATE_ROOT:
+        raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+    root_fd = _open_private_root()
+    try:
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        flags |= getattr(os, "O_CLOEXEC", 0)
+        directory_fd = os.open(directory.name, flags, dir_fd=root_fd)
+        try:
+            opened = os.fstat(directory_fd)
+            if (_identity(opened) != directory_identity or
+                    opened.st_uid != os.geteuid() or
+                    not _is_private_directory(opened)):
+                raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+            if file_identity is not None:
+                if file_name is None or not _OWNED_FILENAME.fullmatch(file_name):
+                    raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+                current = os.stat(file_name, dir_fd=directory_fd,
+                                  follow_symlinks=False)
+                identity_matches = (_file_identity(current) == file_identity
+                                    if len(file_identity) == 5 else
+                                    _identity(current) == file_identity)
+                if (not identity_matches or not _is_private_file(current) or
+                        current.st_nlink != 1):
+                    raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+                os.unlink(file_name, dir_fd=directory_fd)
+            # Never remove a replacement directory, even if it is empty.
+            current_directory = os.stat(directory.name, dir_fd=root_fd,
+                                        follow_symlinks=False)
+            if _identity(current_directory) != directory_identity:
+                raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+            os.rmdir(directory.name, dir_fd=root_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        os.close(root_fd)
 
 
 def _open_private_root():
@@ -262,6 +286,7 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
     directory = None
     file_path = None
     created_identity = None
+    directory_identity = None
     try:
         # Recovery runs before each new stage; live sessions are never reaped.
         cleanup_abandoned_temporary_pdfs()
@@ -273,6 +298,7 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
                 not _is_private_directory(directory_info) or
                 directory_info.st_uid != os.geteuid()):
             raise MaximumTemporaryOutputError(BLOCK_MESSAGE)
+        directory_identity = _identity(directory_info)
         file_name = f"{_FILE_PREFIX}{secrets.token_hex(16)}{_FILE_SUFFIX}"
         file_path = directory / file_name
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
@@ -298,22 +324,15 @@ def stage_maximum_temporary_pdf(contents: bytes) -> MaximumTemporaryOutput:
             _LEASES[lease] = (directory, created_identity, _identity(directory_info), file_name)
         return lease
     except Exception:
-        if directory is not None:
-            # Only the fixed name we created; never recurse or follow links.
+        if directory is not None and directory_identity is not None:
             try:
-                info = os.stat(directory, follow_symlinks=False)
-                if (stat.S_ISDIR(info.st_mode) and
-                        info.st_uid == os.geteuid() and
-                        stat.S_IMODE(info.st_mode) == 0o700):
-                    if file_path is not None and created_identity is not None:
-                        try:
-                            actual = os.stat(file_path, follow_symlinks=False)
-                            if (_identity(actual) == created_identity[:3] and
-                                    _is_private_file(actual)):
-                                os.unlink(file_path)
-                        except OSError:
-                            pass
-                    os.rmdir(directory)
-            except OSError:
+                _remove_owned_output(
+                    directory, directory_identity,
+                    file_path.name if file_path is not None else None,
+                    created_identity,
+                )
+            except (OSError, ValueError, MaximumTemporaryOutputError):
+                # The directory or file may have been substituted; retain it
+                # rather than deleting through a possibly redirected pathname.
                 pass
         raise MaximumTemporaryOutputError(BLOCK_MESSAGE) from None
