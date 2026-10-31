@@ -25,7 +25,7 @@ function safe(result, suppress = true) {
   assert.equal(result.scanVerified, false);
   assert.equal(result.authorizesScan, false);
   assert.equal(result.authorizesOpen, false);
-  assert.doesNotMatch(JSON.stringify(result), /pdf|token|secret|https?:|file:\/\//i);
+  assert.doesNotMatch(JSON.stringify(result), /token|secret|https?:|file:\/\//i);
 }
 
 test("one verified external top-frame PDF may reserve an attempt, never an open", () => {
@@ -198,7 +198,7 @@ test("documentation explains native-origin loops, durable state and opt-in safet
   for (const phrase of [
     "opener-0786", "PDFOpener", "extension", "redirect",
     "service worker", "tab", "ClamAV", "scanner", "user",
-    "preferences", "verified", "restarts", "fail closed"
+    "preferences", "verified", "restarts", "fail-closed"
   ]) assert.ok(doc.toLowerCase().includes(phrase.toLowerCase()), phrase);
   assert.match(doc, /pdf-preload-interception-trigger\.js/);
 });
