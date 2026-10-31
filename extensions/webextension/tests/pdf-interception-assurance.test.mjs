@@ -145,7 +145,7 @@ test("documentation distinguishes observed coverage, candidate request blocks an
     "opener-0798", "best-effort", "enforcement", "scan-before-render",
     "ClamAV", "permissions", "browser", "user preferences",
     "inactive", "download", "matching network requests"
-  ]) assert.ok(doc.toLowerCase().includes(phrase.toLowerCase()), phrase);
+  ]) assert.ok(doc.toLowerCase().replace(/\s+/g, " ").includes(phrase.toLowerCase()), phrase);
 });
 
 test("classifier does not activate interception or modify browser and scanner settings", async () => {
