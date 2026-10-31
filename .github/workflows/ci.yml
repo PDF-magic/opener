@@ -591,6 +591,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/zero-length-files.py -v
       - name: Reject unsupported ClamAV versions before scanning or cache reuse
         run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
+      - name: Verify reusable native scan-result summary vocabulary and safety
+        run: PYTHONPATH=. python3 tests/scan/result-summary-component.py -v
       - name: Run scan-gate and request-metadata tests
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
       - name: Verify mounted network-volume availability and normal scan requirements
@@ -1027,6 +1029,11 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
+      - name: Compile and test reusable AppKit scan-result summary
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors scan-result-summary-view.swift test-scan-result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
+          "$RUNNER_TEMP/TestScanResultSummary"
+          PYTHONPATH=. python3 tests/scan/result-summary-component.py -v
       - name: Verify direct native scanner and origin processes on macOS
         run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
       - name: Verify General PDF association action with synthetic apps only
