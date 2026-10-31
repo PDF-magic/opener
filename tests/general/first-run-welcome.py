@@ -130,6 +130,25 @@ class FirstRunWelcomeTests(unittest.TestCase):
                       "NSWorkspace(", "target-app.txt"):
       self.assertNotIn(forbidden, source)
 
+  def test_first_run_explains_scanning_is_not_a_safety_guarantee(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    warning = (
+      "A verified clean scan reduces risk, but ClamAV cannot detect every threat. "
+      "A clean result does not guarantee that a PDF is safe; only open "
+      "documents from sources you trust."
+    )
+    self.assertIn('Label("Scanning cannot guarantee safety", systemImage: "exclamationmark.shield")', source)
+    self.assertIn('Text("' + warning + '")', source)
+    self.assertLess(source.index('Label("Local malware scanning"'),
+                    source.index('Label("Scanning cannot guarantee safety"'))
+    self.assertLess(source.index('Label("Scanning cannot guarantee safety"'),
+                    source.index('Label("Your choice of PDF application"'))
+    # This is a disclosure, not a scanner bypass or a change to its fail-closed gate.
+    self.assertIn("If a scan cannot be verified, the handler blocks opening.", source)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("cannot guarantee", docs)
+    self.assertIn("clean scan", docs)
+
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
     self.assertIn('acknowledgementKey = "firstRunWelcomeAcknowledged.v1"', state)
