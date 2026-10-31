@@ -27,6 +27,7 @@ struct FirstRunWelcomeGate<Content: View>: View {
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
   @State private var showingFinderQuickActionSetup = false
+  @State private var signatureAvailability = FirstRunSignatureAvailability.readInstalled()
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -44,6 +45,15 @@ struct FirstRunWelcomeView: View {
             Label("Local malware scanning", systemImage: "checkmark.shield")
               .font(.headline)
             Text("When PDFs are opened through the installed scan handler, a supported ClamAV scanner and recent malware definitions are required. If a scan cannot be verified, the handler blocks opening.")
+
+            Label("Signature availability", systemImage: "checkmark.shield")
+              .font(.headline)
+            Text(signatureAvailability.explanation)
+              .accessibilityIdentifier("firstRunSignatureAvailability")
+            Button("Check Signature Files Again") {
+              signatureAvailability = FirstRunSignatureAvailability.readInstalled()
+            }
+            .accessibilityIdentifier("firstRunRecheckSignatures")
 
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)

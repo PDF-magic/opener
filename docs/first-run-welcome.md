@@ -32,6 +32,21 @@ CI tests the native window's wiring and accessible labels, while an isolated
 UserDefaults suite verifies first-run, repeat-launch and acknowledgement
 behavior without accessing any installed user settings.
 
+## Signature availability check (opener-0976)
+
+On first run, the welcome inspects only metadata for the established installed
+ClamAV signature directory and its main/daily .cvd or .cld files. It reports
+whether both required nonempty regular files are present, missing/incomplete,
+or unsafe/unreadable (including linked files). The user may recheck after
+installing or updating definitions; no update starts automatically.
+
+**Presence is not validity, freshness, or proof of a safe document.** This
+display-only check never reads the definition payload, runs a scanner, changes
+the installed database, or touches existing browser/protection preferences.
+The separate PDF scan gate continues to require validated, recent definitions
+and a clean scan before authorizing document opening. Native isolated tests
+and portable CI wiring checks exercise this behavior.
+
 ## Optional Finder Quick Action offer (opener-0979)
 
 On first run, the welcome optionally offers **Configure Finder Quick Action…**.
