@@ -143,12 +143,31 @@ MIGRATE
 installed_app="$app"
 mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
 bundle_stage_dir="$(mktemp -d "$HOME/Applications/.pdf-magic-opener-build.XXXXXXXX")"
+# The previous application is not obsolete until every migration step succeeds.
+migration_complete=0
 cleanup_bundle_stage() {
-    # Restore the prior handler if the installation rename did not complete.
-    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
+    status=$?
+    trap - EXIT
+    if [ "$status" -eq 0 ] && [ "$migration_complete" -eq 1 ]; then
+        # Only a fully successful migration may discard the previous opener.
+        rm -rf -- "$bundle_stage_dir"
+        return 0
+    fi
+
+    # If promotion did not finish, restore the previous working bundle.
+    # Never overwrite an installed bundle or follow a replacement symlink.
+    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -L "$bundle_stage_dir/previous.app" ] &&
+       [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
         mv "$bundle_stage_dir/previous.app" "$installed_app" || true
     fi
-    rm -rf "$bundle_stage_dir"
+    if [ -e "$bundle_stage_dir/previous.app" ] || [ -L "$bundle_stage_dir/previous.app" ]; then
+        # Preserve a recovery copy when a later migration step fails.
+        echo "Installation incomplete; previous opener retained in staging." >&2
+    else
+        # No previous bundle remains; discard only uncommitted build artifacts.
+        rm -rf -- "$bundle_stage_dir"
+    fi
+    return "$status"
 }
 trap cleanup_bundle_stage EXIT
 app="$bundle_stage_dir/$app_name.app"
@@ -334,4 +353,6 @@ python3 "$script_dir/offer-restore-pdf-handler.py" \
 python3 "$install_dir/pdf-handler-status.py"
 # Only record success after all migration operations finish.
 python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"
+# The durable migration journal now certifies this attempt's completion.
+migration_complete=1
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
