@@ -15,13 +15,28 @@ approval = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(approval)
 
 
-class Console(io.StringIO):
+class Console:
+    """A terminal writes prompts and reads input on separate channels."""
+
     def __init__(self, response, tty=True):
-        super().__init__(response)
+        self.incoming = io.StringIO(response)
+        self.outgoing = io.StringIO()
         self.tty = tty
 
     def isatty(self):
         return self.tty
+
+    def write(self, message):
+        return self.outgoing.write(message)
+
+    def flush(self):
+        return self.outgoing.flush()
+
+    def readline(self, limit=-1):
+        return self.incoming.readline(limit)
+
+    def getvalue(self):
+        return self.outgoing.getvalue()
 
 
 class InstallationConsentTests(unittest.TestCase):
