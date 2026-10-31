@@ -254,6 +254,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Verify ClamAV signature update failures are recorded safely
         run: PYTHONPATH=. python3 tests/signature/update-failures.py -v
+      - name: Verify private macOS signature-update failure notifications
+        run: PYTHONPATH=. python3 tests/notifications/signature-update-failure.py -v
       - name: Detect incomplete ClamAV signature downloads
         run: PYTHONPATH=. python3 tests/general/incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
