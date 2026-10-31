@@ -759,6 +759,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/history-privacy.py -v
       - name: Verify recent scan-history display is on demand, bounded and private
         run: PYTHONPATH=. python3 tests/scan/recent-history-display.py -v
+      - name: Verify confirmation-gated private history deletion
+        run: PYTHONPATH=. python3 tests/scan/clear-history-action.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
@@ -849,6 +851,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift test-recent-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
           "$RUNNER_TEMP/TestRecentScanHistory"
+      - name: Exercise confirmed history deletion with synthetic private SQLite files
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift test-clear-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
+          "$RUNNER_TEMP/TestClearScanHistory"
       - name: Verify native stale-signature warning at the scanner age boundary
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
@@ -919,6 +925,7 @@ jobs:
             PDFMagicOpenerApp/SignatureUpdateStatus.swift \
             PDFMagicOpenerApp/SignatureUpdateProgress.swift \
             PDFMagicOpenerApp/RecentScanHistory.swift \
+            PDFMagicOpenerApp/ClearScanHistory.swift \
             test-preferences-large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services

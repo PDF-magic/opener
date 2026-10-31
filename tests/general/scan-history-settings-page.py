@@ -53,8 +53,13 @@ class ScanHistorySettingsPageTests(unittest.TestCase):
     ):
       with self.subTest(required=required):
         self.assertIn(required, page)
-    self.assertEqual(page.count("Button("), 1)
     self.assertIn('Button("Show recent scan results")', page)
+    self.assertIn('Button("Clear History…", role: .destructive)', page)
+    self.assertIn('Button("Clear History", role: .destructive)', page)
+    self.assertIn('Button("Cancel", role: .cancel)', page)
+    self.assertIn('showClearHistoryConfirmation = true', page)
+    self.assertIn('switch ClearScanHistoryStore.clear()', page)
+    self.assertIn('.confirmationDialog(', page)
     self.assertIn("recentScanHistory = RecentScanHistoryReader.load()", page)
     self.assertNotIn(".onAppear", page)
     for forbidden in (
