@@ -481,21 +481,30 @@ def fingerprint(path):
         if entry.is_symlink():
             digest.update(b'link\0' + os.fsencode(os.readlink(entry)) + b'\0')
         elif entry.is_file():
-            size = entry.stat().st_size
-            # ClamAV may skip empty files; never cache or open an unscanned input.
-            # This also protects empty members of recursively scanned app bundles.
-            if size == 0:
-                raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
-            if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
-                raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
-            digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
+            # Open once, then inspect and hash through the same descriptor.
+            # O_NOFOLLOW rejects a symlink substituted after entry.is_file().
+            flags = os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_NOFOLLOW', 0)
             try:
-                with entry.open('rb') as stream:
-                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-                        digest.update(chunk)
+                fd = os.open(entry, flags)
+                try:
+                    info = os.fstat(fd)
+                    if not stat.S_ISREG(info.st_mode):
+                        raise RuntimeError('Only regular files and application bundles can be scanned.')
+                    size = info.st_size
+                    # ClamAV may skip empty files, including app-bundle members.
+                    if size == 0:
+                        raise RuntimeError('A zero-length file cannot be scanned; opening was stopped.')
+                    if size > MAX_FILE_SIZE and (is_bundle or path.suffix.lower() != '.pdf'):
+                        raise RuntimeError('The file exceeds the 512 MB scan limit; opening was stopped.')
+                    digest.update(b'bytes\0' + str(size).encode('ascii') + b'\0')
+                    with os.fdopen(fd, 'rb', closefd=False) as stream:
+                        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                            digest.update(chunk)
+                finally:
+                    os.close(fd)
             except OSError as error:
-                # Files may become unreadable after admission; never cache or
-                # open a partial hash, or print source paths from system errors.
+                # An unopenable, substituted, or unreadable input cannot be
+                # cached or opened; do not expose its path in diagnostics.
                 raise RuntimeError(UNREADABLE_SCAN_INPUT_MESSAGE) from error
         elif entry.is_dir():
             digest.update(b'directory\0')

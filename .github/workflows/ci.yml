@@ -567,6 +567,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
       - name: Run scan-gate and request-metadata tests
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
+      - name: Verify scan input metadata and hashing use pinned file descriptors
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Reject unreadable scan files before scanning or cached opening
         run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
