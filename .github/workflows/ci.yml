@@ -105,6 +105,20 @@ jobs:
       - name: Verify Safari renders local PDF and MIME-only PDF
         run: python3 tests/browser/safari-pdf-viewer.py --live
 
+  safari-downloaded-open:
+    # A real Safari download on a disposable runner, then the existing scan
+    # policy with external scanner/launch actions replaced by test doubles.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: Safari downloaded PDF managed opening
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable SafariDriver on the disposable macOS runner
+        run: sudo /usr/bin/safaridriver --enable
+      - name: Test Safari download and scan-gated opening
+        run: PYTHONPATH=. python3 tests/browser/safari-download-open.py --live
+
   detect-scope:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Validate dependency map for native CI
@@ -419,12 +433,18 @@ jobs:
       - name: Verify three concurrent PDF tab correlation and closure isolation
         working-directory: extensions/webextension
         run: node --test tests/concurrent-pdf-tabs.test.mjs
+      - name: Verify every known unsupported PDF route is documented and fail-closed
+        working-directory: extensions/webextension
+        run: node --test tests/browser-unsupported-routes.test.mjs
       - name: Reject unsupported data URLs before PDF candidate selection
         working-directory: extensions/webextension
         run: node --test tests/pdf-data-url.test.mjs
       - name: Enforce explicit PDF download byte-size cap
         working-directory: extensions/webextension
         run: node --test tests/explicit-pdf-download-size.test.mjs
+      - name: Preserve original PDF URL on the holding screen
+        working-directory: extensions/webextension
+        run: node --test tests/holding-screen-original-url.test.mjs
       - name: Verify automatic PDF scan holding screen stays accessible and fail-closed
         working-directory: extensions/webextension
         run: node --test tests/pdf-interception-holding-screen.test.mjs
@@ -525,8 +545,14 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/policy-snapshot.py -v
       - name: Verify installed scanner configuration boundary values
         run: PYTHONPATH=. python3 tests/scanner/configuration-boundaries.py -v
+      - name: Test Safari download-opening fixture and fail-closed contracts
+        run: |
+          PYTHONPATH=. python3 tests/browser/safari-download-open.py --self-test
+          PYTHONPATH=. python3 tests/browser/safari-download-open-contract.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Verify quarantined PDF opening honors scan and application gates
+        run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Fail closed and retain quarantine for unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
@@ -1110,6 +1136,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
+      - name: Test verified opening handoff of actually quarantined PDFs
+        run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Verify real macOS quarantine on unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
       - name: Inventory quarantine-removal calls and reject any mutators

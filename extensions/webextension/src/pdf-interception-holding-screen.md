@@ -19,7 +19,10 @@ The separate [CSS](pdf-interception-holding-screen.css) provides light and
 dark appearance, readable large text, a decorative activity indicator, and
 reduced-motion support. The root has role=status, polite live status,
 aria-busy=true and a label referring to the screen heading. There is no
-skip-scan, open-original, accept-risk, download or retry control. URLs,
+skip-scan, open-original, accept-risk, download or retry control. Only the
+separately authenticated original navigation URL may be shown as **inert text**
+for an active, verified scanning hold, using the
+[original URL presenter](holding-screen-original-url.md) (opener-0787).
 PDF content, filenames, local paths and native scanner errors are never shown.
 
 ## Activation contract
