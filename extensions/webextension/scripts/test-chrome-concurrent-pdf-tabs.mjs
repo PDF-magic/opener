@@ -224,10 +224,27 @@ try {
 
   // Each PDF tab has to own its own viewer, not just share another tab's
   // browser-wide internal extension target or HTTP success response.
-  const observations = await Promise.all(targets.map(tab => until(async () => {
-    const result = await inspect(tab);
-    return result.url === tab.url && result.hasOwnViewer ? result : null;
-  }, "independent built-in viewer for " + tab.route)));
+  const observations = [];
+  // In headless Chrome the PDF plugin can defer background-tab rendering
+  // until the tab is foregrounded. Keep all targets open, and bring each to
+  // the front for its own *local* viewer inspection, one at a time.
+  for (const tab of targets) {
+    await command("Target.activateTarget", { targetId: tab.targetId });
+    await command("Page.bringToFront", {}, tab.sessionId);
+    let lastObservation;
+    const observed = await until(async () => {
+      lastObservation = await inspect(tab);
+      return lastObservation.url === tab.url && lastObservation.hasOwnViewer ?
+        lastObservation : null;
+    }, "independent built-in viewer for " + tab.route).catch(error => {
+      console.error("Chrome tab-local viewer status:", {
+        route: tab.route, correctURL: lastObservation?.url === tab.url,
+        hasOwnViewer: lastObservation?.hasOwnViewer
+      });
+      throw error;
+    });
+    observations.push(observed);
+  }
   for (const [index, result] of observations.entries()) {
     assert.equal(result.url, targets[index].url);
     assert.equal(result.hasOwnViewer, true);
@@ -243,6 +260,8 @@ try {
     return !targetInfos.some(info => info.targetId === closed.targetId);
   }, "the independently closed PDF tab");
   for (const tab of targets) {
+    await command("Target.activateTarget", { targetId: tab.targetId });
+    await command("Page.bringToFront", {}, tab.sessionId);
     const result = await until(async () => {
       const view = await inspect(tab);
       return view.url === tab.url && view.hasOwnViewer ? view : null;
