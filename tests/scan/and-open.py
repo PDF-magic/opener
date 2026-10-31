@@ -538,7 +538,9 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine', side_effect=lambda *args: calls.append('retain quarantine')):
             opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(calls[1], 'retain quarantine')
-        self.assertEqual(calls[2], [str(NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser', str(self.file)])
+        proof = ':'.join(map(str, opener.file_identity(self.file)[0][1:]))
+        self.assertEqual(calls[2], [str(NATIVE_LAUNCHER), '--expected-identity', proof,
+                                    '--bundle-id', 'com.brave.Browser', str(self.file)])
         self.assertIn('--alert-exceeds-max=yes', calls[0])
         self.assertIn('--alert-encrypted=yes', calls[0])
 
@@ -558,8 +560,10 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
                 patch.object(opener, 'remove_quarantine'):
             opener.scan_and_open(str(self.file), '/scanner')
         self.assertEqual(seen, [('com.brave.Browser',)])
+        proof = ':'.join(map(str, opener.file_identity(self.file)[0][1:]))
         self.assertEqual(run.call_args.args[0],
-                         [str(NATIVE_LAUNCHER), '--bundle-id', 'com.brave.Browser', str(self.file)])
+                         [str(NATIVE_LAUNCHER), '--expected-identity', proof,
+                          '--bundle-id', 'com.brave.Browser', str(self.file)])
 
     def test_records_default_handler_and_selected_app_bundle(self):
         text_file = self.file.with_suffix('.txt')
@@ -573,7 +577,9 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
             opener.scan_and_open(str(app), '/scanner')
         self.assertEqual(self.recorded_destinations(),
                          [('system-default',), ('Example.app',)])
-        self.assertEqual(run.call_args.args[0], [str(NATIVE_LAUNCHER), str(app)])
+        app_proof = ':'.join(map(str, opener.file_identity(app)[0][1:]))
+        self.assertEqual(run.call_args.args[0],
+                         [str(NATIVE_LAUNCHER), '--expected-identity', app_proof, str(app)])
 
     def test_records_destination_even_when_scan_detects_malware(self):
         detected = subprocess.CompletedProcess([], 1, 'file: Malware FOUND', '')
