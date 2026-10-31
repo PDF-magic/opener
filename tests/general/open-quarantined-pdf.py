@@ -9,7 +9,6 @@ test uses real com.apple.quarantine extended attributes.
 
 from contextlib import ExitStack
 import importlib.util
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -26,7 +25,25 @@ SPEC.loader.exec_module(opener)
 ATTRIBUTE = "com.apple.quarantine"
 MARKER = b"0081;00000000;PDFMagicOpener;00000000-0000-0000-0000-000000000000"
 SELECTED_BROWSER = "com.google.Chrome"
-MACOS_XATTR = sys.platform == "darwin" and hasattr(os, "getxattr") and hasattr(os, "setxattr")
+MACOS_XATTR = sys.platform == "darwin"
+
+
+def read_quarantine(path):
+    """Read exact quarantine bytes using macOS xattr (not Python os.getxattr)."""
+    result = subprocess.run(
+        ["/usr/bin/xattr", "-px", ATTRIBUTE, str(path)],
+        capture_output=True, check=True
+    )
+    return bytes.fromhex(result.stdout.decode("ascii"))
+
+
+def tag_quarantine(path):
+    """Apply a test-only real macOS marker, without touching scanner settings."""
+    subprocess.run(
+        ["/usr/bin/xattr", "-wx", ATTRIBUTE, MARKER.hex(), str(path)],
+        capture_output=True, check=True
+    )
+
 
 
 class OpenQuarantinedPDFTests(unittest.TestCase):
@@ -47,13 +64,13 @@ class OpenQuarantinedPDFTests(unittest.TestCase):
     def tag(self):
         if not MACOS_XATTR:
             self.skipTest("Real quarantine xattrs require macOS")
-        os.setxattr(self.pdf, ATTRIBUTE, MARKER)
+        tag_quarantine(self.pdf)
         self.expected_quarantine = True
-        self.assertEqual(os.getxattr(self.pdf, ATTRIBUTE), MARKER)
+        self.assertEqual(read_quarantine(self.pdf), MARKER)
 
     def tagged(self):
         if self.expected_quarantine:
-            self.assertEqual(os.getxattr(self.pdf, ATTRIBUTE), MARKER)
+            self.assertEqual(read_quarantine(self.pdf), MARKER)
         self.assertEqual(self.pdf.read_bytes(), self.original)
 
     def attempt(self, *, verdict="clean", cached=False, invalid_destination=False,
@@ -205,7 +222,7 @@ class OpenQuarantinedPDFTests(unittest.TestCase):
         try:
             events = self.attempt(change_during_scan=True)
             self.assertNotIn(("handoff", SELECTED_BROWSER), events)
-            self.assertEqual(os.getxattr(self.pdf, ATTRIBUTE), MARKER)
+            self.assertEqual(read_quarantine(self.pdf), MARKER)
         finally:
             self.pdf.write_bytes(original)
         self.tagged()
