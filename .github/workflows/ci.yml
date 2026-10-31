@@ -200,6 +200,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Verify safe Finder Quick Action migration and literal argv forwarding
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
+      - name: Reconcile legacy PDF handler registrations without changing user defaults
+        run: PYTHONPATH=. python3 tests/migration/handler-registration.py -v
       - name: Detect existing Finder Quick Action and backup without touching user files
         run: PYTHONPATH=. python3 tests/migration/finder-quick-action.py -v
       - name: Detect interrupted installation migrations and verify safe retries

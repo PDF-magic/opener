@@ -102,7 +102,7 @@ class PDFDefaultRestorationTests(unittest.TestCase):
         self.assertIn('"$script_dir/set-pdf-default-handler.swift" "$app"', installer)
         self.assertIn('"$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"', installer)
         self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)
-        self.assertLess(installer.index('lsregister -f "$app"'),
+        self.assertLess(installer.index('scripts/reconcile_pdf_handler_registration.py'),
                         installer.index('python3 "$script_dir/offer-restore-pdf-handler.py"'))
         helper = (ROOT / "offer-restore-pdf-handler.py").read_text()
         self.assertNotIn("target-app.txt", helper)
