@@ -108,7 +108,7 @@ class MigrationCleanupTests(unittest.TestCase):
         completion = source.index("migration_complete=1")
         for required in (
             'mv "$app" "$installed_app"',
-            'launchctl bootstrap "gui/$UID" "$agent"',
+            'python3 "$script_dir/scripts/reconcile_update_agent.py"',
             'python3 - "$workflow" <<\'PY\'',
             'python3 "$script_dir/offer-restore-pdf-handler.py"',
             'python3 "$install_dir/pdf-handler-status.py"',
