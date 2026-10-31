@@ -26,6 +26,7 @@ struct FirstRunWelcomeGate<Content: View>: View {
 
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
+  @State private var signatureAvailability = FirstRunSignatureAvailability.readInstalled()
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -47,6 +48,15 @@ struct FirstRunWelcomeView: View {
             Label("Scanning cannot guarantee safety", systemImage: "exclamationmark.shield")
               .font(.headline)
             Text("A verified clean scan reduces risk, but ClamAV cannot detect every threat. A clean result does not guarantee that a PDF is safe; only open documents from sources you trust.")
+
+            Label("Signature availability", systemImage: "checkmark.shield")
+              .font(.headline)
+            Text(signatureAvailability.explanation)
+              .accessibilityIdentifier("firstRunSignatureAvailability")
+            Button("Check Signature Files Again") {
+              signatureAvailability = FirstRunSignatureAvailability.readInstalled()
+            }
+            .accessibilityIdentifier("firstRunRecheckSignatures")
 
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
