@@ -61,7 +61,7 @@ struct ScanHistoryRetentionTests {
       INSERT INTO scan_history(scanned_at,final_status,scanner_version,protection_profile_id)
       VALUES (1789990000,'clean','1.5.0','built-in');
       INSERT INTO scan_history(scanned_at,final_status,scanner_version,protection_profile_id)
-      VALUES (1799900000,'scanFailed','1.5.0','built-in');
+      VALUES (1799000000,'scanFailed','1.5.0','built-in');
       INSERT INTO scan_history(scanned_at,final_status,scanner_version,protection_profile_id)
       VALUES (1800000000,'clean',NULL,'built-in');
       """
@@ -111,7 +111,7 @@ struct ScanHistoryRetentionTests {
             "Symlink config must fail closed")
     require(!ScanHistoryRetentionStore.saveDays(30, databaseURL: db),
             "Must not replace an untrusted settings symlink")
-    require(try String(contentsOf: outside) == "keep outside",
+    require(try String(contentsOf: outside, encoding: .utf8) == "keep outside",
             "Unrelated content must remain unchanged")
     print("PASS: configured scan history retention prunes only expired private metadata")
   }

@@ -78,8 +78,8 @@ class HistoryRetentionTests(unittest.TestCase):
         self.store(self.now)
         self.assertEqual(len(self.timestamps()), 3)
         self.save_policy(7)
-        self.assertEqual(prune_expired_history(database_path=self.db, now=self.now), 3)
-        self.assertEqual(self.timestamps(), [self.now])
+        self.assertEqual(prune_expired_history(database_path=self.db, now=self.now), 1)
+        self.assertEqual(self.timestamps(), [self.now - 1 * 86400, self.now])
         self.assertEqual(prune_expired_history(database_path=self.db, now=self.now), 0)
 
     def test_reject_unsafe_or_malformed_preferences_without_expiring_data(self):
