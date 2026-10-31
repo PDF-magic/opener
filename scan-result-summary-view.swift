@@ -92,6 +92,36 @@ private struct ScanResultSummaryCopy {
     }
 }
 
+// Only status-derived, fixed technical copy is available for blocked or failed
+// results. Never display raw scanner output, PDF contents, file paths, or logs.
+private enum ScanResultSummaryTechnicalCopy {
+    static func forStatus(_ status: ScanResultSummaryStatus?) -> String? {
+        guard let status else { return nil }
+        let category: String
+        switch status {
+        case .malwareDetected:
+            category = "Category: Confirmed malware detection by the scanner."
+        case .suspiciousStructure:
+            category = "Category: Required PDF structural inspection raised a concern."
+        case .encrypted:
+            category = "Category: Encryption prevented required inspection."
+        case .incompleteScan:
+            category = "Category: One or more required checks were incomplete."
+        case .scanFailed:
+            category = "Category: Scanner verification failed."
+        case .scanTimedOut:
+            category = "Category: The scanning time limit was exceeded."
+        case .fileChanged:
+            category = "Category: Input integrity changed during verification."
+        case .fileTooLarge:
+            category = "Category: A required scanning size limit was exceeded."
+        case .clean, .cancelled:
+            return nil
+        }
+        return "Result code: \(status.rawValue)\n\(category)\nOpening was not authorized."
+    }
+}
+
 // This is an AppKit view, not a scanner control or a notification source.
 // Multiple callers can embed separate instances and update them independently.
 final class ScanResultSummaryView: NSView {
@@ -100,8 +130,11 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
+    let technicalDetailsButton = NSButton(title: "Show technical details", target: nil, action: nil)
+    let technicalDetailsLabel = NSTextField(wrappingLabelWithString: "")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var technicalDetailsExpanded = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -135,8 +168,18 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
 
+        technicalDetailsButton.setAccessibilityIdentifier("scanResultSummaryTechnicalDetailsToggle")
+        technicalDetailsButton.target = self
+        technicalDetailsButton.action = #selector(toggleTechnicalDetails(_:))
+        technicalDetailsLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        technicalDetailsLabel.textColor = .secondaryLabelColor
+        technicalDetailsLabel.lineBreakMode = .byWordWrapping
+        technicalDetailsLabel.maximumNumberOfLines = 0
+        technicalDetailsLabel.setAccessibilityIdentifier("scanResultSummaryTechnicalDetails")
+
         let stack = NSStackView(views: [
-            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel,
+            technicalDetailsButton, technicalDetailsLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -150,6 +193,21 @@ final class ScanResultSummaryView: NSView {
             stack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -10),
         ])
         explanationLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    }
+
+    @objc private func toggleTechnicalDetails(_ sender: NSButton) {
+        guard !technicalDetailsButton.isHidden,
+              !technicalDetailsLabel.stringValue.isEmpty else { return }
+        technicalDetailsExpanded.toggle()
+        refreshTechnicalDetailsDisclosure()
+    }
+
+    private func refreshTechnicalDetailsDisclosure() {
+        technicalDetailsLabel.isHidden = !technicalDetailsExpanded
+        let title = technicalDetailsExpanded ? "Hide technical details" : "Show technical details"
+        technicalDetailsButton.title = title
+        technicalDetailsButton.setAccessibilityLabel(title)
+        invalidateIntrinsicContentSize()
     }
 
     // Only a trusted local URL is accepted. Display its basename, never the
@@ -196,6 +254,14 @@ final class ScanResultSummaryView: NSView {
         explanationLabel.stringValue = copy.explanation
         headingLabel.setAccessibilityLabel(copy.heading)
         explanationLabel.setAccessibilityLabel(copy.explanation)
+
+        let technicalCopy = ScanResultSummaryTechnicalCopy.forStatus(status)
+        technicalDetailsExpanded = false
+        technicalDetailsLabel.stringValue = technicalCopy ?? ""
+        technicalDetailsLabel.setAccessibilityLabel(technicalCopy ?? "")
+        technicalDetailsButton.isHidden = technicalCopy == nil
+        refreshTechnicalDetailsDisclosure()
+
         switch status {
         case .clean:
             headingLabel.textColor = .systemGreen
