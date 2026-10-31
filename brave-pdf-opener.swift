@@ -94,25 +94,54 @@ func recordNativeScanOrigin(script: URL, path: String, environment: [String: Str
 // END NATIVE DIRECT PROCESS GATE
 
 // The native PDF owner (not the standalone Settings app) requests macOS
-// notification authorization on the first opted-in successful handoff.
-// Notification delivery is best effort, never part of the scan verdict.
-// Never put document paths, names, or scan diagnostics in notifications.
-func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
-    let center = UNUserNotificationCenter.current()
+// notification authorization on the first opted-in delivery. Injecting only
+// the system-notification transport lets headless tests exercise the real
+// permission and delivery paths after the independent Settings app has quit.
+// Scanner verdicts and preferences are never read or changed by this transport.
+struct NativeScanNotificationTransport {
+    let getAuthorizationStatus: (@escaping (UNAuthorizationStatus) -> Void) -> Void
+    let requestAuthorization: (@escaping (Bool) -> Void) -> Void
+    let add: (UNNotificationRequest, @escaping () -> Void) -> Void
+
+    static func system() -> NativeScanNotificationTransport {
+        let center = UNUserNotificationCenter.current()
+        return NativeScanNotificationTransport(
+            getAuthorizationStatus: { callback in
+                center.getNotificationSettings { callback($0.authorizationStatus) }
+            },
+            requestAuthorization: { callback in
+                center.requestAuthorization(options: [.alert]) { allowed, _ in
+                    callback(allowed)
+                }
+            },
+            add: { request, callback in
+                center.add(request) { _ in callback() }
+            }
+        )
+    }
+}
+
+// Best-effort macOS notice: no document names, paths or scan diagnostics.
+// Notification permission is independent of the SwiftUI preferences process.
+private func enqueueNativeScanNotification(
+    body: String,
+    transport: NativeScanNotificationTransport,
+    completion: @escaping () -> Void
+) {
     func enqueue() {
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
-        content.body = "A PDF passed scanning and was handed off to your chosen application."
+        content.body = body
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
-        center.add(request) { _ in completion() }
+        transport.add(request, completion)
     }
-    center.getNotificationSettings { settings in
-        switch settings.authorizationStatus {
+    transport.getAuthorizationStatus { status in
+        switch status {
         case .authorized, .provisional:
             enqueue()
         case .notDetermined:
-            center.requestAuthorization(options: [.alert]) { allowed, _ in
+            transport.requestAuthorization { allowed in
                 if allowed { enqueue() } else { completion() }
             }
         default:
@@ -122,35 +151,32 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
     }
 }
 
-// This notice is optional and deliberately contains no scan diagnostics or file names.
+func deliverSuccessfulScanNotification(
+    transport: NativeScanNotificationTransport = .system(),
+    completion: @escaping () -> Void
+) {
+    enqueueNativeScanNotification(
+        body: "A PDF passed scanning and was handed off to your chosen application.",
+        transport: transport, completion: completion
+    )
+}
+
+// Optional blocked-file notice, separate from the mandatory failure alert.
 func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
-                                    sanitizerFailed: Bool = false, completion: @escaping () -> Void) {
-    let center = UNUserNotificationCenter.current()
-    func enqueue() {
-        let content = UNMutableNotificationContent()
-        content.title = "PDF Magic Opener"
-        // Confirmed malware takes precedence over scan failures.
-        content.body = malwareDetected
+    sanitizerFailed: Bool = false,
+    transport: NativeScanNotificationTransport = .system(),
+    completion: @escaping () -> Void
+) {
+    enqueueNativeScanNotification(
+        body: malwareDetected
             ? "Malware was detected. The PDF was blocked and was not opened."
             : (sanitizerFailed
                 ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
                 : (scanFailed
                     ? "A PDF scan failed or could not finish. The file was not opened."
-                    : "A PDF could not be opened because its safety check failed."))
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                            content: content, trigger: nil)
-        center.add(request) { _ in completion() }
-    }
-    center.getNotificationSettings { settings in
-        switch settings.authorizationStatus {
-        case .authorized, .provisional: enqueue()
-        case .notDetermined:
-            center.requestAuthorization(options: [.alert]) { allowed, _ in
-                if allowed { enqueue() } else { completion() }
-            }
-        default: completion()
-        }
-    }
+                    : "A PDF could not be opened because its safety check failed.")),
+        transport: transport, completion: completion
+    )
 }
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
