@@ -8,6 +8,9 @@ struct ScanHistorySettingsView: View {
   // Merely opening the gated page does not read history.
   @State private var recentScanHistory: RecentScanHistoryLoad?
   @State private var inspectedResult: RecentScanHistoryRow?
+  @State private var showClearHistoryConfirmation = false
+  @State private var showClearHistoryResult = false
+  @State private var clearHistoryResultMessage = ""
 
   var body: some View {
     ScrollView {
@@ -32,6 +35,12 @@ struct ScanHistorySettingsView: View {
               recentScanHistory = RecentScanHistoryReader.load()
             }
             .accessibilityIdentifier("showRecentScanResultsButton")
+
+            Button("Clear History…", role: .destructive) {
+              showClearHistoryConfirmation = true
+            }
+            .accessibilityIdentifier("clearScanHistoryButton")
+            .help("Delete only saved optional scan-history metadata")
 
             Text("Only existing, private scan-status metadata is read on request. This history contains no filenames, document contents, URLs, or verified opening outcomes.")
               .font(.footnote)
@@ -99,6 +108,36 @@ struct ScanHistorySettingsView: View {
     .accessibilityIdentifier("scanHistorySettingsPage")
     .sheet(item: $inspectedResult) { row in
       ScanHistoryResultDetailView(row: row)
+    }
+    .confirmationDialog(
+      "Permanently clear saved scan history?",
+      isPresented: $showClearHistoryConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Clear History", role: .destructive) {
+        // Discard any open detail before deleting its underlying metadata.
+        inspectedResult = nil
+        switch ClearScanHistoryStore.clear() {
+        case .cleared:
+          recentScanHistory = .empty
+          clearHistoryResultMessage = "Saved scan history was cleared."
+        case .nothingToClear:
+          recentScanHistory = .empty
+          clearHistoryResultMessage = "There is no saved scan history to clear."
+        case .unavailable:
+          recentScanHistory = .unavailable
+          clearHistoryResultMessage = "History could not be cleared safely. No other application data was changed."
+        }
+        showClearHistoryResult = true
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Delete saved optional scan-history metadata from this Mac? This cannot be undone. Scanner protections, preferences, and the clean-scan cache are not changed.")
+    }
+    .alert("Clear History", isPresented: $showClearHistoryResult) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(clearHistoryResultMessage)
     }
   }
 }
