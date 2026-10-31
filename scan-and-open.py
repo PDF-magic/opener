@@ -1101,27 +1101,30 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                 verified_fallback = fallback
     # Stable legacy hook: leave com.apple.quarantine and Gatekeeper protections intact.
     remove_quarantine(path)
-    # Quarantine is no longer stripped; reject unexpected metadata/ctime changes.
-    # Keep the explicit final file-integrity call visible to the launch guard.
-    if symbolic_link_identity(item) != selection:
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
-    verify_file_integrity(path, before, identity)
-    if symbolic_link_identity(item) != selection:
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    # This native availability probe can take up to ten seconds. Complete it
+    # BEFORE the final byte/identity validation rather than widening the
+    # validation-to-launch interval while a separate process runs.
     if is_pdf:
         verify_local_file_available(path)
-    # Carry the scanned root identity across process creation so the native
-    # helper also rejects byte-identical replacement immediately before opening.
+    # The native helper receives this exact root identity and rejects a
+    # replacement immediately before its NSWorkspace handoff.
     with scanned_file_identity(identity):
+        if symbolic_link_identity(item) != selection:
+            raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+        verify_file_integrity(path, before, identity)
+        if symbolic_link_identity(item) != selection:
+            raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
         try:
             launch_clean_file(path, target_app=destination if is_pdf else None)
         except (OSError, subprocess.SubprocessError, RuntimeError) as error:
             if verified_fallback is None:
                 raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
-            # Recheck the unchanged, locally available PDF before another launch.
-            verify_selected_file()
+            # Finish slow cloud and audit operations BEFORE the fallback's
+            # last full-byte and selection check. An altered file cannot be
+            # handed to a different user-selected PDF application.
             verify_local_file_available(path)
             record_scan_destination(verified_fallback)
+            verify_selected_file()
             try:
                 launch_clean_file(path, target_app=verified_fallback)
             except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:
