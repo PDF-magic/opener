@@ -18,7 +18,7 @@ class SafariDownloadedFileOpenContract(unittest.TestCase):
         for required in (
             'GITHUB_ACTIONS") != "true"', "RUNNER_TEMP", 'browserName": "safari"',
             'css selector', '#pdf-download', "/element/", "/click",
-            'f"attachment; filename=', "application/pdf", '"127.0.0.1"',
+            "f'attachment; filename=", "application/pdf", '"127.0.0.1"',
             "ensure_safari_download(pdf, requests)",
             'contents == PDF_BYTES', '"Safari" not in requests[0]["agent"]',
             'os.getxattr(pdf, QUARANTINE_KEY)',
