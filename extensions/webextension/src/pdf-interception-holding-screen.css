@@ -1,0 +1,57 @@
+/* Extension-owned contract only: not packaged or navigated to yet. */
+#pdfInterceptionHoldingScreen {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: clamp(1.5rem, 5vw, 4rem);
+  background: #f7f8fb;
+  color: #172233;
+  color-scheme: light;
+  font: 1rem/1.6 system-ui, -apple-system, sans-serif;
+}
+#pdfInterceptionHoldingScreen[hidden] { display: none !important; }
+.pdf-interception-holding__panel {
+  box-sizing: border-box;
+  max-width: 38rem;
+  margin: min(14vh, 6rem) auto 0;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid #c8cfdb;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 10px 40px rgb(20 35 55 / 9%);
+}
+.pdf-interception-holding__panel h1 {
+  margin: 1rem 0 .75rem;
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  line-height: 1.3;
+}
+.pdf-interception-holding__panel p { margin: .65rem 0; }
+.pdf-interception-holding__indicator {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border: .22rem solid #a9b5c7;
+  border-top-color: #285db4;
+  border-radius: 50%;
+  animation: pdf-interception-holding-spin 1s linear infinite;
+}
+.pdf-interception-holding__warning { font-weight: 600; }
+@keyframes pdf-interception-holding-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .pdf-interception-holding__indicator { animation: none; }
+}
+@media (prefers-color-scheme: dark) {
+  #pdfInterceptionHoldingScreen {
+    background: #111721;
+    color: #f0f3f8;
+    color-scheme: dark;
+  }
+  .pdf-interception-holding__panel {
+    background: #202b3a;
+    border-color: #4c5a70;
+    box-shadow: none;
+  }
+  .pdf-interception-holding__indicator {
+    border-color: #72849f;
+    border-top-color: #8dbbff;
+  }
+}
