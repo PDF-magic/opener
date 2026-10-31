@@ -86,7 +86,7 @@ def scenario(path, label, verdict, *, verified=True, timeout=False):
             raise AssertionError("Unexpected external command")
         if command[1:] == ["--version"]:
             return subprocess.CompletedProcess(command, 0, "ClamAV test/1", "")
-        if command[-1] != str(path) or "--alert-encrypted=yes" not in command:
+        if Path(command[-1]).resolve() != path.resolve() or "--alert-encrypted=yes" not in command:
             raise AssertionError("The scanner must inspect the exact download")
         events.append(("scan", tuple(command)))
         if timeout:
@@ -99,13 +99,13 @@ def scenario(path, label, verdict, *, verified=True, timeout=False):
 
     def verify(file_path, target_app=None):
         events.append(("verify", str(file_path), target_app))
-        if str(file_path) != str(path) or target_app != FIREFOX:
+        if Path(file_path).resolve() != path.resolve() or target_app != FIREFOX:
             raise AssertionError("The selected Firefox destination must be pinned")
         if not verified:
             raise RuntimeError("PDF target unavailable; opening was stopped.")
 
     def launch(file_path, target_app=None):
-        if str(file_path) != str(path) or target_app != FIREFOX:
+        if Path(file_path).resolve() != path.resolve() or target_app != FIREFOX:
             raise AssertionError("The selected Firefox destination changed")
         events.append(("launch", str(file_path), target_app))
 
