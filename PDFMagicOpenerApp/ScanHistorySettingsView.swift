@@ -7,6 +7,7 @@ struct ScanHistorySettingsView: View {
   // This page stays hidden until the owning integration confirms opt-in.
   // Merely opening the gated page does not read history.
   @State private var recentScanHistory: RecentScanHistoryLoad?
+  @State private var inspectedResult: RecentScanHistoryRow?
 
   var body: some View {
     ScrollView {
@@ -27,6 +28,7 @@ struct ScanHistorySettingsView: View {
               .fixedSize(horizontal: false, vertical: true)
 
             Button("Show recent scan results") {
+              inspectedResult = nil
               recentScanHistory = RecentScanHistoryReader.load()
             }
             .accessibilityIdentifier("showRecentScanResultsButton")
@@ -48,15 +50,25 @@ struct ScanHistorySettingsView: View {
               case .entries(let rows):
                 VStack(alignment: .leading, spacing: 12) {
                   ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                      Text(row.statusLabel).font(.headline)
-                      Text(row.scannedAt.formatted(date: .abbreviated, time: .shortened))
-                      Text("Scanner: \(row.scannerVersion ?? "Unknown") · Profile: \(row.profile)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Button {
+                      // Inspect the previously validated row without further disk reads.
+                      inspectedResult = row
+                    } label: {
+                      VStack(alignment: .leading, spacing: 4) {
+                        Text(row.statusLabel).font(.headline)
+                        Text(row.scannedAt.formatted(date: .abbreviated, time: .shortened))
+                        Text("Scanner: \(row.scannerVersion ?? "Unknown") · Profile: \(row.profile)")
+                          .font(.footnote)
+                          .foregroundStyle(.secondary)
+                      }
+                      .frame(maxWidth: .infinity, alignment: .leading)
+                      .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Inspect \(row.statusLabel) result")
+                    .accessibilityHint("Show saved metadata for this individual scan result")
+                    .accessibilityIdentifier("inspectScanHistoryResult-\(row.id)")
                   }
                 }
                 .accessibilityIdentifier("recentScanHistoryResults")
@@ -85,5 +97,8 @@ struct ScanHistorySettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("scanHistorySettingsPage")
+    .sheet(item: $inspectedResult) { row in
+      ScanHistoryResultDetailView(row: row)
+    }
   }
 }
