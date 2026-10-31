@@ -50,6 +50,7 @@ test("macOS job runs actual Firefox downloads through the safe-open gate", async
 test("macOS handoff is an isolated, mocked launcher test, not uncontrolled opening", async () => {
   const helper = await load("../../../tests/browser/firefox-downloaded-open.py");
   assert.match(helper, /checked_download\(path\)/);
+  assert.match(helper, /path = path\.resolve\(strict=True\)/);
   assert.match(helper, /not stat\.S_ISREG/);
   assert.match(helper, /path\.read_bytes\(\) != data/);
   assert.match(helper, /read_quarantine\(path\) != original/);

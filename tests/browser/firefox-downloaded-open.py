@@ -154,6 +154,8 @@ def scenario(path, label, verdict, *, verified=True, timeout=False):
 
 
 def verify_download(path):
+    # macOS aliases /var to /private/var; compare the scanner\'s canonical path.
+    path = path.resolve(strict=True)
     data = checked_download(path)
     original, origin = quarantine_marker(path)
     for name, verdict, verified, timeout in [
