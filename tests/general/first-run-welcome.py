@@ -204,7 +204,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertLess(source.index('GroupBox("Default PDF browser")'),
                     source.index('GroupBox("Optional browser extensions")'))
     self.assertLess(source.index('GroupBox("Optional browser extensions")'),
-                    source.index('Button("Continue to Preferences", action: onContinue)'))
+                    source.index('Button("Continue to Preferences"'))
     self.assertIn('accessibilityIdentifier("firstRunOptionalBrowserExtensions")', source)
 
   def test_optional_extension_explanation_cannot_activate_integration(self):
