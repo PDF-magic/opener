@@ -20,6 +20,10 @@ struct ScanResultSummaryComponentTests {
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
+        precondition(first.signatureFreshnessLabel.accessibilityIdentifier()
+                     == "scanResultSummarySignatureFreshness")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
+        precondition(first.displayedSignatureFreshness == nil)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         let expected = [
@@ -99,9 +103,40 @@ struct ScanResultSummaryComponentTests {
                        selectedProtectionLevel: .builtIn)
             precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         }
+        // Display only fixed, verified-state vocabulary. A stale database is
+        // never presented as a clean authorized scan, even if a caller reports
+        // an inconsistent clean result.
+        first.show(.scanFailed, signatureFreshness: .stale)
+        precondition(first.signatureFreshnessLabel.stringValue.contains("STALE"))
+        precondition(first.signatureFreshnessLabel.stringValue.contains("48 hours"))
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Opening blocked"))
+        precondition(first.signatureFreshnessLabel.textColor == .systemRed)
+        precondition(first.signatureFreshnessLabel.accessibilityLabel()
+                     == first.signatureFreshnessLabel.stringValue)
+        precondition(second.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
+        first.show(.clean, signatureFreshness: .stale)
+        precondition(first.headingLabel.stringValue == "Scan verification incomplete")
+        precondition(first.explanationLabel.stringValue.contains("Opening must remain blocked"))
+        precondition(first.headingLabel.textColor == .systemOrange)
+        first.show(.clean, signatureFreshness: .unverified)
+        precondition(first.headingLabel.stringValue == "Scan verification incomplete")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("cannot be verified"))
+        precondition(first.signatureFreshnessLabel.textColor == .systemOrange)
+        first.show(.clean, signatureFreshness: .recentUpdate)
+        precondition(first.headingLabel.stringValue == "Scan complete")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("within 48 hours"))
+        precondition(first.signatureFreshnessLabel.stringValue.contains("still required"))
+        precondition(first.signatureFreshnessLabel.textColor == .secondaryLabelColor)
+        first.show(.scanFailed)
+        precondition(first.displayedSignatureFreshness == nil)
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
+        precondition(!first.signatureFreshnessLabel.stringValue.contains("STALE"))
+        first.show(.scanFailed, signatureFreshness: .stale)
         first.reset()
         precondition(first.displayedStatus == nil)
         precondition(first.displayedProtectionLevel == nil)
+        precondition(first.displayedSignatureFreshness == nil)
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")

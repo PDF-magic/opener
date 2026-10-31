@@ -38,6 +38,25 @@ enum ScanResultSummaryProtectionLevel: String, CaseIterable {
     }
 }
 
+// Only a trusted coordinator may supply this presentation metadata. A recent
+// update record does not bypass the scanner's independent signature validation.
+enum ScanResultSummarySignatureFreshness: String, CaseIterable {
+    case recentUpdate
+    case stale
+    case unverified
+
+    var displayText: String {
+        switch self {
+        case .recentUpdate:
+            return "Signature database: Recent successful update (within 48 hours); scanner verification still required."
+        case .stale:
+            return "Signature database STALE: No successful update within 48 hours. Opening blocked."
+        case .unverified:
+            return "Signature database freshness cannot be verified. Opening blocked until verified."
+        }
+    }
+}
+
 private struct ScanResultSummaryCopy {
     let heading: String
     let explanation: String
@@ -100,8 +119,10 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
+    let signatureFreshnessLabel = NSTextField(wrappingLabelWithString: "")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedSignatureFreshness: ScanResultSummarySignatureFreshness?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -134,9 +155,14 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.textColor = .secondaryLabelColor
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
+        signatureFreshnessLabel.font = .systemFont(ofSize: 12)
+        signatureFreshnessLabel.lineBreakMode = .byWordWrapping
+        signatureFreshnessLabel.maximumNumberOfLines = 0
+        signatureFreshnessLabel.setAccessibilityIdentifier("scanResultSummarySignatureFreshness")
 
         let stack = NSStackView(views: [
-            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel,
+            signatureFreshnessLabel, explanationLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -180,10 +206,12 @@ final class ScanResultSummaryView: NSView {
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
-        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil
+        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        signatureFreshness: ScanResultSummarySignatureFreshness? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
+        displayedSignatureFreshness = signatureFreshness
         let document = "Document: " + Self.displayDocumentName(documentURL)
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
@@ -191,11 +219,36 @@ final class ScanResultSummaryView: NSView {
             ?? "Selected protection level: Unavailable"
         selectedProtectionLevelLabel.stringValue = protection
         selectedProtectionLevelLabel.setAccessibilityLabel(protection)
-        let copy = ScanResultSummaryCopy.forStatus(status)
+        let freshness = signatureFreshness?.displayText
+            ?? "Signature database: Status unavailable; scanner freshness checks remain required."
+        signatureFreshnessLabel.stringValue = freshness
+        signatureFreshnessLabel.setAccessibilityLabel(freshness)
+        switch signatureFreshness {
+        case .stale:
+            signatureFreshnessLabel.textColor = .systemRed
+        case .unverified:
+            signatureFreshnessLabel.textColor = .systemOrange
+        case .recentUpdate, nil:
+            signatureFreshnessLabel.textColor = .secondaryLabelColor
+        }
+        // A conflicting clean verdict must never hide a stale or unverified
+        // database behind a reassuring green summary. Presentation only:
+        // the native scan gate remains the sole authority to authorize opening.
+        let inconsistent = status == .clean
+            && (signatureFreshness == .stale || signatureFreshness == .unverified)
+        let copy = inconsistent
+            ? ScanResultSummaryCopy(
+                heading: "Scan verification incomplete",
+                explanation: "The reported clean result conflicts with signature freshness. Opening must remain blocked.")
+            : ScanResultSummaryCopy.forStatus(status)
         headingLabel.stringValue = copy.heading
         explanationLabel.stringValue = copy.explanation
         headingLabel.setAccessibilityLabel(copy.heading)
         explanationLabel.setAccessibilityLabel(copy.explanation)
+        if inconsistent {
+            headingLabel.textColor = .systemOrange
+            return
+        }
         switch status {
         case .clean:
             headingLabel.textColor = .systemGreen
