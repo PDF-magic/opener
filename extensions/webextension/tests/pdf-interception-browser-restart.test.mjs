@@ -324,12 +324,16 @@ test("no browser APIs, startup listeners, persisted scan state or user preferenc
   assert.deepEqual(manifest.optional_permissions, ["downloads"]);
   assert.match(pkg.scripts.test, /tests\/\*\.test\.mjs/);
   assert.match(ci, /npm test/);
+  // Check executable source, not explanatory comments naming forbidden
+  // APIs; otherwise a safety warning in documentation becomes a false alarm.
+  const executable = source.replace(/\/\*[\s\S]*?\*\//gu, "")
+    .replace(/^\s*\/\/.*$/gmu, "");
   for (const forbidden of [
     "runtime.onStartup.addListener(", "addListener(", "connectNative(",
     "sendNativeMessage(", "downloads.open(", "downloads.download(",
     "permissions.request(", "fetch(", "window.open(", "node:fs",
     "localStorage", "sessionStorage", "chrome.", "browser."
-  ]) assert.equal(source.includes(forbidden), false, forbidden);
+  ]) assert.equal(executable.includes(forbidden), false, forbidden);
   for (const phrase of ["opener-0793", "cold", "service worker",
     "native", "orphan", "quarantine", "restart", "fail closed",
     "not implemented", "user preferences"]) {
