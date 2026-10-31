@@ -103,6 +103,12 @@ func scanNotificationIdentifier(path: String, kind: String) -> String {
     return "pdf-magic-opener.scan.\(kind).\(opaquePath)"
 }
 
+// The verified Maximum report callback already deduplicates per report and
+// currently supplies no document identity. Do not coalesce distinct reports.
+private func uniqueSanitizerNotificationIdentifier() -> String {
+    return "pdf-magic-opener.scan.sanitizer." + UUID().uuidString
+}
+
 // Notification delivery is optional and cannot change a scan verdict or
 // mandatory failure alert. Ignore recent delivered or still-pending notices.
 private func deliverScanNotification(body: String, identifier: String,
@@ -152,12 +158,6 @@ func deliverSuccessfulScanNotification(identifier: String,
     deliverScanNotification(
         body: "A PDF passed scanning and was handed off to your chosen application.",
         identifier: identifier, completion: completion)
-}
-
-// The verified Maximum report callback already deduplicates per report and
-// currently supplies no document identity. Do not coalesce distinct reports.
-private func uniqueSanitizerNotificationIdentifier() -> String {
-    return "pdf-magic-opener.scan.sanitizer." + UUID().uuidString
 }
 
 // Confirmed malware takes precedence over sanitizer and scan failures.
