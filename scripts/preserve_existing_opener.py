@@ -31,6 +31,8 @@ def checked_directory(directory):
 
 
 def checked_file(path):
+    if path.is_symlink():
+        raise ValueError("Unsafe opener program symlink")
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     except FileNotFoundError:
