@@ -56,3 +56,36 @@ This checks the existing inactive scaffold only. Native scanner
 connectivity, popup interactions after a future verified integration,
 extension-store publication, and browser-by-browser scanner handoff remain
 separately scoped prerequisites.
+
+
+## Brave built-in PDF viewer verification (opener-0801)
+
+The scoped Brave CI now runs **two separate real-Brave checks**. After the
+existing extension popup smoke test, Xvfb supplies a virtual display to the
+official Brave Stable binary and Playwright runs it **headed**, using a new
+isolated profile. A tiny, deterministic **synthetic** PDF is generated in memory
+and served only from **localhost** (127.0.0.1, ephemeral port). The test
+requests the document with an inline PDF MIME response and verifies that
+Brave's **built-in PDF viewer** attaches an application/pdf embed in the
+original tab, rather than treating a network response alone as a viewer test.
+It checks the PDF response headers, no browser download, no page errors, and
+that the PDF Magic Opener extension still lacks its optional downloads grant.
+No user document, remote PDF URL, native scanner, or existing browser profile
+is used. The isolated browser profile and HTTP server are cleaned up.
+
+**Scope of evidence:** Passing CI verifies an **inline PDF in the fresh
+Linux Brave Stable build installed for that workflow run**. It does not
+prove behavior for existing user profiles, macOS versions, browser policy
+overrides, disabled PDF viewer preferences, download/attachment PDFs,
+other browser variants or all PDF navigation paths. Brave's own preferences
+may download a PDF instead of rendering it; this is a legitimate user choice.
+A successful viewer render is **not** evidence of a ClamAV verdict,
+scanner-enforced interception, protection from opening before scanning or
+permission to open a user PDF. PDF Magic Opener remains inactive and preserves
+all scanner safety and **user** customizations.
+
+For a manual macOS check, use a separate temporary Brave profile, enable its
+built-in PDF viewer, and visit a locally served, non-sensitive PDF. Confirm that
+the PDF appears in the browser tab. Then separately test a download-preferring
+profile and Brave policies; never change an existing user's PDF preferences
+or rely on a viewer display as proof of a verified native scan.
