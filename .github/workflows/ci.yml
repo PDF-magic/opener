@@ -755,6 +755,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/history-metadata.py -v
       - name: Verify optional scan history excludes private document and browsing data
         run: PYTHONPATH=. python3 tests/scan/history-privacy.py -v
+      - name: Verify recent scan-history display is on demand, bounded and private
+        run: PYTHONPATH=. python3 tests/scan/recent-history-display.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
@@ -841,6 +843,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
           "$RUNNER_TEMP/TestSignatureUpdateStatus"
+      - name: Exercise read-only recent scan-history retrieval using synthetic SQLite rows
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift test-recent-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
+          "$RUNNER_TEMP/TestRecentScanHistory"
       - name: Verify native stale-signature warning at the scanner age boundary
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"

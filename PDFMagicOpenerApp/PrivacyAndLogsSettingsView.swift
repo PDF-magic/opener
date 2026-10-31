@@ -5,6 +5,9 @@ import SwiftUI
 // Do not imply that log management, retention controls, or telemetry settings
 // exist without first implementing and validating those capabilities.
 struct PrivacyAndLogsSettingsView: View {
+  // User action only. Merely opening this page never reads the history store.
+  @State private var recentScanHistory: RecentScanHistoryLoad?
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -33,10 +36,53 @@ struct PrivacyAndLogsSettingsView: View {
         .accessibilityIdentifier("diagnosticLogsSection")
 
         GroupBox("Optional local scan history") {
-          privacyDetail(
-            "Off by default",
-            "Optional, user-visible scan history is off by default and is not implemented in this version. No scan-history opt-in control or store is provided here. Existing operational scan records and the clean-scan cache are separate and unchanged."
-          )
+          VStack(alignment: .leading, spacing: 12) {
+            privacyDetail(
+              "Off by default",
+              "Optional, user-visible scan history is off by default. Automatic recording is not implemented in this version. No scan-history opt-in control or store is provided here. Existing operational scan records and the clean-scan cache are separate and unchanged."
+            )
+
+            Button("Show recent scan results") {
+              recentScanHistory = RecentScanHistoryReader.load()
+            }
+            .accessibilityIdentifier("showRecentScanResultsButton")
+
+            Text("Only existing, private scan-status metadata is read on request. No document names, contents, URLs, or confirmed file-opening outcomes are available in this history.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+
+            if let recentScanHistory {
+              switch recentScanHistory {
+              case .empty:
+                Text("No saved scan results. Automatic history collection is off.")
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("recentScanHistoryEmptyState")
+              case .unavailable:
+                Text("Recent scan results could not be read safely.")
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("recentScanHistoryUnavailableState")
+              case .entries(let rows):
+                VStack(alignment: .leading, spacing: 12) {
+                  ForEach(rows) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                      Text(row.statusLabel)
+                        .font(.headline)
+                      Text(row.scannedAt.formatted(date: .abbreviated, time: .shortened))
+                      Text("Scanner: \(row.scannerVersion ?? "Unknown") · Profile: \(row.profile)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                  }
+                }
+                .accessibilityIdentifier("recentScanHistoryResults")
+              }
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(8)
         }
         .accessibilityIdentifier("optionalScanHistorySection")
 
