@@ -38,6 +38,22 @@ enum ScanResultSummaryProtectionLevel: String, CaseIterable {
     }
 }
 
+// Only trusted sanitizer output verification can establish "performed". A
+// skipped conversion is distinct from an unknown, incomplete, or failed one.
+enum ScanResultSummarySanitization: String, CaseIterable {
+    case performed
+    case notPerformed
+
+    var displayText: String {
+        switch self {
+        case .performed:
+            return "Sanitization: Performed"
+        case .notPerformed:
+            return "Sanitization: Not performed"
+        }
+    }
+}
+
 // Opening is a separate trusted post-scan handoff result. A clean scan alone
 // never proves a file opened; an untrusted caller must not construct this value.
 enum ScanResultSummaryOpeningOutcome {
@@ -171,11 +187,13 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
+    let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
     let fileOpenedLabel = NSTextField(labelWithString: "File opened: Not confirmed")
     let fileBlockedLabel = NSTextField(labelWithString: "File blocked: Not confirmed")
     let blockingReasonLabel = NSTextField(wrappingLabelWithString: "Blocking reason: Not confirmed")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedSanitization: ScanResultSummarySanitization?
     private(set) var displayedOpeningOutcome: ScanResultSummaryOpeningOutcome?
 
     override init(frame frameRect: NSRect) {
@@ -210,6 +228,10 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
 
+        sanitizationLabel.font = .systemFont(ofSize: 12)
+        sanitizationLabel.textColor = .secondaryLabelColor
+        sanitizationLabel.setAccessibilityIdentifier("scanResultSummarySanitization")
+
         for (label, identifier) in [
             (fileOpenedLabel, "scanResultSummaryFileOpened"),
             (fileBlockedLabel, "scanResultSummaryFileBlocked"),
@@ -224,7 +246,8 @@ final class ScanResultSummaryView: NSView {
 
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
-            explanationLabel, fileOpenedLabel, fileBlockedLabel, blockingReasonLabel
+            sanitizationLabel, explanationLabel,
+            fileOpenedLabel, fileBlockedLabel, blockingReasonLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -264,15 +287,18 @@ final class ScanResultSummaryView: NSView {
 
     // Context comes from the trusted scan-request owner, never page contents
     // or extension messages. Unknown or absent selections stay unavailable.
-    // A new request clears any prior name, tier or successful scan result.
+    // A new request clears any prior name, tier, sanitization evidence or scan result.
+    // This is trusted coordinator evidence, never a guess from tier or scan status.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
         selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        sanitization: ScanResultSummarySanitization? = nil,
         openingOutcome: ScanResultSummaryOpeningOutcome? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
+        displayedSanitization = sanitization
         // Displayed outcome is derived from the trusted scan policy, not from
         // an inconsistent caller-supplied claim of a successful handoff.
         displayedOpeningOutcome = status == nil ? nil :
@@ -287,6 +313,9 @@ final class ScanResultSummaryView: NSView {
             label.stringValue = value
             label.setAccessibilityLabel(value)
         }
+        let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
+        sanitizationLabel.stringValue = sanitizationCopy
+        sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
         let document = "Document: " + Self.displayDocumentName(documentURL)
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
