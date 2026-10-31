@@ -100,7 +100,11 @@ class RepairInstallationTests(unittest.TestCase):
         self.assertIn("except FileExistsError:", source)
         self.assertIn("ScriptedUpdates yes", source)
         self.assertIn("migration_attempt=", source)
-        self.assertIn("migration_complete=1", source)
+        self.assertIn("migration_committed=1", source)
+        self.assertLess(
+            source.index('complete "$migration_attempt"'),
+            source.index("migration_committed=1"),
+        )
 
     def test_documentation_and_ci_expose_real_repair_action(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
