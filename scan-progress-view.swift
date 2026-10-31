@@ -330,6 +330,10 @@ final class ScanProgressPanel: NSPanel {
         labelWithString: BuiltInProtectionProfile.details)
     let stageLabel = NSTextField(labelWithString: ScanProgressStage.queued.label)
     let maximumSanitizationFailureLabel = NSTextField(wrappingLabelWithString: "")
+    // The native owner supplies an opt-in notification callback. This view
+    // never requests permission or publishes scanner or document details.
+    var onVerifiedMaximumSanitizationFailure: (() -> Void)?
+    private var maximumSanitizationFailureNotified = false
     let progressIndicator = NSProgressIndicator(frame: NSRect(x: 30, y: 51, width: 300, height: 5))
     let cancelButton: NSButton
     // Hidden for the deployed Built-in scanner: Enhanced is not selectable.
@@ -512,13 +516,15 @@ final class ScanProgressPanel: NSPanel {
     // their contents. An invalid report still blocks the visible handoff.
     func updateMaximumSanitizationFailure(from report: Data?) {
         guard let report else {
+            maximumSanitizationFailureNotified = false
             maximumSanitizationFailureLabel.stringValue = ""
             maximumSanitizationFailureLabel.setAccessibilityLabel("")
             maximumSanitizationFailureLabel.isHidden = true
             setEnhancedFindingsDetailsExpanded(enhancedFindingsDetailsExpanded)
             return
         }
-        let message = MaximumSanitizationFailureSnapshot.decode(report)?.message
+        let snapshot = MaximumSanitizationFailureSnapshot.decode(report)
+        let message = snapshot?.message
             ?? "Sanitization failure details could not be verified; opening was stopped. This is not a malware detection."
         let display = "Sanitization failed — opening stopped\n\(message)\nMalware scan verdict: not assessed."
         maximumSanitizationFailureLabel.stringValue = display
@@ -526,6 +532,13 @@ final class ScanProgressPanel: NSPanel {
         maximumSanitizationFailureLabel.isHidden = false
         showAttentionRequired(documentDescription: filenameLabel.stringValue)
         setEnhancedFindingsDetailsExpanded(enhancedFindingsDetailsExpanded)
+        // Notify only for a canonical, non-authorizing sanitizer failure, and
+        // at most once per request. Forged reports retain the blocking UI but
+        // never produce an optional system notification.
+        if snapshot != nil && !maximumSanitizationFailureNotified {
+            maximumSanitizationFailureNotified = true
+            onVerifiedMaximumSanitizationFailure?()
+        }
     }
 
     // An individual scan has no trustworthy percentage. For a batch, only

@@ -1,27 +1,176 @@
 import AppKit
 import Carbon.HIToolbox
 import UserNotifications
+import CryptoKit
+import Darwin
+
+// BEGIN NATIVE DIRECT PROCESS GATE
+// A PDF scan may use the full 30-minute ClamAV policy deadline. Keep the
+// native process ceiling above that budget to allow admission and handoff.
+let nativeScanProcessTimeout: TimeInterval = 35 * 60
+let nativeOriginProcessTimeout: TimeInterval = 2
+
+// Foundation Process has no built-in execution timeout. A bounded wait first
+// requests ordinary termination, then uses SIGKILL if the child ignores it.
+// The semaphore is installed as the termination handler *before* process.run().
+func waitForNativeProcess(_ process: Process, completion: DispatchSemaphore,
+                          timeout: TimeInterval) -> Bool {
+    if completion.wait(timeout: .now() + timeout) == .success {
+        process.waitUntilExit()
+        return true
+    }
+    if process.isRunning { process.terminate() }
+    if completion.wait(timeout: .now() + 1) == .timedOut {
+        if process.isRunning { _ = Darwin.kill(process.processIdentifier, SIGKILL) }
+        _ = completion.wait(timeout: .now() + 2)
+    }
+    return false
+}
+
+// Drain scanner diagnostics while the bounded wait is active. A child that
+// writes to stderr cannot deadlock the parent before its execution deadline.
+// If a descendant retains the pipe, return after a bounded EOF grace period.
+final class NativeScanDiagnostics {
+    private let lock = NSLock()
+    private var collected = Data()
+    private let reachedEOF = DispatchSemaphore(value: 0)
+
+    func begin(_ pipe: Pipe) {
+        pipe.fileHandleForReading.readabilityHandler = { [self] reader in
+            let chunk = reader.availableData
+            lock.lock()
+            collected.append(chunk)
+            lock.unlock()
+            if chunk.isEmpty {
+                reader.readabilityHandler = nil
+                reachedEOF.signal()
+            }
+        }
+    }
+
+    func finish(_ pipe: Pipe) -> Data {
+        _ = reachedEOF.wait(timeout: .now() + 1)
+        pipe.fileHandleForReading.readabilityHandler = nil
+        lock.lock()
+        defer { lock.unlock() }
+        return collected
+    }
+}
+
+// The native app uses Foundation's Process directly, not a shell script.
+// Finder's Run Shell Script action remains a separate macOS integration.
+func makeNativeScanProcess(script: URL, path: String, lifetime: Pipe,
+                           errors: Pipe, environment: [String: String]) -> Process {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    process.arguments = [script.path, path]
+    process.standardInput = lifetime
+    process.standardError = errors
+    process.standardOutput = FileHandle.nullDevice
+    process.environment = environment
+    return process
+}
+
+// Preserve the existing best-effort anonymous origin record without routing
+// the actual scanner through Bash. Metadata failure must not block scanning.
+func recordNativeScanOrigin(script: URL, path: String, environment: [String: String]) {
+    guard FileManager.default.fileExists(atPath: script.path) else { return }
+    let recorder = Process()
+    recorder.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    recorder.arguments = [script.path, path]
+    recorder.standardInput = FileHandle.nullDevice
+    recorder.standardOutput = FileHandle.nullDevice
+    recorder.standardError = FileHandle.nullDevice
+    recorder.environment = environment
+    let finished = DispatchSemaphore(value: 0)
+    recorder.terminationHandler = { _ in finished.signal() }
+    do {
+        try recorder.run()
+        _ = waitForNativeProcess(recorder, completion: finished,
+                                 timeout: nativeOriginProcessTimeout)
+    } catch {
+        // Origin recording is advisory, never a second scanner policy.
+    }
+}
+// END NATIVE DIRECT PROCESS GATE
 
 // The native PDF owner (not the standalone Settings app) requests macOS
-// notification authorization on the first opted-in successful handoff.
-// Notification delivery is best effort, never part of the scan verdict.
-// Never put document paths, names, or scan diagnostics in notifications.
-func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
-    let center = UNUserNotificationCenter.current()
+// notification authorization on the first opted-in delivery. Injecting only
+// the system-notification transport lets headless tests exercise the real
+// permission and delivery paths after the independent Settings app has quit.
+// Scanner verdicts and preferences are never read or changed by this transport.
+// Opaque per-document and verified-outcome IDs keep system deduplication
+// independent of sensitive paths, user preferences and scanner verdicts.
+func scanNotificationIdentifier(path: String, kind: String) -> String {
+    let digest = SHA256.hash(data: Data(path.utf8))
+    let opaquePath = digest.map { String(format: "%02x", $0) }.joined()
+    return "pdf-magic-opener.scan.\(kind).\(opaquePath)"
+}
+
+struct NativeScanNotificationTransport {
+    let getAuthorizationStatus: (@escaping (UNAuthorizationStatus) -> Void) -> Void
+    let requestAuthorization: (@escaping (Bool) -> Void) -> Void
+    let add: (UNNotificationRequest, @escaping () -> Void) -> Void
+
+    static func system() -> NativeScanNotificationTransport {
+        let center = UNUserNotificationCenter.current()
+        return NativeScanNotificationTransport(
+            getAuthorizationStatus: { callback in
+                center.getNotificationSettings { callback($0.authorizationStatus) }
+            },
+            requestAuthorization: { callback in
+                center.requestAuthorization(options: [.alert]) { allowed, _ in
+                    callback(allowed)
+                }
+            },
+            add: { request, callback in
+                // The real Notification Center can outlive this helper process.
+                // Ignore recent or still-pending identical notices; never
+                // change the scanner verdict or mandatory failure warning.
+                center.getDeliveredNotifications { delivered in
+                    center.getPendingNotificationRequests { pending in
+                        let recent = delivered.map {
+                            (identifier: $0.request.identifier, date: $0.date)
+                        }
+                        guard ScanNotificationDeduplication.shouldQueue(
+                            identifier: request.identifier,
+                            delivered: recent,
+                            pendingIdentifiers: pending.map { $0.identifier },
+                            now: Date()
+                        ) else {
+                            callback()
+                            return
+                        }
+                        center.add(request) { _ in callback() }
+                    }
+                }
+            }
+        )
+    }
+}
+
+// Best-effort macOS notice: no document names, paths or scan diagnostics.
+// Notification permission is independent of the SwiftUI preferences process.
+private func enqueueNativeScanNotification(
+    body: String,
+    identifier: String,
+    transport: NativeScanNotificationTransport,
+    completion: @escaping () -> Void
+) {
     func enqueue() {
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
-        content.body = "A PDF passed scanning and was handed off to your chosen application."
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
+        content.body = body
+        let request = UNNotificationRequest(identifier: identifier,
                                             content: content, trigger: nil)
-        center.add(request) { _ in completion() }
+        transport.add(request, completion)
     }
-    center.getNotificationSettings { settings in
-        switch settings.authorizationStatus {
+    transport.getAuthorizationStatus { status in
+        switch status {
         case .authorized, .provisional:
             enqueue()
         case .notDetermined:
-            center.requestAuthorization(options: [.alert]) { allowed, _ in
+            transport.requestAuthorization { allowed in
                 if allowed { enqueue() } else { completion() }
             }
         default:
@@ -31,27 +180,34 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
     }
 }
 
-// This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(completion: @escaping () -> Void) {
-    let center = UNUserNotificationCenter.current()
-    func enqueue() {
-        let content = UNMutableNotificationContent()
-        content.title = "PDF Magic Opener"
-        content.body = "A PDF could not be opened because its safety check failed."
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                            content: content, trigger: nil)
-        center.add(request) { _ in completion() }
-    }
-    center.getNotificationSettings { settings in
-        switch settings.authorizationStatus {
-        case .authorized, .provisional: enqueue()
-        case .notDetermined:
-            center.requestAuthorization(options: [.alert]) { allowed, _ in
-                if allowed { enqueue() } else { completion() }
-            }
-        default: completion()
-        }
-    }
+func deliverSuccessfulScanNotification(
+    identifier: String = UUID().uuidString,
+    transport: NativeScanNotificationTransport = .system(),
+    completion: @escaping () -> Void
+) {
+    enqueueNativeScanNotification(
+        body: "A PDF passed scanning and was handed off to your chosen application.",
+        identifier: identifier, transport: transport, completion: completion
+    )
+}
+
+// Optional blocked-file notice, separate from the mandatory failure alert.
+func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
+    sanitizerFailed: Bool = false,
+    identifier: String = UUID().uuidString,
+    transport: NativeScanNotificationTransport = .system(),
+    completion: @escaping () -> Void
+) {
+    enqueueNativeScanNotification(
+        body: malwareDetected
+            ? "Malware was detected. The PDF was blocked and was not opened."
+            : (sanitizerFailed
+                ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
+                : (scanFailed
+                    ? "A PDF scan failed or could not finish. The file was not opened."
+                    : "A PDF could not be opened because its safety check failed.")),
+        identifier: identifier, transport: transport, completion: completion
+    )
 }
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
@@ -128,14 +284,65 @@ func currentRequestSource() -> String {
     return "unknown"
 }
 
+// The installed Python scan gate emits fixed, path-free denials, sometimes
+// prefixed with a trusted request index. Never render arbitrary stderr:
+// Python tracebacks can contain private paths, source lines and PDF metadata.
+// Unknown diagnostics remain failures but receive a fixed explanation.
+private enum NativeScanFailureDetails {
+    static let unexpected = "The scanner returned an unexpected error; opening was stopped."
+    static let empty = "The scan or file handoff returned no additional error details."
+
+    private static let approved: Set<String> = [
+        "Malware was detected; opening was stopped.",
+        "Malware or an unscannable item was detected; opening was stopped.",
+        "The scanner flagged a suspicious or unscannable item; opening was stopped.",
+        "The malware scan could not finish; opening was stopped.",
+        "The malware scan did not confirm a complete scan; opening was stopped.",
+        "The malware scan timed out; opening was stopped.",
+        "The scan was cancelled; opening was stopped.",
+        "The request could not be processed; opening was stopped.",
+        "The requested PDF is not available locally; opening was stopped.",
+        "The selected file is unreadable; opening was stopped.",
+        "The selected file or application does not exist; opening was stopped.",
+        "The selected filesystem volume is unavailable; opening was stopped.",
+        "The selected file became unavailable during scanning; opening was stopped.",
+        "The file changed while checking it; opening was stopped. Try again.",
+        "The file exceeds the 512 MB scan limit; opening was stopped.",
+        "A zero-length file cannot be scanned; opening was stopped.",
+        "The clean scan cache could not be verified; opening was stopped.",
+        "Unable to record the scan destination; opening was stopped.",
+        "The scan queue is unavailable; opening was stopped.",
+        "Application bundle contains a link outside the bundle; opening was stopped.",
+        "Only regular files and application bundles can be scanned.",
+        "Select a file or application, rather than a folder."
+    ]
+
+    static func display(_ details: String) -> String {
+        let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
+        if reason.isEmpty { return empty }
+        if let known = ScannerInitializationError.displayedMessage(for: reason) {
+            return known
+        }
+        var candidate = reason
+        if candidate.hasPrefix("Scan request ") {
+            let fields = candidate.dropFirst("Scan request ".count)
+                .split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            guard fields.count == 2,
+                  let index = Int(fields[0]), index > 0,
+                  String(index) == String(fields[0]),
+                  fields[1].hasPrefix(" ") else { return unexpected }
+            candidate = String(fields[1].dropFirst())
+        }
+        return approved.contains(candidate) ? candidate : unexpected
+    }
+}
+
 // Present the requested filename, not the canonical scan target or a generic
 // progress count. Failure alerts remain visible even if progress is disabled.
 func makeScanFailureAlert(requestedPath: String, details: String) -> NSAlert {
     let filename = URL(fileURLWithPath: requestedPath).lastPathComponent
     let reason = details.trimmingCharacters(in: .whitespacesAndNewlines)
-    let explanation = reason.isEmpty
-        ? "The scan or file handoff returned no additional error details."
-        : String(reason.prefix(1600))
+    let explanation = NativeScanFailureDetails.display(reason)
     let alert = NSAlert()
     alert.alertStyle = .critical
     alert.messageText = "PDF could not be opened"
@@ -181,6 +388,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
     private var pendingSuccessNotifications = 0
+    // Transient synchronized reservation also closes local callback races.
+    private let notificationReservations = ScanNotificationReservation()
 
     func applicationWillTerminate(_ notification: Notification) {
         terminating = true
@@ -244,6 +453,24 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
+            // Future trusted Maximum producers call the panel failure hook.
+            // Do not confuse their failure with a ClamAV malware verdict or
+            // send an optional notice unless the existing blocked-file setting
+            // is explicitly enabled. Built-in scans never enter this path.
+            panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in
+                guard let self, BlockedFileNotificationPreference.isEnabled() else { return }
+                self.pendingSuccessNotifications += 1
+                deliverBlockedFileNotification(malwareDetected: false, scanFailed: false,
+                                               sanitizerFailed: true) { [weak self] in
+                    DispatchQueue.main.async {
+                        guard let self else { return }
+                        self.pendingSuccessNotifications -= 1
+                        if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                            NSApp.terminate(nil)
+                        }
+                    }
+                }
+            }
         }
         // Prefer a currently scanning file; use a queued request before launch.
         // Sorting makes the displayed filename stable when two scans run together.
@@ -311,41 +538,49 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private func startScan(_ path: String) {
         let origin = requestOrigins[path] ?? "unknown"
         let script = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")
+            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")
+        let originScript = script.deletingLastPathComponent()
+            .appendingPathComponent("record-scan-origin.py")
         let lifetime = Pipe()
         scanLifetimes[path] = lifetime
         DispatchQueue.global(qos: .userInitiated).async {
             let failure = withScanErrorPipe { errors -> String? in
-                let process = Process()
-                process.standardInput = lifetime
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = [script.path, path]
-                process.standardError = errors
-                process.standardOutput = FileHandle.nullDevice
                 var environment = ProcessInfo.processInfo.environment
                 environment["PDF_MAGIC_NATIVE_CANCEL"] = "1"
                 environment["PDF_MAGIC_PARENT_LIFETIME"] = "1"
                 environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"
                 environment["PDF_MAGIC_REQUEST_ORIGIN"] = origin
-                process.environment = environment
+                let process = makeNativeScanProcess(
+                    script: script, path: path, lifetime: lifetime,
+                    errors: errors, environment: environment)
+                let finished = DispatchSemaphore(value: 0)
+                process.terminationHandler = { _ in finished.signal() }
+                let diagnostic = NativeScanDiagnostics()
+                diagnostic.begin(errors)
 
                 // Synchronize launching with Cancel. Workers already dispatched
                 // to the background cannot launch after a cancelled request.
                 self.processLock.lock()
                 if self.cancelledRequests.contains(path) {
                     self.processLock.unlock()
+                    _ = diagnostic.finish(errors)
                     return nil
                 }
                 var isDirectory: ObjCBool = false
                 guard FileManager.default.fileExists(atPath: script.path, isDirectory: &isDirectory),
                       !isDirectory.boolValue else {
                     self.processLock.unlock()
+                    _ = diagnostic.finish(errors)
                     return ScannerInitializationError.missingHelper
                 }
                 do {
                     try process.run()
                     self.activeProcesses[path] = process
                     self.processLock.unlock()
+                    // Retain the wrapper's best-effort origin audit, but use
+                    // a direct Python process instead of an additional shell.
+                    recordNativeScanOrigin(script: originScript, path: path,
+                                           environment: environment)
                     DispatchQueue.main.async {
                         // Cancel or completion may have already hidden the panel.
                         self.processLock.lock()
@@ -359,16 +594,21 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     }
                 } catch {
                     self.processLock.unlock()
+                    _ = diagnostic.finish(errors)
                     return ScannerInitializationError.launchFailed
                 }
                 errors.fileHandleForWriting.closeFile()
-                let output = errors.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
+                let finishedInTime = waitForNativeProcess(
+                    process, completion: finished, timeout: nativeScanProcessTimeout)
+                let output = diagnostic.finish(errors)
                 self.processLock.lock()
                 let cancelled = self.cancelledRequests.contains(path)
                 self.activeProcesses.removeValue(forKey: path)
                 self.processLock.unlock()
                 if cancelled { return nil }
+                if !finishedInTime {
+                    return "The malware scan exceeded its execution timeout; opening was stopped."
+                }
                 if process.terminationStatus != 0 {
                     return String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
                 }
@@ -411,16 +651,29 @@ DispatchQueue.main.async {
                 self.processLock.lock()
                 let cancelled = self.cancelledRequests.contains(path)
                 self.processLock.unlock()
-                if BlockedFileNotificationPreference.shouldNotify(
+                let blockedNotificationKind = BlockedFileNotificationPreference.notificationKind(
                     failure: failure, cancelled: cancelled
-                ) {
-                    self.pendingSuccessNotifications += 1
-                    deliverBlockedFileNotification { [weak self] in
-                        DispatchQueue.main.async {
-                            guard let self else { return }
-                            self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
-                                NSApp.terminate(nil)
+                )
+                if blockedNotificationKind != .none {
+                    let scanFailed = FailedScanNotificationClassification.shouldShowFailedScanNotice(
+                        failure: failure, cancelled: cancelled
+                    )
+                    let kind = blockedNotificationKind == .malwareDetected
+                        ? "malware" : (scanFailed ? "failed" : "blocked")
+                    let identifier = scanNotificationIdentifier(path: path, kind: kind)
+                    if self.notificationReservations.reserve(identifier) {
+                        self.pendingSuccessNotifications += 1
+                        deliverBlockedFileNotification(
+                            malwareDetected: blockedNotificationKind == .malwareDetected,
+                            scanFailed: scanFailed,
+                            identifier: identifier
+                        ) { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self else { return }
+                                self.pendingSuccessNotifications -= 1
+                                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                                    NSApp.terminate(nil)
+                                }
                             }
                         }
                     }
@@ -428,13 +681,16 @@ DispatchQueue.main.async {
                 if SuccessfulScanNotificationPreference.shouldNotify(
                     failure: failure, cancelled: cancelled
                 ) {
-                    self.pendingSuccessNotifications += 1
-                    deliverSuccessfulScanNotification { [weak self] in
-                        DispatchQueue.main.async {
-                            guard let self else { return }
-                            self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
-                                NSApp.terminate(nil)
+                    let identifier = scanNotificationIdentifier(path: path, kind: "success")
+                    if self.notificationReservations.reserve(identifier) {
+                        self.pendingSuccessNotifications += 1
+                        deliverSuccessfulScanNotification(identifier: identifier) { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self else { return }
+                                self.pendingSuccessNotifications -= 1
+                                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                                    NSApp.terminate(nil)
+                                }
                             }
                         }
                     }

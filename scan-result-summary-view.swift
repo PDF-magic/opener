@@ -1,0 +1,398 @@
+import AppKit
+
+// Reusable, presentation-only result summary for native scan-related UIs.
+// Callers must supply a status from a trusted scan coordinator. This view
+// never interprets PDF content, verifies a scan, or grants opening permission.
+enum ScanResultSummaryStatus: String, CaseIterable {
+    case clean
+    case malwareDetected
+    case suspiciousStructure
+    case encrypted
+    case incompleteScan
+    case scanFailed
+    case scanTimedOut
+    case fileChanged
+    case fileTooLarge
+    case cancelled
+}
+
+// The user's selected presentation tier is separate from the enforced Built-in
+// scanner. Planned profiles never activate unimplemented protection controls.
+enum ScanResultSummaryProtectionLevel: String, CaseIterable {
+    case builtIn = "built-in"
+    case standard
+    case enhanced
+    case maximum
+
+    var displayText: String {
+        switch self {
+        case .builtIn:
+            return "Selected protection level: Built-in"
+        case .standard:
+            return "Selected protection level: Standard (preview only; Built-in scanning remains active)"
+        case .enhanced:
+            return "Selected protection level: Enhanced (preview only; Built-in scanning remains active)"
+        case .maximum:
+            return "Selected protection level: Maximum (preview only; Built-in scanning remains active)"
+        }
+    }
+}
+
+// Only trusted sanitizer output verification can establish "performed". A
+// skipped conversion is distinct from an unknown, incomplete, or failed one.
+enum ScanResultSummarySanitization: String, CaseIterable {
+    case performed
+    case notPerformed
+
+    var displayText: String {
+        switch self {
+        case .performed:
+            return "Sanitization: Performed"
+        case .notPerformed:
+            return "Sanitization: Not performed"
+        }
+    }
+}
+
+// Only a trusted coordinator may supply this presentation metadata. A recent
+// update record does not bypass the scanner's independent signature validation.
+enum ScanResultSummarySignatureFreshness: String, CaseIterable {
+    case recentUpdate
+    case stale
+    case unverified
+
+    var displayText: String {
+        switch self {
+        case .recentUpdate:
+            return "Signature database: Recent successful update (within 48 hours); scanner verification still required."
+        case .stale:
+            return "Signature database STALE: No successful update within 48 hours. Opening blocked."
+        case .unverified:
+            return "Signature database freshness cannot be verified. Opening blocked until verified."
+        }
+    }
+}
+
+private struct ScanResultSummaryCopy {
+    let heading: String
+    let explanation: String
+
+    static func forStatus(_ status: ScanResultSummaryStatus?) -> ScanResultSummaryCopy {
+        switch status {
+        case .clean:
+            return ScanResultSummaryCopy(
+                heading: "Scan complete",
+                explanation: "Required scanning reported no threats. File integrity and verified opening checks still apply.")
+        case .malwareDetected:
+            return ScanResultSummaryCopy(
+                heading: "Malware detected",
+                explanation: "The scanner reported a malware detection. Opening was stopped.")
+        case .suspiciousStructure:
+            return ScanResultSummaryCopy(
+                heading: "Suspicious PDF structure",
+                explanation: "Required structural checks identified suspicious content. Opening was stopped.")
+        case .encrypted:
+            return ScanResultSummaryCopy(
+                heading: "Encrypted PDF",
+                explanation: "Required inspection could not verify this encrypted document. Opening was stopped.")
+        case .incompleteScan:
+            return ScanResultSummaryCopy(
+                heading: "Scan incomplete",
+                explanation: "One or more required checks did not complete. Opening was stopped.")
+        case .scanFailed:
+            return ScanResultSummaryCopy(
+                heading: "Scan failed",
+                explanation: "The scanner could not verify the document. Opening was stopped.")
+        case .scanTimedOut:
+            return ScanResultSummaryCopy(
+                heading: "Scan timed out",
+                explanation: "Scanning exceeded the allowed time. Opening was stopped.")
+        case .fileChanged:
+            return ScanResultSummaryCopy(
+                heading: "File changed",
+                explanation: "The document changed during verification. Opening was stopped.")
+        case .fileTooLarge:
+            return ScanResultSummaryCopy(
+                heading: "File exceeds scan limits",
+                explanation: "A required size limit prevented complete scanning. Opening was stopped.")
+        case .cancelled:
+            return ScanResultSummaryCopy(
+                heading: "Scan cancelled",
+                explanation: "The scan request was cancelled. Opening was not authorized.")
+        case nil:
+            return ScanResultSummaryCopy(
+                heading: "No verified scan result",
+                explanation: "A trusted completed scan result is unavailable. Opening is not authorized.")
+        }
+    }
+}
+
+// Only status-derived, fixed technical copy is available for blocked or failed
+// results. Never display raw scanner output, PDF contents, file paths, or logs.
+private enum ScanResultSummaryTechnicalCopy {
+    static func forStatus(_ status: ScanResultSummaryStatus?) -> String? {
+        guard let status else { return nil }
+        let category: String
+        switch status {
+        case .malwareDetected:
+            category = "Category: Confirmed malware detection by the scanner."
+        case .suspiciousStructure:
+            category = "Category: Required PDF structural inspection raised a concern."
+        case .encrypted:
+            category = "Category: Encryption prevented required inspection."
+        case .incompleteScan:
+            category = "Category: One or more required checks were incomplete."
+        case .scanFailed:
+            category = "Category: Scanner verification failed."
+        case .scanTimedOut:
+            category = "Category: The scanning time limit was exceeded."
+        case .fileChanged:
+            category = "Category: Input integrity changed during verification."
+        case .fileTooLarge:
+            category = "Category: A required scanning size limit was exceeded."
+        case .clean, .cancelled:
+            return nil
+        }
+        return "Result code: \(status.rawValue)\n\(category)\nOpening was not authorized."
+    }
+}
+
+// This is an AppKit view, not a scanner control or a notification source.
+// Multiple callers can embed separate instances and update them independently.
+final class ScanResultSummaryView: NSView {
+    let headingLabel = NSTextField(labelWithString: "")
+    let explanationLabel = NSTextField(wrappingLabelWithString: "")
+    let malwareStatusLabel = NSTextField(labelWithString: "Malware: Not determined")
+    let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
+    let selectedProtectionLevelLabel = NSTextField(
+        wrappingLabelWithString: "Selected protection level: Unavailable")
+    let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
+    let structureAnalysisLabel = NSTextField(labelWithString: "Structure analysis: Unavailable")
+    let technicalDetailsButton = NSButton(title: "Show technical details", target: nil, action: nil)
+    let technicalDetailsLabel = NSTextField(wrappingLabelWithString: "")
+    private(set) var displayedStatus: ScanResultSummaryStatus?
+    private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedSanitization: ScanResultSummarySanitization?
+    let signatureFreshnessLabel = NSTextField(wrappingLabelWithString: "")
+    private(set) var displayedSignatureFreshness: ScanResultSummarySignatureFreshness?
+    private(set) var displayedStructureAnalysisCompleted: Bool?
+    private(set) var technicalDetailsExpanded = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configure()
+        reset()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configure()
+        reset()
+    }
+
+    private func configure() {
+        setAccessibilityIdentifier("scanResultSummary")
+        setAccessibilityRole(.group)
+        headingLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        headingLabel.setAccessibilityIdentifier("scanResultSummaryHeading")
+        explanationLabel.font = .systemFont(ofSize: 12)
+        explanationLabel.textColor = .secondaryLabelColor
+        explanationLabel.lineBreakMode = .byWordWrapping
+        explanationLabel.maximumNumberOfLines = 0
+        explanationLabel.setAccessibilityIdentifier("scanResultSummaryExplanation")
+        malwareStatusLabel.font = .systemFont(ofSize: 12)
+        malwareStatusLabel.textColor = .secondaryLabelColor
+        malwareStatusLabel.setAccessibilityIdentifier("scanResultSummaryMalware")
+
+        documentNameLabel.font = .systemFont(ofSize: 12)
+        documentNameLabel.textColor = .secondaryLabelColor
+        documentNameLabel.lineBreakMode = .byTruncatingMiddle
+        documentNameLabel.setAccessibilityIdentifier("scanResultSummaryDocument")
+        selectedProtectionLevelLabel.font = .systemFont(ofSize: 12)
+        selectedProtectionLevelLabel.textColor = .secondaryLabelColor
+        selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
+        selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
+
+        sanitizationLabel.font = .systemFont(ofSize: 12)
+        sanitizationLabel.textColor = .secondaryLabelColor
+        sanitizationLabel.setAccessibilityIdentifier("scanResultSummarySanitization")
+        signatureFreshnessLabel.font = .systemFont(ofSize: 12)
+        signatureFreshnessLabel.lineBreakMode = .byWordWrapping
+        signatureFreshnessLabel.maximumNumberOfLines = 0
+        signatureFreshnessLabel.setAccessibilityIdentifier("scanResultSummarySignatureFreshness")
+        structureAnalysisLabel.font = .systemFont(ofSize: 12)
+        structureAnalysisLabel.textColor = .secondaryLabelColor
+        structureAnalysisLabel.setAccessibilityIdentifier("scanResultSummaryStructureAnalysis")
+
+        technicalDetailsButton.setAccessibilityIdentifier("scanResultSummaryTechnicalDetailsToggle")
+        technicalDetailsButton.target = self
+        technicalDetailsButton.action = #selector(toggleTechnicalDetails(_:))
+        technicalDetailsLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        technicalDetailsLabel.textColor = .secondaryLabelColor
+        technicalDetailsLabel.lineBreakMode = .byWordWrapping
+        technicalDetailsLabel.maximumNumberOfLines = 0
+        technicalDetailsLabel.setAccessibilityIdentifier("scanResultSummaryTechnicalDetails")
+
+        let stack = NSStackView(views: [
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel,
+            sanitizationLabel, malwareStatusLabel, structureAnalysisLabel,
+            signatureFreshnessLabel, explanationLabel, technicalDetailsButton, technicalDetailsLabel
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 5
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -10),
+        ])
+        explanationLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    }
+
+    @objc private func toggleTechnicalDetails(_ sender: NSButton) {
+        guard !technicalDetailsButton.isHidden,
+              !technicalDetailsLabel.stringValue.isEmpty else { return }
+        technicalDetailsExpanded.toggle()
+        refreshTechnicalDetailsDisclosure()
+    }
+
+    private func refreshTechnicalDetailsDisclosure() {
+        technicalDetailsLabel.isHidden = !technicalDetailsExpanded
+        let title = technicalDetailsExpanded ? "Hide technical details" : "Show technical details"
+        technicalDetailsButton.title = title
+        technicalDetailsButton.setAccessibilityLabel(title)
+        invalidateIntrinsicContentSize()
+    }
+
+    // Only a trusted local URL is accepted. Display its basename, never the
+    // directory or raw path; control and bidi characters cannot spoof labels.
+    private static func displayDocumentName(_ url: URL?) -> String {
+        guard let url, url.isFileURL else { return "Unavailable" }
+        let name = url.lastPathComponent
+        let bidiControls: Set<UInt32> = [
+            0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+            0x2066, 0x2067, 0x2068, 0x2069
+        ]
+        guard !name.isEmpty, name != ".", name != "..",
+              name.utf8.count <= 255,
+              !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !name.contains("/"), !name.contains("\\"),
+              !name.unicodeScalars.contains(where: {
+                  CharacterSet.controlCharacters.contains($0)
+                      || bidiControls.contains($0.value)
+              }) else {
+            return "Unavailable"
+        }
+        return name
+    }
+
+    // Context comes from the trusted scan-request owner, never page contents
+    // or extension messages. Unknown or absent selections stay unavailable.
+    // A new request clears any prior name, tier, sanitization evidence or scan result.
+    // This is trusted coordinator evidence, never a guess from tier or scan status.
+    // Structural completion comes from independent, request-correlated evidence;
+    // a missing result must not imply successful structural analysis.
+    func show(
+        _ status: ScanResultSummaryStatus?,
+        documentURL: URL? = nil,
+        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        sanitization: ScanResultSummarySanitization? = nil,
+        structureAnalysisCompleted: Bool? = nil,
+        signatureFreshness: ScanResultSummarySignatureFreshness? = nil
+    ) {
+        displayedStatus = status
+        displayedProtectionLevel = selectedProtectionLevel
+        displayedSanitization = sanitization
+        displayedStructureAnalysisCompleted = structureAnalysisCompleted
+        displayedSignatureFreshness = signatureFreshness
+        let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
+        sanitizationLabel.stringValue = sanitizationCopy
+        sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
+        let document = "Document: " + Self.displayDocumentName(documentURL)
+        documentNameLabel.stringValue = document
+        documentNameLabel.setAccessibilityLabel(document)
+        let protection = selectedProtectionLevel?.displayText
+            ?? "Selected protection level: Unavailable"
+        selectedProtectionLevelLabel.stringValue = protection
+        selectedProtectionLevelLabel.setAccessibilityLabel(protection)
+        let structure = structureAnalysisCompleted.map {
+            $0 ? "Structure analysis: Completed" : "Structure analysis: Not completed"
+        } ?? "Structure analysis: Unavailable"
+        structureAnalysisLabel.stringValue = structure
+        structureAnalysisLabel.setAccessibilityLabel(structure)
+        // Only a verified clean terminal outcome supports a negative detection
+        // statement. Every other unsuccessful or absent result is inconclusive.
+        let malwareStatus: String
+        switch status {
+        case .malwareDetected:
+            malwareStatus = "Malware: Detected"
+        case .clean where signatureFreshness != .stale && signatureFreshness != .unverified:
+            malwareStatus = "Malware: Not detected"
+        default:
+            malwareStatus = "Malware: Not determined"
+        }
+        malwareStatusLabel.stringValue = malwareStatus
+        malwareStatusLabel.setAccessibilityLabel(malwareStatus)
+        let freshness = signatureFreshness?.displayText
+            ?? "Signature database: Status unavailable; scanner freshness checks remain required."
+        signatureFreshnessLabel.stringValue = freshness
+        signatureFreshnessLabel.setAccessibilityLabel(freshness)
+        switch signatureFreshness {
+        case .stale:
+            signatureFreshnessLabel.textColor = .systemRed
+        case .unverified:
+            signatureFreshnessLabel.textColor = .systemOrange
+        case .recentUpdate, nil:
+            signatureFreshnessLabel.textColor = .secondaryLabelColor
+        }
+        // A conflicting clean verdict must never hide a stale or unverified
+        // database behind a reassuring green summary. Presentation only:
+        // the native scan gate remains the sole authority to authorize opening.
+        let cleanReported: Bool
+        if case .clean = status {
+            cleanReported = true
+        } else {
+            cleanReported = false
+        }
+        let inconsistent = cleanReported
+            && (signatureFreshness == .stale || signatureFreshness == .unverified)
+        let copy = inconsistent
+            ? ScanResultSummaryCopy(
+                heading: "Scan verification incomplete",
+                explanation: "The reported clean result conflicts with signature freshness. Opening must remain blocked.")
+            : ScanResultSummaryCopy.forStatus(status)
+        headingLabel.stringValue = copy.heading
+        explanationLabel.stringValue = copy.explanation
+        headingLabel.setAccessibilityLabel(copy.heading)
+        explanationLabel.setAccessibilityLabel(copy.explanation)
+
+        let technicalCopy = ScanResultSummaryTechnicalCopy.forStatus(status)
+        technicalDetailsExpanded = false
+        technicalDetailsLabel.stringValue = technicalCopy ?? ""
+        technicalDetailsLabel.setAccessibilityLabel(technicalCopy ?? "")
+        technicalDetailsButton.isHidden = technicalCopy == nil
+        refreshTechnicalDetailsDisclosure()
+
+        if inconsistent {
+            headingLabel.textColor = .systemOrange
+            return
+        }
+        switch status {
+        case .clean:
+            headingLabel.textColor = .systemGreen
+        case .malwareDetected:
+            headingLabel.textColor = .systemRed
+        case .cancelled, nil:
+            headingLabel.textColor = .labelColor
+        default:
+            headingLabel.textColor = .systemOrange
+        }
+    }
+
+    func reset() {
+        show(nil)
+    }
+}

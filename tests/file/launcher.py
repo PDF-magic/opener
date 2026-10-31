@@ -37,7 +37,7 @@ class FileLauncherTests(unittest.TestCase):
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(pdf)
         run.assert_called_once_with(
-            [str(NATIVE_LAUNCHER), "--bundle-id", PDF_DEFAULT_BUNDLE_ID, str(pdf)], check=True
+            [str(NATIVE_LAUNCHER), "--bundle-id", PDF_DEFAULT_BUNDLE_ID, str(pdf)], check=True, timeout=30
         )
         self.assertEqual(PDF_DEFAULT_BUNDLE_ID, "com.brave.Browser")
 
@@ -83,14 +83,14 @@ class FileLauncherTests(unittest.TestCase):
         document.write_text("safe")
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(document)
-        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(document)], check=True)
+        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(document)], check=True, timeout=30)
 
     def test_app_bundle_uses_default_open_behavior(self):
         bundle = self.root / "Example.app"
         bundle.mkdir()
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(bundle)
-        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(bundle)], check=True)
+        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(bundle)], check=True, timeout=30)
 
     def test_scanned_identity_is_scoped_and_sent_to_native_launcher(self):
         pdf = self.root / "report.pdf"
@@ -116,6 +116,17 @@ class FileLauncherTests(unittest.TestCase):
                 with scanned_file_identity((("not root", 1, 2, 3, 4, 5, 6),)):
                     launch_clean_file(self.root / "report.pdf")
         run.assert_not_called()
+
+    def test_native_handoff_timeout_does_not_authorize_opening(self):
+        document = self.root / "stalled.pdf"
+        with patch("file_launcher.subprocess.run",
+                   side_effect=subprocess.TimeoutExpired("launch-scanned-file", 30)) as run:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                launch_clean_file(document)
+        run.assert_called_once_with(
+            [str(NATIVE_LAUNCHER), "--bundle-id", PDF_DEFAULT_BUNDLE_ID, str(document)],
+            check=True, timeout=30,
+        )
 
     def test_open_failure_is_not_swallowed(self):
         document = self.root / "file.pdf"

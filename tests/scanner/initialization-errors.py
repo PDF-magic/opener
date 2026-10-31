@@ -21,7 +21,10 @@ class ScannerInitializationErrorTests(unittest.TestCase):
         self.assertIn("alert.runModal()", source)
         self.assertIn("if process.terminationStatus != 0 {", source)
         self.assertIn("if cancelled { return nil }", source)
-        self.assertIn("process.executableURL = URL(fileURLWithPath: \"/bin/bash\")", source)
+        self.assertIn('process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")', source)
+        self.assertIn("process.arguments = [script.path, path]", source)
+        self.assertIn("makeNativeScanProcess(", source)
+        self.assertNotIn('process.executableURL = URL(fileURLWithPath: "/bin/bash")', source)
         self.assertIn("self.activeProcesses[path] = process", source)
         self.assertIn("self.startQueuedScans()", source)
         # Progress dismissal is now handled by the presentation-only helper;

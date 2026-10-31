@@ -36,3 +36,20 @@ child processes that attempt to connect to a known live loopback TCP listener
 and bind a listener; both attempts must be blocked while ordinary local
 non-network work succeeds. The dedicated workflow runs these checks on PRs
 and pushes to `main`. No Internet destination is used.
+
+## Sanitizer network confinement (opener-0858)
+
+The separate optional CoreGraphics sanitizer now uses a mandatory kernel network
+restriction before receiving PDF bytes. On macOS, its existing bounded child
+supervisor runs the converter through `/usr/bin/sandbox-exec` and the fixed
+Seatbelt `(deny network*)` policy. On Linux, its existing memory-limit launcher
+installs the shared seccomp network-denial filter before `exec`. Both deny
+inbound listeners and outbound connections, including loopback, without
+changing the required memory, time, output or process-group limits.
+
+Missing or failed enforcement stops sanitization with no generated-copy offer;
+there is no unsandboxed retry. The preexisting verification and independent
+rescan of any generated copy remain mandatory. The installed ClamAV scanner,
+its networked signature updater, quarantine and user customizations are
+unchanged. `tests/maximum/sanitizer-network-denial.py` exercises real kernel
+network denial on Linux and macOS alongside positive offline processing.

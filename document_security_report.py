@@ -4,8 +4,25 @@ from collections import Counter
 from dataclasses import dataclass
 
 from combined_scan_results import CombinedScanReport
+from enhanced_analysis_findings import FindingCode, FindingSeverity
 from scan_results import ScanResultStatus
 
+
+# Fixed, report-only classifications; never change the installed opening gate.
+_WARNING_SCAN_STATUSES = frozenset({
+    ScanResultStatus.suspiciousStructure,
+    ScanResultStatus.encrypted,
+    ScanResultStatus.fileTooLarge,
+})
+_SYSTEM_FAILURE_SCAN_STATUSES = frozenset({
+    ScanResultStatus.incompleteScan,
+    ScanResultStatus.scanFailed,
+    ScanResultStatus.scanTimedOut,
+})
+_SYSTEM_FAILURE_CODES = frozenset({
+    FindingCode.resourceLimit,
+    FindingCode.inspectionFailure,
+})
 
 MAX_DISPLAYED_SIGNATURES = 3
 MAX_SIGNATURE_LABEL_LENGTH = 64
@@ -56,6 +73,61 @@ class DocumentSecurityReport:
     @property
     def authorizes_open(self) -> bool:
         return False
+
+    @property
+    def issue_channels(self) -> dict:
+        """Keep validated document warnings separate from inspection failures.
+
+        Known malicious content stays in its own existing evidence category.
+        No channel permits an open or overrides the conservative block result.
+        """
+        status = self.combined_scan_report.scan_status
+        structural = self.combined_scan_report.structural_findings
+        warning_count = 0
+        failure_count = 0
+        for stage in structural.stages:
+            for finding in stage.findings:
+                if finding.code in _SYSTEM_FAILURE_CODES:
+                    failure_count += 1
+                elif (finding.code is not FindingCode.knownMaliciousContent
+                      and finding.severity is not FindingSeverity.informational):
+                    warning_count += 1
+        return {
+            "warnings": {
+                "scanStatus": status.value if status in _WARNING_SCAN_STATUSES else None,
+                "structuralFindings": warning_count,
+            },
+            "systemFailures": {
+                "scanStatus": status.value if status in _SYSTEM_FAILURE_SCAN_STATUSES else None,
+                "incompleteStages": len(structural.incomplete_stages),
+                "structuralFindings": failure_count,
+            },
+        }
+
+    @property
+    def warning_summary(self) -> str:
+        warnings = self.issue_channels["warnings"]
+        parts = []
+        if warnings["scanStatus"] is not None:
+            parts.append(_SCAN_STATUS_LABELS[ScanResultStatus(warnings["scanStatus"])])
+        count = warnings["structuralFindings"]
+        if count:
+            parts.append(f"{count} structural review {_plural(count, 'finding')}")
+        return "Warnings: " + ("; ".join(parts) if parts else "None reported") + "."
+
+    @property
+    def system_failure_summary(self) -> str:
+        failures = self.issue_channels["systemFailures"]
+        parts = []
+        if failures["scanStatus"] is not None:
+            parts.append(_SCAN_STATUS_LABELS[ScanResultStatus(failures["scanStatus"])])
+        incomplete = failures["incompleteStages"]
+        if incomplete:
+            parts.append(f"{incomplete} incomplete inspection {_plural(incomplete, 'stage')}")
+        count = failures["structuralFindings"]
+        if count:
+            parts.append(f"{count} inspection failure {_plural(count, 'finding')}")
+        return "System failures: " + ("; ".join(parts) if parts else "None reported") + "."
 
     @property
     def headline(self) -> str:
@@ -164,6 +236,8 @@ class DocumentSecurityReport:
             "headline": self.headline,
             "scanSummary": self.scan_summary,
             "structuralSummary": self.structural_summary,
+            "warnings": self.issue_channels["warnings"],
+            "systemFailures": self.issue_channels["systemFailures"],
             "nextStep": self.next_step,
         }
 
@@ -173,6 +247,8 @@ class DocumentSecurityReport:
             self.headline,
             self.scan_summary,
             self.structural_summary,
+            self.warning_summary,
+            self.system_failure_summary,
             self.next_step,
             "Opening authorization: Not granted by this report.",
         ))

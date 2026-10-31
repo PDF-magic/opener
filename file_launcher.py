@@ -239,4 +239,4 @@ def launch_clean_file(path, target_app=None):
             raise RuntimeError("PDF Magic Opener cannot launch itself; opening was stopped.")
         command.extend(["--bundle-id", selected])
     require_executable_path(NATIVE_LAUNCHER)
-    subprocess.run([*command, str(path)], check=True)
+    subprocess.run([*command, str(path)], check=True, timeout=30)

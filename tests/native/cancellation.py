@@ -13,19 +13,20 @@ with tempfile.TemporaryDirectory(prefix="opener-native-cancel-") as directory:
     root = Path(directory)
     (root / "twilight-reading.png").write_bytes(
         (Path(__file__).resolve().parents[2] / "twilight-reading.png").read_bytes())
-    gate = root / "gate.sh"
+    gate = root / "gate.py"
     started = root / "started"
     documents = [root / f"selected-{index}.pdf" for index in range(3)]
     for doc in documents:
         doc.write_bytes(b"%PDF-1.4\nNative cancel test")
     gate.write_text(
-        "#!/bin/bash\n"
-        f'printf "%s:%s\\n" "$1" "$$" >> "{started}"\n'
-        "exec /bin/sleep 30\n"
+        "import os, pathlib, sys, time\n"
+        "with pathlib.Path(" + repr(str(started)) + ").open('a', encoding='utf-8') as output:\n"
+        "    output.write(sys.argv[1] + ':' + str(os.getpid()) + '\\n')\n"
+        "time.sleep(30)\n"
     )
     classes = classes.replace(
         'FileManager.default.homeDirectoryForCurrentUser\n'
-        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")',
+        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")',
         f'URL(fileURLWithPath: "{gate}")'
     )
     urls = ", ".join(f'URL(fileURLWithPath: "{doc}")' for doc in documents)

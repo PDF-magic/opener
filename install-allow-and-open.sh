@@ -104,7 +104,21 @@ if legacy.exists() or legacy.is_symlink():
 elif destination.exists() or destination.is_symlink():
     check_bundle(destination)
 MIGRATE
-mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+# Build away from the installed app so an incomplete or nonexecutable bundle
+# never replaces the working PDF scan handler. Keep staging on the same volume.
+installed_app="$app"
+mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+bundle_stage_dir="$(mktemp -d "$HOME/Applications/.pdf-magic-opener-build.XXXXXXXX")"
+cleanup_bundle_stage() {
+    # Restore the prior handler if the installation rename did not complete.
+    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
+        mv "$bundle_stage_dir/previous.app" "$installed_app" || true
+    fi
+    rm -rf "$bundle_stage_dir"
+}
+trap cleanup_bundle_stage EXIT
+app="$bundle_stage_dir/$app_name.app"
+mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS"
 cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/brave-pdf-opener.swift" \
     "$script_dir/scan-progress-view.swift" \
@@ -147,6 +161,15 @@ with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.pl
     plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
+# No installed app is replaced or registered until staged contents, PDF identity,
+# executable permissions, and the ad hoc signature have been checked.
+/usr/bin/codesign --verify "$app"
+python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"
+if [ -e "$installed_app" ] || [ -L "$installed_app" ]; then
+    mv "$installed_app" "$bundle_stage_dir/previous.app"
+fi
+mv "$app" "$installed_app"
+app="$installed_app"
 # Offer an opt-in Finder action without overwriting user-managed scripts.
 action="$HOME/Applications/Make PDF Magic Opener Default.command"
 if [ ! -e "$action" ] && [ ! -L "$action" ]; then
@@ -158,9 +181,8 @@ agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID" "$agent"
 
-python3 - "$workflow" "$install_dir/allow-and-open.sh" <<'PY'
+python3 - "$workflow" <<'PY'
 import plistlib
-import shlex
 import sys
 from pathlib import Path
 
@@ -174,7 +196,13 @@ if len(actions) != 1:
 backup = path.with_name('document.wflow.before-brave')
 if not backup.exists():
     backup.write_bytes(path.read_bytes())
-actions[0]['ActionParameters']['COMMAND_STRING'] = 'export PDF_MAGIC_REQUEST_ORIGIN=finder\nexec /bin/bash ' + shlex.quote(sys.argv[2]) + ' "$@"\n'
+# This must be static shell source: document paths are forwarded only as
+# positional arguments, never interpolated into Finder's COMMAND_STRING.
+actions[0]['ActionParameters']['COMMAND_STRING'] = (
+    'export PDF_MAGIC_REQUEST_ORIGIN=finder\n'
+    'exec /bin/bash "$HOME/Library/Application Support/Studio/'
+    'allow-and-open/allow-and-open.sh" "$@"\n'
+)
 actions[0]['ActionParameters']['inputMethod'] = 1
 actions[0]['ActionParameters']['shell'] = '/bin/bash'
 with path.open('wb') as stream:

@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Scan selected local files while retaining macOS quarantine protections."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 from scanner_concurrency_validation import validate_scanner_concurrency_limit
+from scanner_filesystem_sandbox import (
+    BLOCK_MESSAGE as SCANNER_SANDBOX_BLOCK_MESSAGE,
+    ScannerFilesystemSandboxError, confined_scanner,
+)
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from scanner_argument_validation import (
     InvalidScannerArguments, validate_scanner_arguments,
@@ -40,6 +45,8 @@ CACHE_DB = INSTALL_DIR / 'clean-scan-cache.sqlite3'
 SCAN_REQUEST_DB = INSTALL_DIR / 'scan-requests.sqlite3'
 CACHE_TTL = 90 * 24 * 60 * 60
 MAX_CONCURRENT_SCANS = 2
+# A version probe outside an active scan must share the same cross-process cap.
+_ACTIVE_SCAN_SLOT = ContextVar('active_scan_slot', default=False)
 REQUESTING_APPLICATION_ENV = 'PDF_MAGIC_REQUESTING_APPLICATION'
 
 PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
@@ -78,6 +85,7 @@ SAFE_SCAN_FAILURES = frozenset((
     'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.',
     'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.',
     'The requested PDF is not available locally; opening was stopped.',
+    SCANNER_SANDBOX_BLOCK_MESSAGE,
 ))
 
 
@@ -185,9 +193,11 @@ def scan_slot():
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except BlockingIOError:
                     continue
+                token = _ACTIVE_SCAN_SLOT.set(True)
                 try:
                     yield
                 finally:
+                    _ACTIVE_SCAN_SLOT.reset(token)
                     fcntl.flock(fd, fcntl.LOCK_UN)
                 return
             finally:
@@ -361,17 +371,22 @@ def terminate_scanner_children(process):
 
 
 def run_scan_command(command, timeout):
-    if not native_cancellation_enabled():
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               text=True, start_new_session=True)
-    try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except BaseException:
-        # Includes cancellation and timeouts: never leave scanner children alive.
-        terminate_scanner_children(process)
-        raise
-    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    # Keep the mandatory ClamAV command intact; constrain only the child
+    # process's filesystem access. The parent retains every integrity gate.
+    with confined_scanner(command, scan=True) as (restricted, options):
+        if not native_cancellation_enabled():
+            return subprocess.run(restricted, capture_output=True, text=True,
+                                  timeout=timeout, **options)
+        process = subprocess.Popen(
+            restricted, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True, **options)
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except BaseException:
+            # Includes cancellation and timeouts: never leave scanner children alive.
+            terminate_scanner_children(process)
+            raise
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def cancellable_scan(function):
@@ -706,9 +721,18 @@ def scan_engine_version(scanner):
     version_command = [scanner, '--version']
     try:
         validate_scanner_version_arguments(version_command, scanner=scanner)
-        output = subprocess.check_output(
-            version_command, text=True, timeout=5, stderr=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError, UnicodeError, InvalidScannerArguments):
+        # Scanner admission invokes this before scan_slot() in main(), and
+        # advisory version discovery can run independently. Make both share
+        # the two-slot cross-process cap with active scans. Reuse a slot
+        # already owned by this request to avoid nested-lock deadlock.
+        guard = nullcontext() if _ACTIVE_SCAN_SLOT.get() else scan_slot()
+        with guard:
+            with confined_scanner(version_command, scan=False) as (restricted, options):
+                output = subprocess.check_output(
+                    restricted, text=True, timeout=5, stderr=subprocess.DEVNULL,
+                    **options)
+    except (OSError, subprocess.SubprocessError, UnicodeError,
+            InvalidScannerArguments, ScannerFilesystemSandboxError):
         return None
     match = re.match(
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
@@ -1103,27 +1127,30 @@ def _scan_and_open(item, scanner, *, source_url=None, protection_level=None,
                 verified_fallback = fallback
     # Stable legacy hook: leave com.apple.quarantine and Gatekeeper protections intact.
     remove_quarantine(path)
-    # Quarantine is no longer stripped; reject unexpected metadata/ctime changes.
-    # Keep the explicit final file-integrity call visible to the launch guard.
-    if symbolic_link_identity(item) != selection:
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
-    verify_file_integrity(path, before, identity)
-    if symbolic_link_identity(item) != selection:
-        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    # This native availability probe can take up to ten seconds. Complete it
+    # BEFORE the final byte/identity validation rather than widening the
+    # validation-to-launch interval while a separate process runs.
     if is_pdf:
         verify_local_file_available(path)
-    # Carry the scanned root identity across process creation so the native
-    # helper also rejects byte-identical replacement immediately before opening.
+    # The native helper receives this exact root identity and rejects a
+    # replacement immediately before its NSWorkspace handoff.
     with scanned_file_identity(identity):
+        if symbolic_link_identity(item) != selection:
+            raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+        verify_file_integrity(path, before, identity)
+        if symbolic_link_identity(item) != selection:
+            raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
         try:
             launch_clean_file(path, target_app=destination if is_pdf else None)
         except (OSError, subprocess.SubprocessError, RuntimeError) as error:
             if verified_fallback is None:
                 raise LaunchFailedError(scan_result, is_pdf=is_pdf) from error
-            # Recheck the unchanged, locally available PDF before another launch.
-            verify_selected_file()
+            # Finish slow cloud and audit operations BEFORE the fallback's
+            # last full-byte and selection check. An altered file cannot be
+            # handed to a different user-selected PDF application.
             verify_local_file_available(path)
             record_scan_destination(verified_fallback)
+            verify_selected_file()
             try:
                 launch_clean_file(path, target_app=verified_fallback)
             except (OSError, subprocess.SubprocessError, RuntimeError) as fallback_error:

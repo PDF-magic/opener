@@ -21,3 +21,24 @@ integrity, and verified-handoff checks.
 This module formats the already validated combined report. It does not run
 ClamAV, parse PDFs, activate the planned Enhanced profile, change saved user
 preferences, or modify the installed scan gate.
+
+## Warnings versus system failures (opener-0864)
+
+The report includes independent `warnings` and `systemFailures` evidence
+channels in its detached dictionary and separate lines in its text rendering.
+These carry fixed, trusted status identifiers and bounded counts, never paths,
+scanner stderr, PDF-supplied strings, or exception messages.
+
+- Warnings cover review-worthy document conditions (suspicious structure,
+  encryption, document scan-size limits) and non-informational structural
+  findings, excluding confirmed-malicious-content evidence.
+- System failures cover scanner errors, timeouts, incomplete scans, required
+  expected stages that did not finish, and inspection-failure/resource-limit
+  findings even if a producer assigns informational severity.
+- Malware evidence remains in the existing ClamAV/structural reporting.
+  Cancellation and changed-file outcomes retain their distinct scan statuses,
+  rather than being mislabeled as warning or system-failure evidence.
+
+The channels can both contain evidence. They never authorize opening, change
+`requiresBlock`, relax the installed scanner, or alter saved preferences.
+Existing report keys are preserved; these fields are additive evidence only.

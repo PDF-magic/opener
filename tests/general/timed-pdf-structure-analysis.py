@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 import os
 import subprocess
+import tempfile
 import sys
 import time
 import unittest
@@ -133,6 +134,73 @@ class TimedPDFStructureTests(unittest.TestCase):
       ):
         with self.assertRaises(timed.TimedPDFAnalysisError):
           timed.parse_pdf_structure_timed(make_pdf())
+
+  def test_parser_confinement_policy_is_deny_by_default(self):
+    import parser_filesystem_confinement as confinement
+    profile = confinement._MACOS_PROFILE
+    self.assertIn("(deny default)", profile)
+    self.assertIn("(deny file-write*)", profile)
+    self.assertIn("(deny process-fork)", profile)
+    self.assertNotIn("(allow file-write", profile)
+    self.assertNotIn('(subpath "/Users")', profile)
+    self.assertNotIn('(subpath "/private/tmp")', profile)
+    self.assertNotIn('(subpath "/")', profile.replace(
+      '(allow file-read-metadata (subpath "/"))', ""
+    ))
+    self.assertTrue(confinement._FS_ABI1_RIGHTS & confinement._FS_READ_FILE)
+    self.assertTrue(confinement._FS_ABI1_RIGHTS & (1 << 1))
+    with patch.object(confinement, "_trusted_paths", side_effect=OSError("private")):
+      with self.assertRaises(confinement.ParserFilesystemConfinementError) as caught:
+        confinement.confine_parser_filesystem()
+    self.assertEqual(str(caught.exception), confinement.BLOCK_MESSAGE)
+
+  @unittest.skipUnless(sys.platform in ("darwin", "linux"),
+                       "Kernel filesystem sandbox requires macOS or Linux")
+  def test_real_kernel_denies_parser_unrelated_files_and_writes(self):
+    # Run a fresh process because Seatbelt/Landlock restrictions are permanent.
+    # Probe only synthetic test paths; never attempt to access real user files.
+    probe = """
+from pathlib import Path
+import sys
+sys.path.insert(0, sys.argv[1])
+from parser_filesystem_confinement import confine_parser_filesystem
+confine_parser_filesystem()
+from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES
+private, output, alias = map(Path, sys.argv[2:])
+def blocked_read(path):
+  try:
+    path.read_bytes()
+  except OSError:
+    return True
+  return False
+def blocked_write(path):
+  try:
+    path.write_bytes(b"forbidden")
+  except OSError:
+    return True
+  return False
+raise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0
+    and blocked_read(private) and blocked_read(alias)
+    and blocked_write(output)) else 1)
+"""
+    with tempfile.TemporaryDirectory(prefix="parser-fs-probe-") as temporary:
+      folder = Path(temporary)
+      private = folder / "private.pdf"
+      private.write_bytes(b"synthetic private fixture")
+      output = folder / "must-not-exist"
+      alias = folder / "alias.pdf"
+      alias.symlink_to(private)
+      completed = subprocess.run(
+        (sys.executable, "-I", "-B", "-c", probe, str(ROOT),
+         str(private), str(output), str(alias)),
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL, timeout=15, check=False,
+        env=timed._ENV.copy(), cwd="/", close_fds=True,
+      )
+      self.assertEqual(completed.returncode, 0,
+                       "Kernel must confine the parser to trusted runtime reads")
+      self.assertEqual(private.read_bytes(), b"synthetic private fixture")
+      self.assertFalse(output.exists())
 
   def test_ci_includes_timeout_tests_but_scanner_is_unmodified(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

@@ -142,7 +142,7 @@ class SystemDefaultBrowserTests(unittest.TestCase):
         path.write_text("hello")
         with patch.object(launcher.subprocess, "run") as run:
             launcher.launch_clean_file(path)
-        run.assert_called_once_with([str(launcher.NATIVE_LAUNCHER), str(path)], check=True)
+        run.assert_called_once_with([str(launcher.NATIVE_LAUNCHER), str(path)], check=True, timeout=30)
 
 
 if __name__ == "__main__":
