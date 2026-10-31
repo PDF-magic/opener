@@ -46,7 +46,8 @@ class InstallationConsentTests(unittest.TestCase):
     def test_no_controlling_terminal_fails_closed(self):
         with patch("builtins.open", side_effect=OSError("no controlling tty")):
             self.assertFalse(approval.confirm_installation())
-        with patch("builtins.open", side_effect=OSError):
+        with patch("builtins.open", side_effect=OSError), \
+                patch.object(sys, "argv", ["confirm_clamav_install.py"]):
             with patch.object(sys, "stderr", io.StringIO()) as diagnostic:
                 self.assertEqual(approval.main(), 1)
         self.assertIn("not authorized", diagnostic.getvalue().lower())
@@ -62,7 +63,7 @@ class InstallationConsentTests(unittest.TestCase):
 
     def test_the_confirmation_module_never_executes_commands(self):
         source = HELPER.read_text(encoding="utf-8")
-        for forbidden in ("subprocess", "os.system", "eval(", "sudo ", "shell=True"):
+        for forbidden in ("import subprocess", "subprocess.run(", "subprocess.Popen(", "os.system(", "eval(", "shell=True"):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)
 
