@@ -25,6 +25,7 @@ struct ScanHistorySettingsView: View {
             Text("The Scan History page is available only after the owning feature explicitly enables it.")
             Text("This page does not automatically load, export, or delete document records. The owning integration must independently verify the user's opt-in before enabling this page and collecting any entries.")
               .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
 
             Button("Show recent scan results") {
               inspectedResult = nil
@@ -50,7 +51,7 @@ struct ScanHistorySettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                   ForEach(rows) { row in
                     Button {
-                      // Inspect the previously validated row without reading a file again.
+                      // Inspect the previously validated row without further disk reads.
                       inspectedResult = row
                     } label: {
                       VStack(alignment: .leading, spacing: 4) {
@@ -73,7 +74,6 @@ struct ScanHistorySettingsView: View {
                 .accessibilityIdentifier("recentScanHistoryResults")
               }
             }
-              .fixedSize(horizontal: false, vertical: true)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(8)
