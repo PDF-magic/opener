@@ -35,7 +35,7 @@ struct FirstRunWelcomeView: View {
             .font(.largeTitle.weight(.semibold))
             .accessibilityAddTraits(.isHeader)
 
-          Text("Review how PDFs open and explore your preferences.")
+          Text("When configured as your PDF handler, PDF Magic Opener uses local ClamAV checks before opening a PDF in your chosen application. If a clean result and recent signatures cannot be verified, opening is blocked.")
             .font(.title3)
             .foregroundStyle(.secondary)
 

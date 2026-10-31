@@ -2,9 +2,13 @@
 
 The standalone SwiftUI **PDF Magic Opener** app shows a welcome screen in its
 main window on the first launch, before opening the existing Preferences view.
-The welcome explains the existing local scanner gate, the user's selected PDF
+The welcome first explains the product's purpose in plain language: **when
+configured as the user's PDF handler**, PDF Magic Opener requires a verified
+local ClamAV clean result and recent signatures before handing a PDF to the
+user's chosen application. When verification fails, opening is blocked.
+It then explains the existing local scanner gate, the user's selected PDF
 application, and where to review settings. It does **not** claim that ClamAV
-is installed or that a PDF has been scanned.
+is installed, that a PDF has already been scanned, or that scans guarantee safety.
 
 Selecting **Continue to Preferences** records the versioned welcome
 acknowledgement in the **preferences app's own UserDefaults** and displays the
