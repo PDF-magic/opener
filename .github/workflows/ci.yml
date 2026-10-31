@@ -386,7 +386,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
-      - name: Verify first-run welcome screen and navigation safety
+      - name: Verify first-run welcome and explicit future-profile selection
         run: PYTHONPATH=. python3 tests/general/first-run-welcome.py -v
       - name: Verify read-only first-run ClamAV installation check
         run: PYTHONPATH=. python3 tests/general/first-run-scanner-installation.py -v
@@ -1142,6 +1142,8 @@ jobs:
           "$RUNNER_TEMP/TestFirstRunWelcome"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunScannerInstallation.swift test-first-run-scanner-installation.swift -o "$RUNNER_TEMP/TestFirstRunScannerInstallation"
           "$RUNNER_TEMP/TestFirstRunScannerInstallation"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-first-run-profile-choice.swift -o "$RUNNER_TEMP/TestFirstRunProfileChoice"
+          "$RUNNER_TEMP/TestFirstRunProfileChoice"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-first-run-signature-availability.swift -o "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"

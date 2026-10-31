@@ -35,7 +35,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
       "ClamAV", "blocks opening",
       "does not change either selection",
       "does not install software",
-      'Button("Continue to Preferences", action: onContinue)',
+      'Button("Continue to Preferences", action: finishSetup)',
       'accessibilityIdentifier("firstRunWelcomeScreen")',
       'accessibilityIdentifier("firstRunContinueButton")',
     ):
@@ -130,6 +130,38 @@ class FirstRunWelcomeTests(unittest.TestCase):
                       "NSWorkspace(", "target-app.txt"):
       self.assertNotIn(forbidden, source)
 
+  def test_initial_protection_choice_is_explicit_and_non_enforcing(self):
+    view = WELCOME.read_text(encoding="utf-8")
+    shared = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(
+      encoding="utf-8")
+    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    for expected in (
+      "Choose your initial protection preference",
+      "Built-in ClamAV scanning and fail-closed opening remain the only active protection.",
+      "Preferred future protection profile",
+      "PreferredProtectionLevel.standard",
+      "PreferredProtectionLevel.enhanced",
+      "PreferredProtectionLevel.maximum",
+      'accessibilityIdentifier("firstRunProtectionProfilePicker")',
+      "InitialProtectionProfileChoice.save(initialProfile)",
+      ".disabled(initialProfile == nil)",
+      'accessibilityIdentifier("firstRunProtectionSaveError")',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, view)
+    self.assertLess(view.index("InitialProtectionProfileChoice.save(initialProfile)"),
+                    view.index("onContinue()"))
+    self.assertIn("guard let choice else { return false }", shared)
+    self.assertIn(
+      "PlannedProtectionLevelPreference.saveExplicitChoice(choice, defaults: defaults)",
+      shared)
+    self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn",
+                  shared)
+    self.assertNotIn("SelectedProtectionProfilePreference.save(", view)
+    self.assertIn("if not cached_clean(cache_id):", scanner)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("test-first-run-profile-choice.swift", ci)
+
   def test_first_run_explains_scanning_is_not_a_safety_guarantee(self):
     source = WELCOME.read_text(encoding="utf-8")
     warning = (
@@ -148,6 +180,62 @@ class FirstRunWelcomeTests(unittest.TestCase):
     docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
     self.assertIn("cannot guarantee", docs)
     self.assertIn("clean scan", docs)
+
+  def test_optional_browser_extensions_explanation_is_visible_and_accurate(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    group = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    for expected in (
+      "Browser extensions are optional.",
+      "installed native PDF handler can scan files opened through it",
+      "without any browser extension",
+      "Current browser extensions are not active:",
+      "cannot scan, sanitize, or open PDFs",
+      "no verified browser-to-scanner connection",
+      "does not automatically protect PDFs viewed directly in a browser",
+      "does not install or enable extensions",
+      "request browser permissions",
+      "change browser settings",
+      "continue without an extension",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, group)
+    self.assertLess(source.index('GroupBox("Default PDF browser")'),
+                    source.index('GroupBox("Optional browser extensions")'))
+    self.assertLess(source.index('GroupBox("Optional browser extensions")'),
+                    source.index('Button("Continue to Preferences", action: onContinue)'))
+    self.assertIn('accessibilityIdentifier("firstRunOptionalBrowserExtensions")', source)
+
+  def test_optional_extension_explanation_cannot_activate_integration(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    group = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    for forbidden in (
+      "Button(", "Toggle(", "Picker(", "onAppear(", "onChange(", "Process(",
+      "NSWorkspace", "FileManager", "saveVerified", "UserDefaults", "permissions.",
+      "scanAndOpen", "openURL", "sheet(", "Link(",
+    ):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, group)
+    manifest = (ROOT / "extensions/webextension/manifest.json").read_text(
+      encoding="utf-8"
+    )
+    extension = (ROOT / "extensions/webextension/src/background.js").read_text(
+      encoding="utf-8"
+    )
+    integration = (ROOT / "PDFMagicOpenerApp/ExtensionsAndIntegrationsSettingsView.swift").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn("Not active; cannot scan, sanitize, or open PDF files.", manifest)
+    self.assertIn("Inactive shared WebExtensions background entry point", extension)
+    self.assertIn('Text("Not connected")', integration)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("Optional browser extensions (opener-0980)", docs)
+    self.assertIn("not provide an automatic PDF scan", docs)
+    ci = CI.read_text(encoding="utf-8")
+    self.assertIn("tests/general/first-run-welcome.py -v", ci)
 
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
