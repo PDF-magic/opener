@@ -47,11 +47,10 @@ verified.
 
 If the user is offered a change to the macOS default PDF application, they
 may decline and keep their current handler. **Continue to Preferences** is
-not consent to make PDF Magic Opener the default, and the welcome never
-changes the association. The default PDF handler is independent of the user's
+not consent to make PDF Magic Opener the default; only explicitly selecting the separate default-handler action may change the association. The default PDF handler is independent of the user's
 chosen post-scan PDF application.
 
-Without an explicit, verified browser save, the welcome neither changes the configured
+Without an explicit, verified browser save or separate default-handler action, the welcome neither changes the configured
 PDF browser nor macOS PDF default,
 starts malware scans, provisions dependencies, activates planned protection
 policies, updates signatures, or replaces any other user customization. The separate native
@@ -156,3 +155,14 @@ or change existing browser/protection customizations. The actual installed
 scanner's fail-closed checks remain authoritative. The existing required
 scanner-tests and macos-build CI jobs now run portable wiring checks and
 native isolated status-matrix tests, respectively.
+
+## Optional default PDF handler offer (opener-0977)
+
+An independent, optional **Set PDF Magic Opener as Default** button lets users
+explicitly register the installed scanner-gated PDF handler as the macOS default.
+It reuses the existing validated handler action and reports success only after
+Launch Services read-back confirms the association. A missing or invalid handler
+shows a failure message, without modifying the chosen PDF viewer, browser
+selection, signature database, or scan policy.
+
+Continuing to Preferences without selecting this action preserves the existing macOS PDF association, scanner requirements, and user-selected browser.

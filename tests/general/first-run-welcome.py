@@ -286,6 +286,48 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertIn("tests/general/first-run-welcome.py -v",
                   CI.read_text(encoding="utf-8"))
 
+  def test_default_offer_is_opt_in_and_delegates_to_verified_handler(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    action = (ROOT / "PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn(
+      'Button("Set PDF Magic Opener as Default") {\n'
+      '                setDefaultPDFAppOnUserRequest()\n'
+      '              }', source
+    )
+    self.assertIn('accessibilityIdentifier("firstRunDefaultPDFAppResult")', source)
+    self.assertIn("guard !isSettingDefault && !savingBrowserChoice else { return }", source)
+    self.assertIn(".disabled(isSettingDefault || savingBrowserChoice)", source)
+    self.assertEqual(source.count("PDFDefaultApplicationAction.request("), 1)
+    before_action, action_body = source.split(
+      "  private func setDefaultPDFAppOnUserRequest() {", 1
+    )
+    self.assertNotIn("PDFDefaultApplicationAction.request(", before_action)
+    self.assertNotIn(".onAppear(perform: setDefaultPDFAppOnUserRequest)", source)
+    for required in (
+      "at: PDFDefaultApplicationAction.installedHandler",
+      "runHelper: PDFDefaultApplicationAction.launchInstalledHelper",
+      "currentPDFHandler: PDFDefaultApplicationAction.currentPDFHandler",
+      "isSettingDefault = false",
+      "The default could not be verified.",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, action_body)
+    # The delegated helper checks the installed scanner-gated bundle and
+    # verifies Launch Services' observed PDF handler before claiming success.
+    for required in (
+      "guard verifiedHandler(at: application) else",
+      "completion(currentPDFHandler() == handlerBundleID)",
+      "process.arguments = []",
+      "files.isExecutableFile(atPath: helper.path)",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, action)
+    self.assertIn("Continue to Preferences", source)
+    self.assertNotIn("UserDefaults.standard.set", source)
+    self.assertNotIn("scan-and-open.py", source)
+
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
     self.assertIn('acknowledgementKey = "firstRunWelcomeAcknowledged.v1"', state)

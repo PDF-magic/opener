@@ -28,6 +28,8 @@ struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
   @State private var signatureAvailability = FirstRunSignatureAvailability.readInstalled()
   @State private var installationHealth: FirstRunInstallationHealth?
+  @State private var isSettingDefault = false
+  @State private var defaultResultMessage: String?
 
   // Read existing installation metadata only. No scan, installation, PDF
   // association update, or browser preference write is performed.
@@ -118,6 +120,26 @@ struct FirstRunWelcomeView: View {
     onContinue()
   }
 
+  private func setDefaultPDFAppOnUserRequest() {
+    guard !isSettingDefault && !savingBrowserChoice else { return }
+    isSettingDefault = true
+    defaultResultMessage = nil
+    // Reuse the installed scan-handler verifier. Never register this
+    // standalone preferences app or bypass existing PDF scan protections.
+    PDFDefaultApplicationAction.request(
+      at: PDFDefaultApplicationAction.installedHandler,
+      runHelper: PDFDefaultApplicationAction.launchInstalledHelper,
+      currentPDFHandler: PDFDefaultApplicationAction.currentPDFHandler
+    ) { success in
+      DispatchQueue.main.async {
+        isSettingDefault = false
+        defaultResultMessage = success
+          ? "PDF Magic Opener is now the macOS default PDF application."
+          : "The default could not be verified. Install the PDF Magic Opener scan handler or review the default PDF app in Preferences."
+      }
+    }
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       ScrollView {
@@ -150,7 +172,7 @@ struct FirstRunWelcomeView: View {
 
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
-            Text("Choose an installed browser below or use Preferences to review your PDF application and macOS default-handler status. This welcome does not change either selection unless you explicitly save a verified browser choice.")
+            Text("This welcome does not change either selection automatically. You can explicitly save a verified PDF browser choice below, or separately make PDF Magic Opener the macOS default PDF handler.")
             Text("You can decline any offer to make PDF Magic Opener your default PDF application and keep your current macOS PDF handler. Continuing to Preferences does not approve or make a default-handler change.")
 
             Label("Existing settings are preserved", systemImage: "gearshape")
@@ -225,6 +247,35 @@ struct FirstRunWelcomeView: View {
           }
           .accessibilityIdentifier("firstRunPDFBrowserSection")
 
+          GroupBox("Default PDF application (optional)") {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("Make the installed PDF Magic Opener scan handler the macOS default for PDFs, or skip this step. Your chosen PDF viewer and scanning preferences are not changed.")
+                .foregroundStyle(.secondary)
+
+              Button("Set PDF Magic Opener as Default") {
+                setDefaultPDFAppOnUserRequest()
+              }
+              .disabled(isSettingDefault || savingBrowserChoice)
+              .accessibilityIdentifier("firstRunSetDefaultPDFAppButton")
+              .accessibilityHint("Changes the macOS PDF association only when you choose this button.")
+
+              if isSettingDefault {
+                ProgressView("Verifying the installed PDF scan handler…")
+              }
+
+              if let defaultResultMessage {
+                Text(defaultResultMessage)
+                  .font(.footnote)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .accessibilityIdentifier("firstRunDefaultPDFAppResult")
+              }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+          }
+          .accessibilityIdentifier("firstRunDefaultPDFAppSection")
+
           GroupBox("Basic installation health check") {
             VStack(alignment: .leading, spacing: 10) {
               if let health = installationHealth {
@@ -286,6 +337,7 @@ struct FirstRunWelcomeView: View {
         Button("Continue to Preferences", action: finishSetup)
           .disabled(initialProfile == nil)
           .disabled(savingBrowserChoice)
+          .disabled(isSettingDefault)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("firstRunContinueButton")
       }
