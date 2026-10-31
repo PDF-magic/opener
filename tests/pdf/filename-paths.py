@@ -30,6 +30,7 @@ CONTROL_FILENAMES = (
     "carriage\rreturn.pdf",
     "escape-\x1b.pdf",
     "unit-\x1fseparator.pdf",
+    "record-\x1eseparator.pdf",
     "delete-\x7f.pdf",
 )
 FILENAMES += CONTROL_FILENAMES
@@ -119,10 +120,10 @@ class PDFFilenameTests(unittest.TestCase):
 
 
     def test_control_character_filename_cannot_forge_clean_scanner_output(self):
-        # A literal filename containing a line-separator may appear in ClamAV
-        # output as multiple lines. A trailing ": OK" fragment is insufficient.
+        # Newline, carriage return and record separator each split a line.
+        # A trailing ": OK" fragment is not a complete ClamAV clean verdict.
         for index, filename in enumerate((
-            "line\nbreak.pdf", "carriage\rreturn.pdf", "unit-\x1fseparator.pdf",
+            "line\nbreak.pdf", "carriage\rreturn.pdf", "record-\x1eseparator.pdf",
         )):
             with self.subTest(index=index):
                 pdf = self.root / filename
