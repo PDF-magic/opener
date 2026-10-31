@@ -49,6 +49,15 @@ struct ScanResultSummaryComponentTests {
         precondition(first.displayedSignatureFreshness == nil)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
+        precondition(first.copyDiagnosticDetailsButton.title == "Copy Diagnostic Details")
+        precondition(first.copyDiagnosticDetailsButton.accessibilityIdentifier()
+                     == "scanResultSummaryCopyDiagnostics")
+        precondition(first.copyDiagnosticDetailsButton.accessibilityLabel()
+                     == "Copy Diagnostic Details")
+        precondition(first.copyDiagnosticDetailsButton.action != nil)
+        precondition(first.diagnosticDetailsForCopy().contains("Status: unavailable"))
+        precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
+
         let expected = [
             "clean", "malwareDetected", "suspiciousStructure", "encrypted",
             "incompleteScan", "scanFailed", "scanTimedOut", "fileChanged",
@@ -65,6 +74,10 @@ struct ScanResultSummaryComponentTests {
                 : status == .clean ? "Malware: Not detected" : "Malware: Not determined"
             precondition(first.malwareStatusLabel.stringValue == expectedMalware)
             precondition(first.malwareStatusLabel.accessibilityLabel() == expectedMalware)
+            precondition(first.diagnosticDetailsForCopy().contains("Status: " + status.rawValue))
+            precondition(!first.diagnosticDetailsForCopy().contains("[redacted]"))
+            precondition(first.displayedSanitization == nil)
+            precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(first.displayedSanitization == nil)
             precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(!first.headingLabel.stringValue.isEmpty)
@@ -131,6 +144,19 @@ struct ScanResultSummaryComponentTests {
         precondition(first.selectedProtectionLevelLabel.accessibilityLabel()
                      == "Selected protection level: Built-in")
         precondition(first.displayedProtectionLevel == .builtIn)
+        let safeCopy = first.diagnosticDetailsForCopy()
+        precondition(safeCopy.contains("Status: clean"))
+        precondition(safeCopy.contains("Document: März résumé 🦄.pdf"))
+        precondition(safeCopy.contains("Document path: [redacted]"))
+        precondition(safeCopy.contains("Selected protection level: Built-in"))
+        precondition(safeCopy.contains("Sanitization: Performed"))
+        precondition(safeCopy.contains("File integrity and verified opening checks still apply"))
+        precondition(!safeCopy.contains("/Users/"))
+        precondition(!safeCopy.contains("Private scans"))
+        precondition(!safeCopy.contains(target.path))
+        first.copyDiagnosticDetailsButton.performClick(nil)
+        precondition(NSPasteboard.general.string(forType: .string) == safeCopy,
+                     "button must copy only the privacy-safe snapshot")
         precondition(first.headingLabel.stringValue == "Scan complete")
         precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
@@ -150,6 +176,10 @@ struct ScanResultSummaryComponentTests {
         precondition(second.headingLabel.stringValue == "Scan failed")
         precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
+        precondition(second.diagnosticDetailsForCopy().contains("Status: scanFailed"))
+        precondition(second.diagnosticDetailsForCopy().contains("Sanitization: Not performed"))
+        precondition(second.diagnosticDetailsForCopy().contains("Document path: [redacted]"))
+        precondition(!second.diagnosticDetailsForCopy().contains("/tmp/other.pdf"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("Enhanced"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains(
@@ -198,6 +228,8 @@ struct ScanResultSummaryComponentTests {
         precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
                      "new results without structural evidence must clear old completion")
+        precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
+        precondition(!first.diagnosticDetailsForCopy().contains("example.invalid"))
         for unsafe in [
             "/tmp/line\nspoof.pdf",
             "/tmp/\u{202E}fdp.dab.pdf",
@@ -206,6 +238,12 @@ struct ScanResultSummaryComponentTests {
             first.show(.scanFailed, documentURL: URL(fileURLWithPath: unsafe),
                        selectedProtectionLevel: .builtIn)
             precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
+            let redacted = first.diagnosticDetailsForCopy()
+            precondition(redacted.contains("Document: Unavailable"))
+            precondition(redacted.contains("Document path: [redacted]"))
+            precondition(!redacted.contains(unsafe))
+            precondition(!redacted.contains("spoof.pdf"))
+            precondition(!redacted.contains("fdp.dab.pdf"))
         }
         // Display only fixed, verified-state vocabulary. A stale database is
         // never presented as a clean authorized scan, even if a caller reports
@@ -240,6 +278,13 @@ struct ScanResultSummaryComponentTests {
         first.show(.scanFailed, signatureFreshness: .stale)
         first.reset()
         precondition(first.displayedStatus == nil)
+        precondition(first.diagnosticDetailsForCopy().contains("Status: unavailable"))
+        precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
+        precondition(first.diagnosticDetailsForCopy().contains("Sanitization: Unavailable"))
+        precondition(!first.diagnosticDetailsForCopy().contains("März résumé"))
+        first.copyDiagnosticDetailsButton.performClick(nil)
+        precondition(NSPasteboard.general.string(forType: .string)
+                     == first.diagnosticDetailsForCopy())
         precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
         precondition(first.displayedStructureAnalysisCompleted == nil)

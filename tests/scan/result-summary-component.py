@@ -94,6 +94,28 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("invalidateIntrinsicContentSize()", source)
         self.assertNotIn("scannerOutput", source)
 
+    def test_copy_diagnostic_details_is_privacy_safe_and_accessible(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        harness = SWIFT_TEST.read_text(encoding="utf-8")
+        self.assertIn('title: "Copy Diagnostic Details"', source)
+        self.assertIn('setAccessibilityIdentifier("scanResultSummaryCopyDiagnostics")', source)
+        self.assertIn('copyDiagnosticDetailsButton.action = #selector(copyDiagnosticDetails(_:))', source)
+        self.assertIn("NSPasteboard.general", source)
+        self.assertIn("pasteboard.setString(diagnosticDetailsForCopy(), forType: .string)", source)
+        self.assertIn("ScanResultSummaryCopy.forStatus(displayedStatus)", source)
+        self.assertIn('displayedStatus?.rawValue ?? "unavailable"', source)
+        self.assertIn("documentURL?.isFileURL == true", source)
+        self.assertIn('displayedSanitization?.displayText ?? "Sanitization: Unavailable"', source)
+        self.assertIn("diagnosticDocumentName = Self.displayDocumentName(documentURL)", source)
+        self.assertIn('"[redacted]"', source)
+        self.assertNotIn("rawScannerOutput", source)
+        self.assertIn("copyDiagnosticDetailsButton.performClick(nil)", harness)
+        self.assertIn("NSPasteboard.general.string(forType: .string)", harness)
+        self.assertIn("Document path: [redacted]", harness)
+        self.assertIn("Sanitization: Performed", harness)
+        self.assertIn("Sanitization: Not performed", harness)
+        self.assertIn("Document path: Not provided", harness)
+
     def test_stale_signatures_are_explicit_and_inconsistent_clean_is_not_reassuring(self):
         source = SOURCE.read_text(encoding="utf-8")
         native = SWIFT_TEST.read_text(encoding="utf-8")
