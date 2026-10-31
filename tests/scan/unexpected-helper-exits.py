@@ -126,6 +126,9 @@ class UnexpectedHelperExitTests(unittest.TestCase):
             ("killed", "os.kill(os.getpid(), signal.SIGKILL)"),
         ):
             with self.subTest(label=label):
+                # A distinct digest forces a fresh genuine scan in each case.
+                expected = self.original + label.encode("ascii")
+                self.pdf.write_bytes(expected)
                 helper = self.executable(
                     "synthetic-launcher.py",
                     "import os, signal, sys\n" + exit_code + "\n",
@@ -139,7 +142,7 @@ class UnexpectedHelperExitTests(unittest.TestCase):
                         gate.scan_and_open(str(self.pdf), scanner)
                 cache.assert_called_once()
                 opened.assert_not_called()
-                self.assertEqual(self.pdf.read_bytes(), self.original)
+                self.assertEqual(self.pdf.read_bytes(), expected)
 
     def test_native_verifier_crash_after_clean_scan_blocks_launch(self):
         scanner = self.scanner()
