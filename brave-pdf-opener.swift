@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import UserNotifications
+import CryptoKit
 import Darwin
 
 // BEGIN NATIVE DIRECT PROCESS GATE
@@ -98,6 +99,14 @@ func recordNativeScanOrigin(script: URL, path: String, environment: [String: Str
 // the system-notification transport lets headless tests exercise the real
 // permission and delivery paths after the independent Settings app has quit.
 // Scanner verdicts and preferences are never read or changed by this transport.
+// Opaque per-document and verified-outcome IDs keep system deduplication
+// independent of sensitive paths, user preferences and scanner verdicts.
+func scanNotificationIdentifier(path: String, kind: String) -> String {
+    let digest = SHA256.hash(data: Data(path.utf8))
+    let opaquePath = digest.map { String(format: "%02x", $0) }.joined()
+    return "pdf-magic-opener.scan.\(kind).\(opaquePath)"
+}
+
 struct NativeScanNotificationTransport {
     let getAuthorizationStatus: (@escaping (UNAuthorizationStatus) -> Void) -> Void
     let requestAuthorization: (@escaping (Bool) -> Void) -> Void
@@ -115,7 +124,26 @@ struct NativeScanNotificationTransport {
                 }
             },
             add: { request, callback in
-                center.add(request) { _ in callback() }
+                // The real Notification Center can outlive this helper process.
+                // Ignore recent or still-pending identical notices; never
+                // change the scanner verdict or mandatory failure warning.
+                center.getDeliveredNotifications { delivered in
+                    center.getPendingNotificationRequests { pending in
+                        let recent = delivered.map {
+                            (identifier: $0.request.identifier, date: $0.date)
+                        }
+                        guard ScanNotificationDeduplication.shouldQueue(
+                            identifier: request.identifier,
+                            delivered: recent,
+                            pendingIdentifiers: pending.map { $0.identifier },
+                            now: Date()
+                        ) else {
+                            callback()
+                            return
+                        }
+                        center.add(request) { _ in callback() }
+                    }
+                }
             }
         )
     }
@@ -125,6 +153,7 @@ struct NativeScanNotificationTransport {
 // Notification permission is independent of the SwiftUI preferences process.
 private func enqueueNativeScanNotification(
     body: String,
+    identifier: String,
     transport: NativeScanNotificationTransport,
     completion: @escaping () -> Void
 ) {
@@ -132,7 +161,7 @@ private func enqueueNativeScanNotification(
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
         content.body = body
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
+        let request = UNNotificationRequest(identifier: identifier,
                                             content: content, trigger: nil)
         transport.add(request, completion)
     }
@@ -152,18 +181,20 @@ private func enqueueNativeScanNotification(
 }
 
 func deliverSuccessfulScanNotification(
+    identifier: String = UUID().uuidString,
     transport: NativeScanNotificationTransport = .system(),
     completion: @escaping () -> Void
 ) {
     enqueueNativeScanNotification(
         body: "A PDF passed scanning and was handed off to your chosen application.",
-        transport: transport, completion: completion
+        identifier: identifier, transport: transport, completion: completion
     )
 }
 
 // Optional blocked-file notice, separate from the mandatory failure alert.
 func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
     sanitizerFailed: Bool = false,
+    identifier: String = UUID().uuidString,
     transport: NativeScanNotificationTransport = .system(),
     completion: @escaping () -> Void
 ) {
@@ -175,7 +206,7 @@ func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
                 : (scanFailed
                     ? "A PDF scan failed or could not finish. The file was not opened."
                     : "A PDF could not be opened because its safety check failed.")),
-        transport: transport, completion: completion
+        identifier: identifier, transport: transport, completion: completion
     )
 }
 
@@ -357,6 +388,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
     private var pendingSuccessNotifications = 0
+    // Transient synchronized reservation also closes local callback races.
+    private let notificationReservations = ScanNotificationReservation()
 
     func applicationWillTerminate(_ notification: Notification) {
         terminating = true
@@ -622,18 +655,25 @@ DispatchQueue.main.async {
                     failure: failure, cancelled: cancelled
                 )
                 if blockedNotificationKind != .none {
-                    self.pendingSuccessNotifications += 1
-                    deliverBlockedFileNotification(
-                        malwareDetected: blockedNotificationKind == .malwareDetected,
-                        scanFailed: FailedScanNotificationClassification.shouldShowFailedScanNotice(
-                            failure: failure, cancelled: cancelled
-                        )
-                    ) { [weak self] in
-                        DispatchQueue.main.async {
-                            guard let self else { return }
-                            self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
-                                NSApp.terminate(nil)
+                    let scanFailed = FailedScanNotificationClassification.shouldShowFailedScanNotice(
+                        failure: failure, cancelled: cancelled
+                    )
+                    let kind = blockedNotificationKind == .malwareDetected
+                        ? "malware" : (scanFailed ? "failed" : "blocked")
+                    let identifier = scanNotificationIdentifier(path: path, kind: kind)
+                    if self.notificationReservations.reserve(identifier) {
+                        self.pendingSuccessNotifications += 1
+                        deliverBlockedFileNotification(
+                            malwareDetected: blockedNotificationKind == .malwareDetected,
+                            scanFailed: scanFailed,
+                            identifier: identifier
+                        ) { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self else { return }
+                                self.pendingSuccessNotifications -= 1
+                                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                                    NSApp.terminate(nil)
+                                }
                             }
                         }
                     }
@@ -641,13 +681,16 @@ DispatchQueue.main.async {
                 if SuccessfulScanNotificationPreference.shouldNotify(
                     failure: failure, cancelled: cancelled
                 ) {
-                    self.pendingSuccessNotifications += 1
-                    deliverSuccessfulScanNotification { [weak self] in
-                        DispatchQueue.main.async {
-                            guard let self else { return }
-                            self.pendingSuccessNotifications -= 1
-                            if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
-                                NSApp.terminate(nil)
+                    let identifier = scanNotificationIdentifier(path: path, kind: "success")
+                    if self.notificationReservations.reserve(identifier) {
+                        self.pendingSuccessNotifications += 1
+                        deliverSuccessfulScanNotification(identifier: identifier) { [weak self] in
+                            DispatchQueue.main.async {
+                                guard let self else { return }
+                                self.pendingSuccessNotifications -= 1
+                                if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                                    NSApp.terminate(nil)
+                                }
                             }
                         }
                     }

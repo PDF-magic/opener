@@ -402,6 +402,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/notifications/sanitizer-failure.py -v
       - name: Verify confirmed malware-detection notices preserve blocking and privacy
         run: PYTHONPATH=. python3 tests/notifications/malware-detection.py -v
+      - name: Prevent repeated PDF scan notices without changing safety outcomes
+        run: PYTHONPATH=. python3 tests/notifications/deduplication.py -v
       - name: Verify notifications work without an open Settings window
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py -v
       - name: Verify verified default PDF browser selector
@@ -988,6 +990,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malware-detection-notifications.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"
           "$RUNNER_TEMP/TestMalwareDetectionNotifications"
+      - name: Verify per-document notification deduplication and expiration
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notification-deduplication.swift -o "$RUNNER_TEMP/TestNotificationDeduplication"
+          "$RUNNER_TEMP/TestNotificationDeduplication"
       - name: Verify confirmed General preference reset preserves customizations
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
