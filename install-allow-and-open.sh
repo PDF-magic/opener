@@ -46,7 +46,10 @@ rollback_installation() {
                 recovered=0
             fi
         fi
-        if [ -n "$bundle_stage_dir" ] && [ -d "$bundle_stage_dir/previous.app" ]; then
+        if [ -n "$bundle_stage_dir" ] && [ -L "$bundle_stage_dir/previous.app" ]; then
+            # Preserve potentially unsafe staged content for manual recovery.
+            recovered=0
+        elif [ -n "$bundle_stage_dir" ] && [ -d "$bundle_stage_dir/previous.app" ]; then
             if [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
                 mv "$bundle_stage_dir/previous.app" "$installed_app" || recovered=0
             else
@@ -96,7 +99,13 @@ python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"
 migration_attempt="$(python3 "$script_dir/scripts/migration_state.py" --home "$HOME" begin)"
 
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
-    brew install clamav
+    # Detect Homebrew before attempting to install ClamAV, failing without
+    # modifying existing user settings if the package manager is unavailable.
+    if ! brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"; then
+        echo "Homebrew detection failed; install Homebrew to set up ClamAV." >&2
+        exit 1
+    fi
+    "$brew_executable" install clamav
 fi
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
@@ -286,7 +295,10 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
     cp "$script_dir/make-pdf-magic-default.command" "$action"
     chmod 755 "$action"
 fi
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+# Reconcile only the old and new scan-handler registrations; leave the user
+# selected default PDF application and unrelated app registrations untouched.
+python3 "$script_dir/scripts/reconcile_pdf_handler_registration.py" \
+    "$app" "$legacy_app" "$script_dir/scripts/list_registered_pdf_openers.swift"
 # Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate_update_agent.py"
 # The migrator has verified the agent; reconcile its live launchd label so
