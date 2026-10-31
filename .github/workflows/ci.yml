@@ -595,6 +595,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/file-unavailable-midscan.py -v
       - name: Verify native scan process uses direct Python execution
         run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
+      - name: Reject unexpectedly exiting scanner and launch helpers
+        run: PYTHONPATH=. python3 tests/scan/unexpected-helper-exits.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
@@ -787,6 +789,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/subprocess-limit.py -v
       - name: Verify final scan-to-launch validation on macOS
         run: PYTHONPATH=. python3 tests/scan/final-handoff.py -v
+      - name: Reject unexpectedly exiting helper processes on macOS
+        run: PYTHONPATH=. python3 tests/scan/unexpected-helper-exits.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permissions on macOS
