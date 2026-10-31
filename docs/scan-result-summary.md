@@ -106,6 +106,21 @@ logs, document names or user preferences, and it does not grant permission
 to open a PDF. Portable contract tests and the macOS AppKit rendering harness
 cover every canonical outcome, accessibility, isolation and reset in required CI.
 
+## Structure analysis completion
+
+The optional `structureAnalysisCompleted: Bool?` argument to `show` accepts
+only a **trusted, request-correlated structure-analysis completion result**.
+`true` displays `Structure analysis: Completed`, `false` displays `Structure
+analysis: Not completed`, and `nil` displays `Structure analysis: Unavailable`.
+Unknown is the default rather than evidence of success. This independently
+accessible field never infers completion from malware status, sanitization,
+technical details or selected preview protection levels.
+
+Each `show` update or `reset()` clears stale completion unless fresh evidence
+is supplied. This view-only addition cannot skip analysis, authorize opening,
+modify scanning policy or change preferences. Required macOS and portable
+tests cover all states, stale resets and instance isolation.
+
 
 ## Stale signature database identification
 
