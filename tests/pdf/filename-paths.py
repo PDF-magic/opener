@@ -52,6 +52,11 @@ class PDFFilenameTests(unittest.TestCase):
         target = patch("file_launcher.TARGET_APP_CONFIG", self.root / "target-app.txt")
         target.start()
         self.addCleanup(target.stop)
+        # The scanner and native handoff are mocked here; executable-path
+        # verification is exercised with real filesystem fixtures separately.
+        executable = patch("file_launcher.require_executable_path")
+        executable.start()
+        self.addCleanup(executable.stop)
 
     def test_original_pdf_name_is_preserved_from_scan_through_launch(self):
         """Neither ClamAV nor the approved launcher receives a shell-expanded path."""
