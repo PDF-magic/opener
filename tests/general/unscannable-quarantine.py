@@ -123,6 +123,7 @@ class UnscannableQuarantineTests(unittest.TestCase):
         empty.write_bytes(b"")
         original = self.tag_quarantine(empty)
         with patch.object(gate, "CACHE_DB", self.root / "empty-cache.sqlite"), \
+             patch.object(gate, "verify_local_file_available"), \
              patch.object(gate, "run_scan_command") as scanner, \
              patch.object(gate, "remember_clean") as cache, \
              patch.object(gate, "remove_quarantine") as hook, \
