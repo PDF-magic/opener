@@ -27,6 +27,35 @@ struct FirstRunWelcomeGate<Content: View>: View {
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
   @State private var signatureAvailability = FirstRunSignatureAvailability.readInstalled()
+  @State private var installationHealth: FirstRunInstallationHealth?
+
+  // Read existing installation metadata only. No scan, installation, PDF
+  // association update, or browser preference write is performed.
+  private func runBasicInstallationHealthCheck() {
+    let signatures = FirstRunSignatureAvailability.readInstalled()
+    signatureAvailability = signatures
+    let signatureStatus: FirstRunInstallationHealth.SignatureFiles
+    switch signatures {
+    case .available: signatureStatus = .present
+    case .missing: signatureStatus = .missing
+    case .incomplete: signatureStatus = .incomplete
+    case .unsafe: signatureStatus = .unsafe
+    }
+
+    let pdfAssociation: FirstRunInstallationHealth.PDFAssociation
+    switch readGeneralPDFHandlerStatus() {
+    case .isDefault: pdfAssociation = .opener
+    case .other: pdfAssociation = .anotherApplication
+    case .unknown: pdfAssociation = .unknown
+    }
+
+    installationHealth = FirstRunInstallationHealth.assess(
+      handlerInstalled: PDFDefaultApplicationAction.verifiedHandler(
+        at: PDFDefaultApplicationAction.installedHandler),
+      signatureFiles: signatureStatus,
+      pdfAssociation: pdfAssociation
+    )
+  }
 
   @State private var installedBrowserOptions: [PDFBrowserOption] = []
   @State private var savedBrowserID = ""
@@ -196,6 +225,33 @@ struct FirstRunWelcomeView: View {
           }
           .accessibilityIdentifier("firstRunPDFBrowserSection")
 
+          GroupBox("Basic installation health check") {
+            VStack(alignment: .leading, spacing: 10) {
+              if let health = installationHealth {
+                Text(health.summary)
+                  .font(.headline)
+                  .accessibilityIdentifier("firstRunInstallationHealthSummary")
+                Label(health.handlerDetail, systemImage: "app.badge.checkmark")
+                  .accessibilityIdentifier("firstRunInstallationHandlerStatus")
+                Label(health.signatureDetail, systemImage: "checkmark.shield")
+                  .accessibilityIdentifier("firstRunInstallationSignaturesStatus")
+                Label(health.associationDetail, systemImage: "doc")
+                  .accessibilityIdentifier("firstRunInstallationPDFAssociationStatus")
+              } else {
+                Text("Installation check has not run yet.")
+                  .accessibilityIdentifier("firstRunInstallationHealthSummary")
+              }
+              Text(FirstRunInstallationHealth.caveat)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+              Button("Check Installation Again", action: runBasicInstallationHealthCheck)
+                .accessibilityIdentifier("firstRunCheckInstallationAgain")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+          }
+          .accessibilityIdentifier("firstRunInstallationHealthSection")
+
           // This is explanation only. Extension installation, activation and
           // browser permissions are always separate, user-controlled actions.
           GroupBox("Optional browser extensions") {
@@ -237,6 +293,7 @@ struct FirstRunWelcomeView: View {
     .padding(28)
     .frame(minWidth: 680, minHeight: 420)
     .onAppear(perform: loadBrowserChoice)
+    .onAppear(perform: runBasicInstallationHealthCheck)
     .accessibilityIdentifier("firstRunWelcomeScreen")
   }
 }
