@@ -71,7 +71,7 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         # scanner-parameter editor or bypass. Forbid every other button.
         if filename == "AdvancedScanningSettingsView.swift" and term == "Button(":
           continue
-        # Only the two reviewed browser download preference toggles are allowed.
+        # Only reviewed preference-only browser toggles are allowed.
         # Continue forbidding unrelated scanner-bypass controls in this page.
         if filename == "BrowsersSettingsView.swift" and term == "Toggle(":
           continue
@@ -95,6 +95,7 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
             "Show Scan Results",
             "Enable Browser Download Monitoring",
             "Scan Other Supported Files",
+            "Enable Automatic PDF Interception",
         }
         for required in ("Show Only Warnings", "Notify on Failed Scan", "Scan Other Supported Files",
                          "Enable Browser Download Monitoring", "Show Scan Results"):
@@ -103,6 +104,10 @@ class TechnicalPreferencesHelpTests(unittest.TestCase):
         self.assertFalse(set(toggle_names) - allowed)
         self.assertIn('ScanOtherSupportedFilesPreference.save(enabled)', source)
         self.assertIn("DownloadScanResultsPreference.save(enabled)", source)
+        self.assertIn('Toggle("Enable Automatic PDF Interception", isOn: Binding(', source)
+        self.assertIn("BrowserAutomaticPDFInterceptionPreference.eligibleBrowserIDs(", source)
+        self.assertIn("BrowserAutomaticPDFInterceptionPreference.saveOptIn(", source)
+        self.assertIn("Automatic interception is not active in any browser", source)
         self.assertIn("BrowserDownloadMonitoringPreference.save(enabled)", source)
         self.assertNotIn("permissions.request", source)
       if filename == "AdvancedScanningSettingsView.swift":

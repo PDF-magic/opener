@@ -755,6 +755,62 @@ enum BrowserDownloadMonitoringPreference {
   }
 }
 
+
+// Future-facing, PER-BROWSER opt-in only. This is not a permission grant or an
+// active interception feature. Actual browser/network access and native ClamAV
+// scan-before-render must be verified independently before any implementation
+// may act on a saved preference. Do not infer eligibility from installation alone.
+enum BrowserAutomaticPDFInterceptionPreference {
+  static let suiteName = ScanProgressPreference.suiteName
+  static let key = "automaticPDFInterceptionOptIns"
+
+  // Vendor-documented candidate request/response interception APIs only.
+  // Chrome/Edge DNR cannot await a native scan; Firefox's response filter is
+  // not wired up. Chromium forks and Safari need per-version verification.
+  // Keep this strict list aligned with automatic-interception-capability-matrix.js.
+  static let candidateBrowserIDs: Set<String> = [
+    "com.google.Chrome", "com.microsoft.edgemac", "org.mozilla.firefox"
+  ]
+
+  static func eligibleBrowserIDs(installedIDs: Set<String>) -> Set<String> {
+    return installedIDs.intersection(candidateBrowserIDs)
+  }
+
+  static func isOptedIn(
+    for browserID: String,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard candidateBrowserIDs.contains(browserID), let defaults else { return false }
+    _ = defaults.synchronize()
+    guard let values = defaults.dictionary(forKey: key),
+          let raw = values[browserID] as? NSNumber,
+          CFGetTypeID(raw) == CFBooleanGetTypeID() else { return false }
+    return raw.boolValue
+  }
+
+  @discardableResult
+  static func saveOptIn(
+    _ optedIn: Bool,
+    for browserID: String,
+    defaults: UserDefaults? = UserDefaults(suiteName: suiteName)
+  ) -> Bool {
+    guard candidateBrowserIDs.contains(browserID), let defaults else { return false }
+    _ = defaults.synchronize()
+    let previous = defaults.object(forKey: key)
+    // Never silently overwrite malformed or future values for this preference.
+    guard previous == nil || previous is [String: Any] else { return false }
+    var values = (previous as? [String: Any]) ?? [:]
+    values[browserID] = optedIn
+    defaults.set(values, forKey: key)
+    if defaults.synchronize(),
+       isOptedIn(for: browserID, defaults: defaults) == optedIn { return true }
+    if let previous { defaults.set(previous, forKey: key) }
+    else { defaults.removeObject(forKey: key) }
+    _ = defaults.synchronize()
+    return false
+  }
+}
+
 // Browser download scan-result *presentation* only. A missing or malformed
 // value preserves visible summaries. This must never change native scanning,
 // browser permissions, malware warnings, failures, or the opening decision.
