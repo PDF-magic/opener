@@ -105,6 +105,20 @@ jobs:
       - name: Verify Safari renders local PDF and MIME-only PDF
         run: python3 tests/browser/safari-pdf-viewer.py --live
 
+  safari-downloaded-open:
+    # A real Safari download on a disposable runner, then the existing scan
+    # policy with external scanner/launch actions replaced by test doubles.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: Safari downloaded PDF managed opening
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable SafariDriver on the disposable macOS runner
+        run: sudo /usr/bin/safaridriver --enable
+      - name: Test Safari download and scan-gated opening
+        run: PYTHONPATH=. python3 tests/browser/safari-download-open.py --live
+
   detect-scope:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Validate dependency map for native CI
@@ -531,6 +545,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/policy-snapshot.py -v
       - name: Verify installed scanner configuration boundary values
         run: PYTHONPATH=. python3 tests/scanner/configuration-boundaries.py -v
+      - name: Test Safari download-opening fixture and fail-closed contracts
+        run: |
+          PYTHONPATH=. python3 tests/browser/safari-download-open.py --self-test
+          PYTHONPATH=. python3 tests/browser/safari-download-open-contract.py -v
       - name: Verify macOS quarantine remains after clean, cached, and blocked scans
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
