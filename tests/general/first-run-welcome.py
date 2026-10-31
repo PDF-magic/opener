@@ -33,10 +33,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
       "welcomePending = false",
       'Label("Welcome to PDF Magic Opener"',
       "ClamAV", "blocks opening",
-      "This welcome preserves your viewer choice",
-      "only if you explicitly request it below",
-      'Button("Set PDF Magic Opener as Default")',
-      'accessibilityIdentifier("firstRunSetDefaultPDFAppButton")',
+      "does not change either selection",
       "does not install software",
       'Button("Continue to Preferences", action: onContinue)',
       'accessibilityIdentifier("firstRunWelcomeScreen")',
@@ -70,6 +67,69 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertNotIn("automatically sets your default", source.lower())
     self.assertNotIn("guarantees safety", source.lower())
 
+  def test_first_run_browser_choice_reuses_verified_selector_only_on_save(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    helper = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text(
+      encoding="utf-8"
+    )
+    for expected in (
+      'GroupBox("Default PDF browser")',
+      'Picker("Browser for scanned PDFs", selection: $selectedBrowserID)',
+      "DefaultPDFBrowserPreferences.discover()",
+      "DefaultPDFBrowserPreferences.currentSelection()",
+      "savedBrowserID = existing",
+      "selectedBrowserID = existing",
+      "Existing custom or unavailable selection (preserved)",
+      'Button("Save browser choice", action: saveBrowserChoice)',
+      "selectedBrowserID != savedBrowserID",
+      "installedBrowserOptions.first(where: { $0.id == selectedBrowserID })",
+      "DefaultPDFBrowserPreferences.saveVerified(option)",
+      "selectedBrowserID = savedBrowserID",
+      ".disabled(savingBrowserChoice)",
+      ".onAppear(perform: loadBrowserChoice)",
+      'accessibilityIdentifier("firstRunPDFBrowserSelector")',
+      'accessibilityIdentifier("firstRunSavePDFBrowserButton")',
+      'accessibilityIdentifier("firstRunPDFBrowserStatus")',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, source)
+
+    loading = source.split("private func loadBrowserChoice()", 1)[1].split(
+      "private func saveBrowserChoice()", 1
+    )[0]
+    self.assertNotIn("saveVerified(", loading)
+    self.assertNotIn("FirstRunWelcomeState.acknowledge()", loading)
+    saving = source.split("private func saveBrowserChoice()", 1)[1].split(
+      "var body: some View", 1
+    )[0]
+    self.assertIn("if saved {", saving)
+    self.assertIn("} else {", saving)
+    self.assertNotIn("FirstRunWelcomeState.acknowledge()", saving)
+    self.assertIn("select-custom-pdf-application.py", helper)
+    self.assertIn("values.isSymbolicLink != true", helper)
+    self.assertNotIn("LSSetDefault", source)
+
+  def test_default_handler_change_is_optional_not_accepted_on_continue(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    opt_out = (
+      "You can decline any offer to make PDF Magic Opener your default PDF "
+      "application and keep your current macOS PDF handler."
+    )
+    no_consent = (
+      "Continuing to Preferences does not approve or make a "
+      "default-handler change."
+    )
+    self.assertIn('Text("' + opt_out + " " + no_consent + '")', source)
+    self.assertLess(source.index('Label("Your choice of PDF application"'),
+                    source.index(opt_out))
+    self.assertLess(source.index(no_consent),
+                    source.index('Label("Existing settings are preserved"'))
+    # This is disclosure only. No file-association or scanner operation.
+    for forbidden in ("LSSetDefaultRoleHandlerForContentType",
+                      "LSSetDefaultHandlerForURLScheme", "Process(",
+                      "NSWorkspace(", "target-app.txt"):
+      self.assertNotIn(forbidden, source)
+
   def test_default_offer_is_opt_in_and_delegates_to_verified_handler(self):
     source = WELCOME.read_text(encoding="utf-8")
     action = (ROOT / "PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift").read_text(
@@ -77,12 +137,12 @@ class FirstRunWelcomeTests(unittest.TestCase):
     )
     self.assertIn(
       'Button("Set PDF Magic Opener as Default") {\n'
-      '              setDefaultPDFAppOnUserRequest()\n'
-      '            }', source
+      '                setDefaultPDFAppOnUserRequest()\n'
+      '              }', source
     )
     self.assertIn('accessibilityIdentifier("firstRunDefaultPDFAppResult")', source)
-    self.assertIn("guard !isSettingDefault else { return }", source)
-    self.assertIn(".disabled(isSettingDefault)", source)
+    self.assertIn("guard !isSettingDefault && !savingBrowserChoice else { return }", source)
+    self.assertIn(".disabled(isSettingDefault || savingBrowserChoice)", source)
     self.assertEqual(source.count("PDFDefaultApplicationAction.request("), 1)
     before_action, action_body = source.split(
       "  private func setDefaultPDFAppOnUserRequest() {", 1

@@ -10,20 +10,23 @@ It then explains the existing local scanner gate, the user's selected PDF
 application, and where to review settings. It does **not** claim that ClamAV
 is installed, that a PDF has already been scanned, or that scans guarantee safety.
 
-The welcome also offers an optional **Set PDF Magic Opener as Default** button.
-Only selecting that button invokes the already installed, verified PDF handler
-registration helper. The helper rejects missing or invalid installations and
-requires a successful Launch Services read-back before reporting success. A
-failed setup shows a message and leaves the welcome available; it never claims
-the PDF association changed. This action does not replace the chosen PDF viewer
-or alter scanner policy. **Continue to Preferences** skips the optional action.
+The first-run screen also offers an optional **Default PDF browser** picker
+using the same installed-browser discovery and verified atomic chooser as
+General preferences. Its initial selection reflects the saved PDF destination,
+including a custom or unavailable selection without replacing it. Selecting a
+browser in the picker does not save anything. Only an explicit **Save browser
+choice** action invokes the existing installed verifier, and failures leave the
+previous selection unchanged. The chooser needs the installed PDF Magic Opener
+helper; if it is unavailable, saving fails without weakening scan protections.
+The picker never changes the macOS default PDF handler. Users may skip it and
+continue with all settings untouched.
 
-If the user is offered a change to the macOS default PDF application, they
-may decline and keep their current handler. **Continue to Preferences** is
-not consent to make PDF Magic Opener the default, and the welcome never
-changes the association unless the user explicitly selects the separate
-default-action button. The default PDF handler is independent of the user's
-chosen post-scan PDF application.
+An independent, optional **Set PDF Magic Opener as Default** button lets users
+explicitly register the installed scanner-gated PDF handler as the macOS default.
+It reuses the existing validated handler action and reports success only after
+Launch Services read-back confirms the association. A missing or invalid handler
+shows a failure message, without modifying the chosen PDF viewer, browser
+selection, signature database, or scan policy.
 
 Selecting **Continue to Preferences** records the versioned welcome
 acknowledgement in the **preferences app's own UserDefaults** and displays the
@@ -31,13 +34,35 @@ unchanged main Preferences view. Future launches go straight to Preferences.
 Closing the window without continuing leaves the welcome pending. The macOS
 Settings window remains directly accessible through Command-comma.
 
-Simply displaying or continuing past the welcome does not change the configured
-PDF browser or macOS PDF default, start malware scans, provision dependencies,
-change protection policies, update signatures, or replace user customizations.
-The macOS PDF association can change only through the separate explicit button. The separate native
+If the user is offered a change to the macOS default PDF application, they
+may decline and keep their current handler. **Continue to Preferences** is
+not consent to make PDF Magic Opener the default, and the welcome does not
+change the association except by explicit use of the separate default-action
+button. The default PDF handler is independent of the user's
+chosen post-scan PDF application.
+
+Without an explicit verified browser save or default-PDF action, the welcome
+neither changes the configured PDF viewer nor the macOS PDF default, starts
+malware scans, provisions dependencies, changes protection policies, updates
+signatures, or replaces any user customization. The separate native
 PDF handler and its fail-closed scanner admission continue to work independently
 even if the user never acknowledges the welcome.
 
 CI tests the native window's wiring and accessible labels, while an isolated
 UserDefaults suite verifies first-run, repeat-launch and acknowledgement
 behavior without accessing any installed user settings.
+
+## Signature availability check (opener-0976)
+
+On first run, the welcome inspects only metadata for the established installed
+ClamAV signature directory and its main/daily .cvd or .cld files. It reports
+whether both required nonempty regular files are present, missing/incomplete,
+or unsafe/unreadable (including linked files). The user may recheck after
+installing or updating definitions; no update starts automatically.
+
+**Presence is not validity, freshness, or proof of a safe document.** This
+display-only check never reads the definition payload, runs a scanner, changes
+the installed database, or touches existing browser/protection preferences.
+The separate PDF scan gate continues to require validated, recent definitions
+and a clean scan before authorizing document opening. Native isolated tests
+and portable CI wiring checks exercise this behavior.

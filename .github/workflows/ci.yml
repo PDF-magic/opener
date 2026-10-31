@@ -388,6 +388,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
       - name: Verify first-run welcome and opt-in PDF default setup safety
         run: PYTHONPATH=. python3 tests/general/first-run-welcome.py -v
+      - name: Verify first-run signature availability is read-only and clearly described
+        run: PYTHONPATH=. python3 tests/general/first-run-signature-availability.py -v
       - name: Verify Scan History page is conditional and passive
         run: PYTHONPATH=. python3 tests/general/scan-history-settings-page.py -v
       - name: Verify three accessible protection preview cards never change active scan policy
@@ -1136,6 +1138,8 @@ jobs:
           "$RUNNER_TEMP/TestInitialConfiguration"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunWelcomeState.swift test-first-run-welcome.swift -o "$RUNNER_TEMP/TestFirstRunWelcome"
           "$RUNNER_TEMP/TestFirstRunWelcome"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-first-run-signature-availability.swift -o "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
+          "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
           "$RUNNER_TEMP/TestSelectedProtectionProfile"
       - name: Verify existing installations retain Standard without changing active Built-in policy
