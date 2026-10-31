@@ -84,6 +84,23 @@ struct FirstRunWelcomeView: View {
             Text("Built-in ClamAV scanning and fail-closed opening remain the only active protection. Standard, Enhanced and Maximum are future-profile preferences, not available scanner modes. Choosing one here does not enable its planned checks.")
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
+
+            Picker("Preferred future protection profile", selection: $initialProfile) {
+              Text("Not selected").tag(nil as PreferredProtectionLevel?)
+              Text("Standard — baseline safeguards").tag(Optional(PreferredProtectionLevel.standard))
+              Text("Enhanced — additional PDF checks planned").tag(Optional(PreferredProtectionLevel.enhanced))
+              Text("Maximum — isolated analysis planned").tag(Optional(PreferredProtectionLevel.maximum))
+            }
+            .pickerStyle(.radioGroup)
+            .accessibilityIdentifier("firstRunProtectionProfilePicker")
+
+            if failedToSaveProfile {
+              Text("Could not save your preference. Existing protection and settings are unchanged; please try again.")
+                .foregroundStyle(.red)
+                .accessibilityIdentifier("firstRunProtectionSaveError")
+            }
+          }
+          .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
