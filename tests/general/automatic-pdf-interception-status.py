@@ -29,7 +29,7 @@ class AutomaticInterceptionEffectiveStatusTests(unittest.TestCase):
     self.assertIn('Toggle("Enable Automatic PDF Interception", isOn: Binding(', section)
     self.assertIn('automaticInterceptionOptIns[browser.id] ?? false', section)
     self.assertIn('Automatic interception is not active in any browser', section)
-    self.assertIn('Saved', section)
+    self.assertIn("A saved choice", section)
     self.assertNotIn('value: automaticInterceptionOptIns', section)
     self.assertNotIn('effectiveAutomaticInterceptionStatus = optedIn', view)
     self.assertNotIn('effectiveAutomaticInterceptionStatus = enabled', view)
