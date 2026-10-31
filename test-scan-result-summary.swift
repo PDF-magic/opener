@@ -210,8 +210,11 @@ struct ScanResultSummaryComponentTests {
         precondition(first.fileBlockedLabel.stringValue == "File blocked: Yes")
         precondition(first.blockingReasonLabel.stringValue
                      == "Blocking reason: Verified opening did not complete.")
+        // Restore independently verified structure completion for the
+        // instance-isolation check; intervening show calls cleared prior evidence.
         first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
-                   openingOutcome: .opened)
+                   structureAnalysisCompleted: true, openingOutcome: .opened)
+        precondition(first.displayedStructureAnalysisCompleted == true)
 
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
                     selectedProtectionLevel: .enhanced, sanitization: .notPerformed,
