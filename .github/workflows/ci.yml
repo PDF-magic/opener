@@ -910,6 +910,8 @@ jobs:
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/pdf-magic-native-host"
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/launch-scanned-file"
           test ! -e "$app/Contents/Helpers"
+      - name: Smoke-test staged macOS app from a fresh uninstalled location
+        run: python3 tests/app/fresh-launch.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
       - name: Test native notifications after quitting the built Settings application
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission
