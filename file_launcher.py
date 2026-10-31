@@ -203,4 +203,4 @@ def launch_clean_file(path, target_app=None):
         if selected == PDF_OPENER_BUNDLE_ID:
             raise RuntimeError("PDF Magic Opener cannot launch itself; opening was stopped.")
         command.extend(["--bundle-id", selected])
-    subprocess.run([*command, str(path)], check=True)
+    subprocess.run([*command, str(path)], check=True, timeout=30)
