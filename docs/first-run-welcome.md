@@ -47,11 +47,10 @@ verified.
 
 If the user is offered a change to the macOS default PDF application, they
 may decline and keep their current handler. **Continue to Preferences** is
-not consent to make PDF Magic Opener the default, and the welcome never
-changes the association. The default PDF handler is independent of the user's
+not consent to make PDF Magic Opener the default; only explicitly selecting the separate default-handler action may change the association. The default PDF handler is independent of the user's
 chosen post-scan PDF application.
 
-Without an explicit, verified browser save, the welcome neither changes the configured
+Without an explicit, verified browser save or separate default-handler action, the welcome neither changes the configured
 PDF browser nor macOS PDF default,
 starts malware scans, provisions dependencies, activates planned protection
 policies, updates signatures, or replaces any other user customization. The separate native
@@ -101,3 +100,85 @@ request permissions, write to existing settings, or change the scanner's
 fail-closed checks. Required CI already invokes
 `tests/general/first-run-welcome.py`; regressions verify this text against
 the inactive browser manifest, background and native connection status.
+
+## Extension setup instructions (opener-0981)
+
+The first-run **Optional browser extensions** section now displays concise,
+accessible setup guidance without implying that an extension is required or
+that a functioning, publicly distributed browser integration exists:
+
+1. **Safari, development/test builds:** Only after installing a properly
+   signed host app containing the Safari extension, open
+   **Safari > Settings > Extensions**, locate PDF Magic Opener, and enable it manually if desired.
+   If the extension does not appear, check the installed host app rather than
+   bypassing macOS signing or Safari protections. The host app's embedded
+   extension is not automatically enabled.
+2. **Chrome, Edge, Firefox, and other browsers:** There is **no public release**
+   ready to install. The browser packages are development/test artifacts,
+   not production PDF protection. This welcome does not direct users to an
+   unverified store listing or ask them to sideload an unsigned artifact.
+3. **After enabling a test extension:** Its toolbar still reports **Not
+   active**. It cannot scan, approve, or open PDFs, and no verified
+   browser-to-scanner connection exists. For scanned PDF opening, use the
+   installed native PDF handler.
+
+The welcome neither starts extension installation or activation nor requests
+browser permissions, opens browser settings, changes the user's PDF browser
+choice, or affects mandatory local scanner checks and quarantine protections.
+The existing required portable first-run CI suite verifies the instructional
+text, accessible heading, read-only behavior, Safari documentation, inactive
+extension manifest, and lack of publicly released extension artifacts.
+
+## Basic installation health check (opener-0982)
+
+The first-run welcome now performs a **read-only basic installation check**
+when it first appears. Users may repeat the inventory with **Check
+Installation Again**. It reports the native PDF Magic Opener scan-handler
+bundle's expected identity, PDF declaration and executable; the presence,
+incompleteness or unsafe metadata state of required ClamAV definition files;
+and whether macOS currently associates PDFs with the PDF Magic Opener
+handler, another application, or an unknown default.
+
+An alternate macOS PDF default is a user choice, **not** permission to change
+that association. A missing scan-handler bundle or absent/unverifiable
+definition files produce an actionable message, not a claim of healthy
+protection. Even a positive basic inventory **does not** validate ClamAV
+installation/version, signature freshness/content, file integrity, quarantine,
+scanner execution, a clean PDF verdict, or authorization to open a document.
+A separate in-progress checklist task, opener-0975, inspects ClamAV
+installation; the health inventory intentionally does not duplicate its
+scanner lookup.
+
+This check runs no process, scanner, installer, updater or network operation,
+and writes no settings. It does not accept PDFs, alter the macOS PDF default,
+or change existing browser/protection customizations. The actual installed
+scanner's fail-closed checks remain authoritative. The existing required
+scanner-tests and macos-build CI jobs now run portable wiring checks and
+native isolated status-matrix tests, respectively.
+
+## Optional default PDF handler offer (opener-0977)
+
+An independent, optional **Set PDF Magic Opener as Default** button lets users
+explicitly register the installed scanner-gated PDF handler as the macOS default.
+It reuses the existing validated handler action and reports success only after
+Launch Services read-back confirms the association. A missing or invalid handler
+shows a failure message, without modifying the chosen PDF viewer, browser
+selection, signature database, or scan policy.
+
+Continuing to Preferences without selecting this action preserves the existing macOS PDF association, scanner requirements, and user-selected browser.
+
+## Optional Finder Quick Action offer (opener-0979)
+
+On first run, the welcome optionally offers **Configure Finder Quick Action…**.
+This expands a setup explanation and links to the existing
+[installation instructions](https://github.com/PDF-magic/opener#installation-and-usage).
+It explains that the existing installer requires an “Allow and Open” Automator
+Quick Action, must be run from a trusted checkout without sudo, and does not
+silently replace unrecognized or customized Finder workflows.
+
+Users can choose **Not now** to collapse the instructions or **Continue to
+Preferences** without setting up Finder. Viewing the offer or opening its
+instructions makes no configuration change and never records the welcome
+acknowledgement. Actual Finder setup remains the separate, explicitly invoked
+installer and its existing safety checks; the welcome does not launch an
+installer, modify files, change scanner policy, or alter user preferences.

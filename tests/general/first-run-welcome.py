@@ -204,7 +204,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertLess(source.index('GroupBox("Default PDF browser")'),
                     source.index('GroupBox("Optional browser extensions")'))
     self.assertLess(source.index('GroupBox("Optional browser extensions")'),
-                    source.index('Button("Continue to Preferences"'))
+                    source.index('Button("Continue to Preferences", action: finishSetup)'))
     self.assertIn('accessibilityIdentifier("firstRunOptionalBrowserExtensions")', source)
 
   def test_optional_extension_explanation_cannot_activate_integration(self):
@@ -236,6 +236,126 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertIn("not provide an automatic PDF scan", docs)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-welcome.py -v", ci)
+
+  def test_first_run_displays_accurate_extension_setup_steps(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    section = source.split('GroupBox("Optional browser extensions") {', 1)[1].split(
+      '.accessibilityIdentifier("firstRunOptionalBrowserExtensions")', 1
+    )[0]
+    instructions = section.split('Label("Extension setup instructions"', 1)[1]
+    for expected in (
+      'systemImage: "list.number"',
+      'accessibilityIdentifier("firstRunExtensionSetupInstructions")',
+      "Safari (test builds):",
+      "properly signed PDF Magic Opener app with its Safari extension",
+      "Settings > Extensions",
+      "enable it manually if you choose",
+      "check the installed host app",
+      "Chrome, Edge, Firefox, and other browsers:",
+      "No public extension release is available",
+      "for development and testing",
+      "An enabled test extension still shows Not active",
+      "cannot scan or approve PDFs",
+      "installed native PDF handler for scanned opening",
+      "no extension installation or activation is performed here",
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, instructions)
+    self.assertLess(section.index("Browser extensions are optional."),
+                    section.index('Label("Extension setup instructions"'))
+    for forbidden in ("Button(", "Toggle(", "Picker(", "Link(", "openURL(",
+                      "NSWorkspace", "Process(", "UserDefaults", "requestPermission",
+                      "scanAndOpen", "saveVerified("):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, instructions)
+
+    safari = (ROOT / "extensions/safari/README.md").read_text(encoding="utf-8")
+    distribution = (ROOT / "docs/browser-extension-distribution.md").read_text(
+      encoding="utf-8"
+    )
+    manifest = (ROOT / "extensions/webextension/manifest.json").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn("Safari > Settings > Extensions", safari)
+    self.assertIn("NOT RELEASE READY", distribution)
+    self.assertIn("Not active; cannot scan, sanitize, or open PDF files.", manifest)
+    docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
+    self.assertIn("Extension setup instructions (opener-0981)", docs)
+    self.assertIn("Safari > Settings > Extensions", docs)
+    self.assertIn("no public release", docs)
+    self.assertIn("tests/general/first-run-welcome.py -v",
+                  CI.read_text(encoding="utf-8"))
+
+  def test_default_offer_is_opt_in_and_delegates_to_verified_handler(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    action = (ROOT / "PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift").read_text(
+      encoding="utf-8"
+    )
+    self.assertIn(
+      'Button("Set PDF Magic Opener as Default") {\n'
+      '                setDefaultPDFAppOnUserRequest()\n'
+      '              }', source
+    )
+    self.assertIn('accessibilityIdentifier("firstRunDefaultPDFAppResult")', source)
+    self.assertIn("guard !isSettingDefault && !savingBrowserChoice else { return }", source)
+    self.assertIn(".disabled(isSettingDefault || savingBrowserChoice)", source)
+    self.assertEqual(source.count("PDFDefaultApplicationAction.request("), 1)
+    before_action, action_body = source.split(
+      "  private func setDefaultPDFAppOnUserRequest() {", 1
+    )
+    self.assertNotIn("PDFDefaultApplicationAction.request(", before_action)
+    self.assertNotIn(".onAppear(perform: setDefaultPDFAppOnUserRequest)", source)
+    for required in (
+      "at: PDFDefaultApplicationAction.installedHandler",
+      "runHelper: PDFDefaultApplicationAction.launchInstalledHelper",
+      "currentPDFHandler: PDFDefaultApplicationAction.currentPDFHandler",
+      "isSettingDefault = false",
+      "The default could not be verified.",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, action_body)
+    # The delegated helper checks the installed scanner-gated bundle and
+    # verifies Launch Services' observed PDF handler before claiming success.
+    for required in (
+      "guard verifiedHandler(at: application) else",
+      "completion(currentPDFHandler() == handlerBundleID)",
+      "process.arguments = []",
+      "files.isExecutableFile(atPath: helper.path)",
+    ):
+      with self.subTest(required=required):
+        self.assertIn(required, action)
+    self.assertIn("Continue to Preferences", source)
+    self.assertNotIn("UserDefaults.standard.set", source)
+    self.assertNotIn("scan-and-open.py", source)
+
+  def test_finder_quick_action_is_offered_without_silent_configuration(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    for expected in (
+      'Label("Optional Finder Quick Action"',
+      'Button("Configure Finder Quick Action…")',
+      'showingFinderQuickActionSetup = true',
+      'if showingFinderQuickActionSetup',
+      'The installer requires an existing “Allow and Open” Quick Action.',
+      'install-allow-and-open.sh',
+      'without sudo',
+      'unrecognized or customized Finder action is not silently replaced',
+      'Button("Not now")',
+      'showingFinderQuickActionSetup = false',
+      'accessibilityIdentifier("firstRunConfigureFinderQuickActionButton")',
+      'accessibilityIdentifier("firstRunFinderQuickActionInstructions")',
+      'https://github.com/PDF-magic/opener#installation-and-usage',
+    ):
+      with self.subTest(expected=expected):
+        self.assertIn(expected, source)
+    # Merely showing the offer, deferring it, or following the guide must
+    # never acknowledge first run or touch the scanning/installation path.
+    setup = source.split('Label("Optional Finder Quick Action"', 1)[1].split(
+      "\n          }\n          .fixedSize", 1)[0]
+    for forbidden in ("FirstRunWelcomeState.acknowledge()", "Process(",
+                      "NSWorkspace", "FileManager", "UserDefaults", "clamscan",
+                      "scan_and_open", "LSSetDefault", "write(to:"):
+      with self.subTest(forbidden=forbidden):
+        self.assertNotIn(forbidden, setup)
 
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")

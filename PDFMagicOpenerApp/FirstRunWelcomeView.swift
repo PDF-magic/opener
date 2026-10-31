@@ -42,6 +42,39 @@ struct FirstRunWelcomeView: View {
     }
   }
 
+  @State private var showingFinderQuickActionSetup = false
+  @State private var installationHealth: FirstRunInstallationHealth?
+  @State private var isSettingDefault = false
+  @State private var defaultResultMessage: String?
+
+  // Read existing installation metadata only. No scan, installation, PDF
+  // association update, or browser preference write is performed.
+  private func runBasicInstallationHealthCheck() {
+    let signatures = FirstRunSignatureAvailability.readInstalled()
+    signatureAvailability = signatures
+    let signatureStatus: FirstRunInstallationHealth.SignatureFiles
+    switch signatures {
+    case .available: signatureStatus = .present
+    case .missing: signatureStatus = .missing
+    case .incomplete: signatureStatus = .incomplete
+    case .unsafe: signatureStatus = .unsafe
+    }
+
+    let pdfAssociation: FirstRunInstallationHealth.PDFAssociation
+    switch readGeneralPDFHandlerStatus() {
+    case .isDefault: pdfAssociation = .opener
+    case .other: pdfAssociation = .anotherApplication
+    case .unknown: pdfAssociation = .unknown
+    }
+
+    installationHealth = FirstRunInstallationHealth.assess(
+      handlerInstalled: PDFDefaultApplicationAction.verifiedHandler(
+        at: PDFDefaultApplicationAction.installedHandler),
+      signatureFiles: signatureStatus,
+      pdfAssociation: pdfAssociation
+    )
+  }
+
   @State private var installedBrowserOptions: [PDFBrowserOption] = []
   @State private var savedBrowserID = ""
   @State private var selectedBrowserID = ""
@@ -103,6 +136,26 @@ struct FirstRunWelcomeView: View {
     onContinue()
   }
 
+  private func setDefaultPDFAppOnUserRequest() {
+    guard !isSettingDefault && !savingBrowserChoice else { return }
+    isSettingDefault = true
+    defaultResultMessage = nil
+    // Reuse the installed scan-handler verifier. Never register this
+    // standalone preferences app or bypass existing PDF scan protections.
+    PDFDefaultApplicationAction.request(
+      at: PDFDefaultApplicationAction.installedHandler,
+      runHelper: PDFDefaultApplicationAction.launchInstalledHelper,
+      currentPDFHandler: PDFDefaultApplicationAction.currentPDFHandler
+    ) { success in
+      DispatchQueue.main.async {
+        isSettingDefault = false
+        defaultResultMessage = success
+          ? "PDF Magic Opener is now the macOS default PDF application."
+          : "The default could not be verified. Install the PDF Magic Opener scan handler or review the default PDF app in Preferences."
+      }
+    }
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       ScrollView {
@@ -147,12 +200,41 @@ struct FirstRunWelcomeView: View {
 
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
-            Text("Choose an installed browser below or use Preferences to review your PDF application and macOS default-handler status. This welcome does not change either selection unless you explicitly save a verified browser choice.")
+            Text("This welcome does not change either selection automatically. You can explicitly save a verified PDF browser choice below, or separately make PDF Magic Opener the macOS default PDF handler.")
             Text("You can decline any offer to make PDF Magic Opener your default PDF application and keep your current macOS PDF handler. Continuing to Preferences does not approve or make a default-handler change.")
 
             Label("Existing settings are preserved", systemImage: "gearshape")
               .font(.headline)
             Text("Continuing saves only your preferred future protection level and opens Preferences. It does not install software, start scans, activate unavailable protection, change your PDF application, or reset your customizations.")
+
+            Label("Optional Finder Quick Action", systemImage: "folder")
+              .font(.headline)
+            Text("Would you like to configure the Finder “Allow and Open” Quick Action? This is optional. Your existing Finder actions are not changed by this welcome.")
+            Button("Configure Finder Quick Action…") {
+              showingFinderQuickActionSetup = true
+            }
+            .accessibilityIdentifier("firstRunConfigureFinderQuickActionButton")
+
+            if showingFinderQuickActionSetup {
+              VStack(alignment: .leading, spacing: 10) {
+                Text("Finder Quick Action setup")
+                  .font(.headline)
+                Text("The installer requires an existing “Allow and Open” Quick Action. If it is missing, create a Quick Action with that name in Automator before installing. Do not replace a customized workflow.")
+                Text("From a trusted PDF Magic Opener checkout, run bash install-allow-and-open.sh as your regular macOS user, without sudo. Follow its prompts. An unrecognized or customized Finder action is not silently replaced.")
+                Link(
+                  "Read the installation instructions",
+                  destination: URL(string: "https://github.com/PDF-magic/opener#installation-and-usage")!
+                )
+                Button("Not now") {
+                  showingFinderQuickActionSetup = false
+                }
+                .accessibilityIdentifier("firstRunDeferFinderQuickActionButton")
+              }
+              .padding(12)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+              .accessibilityIdentifier("firstRunFinderQuickActionInstructions")
+            }
           }
           .fixedSize(horizontal: false, vertical: true)
 
@@ -222,6 +304,62 @@ struct FirstRunWelcomeView: View {
           }
           .accessibilityIdentifier("firstRunPDFBrowserSection")
 
+          GroupBox("Default PDF application (optional)") {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("Make the installed PDF Magic Opener scan handler the macOS default for PDFs, or skip this step. Your chosen PDF viewer and scanning preferences are not changed.")
+                .foregroundStyle(.secondary)
+
+              Button("Set PDF Magic Opener as Default") {
+                setDefaultPDFAppOnUserRequest()
+              }
+              .disabled(isSettingDefault || savingBrowserChoice)
+              .accessibilityIdentifier("firstRunSetDefaultPDFAppButton")
+              .accessibilityHint("Changes the macOS PDF association only when you choose this button.")
+
+              if isSettingDefault {
+                ProgressView("Verifying the installed PDF scan handler…")
+              }
+
+              if let defaultResultMessage {
+                Text(defaultResultMessage)
+                  .font(.footnote)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .accessibilityIdentifier("firstRunDefaultPDFAppResult")
+              }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+          }
+          .accessibilityIdentifier("firstRunDefaultPDFAppSection")
+
+          GroupBox("Basic installation health check") {
+            VStack(alignment: .leading, spacing: 10) {
+              if let health = installationHealth {
+                Text(health.summary)
+                  .font(.headline)
+                  .accessibilityIdentifier("firstRunInstallationHealthSummary")
+                Label(health.handlerDetail, systemImage: "app.badge.checkmark")
+                  .accessibilityIdentifier("firstRunInstallationHandlerStatus")
+                Label(health.signatureDetail, systemImage: "checkmark.shield")
+                  .accessibilityIdentifier("firstRunInstallationSignaturesStatus")
+                Label(health.associationDetail, systemImage: "doc")
+                  .accessibilityIdentifier("firstRunInstallationPDFAssociationStatus")
+              } else {
+                Text("Installation check has not run yet.")
+                  .accessibilityIdentifier("firstRunInstallationHealthSummary")
+              }
+              Text(FirstRunInstallationHealth.caveat)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+              Button("Check Installation Again", action: runBasicInstallationHealthCheck)
+                .accessibilityIdentifier("firstRunCheckInstallationAgain")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+          }
+          .accessibilityIdentifier("firstRunInstallationHealthSection")
+
           // This is explanation only. Extension installation, activation and
           // browser permissions are always separate, user-controlled actions.
           GroupBox("Optional browser extensions") {
@@ -229,6 +367,16 @@ struct FirstRunWelcomeView: View {
               Text("Browser extensions are optional. The installed native PDF handler can scan files opened through it without any browser extension.")
               Text("Current browser extensions are not active: they cannot scan, sanitize, or open PDFs, and have no verified browser-to-scanner connection. Installing one does not automatically protect PDFs viewed directly in a browser.")
               Text("This setup does not install or enable extensions, request browser permissions, or change browser settings. You can continue without an extension.")
+                .foregroundStyle(.secondary)
+
+              Divider()
+              Label("Extension setup instructions", systemImage: "list.number")
+                .font(.headline)
+                .accessibilityIdentifier("firstRunExtensionSetupInstructions")
+
+              Text("Safari (test builds): Install a properly signed PDF Magic Opener app with its Safari extension. In Safari, open Settings > Extensions, find PDF Magic Opener, and enable it manually if you choose. If it is not listed, check the installed host app.")
+              Text("Chrome, Edge, Firefox, and other browsers: No public extension release is available. Current browser packages are for development and testing, not a ready-to-install protective extension.")
+              Text("An enabled test extension still shows Not active and cannot scan or approve PDFs. Continue to use the installed native PDF handler for scanned opening; no extension installation or activation is performed here.")
                 .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -245,7 +393,7 @@ struct FirstRunWelcomeView: View {
         Spacer()
         Button("Continue to Preferences", action: finishSetup)
           .disabled(initialProfile == nil)
-          .disabled(savingBrowserChoice)
+          .disabled(savingBrowserChoice || isSettingDefault)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("firstRunContinueButton")
       }
@@ -253,6 +401,7 @@ struct FirstRunWelcomeView: View {
     .padding(28)
     .frame(minWidth: 680, minHeight: 420)
     .onAppear(perform: loadBrowserChoice)
+    .onAppear(perform: runBasicInstallationHealthCheck)
     .accessibilityIdentifier("firstRunWelcomeScreen")
     .task {
       scannerInstallation = FirstRunScannerInstallation.check()

@@ -386,10 +386,16 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
-      - name: Verify first-run welcome and explicit future-profile selection
+      - name: Verify opt-in signature LaunchAgent uninstall safety
+        run: PYTHONPATH=. python3 tests/signature/uninstall-agent.py -v
+      - name: Verify guided uninstall procedure and safety boundaries
+        run: PYTHONPATH=. python3 tests/general/uninstall-procedure.py -v
+      - name: Verify first-run welcome, protection profile and opt-in PDF default setup
         run: PYTHONPATH=. python3 tests/general/first-run-welcome.py -v
       - name: Verify read-only first-run ClamAV installation check
         run: PYTHONPATH=. python3 tests/general/first-run-scanner-installation.py -v
+      - name: Verify read-only basic first-run installation health reporting
+        run: PYTHONPATH=. python3 tests/general/first-run-installation-health.py -v
       - name: Verify first-run signature availability is read-only and clearly described
         run: PYTHONPATH=. python3 tests/general/first-run-signature-availability.py -v
       - name: Verify Scan History page is conditional and passive
@@ -1144,6 +1150,8 @@ jobs:
           "$RUNNER_TEMP/TestFirstRunScannerInstallation"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-first-run-profile-choice.swift -o "$RUNNER_TEMP/TestFirstRunProfileChoice"
           "$RUNNER_TEMP/TestFirstRunProfileChoice"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunInstallationHealth.swift test-first-run-installation-health.swift -o "$RUNNER_TEMP/TestFirstRunInstallationHealth"
+          "$RUNNER_TEMP/TestFirstRunInstallationHealth"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-first-run-signature-availability.swift -o "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
