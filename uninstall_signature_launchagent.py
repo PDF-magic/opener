@@ -57,7 +57,7 @@ def _open_agents(home, opened):
     return descriptor
 
 
-def _read_managed(dirfd, home):
+def _read_managed(dirfd, home, *, archived_link=False):
     try:
         fd = os.open(AGENT_FILENAME, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
                      dir_fd=dirfd)
@@ -65,7 +65,7 @@ def _read_managed(dirfd, home):
         return None
     with os.fdopen(fd, "rb") as stream:
         before = os.fstat(stream.fileno())
-        if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+        if (not stat.S_ISREG(before.st_mode) or before.st_nlink != (2 if archived_link else 1)
                 or before.st_uid != os.getuid() or before.st_mode & 0o022
                 or not 0 < before.st_size <= MAX_PLIST_BYTES):
             raise AgentRemovalRefused("Unrecognized or unsafe LaunchAgent file; nothing removed.")
@@ -162,7 +162,7 @@ def remove_signature_launchagent(home, *, remove=False, run=_run_launchctl):
             # A hard link preserves exactly the same file bytes and permissions
             # without overwriting an existing backup or exposing its contents.
             try:
-                newest = _read_managed(directory, home)
+                newest = _read_managed(directory, home, archived_link=True)
                 backup = os.stat(BACKUP_FILENAME, dir_fd=directory, follow_symlinks=False)
                 if (newest is None or not _same_record(original, newest)
                         or (backup.st_dev, backup.st_ino) !=
