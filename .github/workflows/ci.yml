@@ -386,6 +386,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
+      - name: Verify guided uninstall procedure and safety boundaries
+        run: PYTHONPATH=. python3 tests/general/uninstall-procedure.py -v
       - name: Verify first-run welcome and explicit future-profile selection
         run: PYTHONPATH=. python3 tests/general/first-run-welcome.py -v
       - name: Verify read-only basic first-run installation health reporting
