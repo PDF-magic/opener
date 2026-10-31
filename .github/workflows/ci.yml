@@ -751,6 +751,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/history-record.py -v
       - name: Verify private optional scan-history metadata storage
         run: PYTHONPATH=. python3 tests/scan/history-metadata.py -v
+      - name: Verify optional scan history excludes private document and browsing data
+        run: PYTHONPATH=. python3 tests/scan/history-privacy.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance

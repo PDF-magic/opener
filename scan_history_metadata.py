@@ -16,6 +16,17 @@ HISTORY_DATABASE = (Path.home() / "Library/Application Support/Studio/allow-and-
                     / "scan-history" / "scan-history.sqlite3")
 _ENGINE_VERSION = re.compile(r"[0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?\Z")
 
+# The only on-disk history columns. Reject unreviewed schema extensions,
+# including hidden/generated columns, rather than silently accepting a table
+# that could retain document content, attachments, URLs, or browsing history.
+_HISTORY_COLUMN_CONTRACT = (
+    ("id", "INTEGER", 0, 1, 0),
+    ("scanned_at", "REAL", 1, 0, 0),
+    ("final_status", "TEXT", 1, 0, 0),
+    ("scanner_version", "TEXT", 0, 0, 0),
+    ("protection_profile_id", "TEXT", 1, 0, 0),
+)
+
 
 class ScanHistoryStorageError(RuntimeError):
     """The optional history store is unavailable; this is not a scan verdict."""
@@ -76,6 +87,14 @@ def store_scan_metadata(*, scanned_at, final_status, scanner_version=None,
                 "final_status TEXT NOT NULL, scanner_version TEXT, "
                 "protection_profile_id TEXT NOT NULL)"
             )
+            # CREATE TABLE IF NOT EXISTS does not validate an existing table.
+            # Fail closed if it contains even one unexpected persisted column.
+            actual_columns = tuple(
+                (row[1], row[2].upper(), row[3], row[5], row[6])
+                for row in connection.execute("PRAGMA table_xinfo(scan_history)")
+            )
+            if actual_columns != _HISTORY_COLUMN_CONTRACT:
+                raise sqlite3.DatabaseError("Unexpected scan history table schema.")
             connection.execute(
                 "INSERT INTO scan_history "
                 "(scanned_at, final_status, scanner_version, protection_profile_id) "
