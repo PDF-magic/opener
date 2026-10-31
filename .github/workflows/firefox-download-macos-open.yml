@@ -1,0 +1,45 @@
+name: Firefox downloaded PDF safe-open on macOS
+
+on:
+  pull_request:
+    paths:
+      - "extensions/webextension/scripts/test-firefox-native-pdf-download.mjs"
+      - "extensions/webextension/scripts/native-pdf-download-fixture.mjs"
+      - "extensions/webextension/tests/firefox-downloaded-open.test.mjs"
+      - "tests/browser/firefox-downloaded-open.py"
+      - ".github/workflows/firefox-download-macos-open.yml"
+  push:
+    branches: [main]
+    paths:
+      - "extensions/webextension/scripts/test-firefox-native-pdf-download.mjs"
+      - "extensions/webextension/scripts/native-pdf-download-fixture.mjs"
+      - "extensions/webextension/tests/firefox-downloaded-open.test.mjs"
+      - "tests/browser/firefox-downloaded-open.py"
+      - ".github/workflows/firefox-download-macos-open.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firefox-macos-open:
+    name: Firefox downloaded PDF safe-open on macOS
+    runs-on: macos-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-firefox@v1
+        id: firefox
+        with:
+          firefox-version: latest
+      - uses: browser-actions/setup-geckodriver@latest
+      - name: Verify real Firefox downloads remain quarantined and safely openable
+        working-directory: extensions/webextension
+        env:
+          FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+        run: node scripts/test-firefox-native-pdf-download.mjs "$FIREFOX_PATH" geckodriver --macos-handoff
