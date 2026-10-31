@@ -38,13 +38,17 @@ class AttentionRequiredTests(unittest.TestCase):
             root = Path(folder)
             (root / "twilight-reading.png").write_bytes(
                 (ROOT / "twilight-reading.png").read_bytes())
-            gate = root / "gate.sh"
-            gate.write_text("#!/bin/bash\nprintf 'Simulated blocked scan' >&2\nexit 7\n")
+            gate = root / "gate.py"
+            gate.write_text(
+                "import sys\n"
+                "sys.stderr.write('Simulated blocked scan')\n"
+                "sys.exit(7)\n"
+            )
             document = root / "blocked-report.pdf"
             document.write_bytes(b"%PDF-1.4\nsynthetic blocked PDF\n")
             original = (
                 'FileManager.default.homeDirectoryForCurrentUser\n'
-                '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")'
+                '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
             )
             self.assertEqual(native.count(original), 1)
             native = native.replace(original, 'URL(fileURLWithPath: "' + str(gate) + '")')

@@ -61,7 +61,11 @@ class ShowScanProgressTests(unittest.TestCase):
     self.assertIn("queued.append(path)", src)
     self.assertIn("startQueuedScans()", src)
     self.assertIn("startScan(path)", src)
-    self.assertIn("process.executableURL = URL(fileURLWithPath: \"/bin/bash\")", src)
+    self.assertIn('appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")', src)
+    self.assertIn('process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")', src)
+    self.assertIn("process.arguments = [script.path, path]", src)
+    self.assertIn("makeNativeScanProcess(", src)
+    self.assertNotIn('process.executableURL = URL(fileURLWithPath: "/bin/bash")', src)
     self.assertNotIn("ScanProgressPreference", src.split(
         "private func startQueuedScans()", 1)[1],
         "Progress preference must not control queue, scanner, warning or launch decisions")
