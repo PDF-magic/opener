@@ -266,9 +266,9 @@ test("startup authentication cannot reenter and forge a second generation", asyn
     return { kind: "verified-cold-browser-startup", browserId, startupId,
       verified: true };
   };
+  const pending = guard.reconcileStartup(startup());
   assert.equal((await nested).status, "unavailable");
-  assert.equal((await guard.reconcileStartup(startup())).status,
-    "orphan-cleanup-confirmed");
+  assert.equal((await pending).status, "orphan-cleanup-confirmed");
   guard.dispose();
 });
 
