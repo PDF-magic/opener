@@ -64,3 +64,26 @@ the installed database, or touches existing browser/protection preferences.
 The separate PDF scan gate continues to require validated, recent definitions
 and a clean scan before authorizing document opening. Native isolated tests
 and portable CI wiring checks exercise this behavior.
+
+## Optional browser extensions (opener-0980)
+
+The first-run welcome explains that browser extensions are **optional**: the
+installed native PDF handler can perform its existing verified local scan
+workflow for PDFs opened through that handler without any browser extension.
+Choosing a browser as a post-scan destination is distinct from installing a
+browser extension.
+
+Current browser extension packages are **inactive scaffolds**. They have no
+verified browser-to-native-scanner connection and cannot scan, sanitize, or
+open PDFs. Installing or enabling one does **not provide an automatic PDF scan**
+or protection for files rendered directly by a browser PDF viewer. Users are
+free to continue without extensions. First-run setup neither installs or
+enables extensions nor requests browser permissions or changes browser
+preferences; any future extension installation, enabling, or permission grant
+is a separately controlled user action. No feature is offered as active.
+
+The informational, accessible first-run section does not run a browser,
+request permissions, write to existing settings, or change the scanner's
+fail-closed checks. Required CI already invokes
+`tests/general/first-run-welcome.py`; regressions verify this text against
+the inactive browser manifest, background and native connection status.
