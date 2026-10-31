@@ -51,6 +51,24 @@ clears the document name, selected level and prior verdict together. The
 existing portable and macOS rendering suites verify Unicode, privacy,
 inactive-preview explanations, accessible labels and fail-closed reset behavior.
 
+## Whether sanitization was performed
+
+The same trusted `show(_:documentURL:selectedProtectionLevel:sanitization:)`
+call accepts an optional typed `ScanResultSummarySanitization` value.
+`performed` renders **Sanitization: Performed** only after the trusted
+coordinator establishes that conversion completed with verified generated
+output. `notPerformed` renders **Sanitization: Not performed** only when it
+explicitly knows no conversion occurred.
+
+Missing evidence, a pending attempt, and failed or unverified conversions
+display **Sanitization: Unavailable**. Never infer completion from a clean
+scan, selected Maximum preview, attempted conversion, or document content.
+The accessible label uses the same fixed text. Every `show` update and
+`reset()` clears prior evidence unless freshly supplied for the current
+request. Conversion does not authorize opening or replace scanning and
+file-integrity checks. The existing required portable and macOS rendering
+suites now check these states; scanning and preferences remain unchanged.
+
 ## Malware detection display
 
 The summary always includes an accessible, explicitly labelled malware status.

@@ -38,6 +38,22 @@ enum ScanResultSummaryProtectionLevel: String, CaseIterable {
     }
 }
 
+// Only trusted sanitizer output verification can establish "performed". A
+// skipped conversion is distinct from an unknown, incomplete, or failed one.
+enum ScanResultSummarySanitization: String, CaseIterable {
+    case performed
+    case notPerformed
+
+    var displayText: String {
+        switch self {
+        case .performed:
+            return "Sanitization: Performed"
+        case .notPerformed:
+            return "Sanitization: Not performed"
+        }
+    }
+}
+
 private struct ScanResultSummaryCopy {
     let heading: String
     let explanation: String
@@ -101,8 +117,10 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
+    let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedSanitization: ScanResultSummarySanitization?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -139,9 +157,13 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
 
+        sanitizationLabel.font = .systemFont(ofSize: 12)
+        sanitizationLabel.textColor = .secondaryLabelColor
+        sanitizationLabel.setAccessibilityIdentifier("scanResultSummarySanitization")
+
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
-            malwareStatusLabel, explanationLabel
+            sanitizationLabel, malwareStatusLabel, explanationLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -181,14 +203,20 @@ final class ScanResultSummaryView: NSView {
 
     // Context comes from the trusted scan-request owner, never page contents
     // or extension messages. Unknown or absent selections stay unavailable.
-    // A new request clears any prior name, tier or successful scan result.
+    // A new request clears any prior name, tier, sanitization evidence or scan result.
+    // This is trusted coordinator evidence, never a guess from tier or scan status.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
-        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil
+        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        sanitization: ScanResultSummarySanitization? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
+        displayedSanitization = sanitization
+        let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
+        sanitizationLabel.stringValue = sanitizationCopy
+        sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
         let document = "Document: " + Self.displayDocumentName(documentURL)
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
