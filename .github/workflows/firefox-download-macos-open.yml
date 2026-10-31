@@ -38,6 +38,8 @@ jobs:
         with:
           firefox-version: latest
       - uses: browser-actions/setup-geckodriver@latest
+        with:
+          token: ${{ github.token }}
       - name: Verify real Firefox downloads remain quarantined and safely openable
         working-directory: extensions/webextension
         env:
