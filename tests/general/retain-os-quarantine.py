@@ -96,8 +96,8 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
             "notarization", "XProtect", "Launch Services", "TCC",
             "System Integrity Protection (SIP)", "90-day", "48 hours",
             "clean-cache", "unscannable", "ad hoc signing",
-            "not an XProtect verdict", "not controlled by this scan gate",
-            "do not automate an approval click",
+            "not an XProtect verdict", "is **not** controlled by this scan gate",
+            "does not automate an approval click",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase.lower(), guide.lower())
