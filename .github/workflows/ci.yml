@@ -288,6 +288,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/fixed-safety-parameters.py -v
       - name: Keep scanner failures distinct from rejected feature exceptions
         run: PYTHONPATH=. python3 tests/protection/failure-exception-boundary.py -v
+      - name: Detect Homebrew safely before dependency installation
+        run: PYTHONPATH=. python3 tests/general/homebrew-availability.py -v
       - name: Detect installed ClamAV binaries without weakening the scan gate
         run: PYTHONPATH=. python3 tests/clamav/installation.py -v
       - name: Reject non-regular ClamAV scanner executables before scanning

@@ -21,7 +21,13 @@ fi
 python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
 
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
-    brew install clamav
+    # Detect Homebrew before attempting to install ClamAV, failing without
+    # modifying existing user settings if the package manager is unavailable.
+    if ! brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"; then
+        echo "Homebrew detection failed; install Homebrew to set up ClamAV." >&2
+        exit 1
+    fi
+    "$brew_executable" install clamav
 fi
 
 # Inspect the existing database before creating the directory or starting updates.
