@@ -53,7 +53,7 @@ class FixedHelperPathsTests(unittest.TestCase):
                         patch.object(sanitizer, "_memory_limited_command") as limit, \
                         patch.object(sanitizer.subprocess, "Popen") as spawn:
                     with self.assertRaises(sanitizer.SanitizerProcessExecutionError) as failure:
-                        sanitizer.run_bounded_sanitizer_subprocess(
+                        sanitizer.run_limited_converter(
                             command, b"%PDF", timeout_seconds=1, max_output_bytes=1024,
                             environment={"PATH": str(self.root)},
                         )
@@ -77,7 +77,7 @@ class FixedHelperPathsTests(unittest.TestCase):
                 patch.object(sanitizer, "_memory_limited_command", return_value=command) as limit, \
                 patch.object(sanitizer.subprocess, "Popen", side_effect=OSError("blocked")) as spawn:
             with self.assertRaises(sanitizer.SanitizerProcessExecutionError):
-                sanitizer.run_bounded_sanitizer_subprocess(
+                sanitizer.run_limited_converter(
                     command, b"%PDF", timeout_seconds=1, max_output_bytes=1024,
                     environment={"PATH": "/nonexistent"},
                 )
