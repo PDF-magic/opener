@@ -75,8 +75,8 @@ const UNKNOWN_OBSERVATION = browserId =>
  * opened, and no user configuration is read or changed.
  */
 export function describePdfInterceptionAssurance(browserId, observation = null) {
-  const browser = getPdfInterceptionPointAssessment(browserId);
-  if (browser.browserId === null) return UNKNOWN_BROWSER;
+  const assessment = getPdfInterceptionPointAssessment(browserId);
+  if (assessment.browserId === null) return UNKNOWN_BROWSER;
   if (observation === null) {
     return result(browserId, null, "inactive", "inactive");
   }
@@ -87,7 +87,7 @@ export function describePdfInterceptionAssurance(browserId, observation = null) 
       "best-effort-monitoring");
   }
   if (observation === "webRequest.onBeforeRequest") {
-    const isCandidate = browser.requestBlockingListenerPoint !== "not-established";
+    const isCandidate = assessment.requestBlockingListenerPoint !== "not-established";
     return isCandidate ?
       result(browserId, observation, "blocking-point-unverified",
         "unverified-request-blocking-candidate", true) :
