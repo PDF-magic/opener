@@ -51,18 +51,35 @@ clears the document name, selected level and prior verdict together. The
 existing portable and macOS rendering suites verify Unicode, privacy,
 inactive-preview explanations, accessible labels and fail-closed reset behavior.
 
+## Whether sanitization was performed
+
+The same trusted `show(_:documentURL:selectedProtectionLevel:sanitization:)`
+call accepts an optional typed `ScanResultSummarySanitization` value.
+`performed` renders **Sanitization: Performed** only after the trusted
+coordinator establishes that conversion completed with verified generated
+output. `notPerformed` renders **Sanitization: Not performed** only when it
+explicitly knows no conversion occurred.
+
+Missing evidence, a pending attempt, and failed or unverified conversions
+display **Sanitization: Unavailable**. Never infer completion from a clean
+scan, selected Maximum preview, attempted conversion, or document content.
+The accessible label uses the same fixed text. Every `show` update and
+`reset()` clears prior evidence unless freshly supplied for the current
+request. Conversion does not authorize opening or replace scanning and
+file-integrity checks. The existing required portable and macOS rendering
+suites now check these states; scanning and preferences remain unchanged.
+
 ## Structure analysis completion
 
-The optional `structureAnalysisCompleted: Bool?` parameter of `show` must
-come from a **trusted, request-correlated structure-analysis completion result**.
+The optional `structureAnalysisCompleted: Bool?` argument to `show` accepts
+only a **trusted, request-correlated structure-analysis completion result**.
 `true` displays `Structure analysis: Completed`, `false` displays `Structure
 analysis: Not completed`, and `nil` displays `Structure analysis: Unavailable`.
-Unknown is the default and never means that analysis completed. The field
-is independently accessible and does not infer structural completion from
-any malware scan verdict or selected preview protection level.
+Unknown is the default and never means inspection completed. The independently
+accessible field does not infer completion from the scan verdict, sanitization
+status, or selected preview protection level.
 
-Each new `show` and `reset()` clears previously displayed completion if the
-caller provides no completion result. This presentation-only field does not
-launch or skip analysis, grant opening permission, modify scanner policy, or
-change stored preferences. Required macOS rendering and portable contract
-tests cover all three states, stale-state clearing, and instance isolation.
+Every `show` invocation and `reset()` clears prior completion without fresh
+evidence. The field remains presentation-only and cannot skip analysis, grant
+opening permission, change scanner policy, or modify user preferences. Required
+macOS rendering and portable tests cover all three states, reset and isolation.
