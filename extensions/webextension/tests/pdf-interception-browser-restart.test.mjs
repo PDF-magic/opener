@@ -334,10 +334,11 @@ test("no browser APIs, startup listeners, persisted scan state or user preferenc
     "permissions.request(", "fetch(", "window.open(", "node:fs",
     "localStorage", "sessionStorage", "chrome.", "browser."
   ]) assert.equal(executable.includes(forbidden), false, forbidden);
+  const normalizedDocumentation = doc.toLowerCase().replace(/\\s+/gu, " ");
   for (const phrase of ["opener-0793", "cold", "service worker",
     "native", "orphan", "quarantine", "restart", "fail closed",
     "not implemented", "user preferences"]) {
-    assert.ok(doc.toLowerCase().includes(phrase.toLowerCase()), phrase);
+    assert.ok(normalizedDocumentation.includes(phrase.toLowerCase()), phrase);
   }
   const prefs = Object.freeze({ pdfViewer: "selected-app", scanBeforeOpen: true });
   const snapshot = JSON.stringify(prefs);
