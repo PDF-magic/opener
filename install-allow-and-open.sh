@@ -148,17 +148,6 @@ info = {
 }
 with (app / 'Contents/Info.plist').open('wb') as stream:
     plistlib.dump(info, stream)
-agent = {
-    'Label': 'local.studio.pdf-malware-signatures',
-    'ProgramArguments': ['/bin/bash', str(install_dir / 'update-malware-signatures.sh')],
-    'StartInterval': 14400,
-    'RunAtLoad': True,
-    'ProcessType': 'Background',
-    'StandardOutPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.log'),
-    'StandardErrorPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.error.log'),
-}
-with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.plist').open('wb') as stream:
-    plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
 # No installed app is replaced or registered until staged contents, PDF identity,
@@ -177,6 +166,9 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
     chmod 755 "$action"
 fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+# Keep the existing update cadence, opt-out and safe log preferences on upgrades.
+# An unsafe or unrecognized agent is left intact and never bootstrapped.
+python3 "$script_dir/scripts/migrate_update_agent.py"
 agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID" "$agent"
