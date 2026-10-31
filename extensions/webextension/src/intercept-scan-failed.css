@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light dark;
+  background: #f8f7fb;
+  color: #2b2341;
+  font: 16px/1.6 system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; padding: clamp(20px, 5vw, 64px); }
+.blocked {
+  max-width: 640px;
+  margin: min(10vh, 90px) auto;
+  border: 2px solid #9f3535;
+  border-radius: 12px;
+  padding: clamp(22px, 5vw, 40px);
+  background: #fff;
+}
+.product { margin: 0 0 10px; font-weight: 700; }
+h1 { margin: 0 0 16px; font-size: clamp(24px, 4vw, 32px); line-height: 1.25; }
+p { margin: 0 0 16px; }
+.scope { margin-bottom: 0; font-size: 14px; color: #554b65; }
+@media (prefers-color-scheme: dark) {
+  :root { background: #211b2d; color: #f0ecf7; }
+  .blocked { background: #2d253b; border-color: #e89b9b; }
+  .scope { color: #d4cbe0; }
+}

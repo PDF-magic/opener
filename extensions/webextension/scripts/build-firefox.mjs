@@ -2,6 +2,7 @@ import { copyFile, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyPopupAssets } from "./popup-assets.mjs";
+import { copyFailedInterceptionAssets } from "./intercept-scan-failed-assets.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const source = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -77,6 +78,7 @@ await writeFile(
 await copyFile(workerPath, join(output, "background.js"));
 
 await copyPopupAssets(root, output);
+await copyFailedInterceptionAssets(root, output);
 
 // Package the same local, allowlisted toolbar icons for the Firefox variant.
 // Do not follow symlinks or accept manifest-supplied file paths.
