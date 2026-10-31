@@ -392,10 +392,12 @@ jobs:
         run: |
           PYTHONPATH=. python3 tests/general/show-successful-scan-notifications.py -v
           PYTHONPATH=. python3 tests/general/show-blocked-file-notifications.py -v
-      - name: Verify confirmed malware-detection notices preserve blocking and privacy
-        run: PYTHONPATH=. python3 tests/notifications/malware-detection.py -v
+      - name: Verify failed-scan notices remain private and scanner-gated
+        run: PYTHONPATH=. python3 tests/notifications/failed-scan.py -v
       - name: Verify sanitizer-failure notices only follow validated reports and opt-in
         run: PYTHONPATH=. python3 tests/notifications/sanitizer-failure.py -v
+      - name: Verify confirmed malware-detection notices preserve blocking and privacy
+        run: PYTHONPATH=. python3 tests/notifications/malware-detection.py -v
       - name: Verify verified default PDF browser selector
         run: PYTHONPATH=. python3 tests/default/pdf-browser-selector.py -v
       - name: Verify default PDF handler indicator is read-only
@@ -964,6 +966,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
           "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+      - name: Verify failed-scan notices with isolated user settings
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-failed-scan-notifications.swift -o "$RUNNER_TEMP/TestFailedScanNotifications"
+          "$RUNNER_TEMP/TestFailedScanNotifications"
       - name: Verify malware notifications reject unrelated failures and cancellations
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malware-detection-notifications.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"

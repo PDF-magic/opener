@@ -123,17 +123,20 @@ func deliverSuccessfulScanNotification(completion: @escaping () -> Void) {
 }
 
 // This notice is optional and deliberately contains no scan diagnostics or file names.
-func deliverBlockedFileNotification(malwareDetected: Bool, sanitizerFailed: Bool = false,
-                                    completion: @escaping () -> Void) {
+func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
+                                    sanitizerFailed: Bool = false, completion: @escaping () -> Void) {
     let center = UNUserNotificationCenter.current()
     func enqueue() {
         let content = UNMutableNotificationContent()
         content.title = "PDF Magic Opener"
+        // Confirmed malware takes precedence over scan failures.
         content.body = malwareDetected
             ? "Malware was detected. The PDF was blocked and was not opened."
             : (sanitizerFailed
                 ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
-                : "A PDF could not be opened because its safety check failed.")
+                : (scanFailed
+                    ? "A PDF scan failed or could not finish. The file was not opened."
+                    : "A PDF could not be opened because its safety check failed."))
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
         center.add(request) { _ in completion() }
@@ -398,7 +401,8 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
             panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in
                 guard let self, BlockedFileNotificationPreference.isEnabled() else { return }
                 self.pendingSuccessNotifications += 1
-                deliverBlockedFileNotification(malwareDetected: false, sanitizerFailed: true) { [weak self] in
+                deliverBlockedFileNotification(malwareDetected: false, scanFailed: false,
+                                               sanitizerFailed: true) { [weak self] in
                     DispatchQueue.main.async {
                         guard let self else { return }
                         self.pendingSuccessNotifications -= 1
@@ -594,7 +598,10 @@ DispatchQueue.main.async {
                 if blockedNotificationKind != .none {
                     self.pendingSuccessNotifications += 1
                     deliverBlockedFileNotification(
-                        malwareDetected: blockedNotificationKind == .malwareDetected
+                        malwareDetected: blockedNotificationKind == .malwareDetected,
+                        scanFailed: FailedScanNotificationClassification.shouldShowFailedScanNotice(
+                            failure: failure, cancelled: cancelled
+                        )
                     ) { [weak self] in
                         DispatchQueue.main.async {
                             guard let self else { return }

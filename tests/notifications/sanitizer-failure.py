@@ -33,7 +33,8 @@ class SanitizerFailureNotificationTests(unittest.TestCase):
     def test_delivery_is_opt_in_specific_private_and_best_effort(self):
         self.assertIn('panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in', OPENER)
         self.assertIn('guard let self, BlockedFileNotificationPreference.isEnabled() else { return }', OPENER)
-        self.assertIn('deliverBlockedFileNotification(malwareDetected: false, sanitizerFailed: true)', OPENER)
+        self.assertIn('deliverBlockedFileNotification(malwareDetected: false, scanFailed: false,', OPENER)
+        self.assertIn('sanitizerFailed: true)', OPENER)
         self.assertIn('sanitizerFailed: Bool = false', OPENER)
         self.assertIn('PDF sanitization failed. No sanitized copy was produced. This is not a malware detection.', OPENER)
         self.assertIn('Malware was detected. The PDF was blocked and was not opened.', OPENER)
