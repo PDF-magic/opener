@@ -60,9 +60,9 @@ class ArbitraryFileDeletionTests(unittest.TestCase):
                     swapped.append(foreign)
             return recorded
 
-        with patch.object(cleanup.os, "fsync", side_effect=OSError("test failure")), \\
+        with patch.object(cleanup.os, "fsync", side_effect=OSError("test failure")), \
                 patch.object(cleanup.os, "stat",
-                             side_effect=replace_directory_during_stat), \\
+                             side_effect=replace_directory_during_stat), \
                 self.assertRaises(cleanup.MaximumTemporaryOutputError):
             self.stage()
         self.assertEqual(len(swapped), 1, "race injection must actually execute")
