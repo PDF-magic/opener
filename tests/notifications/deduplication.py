@@ -13,9 +13,10 @@ class NotificationDeduplicationTests(unittest.TestCase):
   def test_opaque_stable_per_document_outcome_identifiers(self):
     self.assertIn("SHA256.hash(data: Data(path.utf8))", OPENER)
     self.assertIn('return "pdf-magic-opener.scan.', OPENER)
-    self.assertNotIn("UUID().uuidString", OPENER.split(
-      "private func deliverScanNotification", 1)[1].split(
-      "// A request's arrival time", 1)[0])
+    transport = OPENER.split("private func enqueueNativeScanNotification(", 1)[1].split(
+      "func deliverSuccessfulScanNotification(", 1)[0]
+    self.assertNotIn("UUID().uuidString", transport)
+    self.assertIn("identifier: String,", transport)
     for outcome in ('"success"', '"malware"', '"failed"', '"blocked"'):
       self.assertIn(outcome, OPENER)
     self.assertIn("scanNotificationIdentifier(path: path, kind:", OPENER)
@@ -43,7 +44,7 @@ class NotificationDeduplicationTests(unittest.TestCase):
     self.assertIn("center.requestAuthorization(options: [.alert])", OPENER)
     self.assertIn("default:", OPENER)
     self.assertIn("completion()", OPENER)
-    notifier = OPENER.split("private func deliverScanNotification(", 1)[1].split(
+    notifier = OPENER.split("private func enqueueNativeScanNotification(", 1)[1].split(
       "// A request's arrival time", 1)[0]
     for private_value in ("requestedPaths", "lastPathComponent", "failure.localizedDescription",
                           "FileManager", "scanRequests", "NSAlert"):

@@ -94,57 +94,84 @@ func recordNativeScanOrigin(script: URL, path: String, environment: [String: Str
 }
 // END NATIVE DIRECT PROCESS GATE
 
-// Stable opaque identifiers let the notification center recognize repeated
-// notices for the same canonical document and result, even across helper runs.
-// Never embed document names, paths, scanner diagnostics, or browser choices.
+// The native PDF owner (not the standalone Settings app) requests macOS
+// notification authorization on the first opted-in delivery. Injecting only
+// the system-notification transport lets headless tests exercise the real
+// permission and delivery paths after the independent Settings app has quit.
+// Scanner verdicts and preferences are never read or changed by this transport.
+// Opaque per-document and verified-outcome IDs keep system deduplication
+// independent of sensitive paths, user preferences and scanner verdicts.
 func scanNotificationIdentifier(path: String, kind: String) -> String {
     let digest = SHA256.hash(data: Data(path.utf8))
     let opaquePath = digest.map { String(format: "%02x", $0) }.joined()
     return "pdf-magic-opener.scan.\(kind).\(opaquePath)"
 }
 
-// The verified Maximum report callback already deduplicates per report and
-// currently supplies no document identity. Do not coalesce distinct reports.
-private func uniqueSanitizerNotificationIdentifier() -> String {
-    return "pdf-magic-opener.scan.sanitizer." + UUID().uuidString
+struct NativeScanNotificationTransport {
+    let getAuthorizationStatus: (@escaping (UNAuthorizationStatus) -> Void) -> Void
+    let requestAuthorization: (@escaping (Bool) -> Void) -> Void
+    let add: (UNNotificationRequest, @escaping () -> Void) -> Void
+
+    static func system() -> NativeScanNotificationTransport {
+        let center = UNUserNotificationCenter.current()
+        return NativeScanNotificationTransport(
+            getAuthorizationStatus: { callback in
+                center.getNotificationSettings { callback($0.authorizationStatus) }
+            },
+            requestAuthorization: { callback in
+                center.requestAuthorization(options: [.alert]) { allowed, _ in
+                    callback(allowed)
+                }
+            },
+            add: { request, callback in
+                // The real Notification Center can outlive this helper process.
+                // Ignore recent or still-pending identical notices; never
+                // change the scanner verdict or mandatory failure warning.
+                center.getDeliveredNotifications { delivered in
+                    center.getPendingNotificationRequests { pending in
+                        let recent = delivered.map {
+                            (identifier: $0.request.identifier, date: $0.date)
+                        }
+                        guard ScanNotificationDeduplication.shouldQueue(
+                            identifier: request.identifier,
+                            delivered: recent,
+                            pendingIdentifiers: pending.map { $0.identifier },
+                            now: Date()
+                        ) else {
+                            callback()
+                            return
+                        }
+                        center.add(request) { _ in callback() }
+                    }
+                }
+            }
+        )
+    }
 }
 
-// Notification delivery is optional and cannot change a scan verdict or
-// mandatory failure alert. Ignore recent delivered or still-pending notices.
-private func deliverScanNotification(body: String, identifier: String,
-                                     completion: @escaping () -> Void) {
-    let center = UNUserNotificationCenter.current()
-    func enqueueIfUnique() {
-        center.getDeliveredNotifications { delivered in
-            center.getPendingNotificationRequests { pending in
-                let recent = delivered.map {
-                    (identifier: $0.request.identifier, date: $0.date)
-                }
-                guard ScanNotificationDeduplication.shouldQueue(
-                    identifier: identifier,
-                    delivered: recent,
-                    pendingIdentifiers: pending.map { $0.identifier },
-                    now: Date()
-                ) else {
-                    completion()
-                    return
-                }
-                let content = UNMutableNotificationContent()
-                content.title = "PDF Magic Opener"
-                content.body = body
-                let request = UNNotificationRequest(identifier: identifier,
-                                                    content: content, trigger: nil)
-                center.add(request) { _ in completion() }
-            }
-        }
+// Best-effort macOS notice: no document names, paths or scan diagnostics.
+// Notification permission is independent of the SwiftUI preferences process.
+private func enqueueNativeScanNotification(
+    body: String,
+    identifier: String,
+    transport: NativeScanNotificationTransport,
+    completion: @escaping () -> Void
+) {
+    func enqueue() {
+        let content = UNMutableNotificationContent()
+        content.title = "PDF Magic Opener"
+        content.body = body
+        let request = UNNotificationRequest(identifier: identifier,
+                                            content: content, trigger: nil)
+        transport.add(request, completion)
     }
-    center.getNotificationSettings { settings in
-        switch settings.authorizationStatus {
+    transport.getAuthorizationStatus { status in
+        switch status {
         case .authorized, .provisional:
-            enqueueIfUnique()
+            enqueue()
         case .notDetermined:
-            center.requestAuthorization(options: [.alert]) { allowed, _ in
-                if allowed { enqueueIfUnique() } else { completion() }
+            transport.requestAuthorization { allowed in
+                if allowed { enqueue() } else { completion() }
             }
         default:
             // Denied or restricted by macOS: never bypass system permissions.
@@ -153,28 +180,34 @@ private func deliverScanNotification(body: String, identifier: String,
     }
 }
 
-func deliverSuccessfulScanNotification(identifier: String,
-                                       completion: @escaping () -> Void) {
-    deliverScanNotification(
+func deliverSuccessfulScanNotification(
+    identifier: String = UUID().uuidString,
+    transport: NativeScanNotificationTransport = .system(),
+    completion: @escaping () -> Void
+) {
+    enqueueNativeScanNotification(
         body: "A PDF passed scanning and was handed off to your chosen application.",
-        identifier: identifier, completion: completion)
+        identifier: identifier, transport: transport, completion: completion
+    )
 }
 
-// Confirmed malware takes precedence over sanitizer and scan failures.
+// Optional blocked-file notice, separate from the mandatory failure alert.
 func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
-                                    sanitizerFailed: Bool = false, identifier: String? = nil,
-                                    completion: @escaping () -> Void) {
-    let body = malwareDetected
-        ? "Malware was detected. The PDF was blocked and was not opened."
-        : (sanitizerFailed
-            ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
-            : (scanFailed
-                ? "A PDF scan failed or could not finish. The file was not opened."
-                : "A PDF could not be opened because its safety check failed."))
-    // The existing Maximum-panel callback already emits once per verified
-    // report. Its independent future events have no document path yet.
-    let deliveryIdentifier = identifier ?? uniqueSanitizerNotificationIdentifier()
-    deliverScanNotification(body: body, identifier: deliveryIdentifier, completion: completion)
+    sanitizerFailed: Bool = false,
+    identifier: String = UUID().uuidString,
+    transport: NativeScanNotificationTransport = .system(),
+    completion: @escaping () -> Void
+) {
+    enqueueNativeScanNotification(
+        body: malwareDetected
+            ? "Malware was detected. The PDF was blocked and was not opened."
+            : (sanitizerFailed
+                ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
+                : (scanFailed
+                    ? "A PDF scan failed or could not finish. The file was not opened."
+                    : "A PDF could not be opened because its safety check failed.")),
+        identifier: identifier, transport: transport, completion: completion
+    )
 }
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
@@ -355,7 +388,7 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
     private var scanLifetimes = [String: Pipe]()
     private var terminating = false
     private var pendingSuccessNotifications = 0
-    // Short-lived, synchronized reservation closes in-process callback races.
+    // Transient synchronized reservation also closes local callback races.
     private let notificationReservations = ScanNotificationReservation()
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -420,9 +453,10 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
-            // Maximum's trusted panel decoder emits once per verified report.
-            // It has no canonical document identity yet; preserve independent
-            // reports rather than falsely coalescing different failures.
+            // Future trusted Maximum producers call the panel failure hook.
+            // Do not confuse their failure with a ClamAV malware verdict or
+            // send an optional notice unless the existing blocked-file setting
+            // is explicitly enabled. Built-in scans never enter this path.
             panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in
                 guard let self, BlockedFileNotificationPreference.isEnabled() else { return }
                 self.pendingSuccessNotifications += 1
