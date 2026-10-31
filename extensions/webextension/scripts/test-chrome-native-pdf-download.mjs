@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtemp, mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
+import { mkdtemp, mkdir, lstat, readFile, readdir, rename, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -87,7 +87,8 @@ try {
     "--proxy-bypass-list=<-loopback>", "--remote-debugging-port=0",
     "--user-data-dir=" + profile, "about:blank"
   ];
-  // The exception is limited to a disposable CI test browser running as root.
+  // Test-only escape hatch for isolated CI runners lacking sandbox permissions.
+  // Never enable for an installed browser or untrusted/non-loopback content.
   if (process.env.CHROME_TEST_NO_SANDBOX === "1") args.unshift("--no-sandbox");
   browser = spawn(binary, args, { stdio: ["ignore", "ignore", "pipe"] });
   browser.stderr.on("data", bytes => {
@@ -183,6 +184,27 @@ try {
       "Only the two requested downloads may appear");
     assert.equal(starts.length, fixture.cases.length,
       "No other browser download should be triggered");
+
+    // Opt-in CI handoff: MOVE the already verified Chrome-produced files to a
+    // caller-owned, initially empty temporary directory. A same-volume rename
+    // retains their original macOS extended attributes; a copy could lose them.
+    // Normal browser smoke runs remain unchanged and delete the whole profile.
+    const handoffDir = process.env.PDF_MAGIC_CHROME_HANDOFF_DIR;
+    if (handoffDir) {
+      const handoff = await lstat(handoffDir);
+      assert.ok(handoff.isDirectory() && !handoff.isSymbolicLink(),
+        "Handoff must be an existing real directory, never a symlink");
+      assert.deepEqual(await readdir(handoffDir), [],
+        "Handoff must be empty; never replace an existing user file");
+      for (const item of fixture.cases) {
+        const source = join(downloadDir, item.name);
+        const destination = join(handoffDir, item.name);
+        await rename(source, destination);
+        assert.deepEqual(await readFile(destination), fixture.pdf,
+          "Transferred Chrome download must retain its exact original bytes");
+      }
+      assert.deepEqual((await readdir(handoffDir)).sort(), expected);
+    }
   } finally {
     await command("Target.closeTarget", { targetId });
   }

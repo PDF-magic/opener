@@ -29,7 +29,16 @@ jobs:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
           # Only the disposable CI Chrome profile may use this exception.
           CHROME_TEST_NO_SANDBOX: "1"
-        run: node scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
+          PDF_MAGIC_CHROME_HANDOFF_DIR: ${{ runner.temp }}/chrome-native-downloads
+        run: |
+          mkdir -p "$PDF_MAGIC_CHROME_HANDOFF_DIR"
+          node scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-downloaded-pdfs
+          path: ${{ runner.temp }}/chrome-native-downloads/*.pdf
+          if-no-files-found: error
+          retention-days: 1
 
   firefox-native-pdf-download:
     name: Firefox browser-native PDF downloads
@@ -50,3 +59,21 @@ jobs:
         env:
           FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
         run: node scripts/test-firefox-native-pdf-download.mjs "$FIREFOX_PATH"
+
+  chrome-macos-quarantine-open:
+    name: Chrome macOS downloaded PDF safe-open and quarantine
+    needs: chrome-native-pdf-download
+    runs-on: macos-15
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      # These bytes were downloaded by real Chrome in the Linux job, not
+      # synthesized on macOS. Artifact transport does not preserve xattrs.
+      - uses: actions/download-artifact@v4
+        with:
+          name: chrome-downloaded-pdfs
+          path: ${{ runner.temp }}/chrome-native-downloads
+      - name: Verify opening Chrome-downloaded PDFs retains macOS quarantine
+        env:
+          PDF_MAGIC_CHROME_DOWNLOAD_DIR: ${{ runner.temp }}/chrome-native-downloads
+        run: PYTHONPATH=. python3 tests/general/chrome-downloaded-quarantine.py -v
