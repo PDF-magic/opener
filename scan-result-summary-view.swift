@@ -38,6 +38,77 @@ enum ScanResultSummaryProtectionLevel: String, CaseIterable {
     }
 }
 
+// Opening is a separate trusted post-scan handoff result. A clean scan alone
+// never proves a file opened; an untrusted caller must not construct this value.
+enum ScanResultSummaryOpeningOutcome {
+    case opened
+    case blocked
+}
+
+private struct ScanResultSummaryOpeningCopy {
+    let opened: String
+    let blocked: String
+    let reason: String
+
+    static func forResult(
+        _ status: ScanResultSummaryStatus?, openingOutcome: ScanResultSummaryOpeningOutcome?
+    ) -> ScanResultSummaryOpeningCopy {
+        guard let status else {
+            return ScanResultSummaryOpeningCopy(
+                opened: "File opened: Not confirmed",
+                blocked: "File blocked: Not confirmed",
+                reason: "Blocking reason: Not confirmed")
+        }
+        if status == .clean {
+            switch openingOutcome {
+            case .opened:
+                return ScanResultSummaryOpeningCopy(
+                    opened: "File opened: Yes", blocked: "File blocked: No",
+                    reason: "Blocking reason: None")
+            case .blocked:
+                return ScanResultSummaryOpeningCopy(
+                    opened: "File opened: No", blocked: "File blocked: Yes",
+                    reason: "Blocking reason: Verified opening did not complete.")
+            case nil:
+                return ScanResultSummaryOpeningCopy(
+                    opened: "File opened: Not confirmed",
+                    blocked: "File blocked: Not confirmed",
+                    reason: "Blocking reason: Not confirmed")
+            }
+        }
+
+        // Non-clean terminal outcomes cannot claim an authorized opening, even
+        // if a stale/inconsistent opening outcome is supplied by a caller.
+        let reason: String
+        switch status {
+        case .malwareDetected:
+            reason = "Malware was detected."
+        case .suspiciousStructure:
+            reason = "Suspicious PDF structure."
+        case .encrypted:
+            reason = "Required encrypted-file inspection could not complete."
+        case .incompleteScan:
+            reason = "Required scanning was incomplete."
+        case .scanFailed:
+            reason = "Required scanning failed."
+        case .scanTimedOut:
+            reason = "Required scanning timed out."
+        case .fileChanged:
+            reason = "The file changed during verification."
+        case .fileTooLarge:
+            reason = "The file exceeded required scan limits."
+        case .cancelled:
+            reason = "The scan was cancelled."
+        case .clean:
+            // Already handled above.
+            reason = "Opening not confirmed."
+        }
+        return ScanResultSummaryOpeningCopy(
+            opened: "File opened: No", blocked: "File blocked: Yes",
+            reason: "Blocking reason: " + reason)
+    }
+}
+
 private struct ScanResultSummaryCopy {
     let heading: String
     let explanation: String
@@ -100,8 +171,12 @@ final class ScanResultSummaryView: NSView {
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
+    let fileOpenedLabel = NSTextField(labelWithString: "File opened: Not confirmed")
+    let fileBlockedLabel = NSTextField(labelWithString: "File blocked: Not confirmed")
+    let blockingReasonLabel = NSTextField(wrappingLabelWithString: "Blocking reason: Not confirmed")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
+    private(set) var displayedOpeningOutcome: ScanResultSummaryOpeningOutcome?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -135,8 +210,21 @@ final class ScanResultSummaryView: NSView {
         selectedProtectionLevelLabel.lineBreakMode = .byWordWrapping
         selectedProtectionLevelLabel.setAccessibilityIdentifier("scanResultSummaryProtectionLevel")
 
+        for (label, identifier) in [
+            (fileOpenedLabel, "scanResultSummaryFileOpened"),
+            (fileBlockedLabel, "scanResultSummaryFileBlocked"),
+            (blockingReasonLabel, "scanResultSummaryBlockingReason")
+        ] {
+            label.font = .systemFont(ofSize: 12)
+            label.textColor = .secondaryLabelColor
+            label.setAccessibilityIdentifier(identifier)
+        }
+        blockingReasonLabel.lineBreakMode = .byWordWrapping
+        blockingReasonLabel.maximumNumberOfLines = 0
+
         let stack = NSStackView(views: [
-            headingLabel, documentNameLabel, selectedProtectionLevelLabel, explanationLabel
+            headingLabel, documentNameLabel, selectedProtectionLevelLabel,
+            explanationLabel, fileOpenedLabel, fileBlockedLabel, blockingReasonLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -180,10 +268,25 @@ final class ScanResultSummaryView: NSView {
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
-        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil
+        selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
+        openingOutcome: ScanResultSummaryOpeningOutcome? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
+        // Displayed outcome is derived from the trusted scan policy, not from
+        // an inconsistent caller-supplied claim of a successful handoff.
+        displayedOpeningOutcome = status == nil ? nil :
+            (status == .clean ? openingOutcome : .blocked)
+        let opening = ScanResultSummaryOpeningCopy.forResult(
+            status, openingOutcome: displayedOpeningOutcome)
+        for (label, value) in [
+            (fileOpenedLabel, opening.opened),
+            (fileBlockedLabel, opening.blocked),
+            (blockingReasonLabel, opening.reason)
+        ] {
+            label.stringValue = value
+            label.setAccessibilityLabel(value)
+        }
         let document = "Document: " + Self.displayDocumentName(documentURL)
         documentNameLabel.stringValue = document
         documentNameLabel.setAccessibilityLabel(document)
