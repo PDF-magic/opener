@@ -53,6 +53,8 @@ class TerminationTests(unittest.TestCase):
             'o.verify_launch_target = lambda path, target_app=None: None\n'
             'original_run = subprocess.run\n'
             'def safe_run(command, **kwargs):\n'
+            '    if str(command[0]).endswith("/launch-scanned-file") and "--check-local" in command:\n'
+            '        return subprocess.CompletedProcess(command, 0)\n'
             '    if command[0] == "/usr/bin/open" or str(command[0]).endswith("/launch-scanned-file"):\n'
             '        pathlib.Path(' + repr(str(self.opened)) + ').write_text("opened")\n'
             '        return subprocess.CompletedProcess(command, 0)\n'
