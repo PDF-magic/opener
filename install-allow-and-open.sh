@@ -10,6 +10,10 @@ if [ ! -f "$workflow" ]; then
     exit 1
 fi
 
+# Discover existing scan entry points before touching installed scripts or settings.
+# This preflight never reads or runs existing user-customized script contents.
+python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
+
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
     brew install clamav
 fi
@@ -104,7 +108,21 @@ if legacy.exists() or legacy.is_symlink():
 elif destination.exists() or destination.is_symlink():
     check_bundle(destination)
 MIGRATE
-mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+# Build away from the installed app so an incomplete or nonexecutable bundle
+# never replaces the working PDF scan handler. Keep staging on the same volume.
+installed_app="$app"
+mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/Studio"
+bundle_stage_dir="$(mktemp -d "$HOME/Applications/.pdf-magic-opener-build.XXXXXXXX")"
+cleanup_bundle_stage() {
+    # Restore the prior handler if the installation rename did not complete.
+    if [ -d "$bundle_stage_dir/previous.app" ] && [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
+        mv "$bundle_stage_dir/previous.app" "$installed_app" || true
+    fi
+    rm -rf "$bundle_stage_dir"
+}
+trap cleanup_bundle_stage EXIT
+app="$bundle_stage_dir/$app_name.app"
+mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS"
 cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/brave-pdf-opener.swift" \
     "$script_dir/scan-progress-view.swift" \
@@ -147,6 +165,15 @@ with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.pl
     plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
+# No installed app is replaced or registered until staged contents, PDF identity,
+# executable permissions, and the ad hoc signature have been checked.
+/usr/bin/codesign --verify "$app"
+python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"
+if [ -e "$installed_app" ] || [ -L "$installed_app" ]; then
+    mv "$installed_app" "$bundle_stage_dir/previous.app"
+fi
+mv "$app" "$installed_app"
+app="$installed_app"
 # Offer an opt-in Finder action without overwriting user-managed scripts.
 action="$HOME/Applications/Make PDF Magic Opener Default.command"
 if [ ! -e "$action" ] && [ ! -L "$action" ]; then

@@ -13,6 +13,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
   case extensionsAndIntegrations
   case notifications
   case privacyAndLogs
+  case scanHistory
 
   var id: Self { self }
 
@@ -27,6 +28,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .extensionsAndIntegrations: return "Extensions and Integrations"
     case .notifications: return "Notifications"
     case .privacyAndLogs: return "Privacy and Logs"
+    case .scanHistory: return "Scan History"
     }
   }
 
@@ -41,6 +43,7 @@ enum MainPreferenceSection: String, CaseIterable, Identifiable {
     case .extensionsAndIntegrations: return "puzzlepiece.extension"
     case .notifications: return "bell.badge"
     case .privacyAndLogs: return "hand.raised"
+    case .scanHistory: return "clock.arrow.circlepath"
     }
   }
 }
@@ -87,6 +90,15 @@ private struct PreferenceOverviewPane: View {
 }
 
 struct MainPreferencesView: View {
+  // Feature owner must explicitly enable this page after history opt-in is
+  // implemented. Absent a verified capability, the app shows no history UI.
+  // This is not a persisted preference or an opt-in action.
+  let scanHistoryEnabled: Bool
+
+  init(scanHistoryEnabled: Bool = false) {
+    self.scanHistoryEnabled = scanHistoryEnabled
+  }
+
   @State private var selection: MainPreferenceSection? = .general
   @State private var showResetToDefaultsConfirmation = false
   @State private var showResetToDefaultsResult = false
@@ -97,14 +109,18 @@ struct MainPreferencesView: View {
   @ScaledMetric(relativeTo: .body) private var sidebarMinimumWidth: CGFloat = 230
   @FocusState private var sidebarFocused: Bool
 
+  private var visibleSections: [MainPreferenceSection] {
+    MainPreferenceSection.allCases.filter { $0 != .scanHistory || scanHistoryEnabled }
+  }
+
   private var selectedIndex: Int {
-    MainPreferenceSection.allCases.firstIndex(of: selection ?? .general) ?? 0
+    visibleSections.firstIndex(of: selection ?? .general) ?? 0
   }
 
   // Keyboard shortcuts change only the in-memory page selection. Respect
   // the bounds, including newly added preferences destinations.
   private func moveSelection(by offset: Int) {
-    let sections = MainPreferenceSection.allCases
+    let sections = visibleSections
     let nextIndex = selectedIndex + offset
     guard sections.indices.contains(nextIndex) else { return }
     selection = sections[nextIndex]
@@ -128,13 +144,15 @@ struct MainPreferencesView: View {
   var body: some View {
     NavigationSplitView {
       List(MainPreferenceSection.allCases, selection: $selection) { section in
-        Label(section.title, systemImage: section.symbolName)
-          .lineLimit(nil)
-          .fixedSize(horizontal: false, vertical: true)
-          .tag(section)
-          // Read the page title, not the decorative SF Symbol name.
-          .accessibilityLabel("\(section.title) settings")
-          .accessibilityHint("Show the \(section.title) settings page")
+        if section != .scanHistory || scanHistoryEnabled {
+          Label(section.title, systemImage: section.symbolName)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .tag(section)
+            // Read the page title, not the decorative SF Symbol name.
+            .accessibilityLabel("\(section.title) settings")
+            .accessibilityHint("Show the \(section.title) settings page")
+        }
       }
       .listStyle(.sidebar)
       .accessibilityLabel("Preferences sections")
@@ -165,7 +183,7 @@ struct MainPreferencesView: View {
           Label("Next Section", systemImage: "chevron.down")
         }
         .keyboardShortcut("]", modifiers: .command)
-        .disabled(selectedIndex == MainPreferenceSection.allCases.count - 1)
+        .disabled(selectedIndex == visibleSections.count - 1)
         .help("Next preferences section (Command-])")
       }
       ToolbarItem(placement: .primaryAction) {
@@ -217,6 +235,8 @@ struct MainPreferencesView: View {
       NotificationsSettingsView()
     case .privacyAndLogs:
       PrivacyAndLogsSettingsView()
+    case .scanHistory:
+      ScanHistorySettingsView()
     }
   }
 }

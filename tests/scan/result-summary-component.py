@@ -46,7 +46,8 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
 
     def test_only_fixed_copy_is_rendered_without_paths_or_untrusted_diagnostics(self):
         source = SOURCE.read_text(encoding="utf-8")
-        self.assertIn("let copy = ScanResultSummaryCopy.forStatus(status)", source)
+        self.assertIn("let copy = inconsistent", source)
+        self.assertIn("ScanResultSummaryCopy.forStatus(status)", source)
         self.assertIn("headingLabel.stringValue = copy.heading", source)
         self.assertIn("explanationLabel.stringValue = copy.explanation", source)
         self.assertNotIn("func show(_ status: String)", source)
@@ -76,12 +77,21 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("preview only; Built-in scanning remains active", source)
         self.assertIn('documentNameLabel.setAccessibilityLabel', source)
         self.assertIn('selectedProtectionLevelLabel.setAccessibilityLabel', source)
+        self.assertIn("structureAnalysisCompleted: Bool? = nil", source)
+        self.assertIn("private(set) var displayedStructureAnalysisCompleted: Bool?", source)
+        self.assertIn("structureAnalysisCompleted.map", source)
+        self.assertIn('Structure analysis: Unavailable', source)
+        self.assertIn('Structure analysis: Completed', source)
+        self.assertIn('Structure analysis: Not completed', source)
+        self.assertIn("structureAnalysisLabel.setAccessibilityLabel", source)
+        self.assertIn('scanResultSummaryStructureAnalysis', source)
         self.assertNotIn("UserDefaults", source)
         self.assertNotIn("scannerOutput", source)
         self.assertIn("private(set) var displayedStatus", source)
         self.assertIn("enum ScanResultSummaryOpeningOutcome", source)
         self.assertIn("openingOutcome: ScanResultSummaryOpeningOutcome? = nil", source)
-        self.assertIn("status == .clean ? openingOutcome : .blocked", source)
+        self.assertIn("status == .clean && signatureFreshness != .stale", source)
+        self.assertIn("signatureFreshness != .unverified", source)
         self.assertIn("status == nil ? nil", source)
         for fixed_copy in (
             "File opened: Yes", "File opened: No", "File opened: Not confirmed",
@@ -121,6 +131,52 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn("invalidateIntrinsicContentSize()", source)
         self.assertNotIn("scannerOutput", source)
 
+    def test_copy_diagnostic_details_is_privacy_safe_and_accessible(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        harness = SWIFT_TEST.read_text(encoding="utf-8")
+        self.assertIn('title: "Copy Diagnostic Details"', source)
+        self.assertIn('setAccessibilityIdentifier("scanResultSummaryCopyDiagnostics")', source)
+        self.assertIn('copyDiagnosticDetailsButton.action = #selector(copyDiagnosticDetails(_:))', source)
+        self.assertIn("NSPasteboard.general", source)
+        self.assertIn("pasteboard.setString(diagnosticDetailsForCopy(), forType: .string)", source)
+        self.assertIn("ScanResultSummaryCopy.forStatus(displayedStatus)", source)
+        self.assertIn('displayedStatus?.rawValue ?? "unavailable"', source)
+        self.assertIn("documentURL?.isFileURL == true", source)
+        self.assertIn('displayedSanitization?.displayText ?? "Sanitization: Unavailable"', source)
+        self.assertIn("diagnosticDocumentName = Self.displayDocumentName(documentURL)", source)
+        self.assertIn('"[redacted]"', source)
+        self.assertNotIn("rawScannerOutput", source)
+        self.assertIn("copyDiagnosticDetailsButton.performClick(nil)", harness)
+        self.assertIn("NSPasteboard.general.string(forType: .string)", harness)
+        self.assertIn("Document path: [redacted]", harness)
+        self.assertIn("Sanitization: Performed", harness)
+        self.assertIn("Sanitization: Not performed", harness)
+        self.assertIn("Document path: Not provided", harness)
+
+    def test_stale_signatures_are_explicit_and_inconsistent_clean_is_not_reassuring(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        native = SWIFT_TEST.read_text(encoding="utf-8")
+        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
+        self.assertIn("enum ScanResultSummarySignatureFreshness: String, CaseIterable", source)
+        for case in ("recentUpdate", "stale", "unverified"):
+            self.assertRegex(source, rf"case {case}\b")
+        self.assertIn("signatureFreshness: ScanResultSummarySignatureFreshness? = nil", source)
+        self.assertIn("Signature database STALE", source)
+        self.assertIn("No successful update within 48 hours", source)
+        self.assertIn("Signature database freshness cannot be verified", source)
+        self.assertIn("let inconsistent = cleanReported", source)
+        self.assertIn("heading: \"Scan verification incomplete\"", source)
+        self.assertIn("signatureFreshnessLabel.setAccessibilityLabel(freshness)", source)
+        self.assertIn("scanResultSummarySignatureFreshness", source)
+        self.assertIn("displayedSignatureFreshness = signatureFreshness", source)
+        self.assertIn("show(nil)", source)
+        for item in ("signatureFreshness: .stale", "signatureFreshness: .unverified",
+                     "signatureFreshness: .recentUpdate", "first.reset()"):
+            self.assertIn(item, native)
+        for forbidden in ("NSWorkspace.shared.open", "Process(", "UserDefaults"):
+            self.assertNotIn(forbidden, source)
+
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
         workflow = CI.read_text(encoding="utf-8")
         self.assertIn("python3 tests/scan/result-summary-component.py -v", workflow)
@@ -135,6 +191,12 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('Document: März résumé 🦄.pdf', harness)
         self.assertIn('URL(string: "https://example.invalid/secret.pdf")', harness)
         self.assertIn("preview only", harness)
+        self.assertIn("structureAnalysisCompleted: true", harness)
+        self.assertIn("structureAnalysisCompleted: false", harness)
+        self.assertIn("first.displayedStructureAnalysisCompleted == nil", harness)
+        self.assertIn("Structure analysis: Unavailable", harness)
+        self.assertIn("Structure analysis: Completed", harness)
+        self.assertIn("Structure analysis: Not completed", harness)
         self.assertIn("first.technicalDetailsButton.performClick(nil)", harness)
         self.assertIn("second.technicalDetailsButton.performClick(nil)", harness)
         self.assertIn("first.technicalDetailsLabel.isHidden", harness)
@@ -151,6 +213,8 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
         self.assertIn('File blocked: Yes', harness)
         self.assertIn("first.displayedOpeningOutcome == nil", harness)
         self.assertIn("first.displayedOpeningOutcome == .blocked", harness)
+        self.assertIn("signatureFreshness: .stale, openingOutcome: .opened", harness)
+        self.assertIn("signatureFreshness: .unverified, openingOutcome: .opened", harness)
 
 
 

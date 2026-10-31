@@ -43,6 +43,7 @@ class TerminationTests(unittest.TestCase):
         scanner_file = str((Path(__file__).resolve().parents[2] / 'scan-and-open.py'))
         harness = (
             'import importlib.util, pathlib, subprocess, sys\n'
+            'from contextlib import nullcontext\n'
             'spec = importlib.util.spec_from_file_location("opener", ' + repr(scanner_file) + ')\n'
             'o = importlib.util.module_from_spec(spec)\n'
             'spec.loader.exec_module(o)\n'
@@ -51,6 +52,10 @@ class TerminationTests(unittest.TestCase):
             'o.remember_clean = lambda *args: pathlib.Path(' + repr(str(self.cached)) + ').write_text("cached")\n'
             'o.remove_quarantine = lambda path: pathlib.Path(' + repr(str(self.unquarantined)) + ').write_text("removed")\n'
             'o.verify_launch_target = lambda path, target_app=None: None\n'
+            # The shutdown test launches a real synthetic subprocess from a
+            # temporary installation without a ClamAV signature database.
+            # Keep cancellation real while testing Seatbelt separately.
+            'o.confined_scanner = lambda command, *, scan: nullcontext((command, {}))\n'
             'original_run = subprocess.run\n'
             'def safe_run(command, **kwargs):\n'
             '    if str(command[0]).endswith("/launch-scanned-file") and "--check-local" in command:\n'
