@@ -32,7 +32,11 @@ class CrossProcessConfigurationTests(unittest.TestCase):
     chooser = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text()
     self.assertIn("ScanProgressPreference.isEnabled()", source)
     self.assertIn("SuccessfulScanNotificationPreference.shouldNotify(", source)
-    self.assertIn("BlockedFileNotificationPreference.shouldNotify(", source)
+    self.assertIn("BlockedFileNotificationPreference.notificationKind(", source)
+    preferences = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
+    # The native handler now selects an exact malware vs generic blocked notice.
+    # The classifier must still gate both outcomes through the saved opt-in.
+    self.assertIn("guard shouldNotify(failure: failure, cancelled: cancelled, enabled: enabled)", preferences)
     self.assertIn('openat(parentFD, "target-app.txt", O_RDONLY | O_NOFOLLOW)', chooser)
     self.assertIn("saveVerified(_ option:", chooser)
 
