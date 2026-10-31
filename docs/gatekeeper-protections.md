@@ -18,7 +18,7 @@ Run `PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v`.
   disposable `.app` bundle, attaches a **real** `com.apple.quarantine`
   marker, confirms `spctl --status` reports assessments enabled, and
   assesses its execution with `spctl --assess --type execute`.
-  The check requires an explicit **rejected** result, proves the xattr is
+  The check requires a negative OS assessment (an explicit rejection or code-signature validation failure), proves the xattr is
   unchanged, and confirms assessments remain enabled afterward.
 - CI runs this alongside the existing
   [quarantine retention](../tests/general/retain-os-quarantine.py),
