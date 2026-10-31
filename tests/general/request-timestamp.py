@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix="opener-timestamp-test-") as directory:
     (root / "twilight-reading.png").write_bytes(
         (Path(__file__).resolve().parents[2] / "twilight-reading.png").read_bytes()
     )
-    gate = root / "gate.sh"
+    gate = root / "gate.py"
     calls = root / "calls"
     document = root / "first.pdf"
     document.touch()
@@ -22,12 +22,17 @@ with tempfile.TemporaryDirectory(prefix="opener-timestamp-test-") as directory:
     alias.symlink_to(document)
     second = root / "second.pdf"
     second.touch()
-    gate.write_text(f'#!/bin/bash\nprintf "%s\\n" "$1" >> "{calls}"\nsleep 1\n')
+    gate.write_text(
+        "import pathlib, sys, time\n"
+        "with pathlib.Path(" + repr(str(calls)) + ").open('a', encoding='utf-8') as output:\n"
+        "    output.write(sys.argv[1] + '\\n')\n"
+        "time.sleep(1)\n"
+    )
 
     original = classes
     classes = classes.replace(
         'FileManager.default.homeDirectoryForCurrentUser\n'
-        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")',
+        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")',
         f'URL(fileURLWithPath: "{gate}")',
     )
     assert classes != original, "Native scan-gate path could not be substituted"
