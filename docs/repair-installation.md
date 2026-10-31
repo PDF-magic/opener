@@ -40,3 +40,17 @@ are intentionally not packaged there.
 The existing migration and rollback behavior governs failed operations;
 this action neither implements a parallel recovery mechanism nor resets
 user-selected PDF default associations.
+
+## Preference-preservation regression
+
+The CI regression `tests/general/repair-preferences.py` authorizes the real
+`Repair Installation.command` through an isolated controlling terminal while
+substituting a harmless installer that executes the actual preference
+initializers and update-agent migrator against a temporary synthetic home.
+It compares existing browser choices, PDF fallback, FreshClam mirror/proxy
+configuration, LaunchAgent schedule, application preferences, Finder custom
+workflow, and unrelated user files **byte-for-byte**, including file identity
+and modification times, across repeated confirmed repairs. It also checks
+that noninteractive repair cannot alter any of these preferences and that a
+fresh setup initializes only missing managed defaults. No real package
+manager, scanner, signature updater, or user's home directory is touched.
