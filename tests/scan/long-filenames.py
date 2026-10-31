@@ -128,7 +128,12 @@ class ExtremelyLongFilenamesTests(unittest.TestCase):
                     self.assertNotIn(path.name, gate.safe_scan_failure(failure.exception))
                 for side_effect in (queue, cache, scanner, remember, launcher, quarantine):
                     side_effect.assert_not_called()
-                self.assertFalse(path.exists())
+                # On Python 3.11 Path.exists() itself raises ENAMETOOLONG.
+                # Inspect the containing directory to prove no entry was created.
+                self.assertNotIn(path.name, os.listdir(self.root))
+                with self.assertRaises(OSError) as stat_failure:
+                    path.stat()
+                self.assertEqual(stat_failure.exception.errno, errno.ENAMETOOLONG)
 
     def test_over_limit_cli_batch_emits_only_sanitized_failure(self):
         over_limit = self.root / self.filename(excess=1)
