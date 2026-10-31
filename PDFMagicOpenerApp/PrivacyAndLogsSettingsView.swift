@@ -32,6 +32,14 @@ struct PrivacyAndLogsSettingsView: View {
         }
         .accessibilityIdentifier("diagnosticLogsSection")
 
+        GroupBox("Optional local scan history") {
+          privacyDetail(
+            "Off by default",
+            "Optional, user-visible scan history is off by default and is not implemented in this version. No scan-history opt-in control or store is provided here. Existing operational scan records and the clean-scan cache are separate and unchanged."
+          )
+        }
+        .accessibilityIdentifier("optionalScanHistorySection")
+
         GroupBox("Privacy and log controls") {
           privacyDetail(
             "Not configurable here",

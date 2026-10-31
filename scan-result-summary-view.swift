@@ -54,6 +54,25 @@ enum ScanResultSummarySanitization: String, CaseIterable {
     }
 }
 
+// Only a trusted coordinator may supply this presentation metadata. A recent
+// update record does not bypass the scanner's independent signature validation.
+enum ScanResultSummarySignatureFreshness: String, CaseIterable {
+    case recentUpdate
+    case stale
+    case unverified
+
+    var displayText: String {
+        switch self {
+        case .recentUpdate:
+            return "Signature database: Recent successful update (within 48 hours); scanner verification still required."
+        case .stale:
+            return "Signature database STALE: No successful update within 48 hours. Opening blocked."
+        case .unverified:
+            return "Signature database freshness cannot be verified. Opening blocked until verified."
+        }
+    }
+}
+
 private struct ScanResultSummaryCopy {
     let heading: String
     let explanation: String
@@ -148,6 +167,7 @@ final class ScanResultSummaryView: NSView {
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
     let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
+    let structureAnalysisLabel = NSTextField(labelWithString: "Structure analysis: Unavailable")
     let technicalDetailsButton = NSButton(title: "Show technical details", target: nil, action: nil)
     let technicalDetailsLabel = NSTextField(wrappingLabelWithString: "")
     let copyDiagnosticDetailsButton = NSButton(
@@ -158,6 +178,9 @@ final class ScanResultSummaryView: NSView {
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
     private(set) var displayedSanitization: ScanResultSummarySanitization?
+    let signatureFreshnessLabel = NSTextField(wrappingLabelWithString: "")
+    private(set) var displayedSignatureFreshness: ScanResultSummarySignatureFreshness?
+    private(set) var displayedStructureAnalysisCompleted: Bool?
     private(set) var technicalDetailsExpanded = false
 
     override init(frame frameRect: NSRect) {
@@ -198,6 +221,13 @@ final class ScanResultSummaryView: NSView {
         sanitizationLabel.font = .systemFont(ofSize: 12)
         sanitizationLabel.textColor = .secondaryLabelColor
         sanitizationLabel.setAccessibilityIdentifier("scanResultSummarySanitization")
+        signatureFreshnessLabel.font = .systemFont(ofSize: 12)
+        signatureFreshnessLabel.lineBreakMode = .byWordWrapping
+        signatureFreshnessLabel.maximumNumberOfLines = 0
+        signatureFreshnessLabel.setAccessibilityIdentifier("scanResultSummarySignatureFreshness")
+        structureAnalysisLabel.font = .systemFont(ofSize: 12)
+        structureAnalysisLabel.textColor = .secondaryLabelColor
+        structureAnalysisLabel.setAccessibilityIdentifier("scanResultSummaryStructureAnalysis")
 
         technicalDetailsButton.setAccessibilityIdentifier("scanResultSummaryTechnicalDetailsToggle")
         technicalDetailsButton.target = self
@@ -216,8 +246,8 @@ final class ScanResultSummaryView: NSView {
 
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
-            sanitizationLabel, malwareStatusLabel, explanationLabel,
-            technicalDetailsButton, technicalDetailsLabel, copyDiagnosticDetailsButton
+            sanitizationLabel, malwareStatusLabel, structureAnalysisLabel,
+            signatureFreshnessLabel, explanationLabel, technicalDetailsButton, technicalDetailsLabel, copyDiagnosticDetailsButton
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -274,15 +304,21 @@ final class ScanResultSummaryView: NSView {
     // or extension messages. Unknown or absent selections stay unavailable.
     // A new request clears any prior name, tier, sanitization evidence or scan result.
     // This is trusted coordinator evidence, never a guess from tier or scan status.
+    // Structural completion comes from independent, request-correlated evidence;
+    // a missing result must not imply successful structural analysis.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
         selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
-        sanitization: ScanResultSummarySanitization? = nil
+        sanitization: ScanResultSummarySanitization? = nil,
+        structureAnalysisCompleted: Bool? = nil,
+        signatureFreshness: ScanResultSummarySignatureFreshness? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
         displayedSanitization = sanitization
+        displayedStructureAnalysisCompleted = structureAnalysisCompleted
+        displayedSignatureFreshness = signatureFreshness
         let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
         sanitizationLabel.stringValue = sanitizationCopy
         sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
@@ -295,20 +331,52 @@ final class ScanResultSummaryView: NSView {
             ?? "Selected protection level: Unavailable"
         selectedProtectionLevelLabel.stringValue = protection
         selectedProtectionLevelLabel.setAccessibilityLabel(protection)
+        let structure = structureAnalysisCompleted.map {
+            $0 ? "Structure analysis: Completed" : "Structure analysis: Not completed"
+        } ?? "Structure analysis: Unavailable"
+        structureAnalysisLabel.stringValue = structure
+        structureAnalysisLabel.setAccessibilityLabel(structure)
         // Only a verified clean terminal outcome supports a negative detection
         // statement. Every other unsuccessful or absent result is inconclusive.
         let malwareStatus: String
         switch status {
         case .malwareDetected:
             malwareStatus = "Malware: Detected"
-        case .clean:
+        case .clean where signatureFreshness != .stale && signatureFreshness != .unverified:
             malwareStatus = "Malware: Not detected"
         default:
             malwareStatus = "Malware: Not determined"
         }
         malwareStatusLabel.stringValue = malwareStatus
         malwareStatusLabel.setAccessibilityLabel(malwareStatus)
-        let copy = ScanResultSummaryCopy.forStatus(status)
+        let freshness = signatureFreshness?.displayText
+            ?? "Signature database: Status unavailable; scanner freshness checks remain required."
+        signatureFreshnessLabel.stringValue = freshness
+        signatureFreshnessLabel.setAccessibilityLabel(freshness)
+        switch signatureFreshness {
+        case .stale:
+            signatureFreshnessLabel.textColor = .systemRed
+        case .unverified:
+            signatureFreshnessLabel.textColor = .systemOrange
+        case .recentUpdate, nil:
+            signatureFreshnessLabel.textColor = .secondaryLabelColor
+        }
+        // A conflicting clean verdict must never hide a stale or unverified
+        // database behind a reassuring green summary. Presentation only:
+        // the native scan gate remains the sole authority to authorize opening.
+        let cleanReported: Bool
+        if case .clean = status {
+            cleanReported = true
+        } else {
+            cleanReported = false
+        }
+        let inconsistent = cleanReported
+            && (signatureFreshness == .stale || signatureFreshness == .unverified)
+        let copy = inconsistent
+            ? ScanResultSummaryCopy(
+                heading: "Scan verification incomplete",
+                explanation: "The reported clean result conflicts with signature freshness. Opening must remain blocked.")
+            : ScanResultSummaryCopy.forStatus(status)
         headingLabel.stringValue = copy.heading
         explanationLabel.stringValue = copy.explanation
         headingLabel.setAccessibilityLabel(copy.heading)
@@ -321,6 +389,10 @@ final class ScanResultSummaryView: NSView {
         technicalDetailsButton.isHidden = technicalCopy == nil
         refreshTechnicalDetailsDisclosure()
 
+        if inconsistent {
+            headingLabel.textColor = .systemOrange
+            return
+        }
         switch status {
         case .clean:
             headingLabel.textColor = .systemGreen

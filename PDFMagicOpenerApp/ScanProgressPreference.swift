@@ -42,6 +42,46 @@ enum ScanProgressPreference {
 }
 
 
+// Presentation-only duplicate suppression. This never persists scan paths,
+// alters user preferences, or controls blocking/scan decisions. The 30-second
+// window only suppresses repeats of the same document AND outcome.
+enum ScanNotificationDeduplication {
+  static let repeatWindow: TimeInterval = 30
+
+  static func shouldQueue(
+    identifier: String,
+    delivered: [(identifier: String, date: Date)],
+    pendingIdentifiers: [String],
+    now: Date
+  ) -> Bool {
+    if pendingIdentifiers.contains(identifier) { return false }
+    return !delivered.contains { notice in
+      guard notice.identifier == identifier else { return false }
+      let age = now.timeIntervalSince(notice.date)
+      return age >= 0 && age < repeatWindow
+    }
+  }
+}
+
+// Reserve before asynchronous permission/delivery callbacks to prevent
+// simultaneous attempts in one helper process. No disk writes or path storage.
+final class ScanNotificationReservation {
+  private let lock = NSLock()
+  private var recent: [String: Date] = [:]
+
+  func reserve(_ identifier: String, now: Date = Date()) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    recent = recent.filter { _, timestamp in
+      let age = now.timeIntervalSince(timestamp)
+      return age >= 0 && age < ScanNotificationDeduplication.repeatWindow
+    }
+    guard recent[identifier] == nil else { return false }
+    recent[identifier] = now
+    return true
+  }
+}
+
 // Opt-in presentation only: the scan gate never consults this setting.
 // The same suite is readable by the separately installed PDF opener.
 enum SuccessfulScanNotificationPreference {
@@ -123,6 +163,38 @@ enum BlockedFileNotificationPreference {
       return .none
     }
     return failure == confirmedMalwareFailure ? .malwareDetected : .blocked
+  }
+}
+
+// Only exact, path-free diagnostics emitted by the installed one-file scan gate
+// can identify an operational scan failure. This is presentation-only: the
+// existing opt-in and mandatory failure alert remain authoritative.
+enum FailedScanNotificationClassification {
+  private static let verifiedFailures: Set<String> = [
+    "Scan request 1: The malware scan could not finish; opening was stopped.\n",
+    "Scan request 1: The malware scan did not confirm a complete scan; opening was stopped.\n",
+    "Scan request 1: The malware scan timed out; opening was stopped.\n",
+    "Scan request 1: ClamAV is unavailable. Run the Allow and Open installer again.\n",
+    "Scan request 1: Malware signatures are unavailable. Run update-malware-signatures.sh.\n",
+    "Scan request 1: Malware signatures have not been checked in 48 hours. Run update-malware-signatures.sh.\n",
+    "Scan request 1: The malware signature database is incomplete. Run update-malware-signatures.sh.\n",
+    "Scan request 1: ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.\n",
+    "Scan request 1: Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.\n",
+    "The malware scan exceeded its execution timeout; opening was stopped.",
+    "The malware scan could not finish.",
+    "The installed scan helper is missing. Reinstall PDF Magic Opener.",
+    "The scan helper could not start. Reinstall PDF Magic Opener.",
+  ]
+
+  static func shouldShowFailedScanNotice(
+    failure: String?,
+    cancelled: Bool,
+    enabled: Bool = BlockedFileNotificationPreference.isEnabled()
+  ) -> Bool {
+    guard BlockedFileNotificationPreference.shouldNotify(
+      failure: failure, cancelled: cancelled, enabled: enabled
+    ), let failure else { return false }
+    return verifiedFailures.contains(failure)
   }
 }
 

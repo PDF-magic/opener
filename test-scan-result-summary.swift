@@ -29,6 +29,12 @@ struct ScanResultSummaryComponentTests {
         precondition(first.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Unavailable")
         precondition(first.displayedSanitization == nil)
+        precondition(first.structureAnalysisLabel.accessibilityIdentifier()
+                     == "scanResultSummaryStructureAnalysis")
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
+        precondition(first.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Unavailable")
+        precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.technicalDetailsButton.accessibilityIdentifier()
                      == "scanResultSummaryTechnicalDetailsToggle")
         precondition(first.technicalDetailsLabel.accessibilityIdentifier()
@@ -37,6 +43,10 @@ struct ScanResultSummaryComponentTests {
         precondition(first.technicalDetailsLabel.isHidden)
         precondition(first.technicalDetailsLabel.stringValue.isEmpty)
         precondition(!first.technicalDetailsExpanded)
+        precondition(first.signatureFreshnessLabel.accessibilityIdentifier()
+                     == "scanResultSummarySignatureFreshness")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
+        precondition(first.displayedSignatureFreshness == nil)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         precondition(first.copyDiagnosticDetailsButton.title == "Copy Diagnostic Details")
@@ -57,6 +67,9 @@ struct ScanResultSummaryComponentTests {
         for status in ScanResultSummaryStatus.allCases {
             first.show(status)
             precondition(first.displayedStatus == status)
+            precondition(first.displayedStructureAnalysisCompleted == nil)
+            precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
+                         "scanner result does not imply structural completion")
             let expectedMalware = status == .malwareDetected ? "Malware: Detected"
                 : status == .clean ? "Malware: Not detected" : "Malware: Not determined"
             precondition(first.malwareStatusLabel.stringValue == expectedMalware)
@@ -113,8 +126,12 @@ struct ScanResultSummaryComponentTests {
 
         let target = URL(fileURLWithPath: "/Users/example/Private scans/März résumé 🦄.pdf")
         first.show(.clean, documentURL: target, selectedProtectionLevel: .builtIn,
-                   sanitization: .performed)
+                   sanitization: .performed, structureAnalysisCompleted: true)
         precondition(first.displayedSanitization == .performed)
+        precondition(first.displayedStructureAnalysisCompleted == true)
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Completed")
+        precondition(first.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Completed")
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
         precondition(first.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Performed")
@@ -144,8 +161,15 @@ struct ScanResultSummaryComponentTests {
         precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
-                    selectedProtectionLevel: .enhanced, sanitization: .notPerformed)
+                    selectedProtectionLevel: .enhanced, sanitization: .notPerformed,
+                    structureAnalysisCompleted: false)
         precondition(second.displayedSanitization == .notPerformed)
+        precondition(second.displayedStructureAnalysisCompleted == false)
+        precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Not completed")
+        precondition(second.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Not completed")
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Completed",
+                     "independent views must not share completion state")
         precondition(second.sanitizationLabel.stringValue == "Sanitization: Not performed")
         precondition(second.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Not performed")
@@ -201,6 +225,9 @@ struct ScanResultSummaryComponentTests {
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
+        precondition(first.displayedStructureAnalysisCompleted == nil)
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
+                     "new results without structural evidence must clear old completion")
         precondition(first.diagnosticDetailsForCopy().contains("Document path: Not provided"))
         precondition(!first.diagnosticDetailsForCopy().contains("example.invalid"))
         for unsafe in [
@@ -218,6 +245,37 @@ struct ScanResultSummaryComponentTests {
             precondition(!redacted.contains("spoof.pdf"))
             precondition(!redacted.contains("fdp.dab.pdf"))
         }
+        // Display only fixed, verified-state vocabulary. A stale database is
+        // never presented as a clean authorized scan, even if a caller reports
+        // an inconsistent clean result.
+        first.show(.scanFailed, sanitization: .performed, signatureFreshness: .stale)
+        precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("STALE"))
+        precondition(first.signatureFreshnessLabel.stringValue.contains("48 hours"))
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Opening blocked"))
+        precondition(first.signatureFreshnessLabel.textColor == .systemRed)
+        precondition(first.signatureFreshnessLabel.accessibilityLabel()
+                     == first.signatureFreshnessLabel.stringValue)
+        precondition(second.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
+        first.show(.clean, signatureFreshness: .stale)
+        precondition(first.headingLabel.stringValue == "Scan verification incomplete")
+        precondition(first.explanationLabel.stringValue.contains("Opening must remain blocked"))
+        precondition(first.headingLabel.textColor == .systemOrange)
+        first.show(.clean, signatureFreshness: .unverified)
+        precondition(first.headingLabel.stringValue == "Scan verification incomplete")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("cannot be verified"))
+        precondition(first.signatureFreshnessLabel.textColor == .systemOrange)
+        first.show(.clean, signatureFreshness: .recentUpdate)
+        precondition(first.headingLabel.stringValue == "Scan complete")
+        precondition(first.signatureFreshnessLabel.stringValue.contains("within 48 hours"))
+        precondition(first.signatureFreshnessLabel.stringValue.contains("still required"))
+        precondition(first.signatureFreshnessLabel.textColor == .secondaryLabelColor)
+        first.show(.scanFailed)
+        precondition(first.displayedSignatureFreshness == nil)
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
+        precondition(!first.signatureFreshnessLabel.stringValue.contains("STALE"))
+        first.show(.scanFailed, signatureFreshness: .stale)
         first.reset()
         precondition(first.displayedStatus == nil)
         precondition(first.diagnosticDetailsForCopy().contains("Status: unavailable"))
@@ -229,10 +287,16 @@ struct ScanResultSummaryComponentTests {
                      == first.diagnosticDetailsForCopy())
         precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
+        precondition(first.displayedStructureAnalysisCompleted == nil)
+        precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
+        precondition(first.structureAnalysisLabel.accessibilityLabel()
+                     == "Structure analysis: Unavailable")
         precondition(first.displayedSanitization == nil)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
         precondition(first.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Unavailable")
+        precondition(first.displayedSignatureFreshness == nil)
+        precondition(first.signatureFreshnessLabel.stringValue.contains("Status unavailable"))
         precondition(first.documentNameLabel.stringValue == "Document: Unavailable")
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Unavailable")
@@ -244,11 +308,13 @@ struct ScanResultSummaryComponentTests {
         precondition(first.technicalDetailsLabel.stringValue.isEmpty)
         precondition(!first.technicalDetailsExpanded)
         precondition(second.technicalDetailsExpanded, "separate instances must retain state")
+        precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Not completed")
         precondition(second.headingLabel.stringValue == "Scan failed")
         second.show(nil)
         precondition(second.technicalDetailsButton.isHidden)
         precondition(second.technicalDetailsLabel.stringValue.isEmpty)
         precondition(!second.technicalDetailsExpanded)
+        precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
         print("Reusable scan result summary component passed")
     }
 }

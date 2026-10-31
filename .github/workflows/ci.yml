@@ -190,6 +190,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/configuration/loading.py -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Verify staged PDF handler bundle contents and executable permissions
+        run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Reject untrusted values in Finder shell command strings
         run: PYTHONPATH=. python3 tests/security/shell-command-strings.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
@@ -254,6 +256,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Verify ClamAV signature update failures are recorded safely
         run: PYTHONPATH=. python3 tests/signature/update-failures.py -v
+      - name: Verify private macOS signature-update failure notifications
+        run: PYTHONPATH=. python3 tests/notifications/signature-update-failure.py -v
       - name: Detect incomplete ClamAV signature downloads
         run: PYTHONPATH=. python3 tests/general/incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
@@ -336,10 +340,14 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/window-branding.py -v
       - name: Verify independent SwiftUI application target
         run: PYTHONPATH=. python3 tests/general/swiftui-app-target.py -v
+      - name: Verify packaged application helper allowlist and safety boundaries
+        run: PYTHONPATH=. python3 tests/general/application-helper-packaging.py -v
       - name: Verify SwiftUI About window, version and AGPL license
         run: PYTHONPATH=. python3 tests/general/about-window.py -v
       - name: Verify SwiftUI main preferences navigation and safe window wiring
         run: PYTHONPATH=. python3 tests/general/main-preferences-window.py -v
+      - name: Verify Scan History page is conditional and passive
+        run: PYTHONPATH=. python3 tests/general/scan-history-settings-page.py -v
       - name: Verify three accessible protection preview cards never change active scan policy
         run: PYTHONPATH=. python3 tests/protection/settings-cards.py -v
       - name: Verify Maximum View Conversion Details action is accessible and preview-only
@@ -366,6 +374,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/about-diagnostics-settings-page.py -v
       - name: Verify Advanced Scanning settings page and navigation
         run: PYTHONPATH=. python3 tests/general/advanced-scanning-settings-page.py -v
+      - name: Verify optional scan history remains off by default
+        run: PYTHONPATH=. python3 tests/general/scan-history-default.py -v
       - name: Verify dedicated Updates settings page
         run: PYTHONPATH=. python3 tests/updates/settings-page.py -v
       - name: Verify manual update action behavior
@@ -392,8 +402,16 @@ jobs:
         run: |
           PYTHONPATH=. python3 tests/general/show-successful-scan-notifications.py -v
           PYTHONPATH=. python3 tests/general/show-blocked-file-notifications.py -v
+      - name: Verify failed-scan notices remain private and scanner-gated
+        run: PYTHONPATH=. python3 tests/notifications/failed-scan.py -v
+      - name: Verify sanitizer-failure notices only follow validated reports and opt-in
+        run: PYTHONPATH=. python3 tests/notifications/sanitizer-failure.py -v
       - name: Verify confirmed malware-detection notices preserve blocking and privacy
         run: PYTHONPATH=. python3 tests/notifications/malware-detection.py -v
+      - name: Prevent repeated PDF scan notices without changing safety outcomes
+        run: PYTHONPATH=. python3 tests/notifications/deduplication.py -v
+      - name: Verify notifications work without an open Settings window
+        run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py -v
       - name: Verify verified default PDF browser selector
         run: PYTHONPATH=. python3 tests/default/pdf-browser-selector.py -v
       - name: Verify default PDF handler indicator is read-only
@@ -737,6 +755,22 @@ jobs:
 
       - name: Verify scan result contract
         run: PYTHONPATH=. python3 tests/scan/results.py
+      - name: Verify passive optional local history record format
+        run: PYTHONPATH=. python3 tests/scan/history-record.py -v
+      - name: Verify private optional scan-history metadata storage
+        run: PYTHONPATH=. python3 tests/scan/history-metadata.py -v
+      - name: Verify configurable optional scan-history retention and automatic expiry
+        run: PYTHONPATH=. python3 tests/scan/history-retention.py -v
+      - name: Verify private-browsing sessions never persist optional scan history
+        run: PYTHONPATH=. python3 tests/scan/private-browsing-history.py -v
+      - name: Verify optional scan history excludes private document and browsing data
+        run: PYTHONPATH=. python3 tests/scan/history-privacy.py -v
+      - name: Verify recent scan-history display is on demand, bounded and private
+        run: PYTHONPATH=. python3 tests/scan/recent-history-display.py -v
+      - name: Verify individual scan history result inspection
+        run: PYTHONPATH=. python3 tests/scan/individual-result-inspection.py -v
+      - name: Verify confirmation-gated private history deletion
+        run: PYTHONPATH=. python3 tests/scan/clear-history-action.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
@@ -823,6 +857,18 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
           "$RUNNER_TEMP/TestSignatureUpdateStatus"
+      - name: Exercise read-only recent scan-history retrieval using synthetic SQLite rows
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift test-recent-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
+          "$RUNNER_TEMP/TestRecentScanHistory"
+      - name: Exercise confirmed history deletion with synthetic private SQLite files
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift test-clear-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
+          "$RUNNER_TEMP/TestClearScanHistory"
+      - name: Exercise automatic native scan-history retention with private synthetic SQLite rows
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ScanHistoryRetention.swift test-scan-history-retention.swift -lsqlite3 -o "$RUNNER_TEMP/TestScanHistoryRetention"
+          "$RUNNER_TEMP/TestScanHistoryRetention"
       - name: Verify native stale-signature warning at the scanner age boundary
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
@@ -855,6 +901,17 @@ jobs:
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           test -x "$app/Contents/MacOS/PDFMagicOpener"
           python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1], "rb")); assert p["CFBundlePackageType"] == "APPL"; assert p["CFBundleIdentifier"] == "local.studio.pdfmagicopener.swiftui"; assert "CFBundleDocumentTypes" not in p; assert p.get("LSUIElement", False) is False, "Preferences must appear in Dock"; assert p.get("LSBackgroundOnly", False) is False, "Preferences must not be headless"' "$app/Contents/Info.plist"
+      - name: Stage and verify reviewed executable helpers in isolated macOS application package
+        run: |
+          app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
+          stage="$RUNNER_TEMP/PDFMagicOpenerHelpersPackage"
+          python3 scripts/package_application_helpers.py --app "$app" --output-dir "$stage"
+          python3 scripts/package_application_helpers.py --verify "$stage/PDFMagicOpener.app"
+          test -x "$stage/PDFMagicOpener.app/Contents/Helpers/pdf-magic-native-host"
+          test -x "$stage/PDFMagicOpener.app/Contents/Helpers/launch-scanned-file"
+          test ! -e "$app/Contents/Helpers"
+      - name: Test native notifications after quitting the built Settings application
+        run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission
         run: |
           PYTHONPATH=. python3 tests/general/safari-extension-target.py -v
@@ -890,7 +947,11 @@ jobs:
             PDFMagicOpenerApp/ScanProgressPreference.swift \
             PDFMagicOpenerApp/SignatureUpdateStatus.swift \
             PDFMagicOpenerApp/SignatureUpdateProgress.swift \
-            test-preferences-large-text.swift -o "$RUNNER_TEMP/TestPreferencesLargeText"
+            PDFMagicOpenerApp/RecentScanHistory.swift \
+            PDFMagicOpenerApp/ScanHistoryResultDetailView.swift \
+            PDFMagicOpenerApp/ClearScanHistory.swift \
+            PDFMagicOpenerApp/ScanHistoryRetention.swift \
+            test-preferences-large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
         run: |
@@ -962,10 +1023,18 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
           "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+      - name: Verify failed-scan notices with isolated user settings
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-failed-scan-notifications.swift -o "$RUNNER_TEMP/TestFailedScanNotifications"
+          "$RUNNER_TEMP/TestFailedScanNotifications"
       - name: Verify malware notifications reject unrelated failures and cancellations
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malware-detection-notifications.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"
           "$RUNNER_TEMP/TestMalwareDetectionNotifications"
+      - name: Verify per-document notification deduplication and expiration
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notification-deduplication.swift -o "$RUNNER_TEMP/TestNotificationDeduplication"
+          "$RUNNER_TEMP/TestNotificationDeduplication"
       - name: Verify confirmed General preference reset preserves customizations
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
@@ -1035,6 +1104,41 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
+      - name: Verify staged native PDF handler before installation
+        run: |
+          app="$RUNNER_TEMP/preinstall/PDF Magic Opener.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          cp "$RUNNER_TEMP/PDFOpener" "$app/Contents/MacOS/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$app/Contents/MacOS/MakePDFMagicDefault"
+          cp twilight-reading.png "$app/Contents/Resources/twilight-reading.png"
+          python3 - "$app" <<'BUNDLE_PLIST'
+          import plistlib
+          import sys
+          from pathlib import Path
+          app = Path(sys.argv[1])
+          info = {
+              "CFBundleExecutable": "PDFOpener",
+              "CFBundleIdentifier": "local.studio.brave-pdf-opener",
+              "CFBundleName": "PDF Magic Opener",
+              "CFBundleDisplayName": "PDF Magic Opener",
+              "CFBundlePackageType": "APPL",
+              "CFBundleVersion": "1",
+              "CFBundleShortVersionString": "1.0",
+              "LSMinimumSystemVersion": "13.0",
+              "LSUIElement": True,
+              "CFBundleDocumentTypes": [{
+                  "CFBundleTypeName": "PDF document", "CFBundleTypeRole": "Viewer",
+                  "LSHandlerRank": "Owner", "LSItemContentTypes": ["com.adobe.pdf"],
+              }],
+          }
+          with (app / "Contents/Info.plist").open("wb") as stream:
+              plistlib.dump(info, stream)
+          BUNDLE_PLIST
+          /usr/bin/codesign --force --sign - "$app"
+          /usr/bin/codesign --verify "$app"
+          python3 scripts/verify_pdf_opener_bundle.py "$app"
+          chmod u-x "$app/Contents/MacOS/PDFOpener"
+          if python3 scripts/verify_pdf_opener_bundle.py "$app"; then exit 1; fi
       - name: Compile and test reusable AppKit scan-result summary
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors scan-result-summary-view.swift test-scan-result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
