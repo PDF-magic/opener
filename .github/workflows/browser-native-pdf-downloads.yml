@@ -1,0 +1,52 @@
+name: Browser-native PDF downloads
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chrome-native-pdf-download:
+    name: Chrome browser-native PDF downloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: Verify Chrome handles downloaded PDF attachments
+        working-directory: extensions/webextension
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          # Only the disposable CI Chrome profile may use this exception.
+          CHROME_TEST_NO_SANDBOX: "1"
+        run: node scripts/test-chrome-native-pdf-download.mjs "$CHROME_PATH"
+
+  firefox-native-pdf-download:
+    name: Firefox browser-native PDF downloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-firefox@v1
+        id: firefox
+        with:
+          firefox-version: latest
+      - uses: browser-actions/setup-geckodriver@latest
+      - name: Verify Firefox handles downloaded PDF attachments
+        working-directory: extensions/webextension
+        env:
+          FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+        run: node scripts/test-firefox-native-pdf-download.mjs "$FIREFOX_PATH"
