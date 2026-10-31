@@ -553,6 +553,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Verify quarantined PDF opening honors scan and application gates
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
+      - name: Check Finder quarantine and app bundle scanner handoff
+        run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Fail closed and retain quarantine for unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
@@ -567,10 +569,14 @@ jobs:
         run: PYTHONPATH=. python3 tests/clamav/version-support.py -v
       - name: Run scan-gate and request-metadata tests
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v
+      - name: Verify scan input metadata and hashing use pinned file descriptors
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Reject nonexistent scan paths before scanner or launch admission
         run: PYTHONPATH=. python3 tests/general/nonexistent-file-paths.py -v
       - name: Reject unreadable scan files before scanning or cached opening
         run: PYTHONPATH=. python3 tests/general/unreadable-scan-input.py -v
+      - name: Reject inaccessible file and application paths before scanner admission
+        run: PYTHONPATH=. python3 tests/scan/inaccessible-paths.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
@@ -751,6 +757,8 @@ jobs:
           xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
+      - name: Verify descriptor-pinned scan inputs on macOS
+        run: PYTHONPATH=. python3 tests/scan/file-descriptor.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permissions on macOS
@@ -1144,6 +1152,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/nonexistent-file-paths.py -v
       - name: Verify real macOS quarantine on unscannable PDFs
         run: PYTHONPATH=. python3 tests/general/unscannable-quarantine.py -v
+      - name: Verify quarantined app bundle opening through the Finder action
+        run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
           python3 tools/audit_quarantine_removal.py

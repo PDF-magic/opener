@@ -123,7 +123,10 @@ class BundleSymlinkContainmentTests(unittest.TestCase):
     def test_containment_runs_before_hashing_and_preserves_scan_invariants(self):
         source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         preflight = source.index("target = entry.resolve(strict=True)")
-        hashed = source.index("with entry.open('rb') as stream:")
+        hashed = source.index("with os.fdopen(fd, 'rb', closefd=False) as stream:")
+        descriptor_stat = source.index("info = os.fstat(fd)")
+        self.assertLess(descriptor_stat, hashed)
+        self.assertIn("getattr(os, 'O_NOFOLLOW', 0)", source)
         self.assertLess(preflight, hashed)
         self.assertIn("not target.is_relative_to(root)", source)
         self.assertIn("'--follow-file-symlinks=2', '--follow-dir-symlinks=2'", source)
