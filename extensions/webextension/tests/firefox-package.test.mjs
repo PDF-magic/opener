@@ -63,7 +63,7 @@ async function packagePath() {
     "pdf-magic-opener-firefox-" + manifest.version + "-unsigned.zip");
 }
 
-test("Firefox package is an actual unsigned ZIP of exactly eight approved files", async () => {
+test("Firefox package is an actual unsigned ZIP of exactly ten approved files", async () => {
   const path = await packagePath();
   const stat = await lstat(path);
   assert.ok(stat.isFile() && !stat.isSymbolicLink());

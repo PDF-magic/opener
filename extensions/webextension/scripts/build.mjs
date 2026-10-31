@@ -2,6 +2,7 @@ import { copyFile, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyPopupAssets } from "./popup-assets.mjs";
+import { copyFailedInterceptionAssets } from "./intercept-scan-failed-assets.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -93,6 +94,7 @@ await mkdir(output, { recursive: true });
 await writeFile(join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 await copyFile(workerPath, join(output, "background.js"));
 await copyPopupAssets(root, output);
+await copyFailedInterceptionAssets(root, output);
 
 // Copy only validated static art for the inert toolbar action. The no-op
 // background has no permissions, toolbar handlers, event listeners or native PDF bridge.
