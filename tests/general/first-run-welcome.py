@@ -50,6 +50,23 @@ class FirstRunWelcomeTests(unittest.TestCase):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, source)
 
+  def test_first_run_explains_the_actual_pdf_opening_workflow(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    purpose = (
+      "When configured as your PDF handler, PDF Magic Opener uses local "
+      "ClamAV checks before opening a PDF in your chosen application. "
+      "If a clean result and recent signatures cannot be verified, "
+      "opening is blocked."
+    )
+    self.assertIn('Text("' + purpose + '")', source)
+    # A user must encounter the explanation before navigating the details.
+    self.assertLess(source.index(purpose),
+                    source.index('Label("Local malware scanning"'))
+    self.assertIn("Continue to Preferences", source)
+    # No claim that opening the preferences window enables PDF handling.
+    self.assertNotIn("automatically sets your default", source.lower())
+    self.assertNotIn("guarantees safety", source.lower())
+
   def test_acknowledgement_has_no_automatic_startup_side_effects(self):
     state = STATE.read_text(encoding="utf-8")
     self.assertIn('acknowledgementKey = "firstRunWelcomeAcknowledged.v1"', state)
