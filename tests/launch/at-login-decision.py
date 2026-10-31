@@ -54,14 +54,15 @@ class LaunchAtLoginDecisionTests(unittest.TestCase):
     self.assertIn("'CFBundleIdentifier': 'local.studio.brave-pdf-opener'", installer)
     self.assertIn("'LSItemContentTypes': ['com.adobe.pdf']", installer)
     self.assertIn("'CFBundleExecutable': 'PDFOpener'", installer)
-    self.assertIn("'Label': 'local.studio.pdf-malware-signatures'", installer)
-    self.assertIn("'StartInterval': 14400", installer)
-    self.assertIn("'RunAtLoad': True", installer)
-    self.assertIn("'update-malware-signatures.sh'", installer)
-    # Do not mistake the existing updater agent for a preferences login item.
-    agent = installer.split("agent = {", 1)[1].split("\n}", 1)[0]
-    self.assertNotIn("pdfmagicopener.swiftui", agent)
-    self.assertNotIn("PDFMagicOpenerApp", agent)
+    migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+    self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
+    self.assertIn('"StartInterval": 14400', migrator)
+    self.assertIn('"RunAtLoad": True', migrator)
+    self.assertIn('"update-malware-signatures.sh"', migrator)
+    self.assertIn('python3 "$script_dir/scripts/migrate_update_agent.py"', installer)
+    # Do not mistake the updater agent for a preferences login item.
+    self.assertNotIn("pdfmagicopener.swiftui", migrator)
+    self.assertNotIn("PDFMagicOpenerApp", migrator)
 
   def test_decision_is_explicit_conditional_and_documented(self):
     text = DOC.read_text(encoding="utf-8")

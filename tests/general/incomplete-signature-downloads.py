@@ -116,8 +116,9 @@ class IncompleteDownloadTests(unittest.TestCase):
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertNotIn("check_incomplete_downloads", scanner)
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn("'StartInterval': 14400", installer)
-        self.assertIn("'RunAtLoad': True", installer)
+        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        self.assertIn('"StartInterval": 14400', migrator)
+        self.assertIn('"RunAtLoad": True', migrator)
         source = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertLess(source.index('check_incomplete_downloads "$stage_dir"'),
                         source.index('last-successful-update'))

@@ -214,6 +214,8 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
     chmod 755 "$action"
 fi
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+# Validate/migrate trusted existing agent before any launchctl restart.
+python3 "$script_dir/scripts/migrate_update_agent.py"
 agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID" "$agent"
