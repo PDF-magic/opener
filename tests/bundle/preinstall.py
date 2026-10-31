@@ -147,7 +147,7 @@ class PreinstallBundleTests(unittest.TestCase):
     )
     self.assertLess(source.index('codesign --force --sign - "$app"'),
                     source.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'))
-    self.assertIn('python3 - "$app" "$install_dir" "$app_name" <<\x27CONFIG\x27', source)
+    self.assertIn('python3 - "$app" "$install_dir" "$app_name" "$agent_state" <<\x27CONFIG\x27', source)
 
 
 if __name__ == "__main__":
