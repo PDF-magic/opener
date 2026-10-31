@@ -1,8 +1,61 @@
 import AppKit
 import Carbon.HIToolbox
 import UserNotifications
+import Darwin
 
 // BEGIN NATIVE DIRECT PROCESS GATE
+// A PDF scan may use the full 30-minute ClamAV policy deadline. Keep the
+// native process ceiling above that budget to allow admission and handoff.
+let nativeScanProcessTimeout: TimeInterval = 35 * 60
+let nativeOriginProcessTimeout: TimeInterval = 2
+
+// Foundation Process has no built-in execution timeout. A bounded wait first
+// requests ordinary termination, then uses SIGKILL if the child ignores it.
+// The semaphore is installed as the termination handler *before* process.run().
+func waitForNativeProcess(_ process: Process, completion: DispatchSemaphore,
+                          timeout: TimeInterval) -> Bool {
+    if completion.wait(timeout: .now() + timeout) == .success {
+        process.waitUntilExit()
+        return true
+    }
+    if process.isRunning { process.terminate() }
+    if completion.wait(timeout: .now() + 1) == .timedOut {
+        if process.isRunning { _ = Darwin.kill(process.processIdentifier, SIGKILL) }
+        _ = completion.wait(timeout: .now() + 2)
+    }
+    return false
+}
+
+// Drain scanner diagnostics while the bounded wait is active. A child that
+// writes to stderr cannot deadlock the parent before its execution deadline.
+// If a descendant retains the pipe, return after a bounded EOF grace period.
+final class NativeScanDiagnostics {
+    private let lock = NSLock()
+    private var collected = Data()
+    private let reachedEOF = DispatchSemaphore(value: 0)
+
+    func begin(_ pipe: Pipe) {
+        pipe.fileHandleForReading.readabilityHandler = { [self] reader in
+            let chunk = reader.availableData
+            lock.lock()
+            collected.append(chunk)
+            lock.unlock()
+            if chunk.isEmpty {
+                reader.readabilityHandler = nil
+                reachedEOF.signal()
+            }
+        }
+    }
+
+    func finish(_ pipe: Pipe) -> Data {
+        _ = reachedEOF.wait(timeout: .now() + 1)
+        pipe.fileHandleForReading.readabilityHandler = nil
+        lock.lock()
+        defer { lock.unlock() }
+        return collected
+    }
+}
+
 // The native app uses Foundation's Process directly, not a shell script.
 // Finder's Run Shell Script action remains a separate macOS integration.
 func makeNativeScanProcess(script: URL, path: String, lifetime: Pipe,
@@ -28,9 +81,12 @@ func recordNativeScanOrigin(script: URL, path: String, environment: [String: Str
     recorder.standardOutput = FileHandle.nullDevice
     recorder.standardError = FileHandle.nullDevice
     recorder.environment = environment
+    let finished = DispatchSemaphore(value: 0)
+    recorder.terminationHandler = { _ in finished.signal() }
     do {
         try recorder.run()
-        recorder.waitUntilExit()
+        _ = waitForNativeProcess(recorder, completion: finished,
+                                 timeout: nativeOriginProcessTimeout)
     } catch {
         // Origin recording is advisory, never a second scanner policy.
     }
@@ -361,18 +417,24 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                 let process = makeNativeScanProcess(
                     script: script, path: path, lifetime: lifetime,
                     errors: errors, environment: environment)
+                let finished = DispatchSemaphore(value: 0)
+                process.terminationHandler = { _ in finished.signal() }
+                let diagnostic = NativeScanDiagnostics()
+                diagnostic.begin(errors)
 
                 // Synchronize launching with Cancel. Workers already dispatched
                 // to the background cannot launch after a cancelled request.
                 self.processLock.lock()
                 if self.cancelledRequests.contains(path) {
                     self.processLock.unlock()
+                    _ = diagnostic.finish(errors)
                     return nil
                 }
                 var isDirectory: ObjCBool = false
                 guard FileManager.default.fileExists(atPath: script.path, isDirectory: &isDirectory),
                       !isDirectory.boolValue else {
                     self.processLock.unlock()
+                    _ = diagnostic.finish(errors)
                     return ScannerInitializationError.missingHelper
                 }
                 do {
@@ -396,16 +458,21 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
                     }
                 } catch {
                     self.processLock.unlock()
+                    _ = diagnostic.finish(errors)
                     return ScannerInitializationError.launchFailed
                 }
                 errors.fileHandleForWriting.closeFile()
-                let output = errors.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
+                let finishedInTime = waitForNativeProcess(
+                    process, completion: finished, timeout: nativeScanProcessTimeout)
+                let output = diagnostic.finish(errors)
                 self.processLock.lock()
                 let cancelled = self.cancelledRequests.contains(path)
                 self.activeProcesses.removeValue(forKey: path)
                 self.processLock.unlock()
                 if cancelled { return nil }
+                if !finishedInTime {
+                    return "The malware scan exceeded its execution timeout; opening was stopped."
+                }
                 if process.terminationStatus != 0 {
                     return String(data: output, encoding: .utf8) ?? "The malware scan could not finish."
                 }

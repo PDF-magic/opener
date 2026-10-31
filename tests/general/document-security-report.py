@@ -182,7 +182,7 @@ class DocumentSecurityReportTests(unittest.TestCase):
 
         self.assertEqual(set(payload), {
             "schemaVersion", "authorizesOpen", "requiresBlock", "headline",
-            "scanSummary", "structuralSummary", "nextStep",
+            "scanSummary", "structuralSummary", "warnings", "systemFailures", "nextStep",
         })
         self.assertIs(payload["authorizesOpen"], False)
         self.assertIs(report.authorizes_open, False)
@@ -190,6 +190,69 @@ class DocumentSecurityReportTests(unittest.TestCase):
     def test_invalid_combined_evidence_is_rejected(self):
         with self.assertRaises(TypeError):
             create_document_security_report({"scan": "clean"})
+
+
+    def test_document_warnings_do_not_become_system_failures(self):
+        structural = structural_report((
+            AnalysisFinding(FindingCode.suspiciousUrl, FindingSeverity.suspicious),
+            AnalysisFinding(FindingCode.incrementalRevision, FindingSeverity.informational),
+        ))
+        report = make_report(ScanResultStatus.encrypted, structural=structural)
+        self.assertEqual(report.to_dict()["warnings"], {
+            "scanStatus": "encrypted", "structuralFindings": 1,
+        })
+        self.assertEqual(report.to_dict()["systemFailures"], {
+            "scanStatus": None, "incompleteStages": 0, "structuralFindings": 0,
+        })
+        self.assertIn("Warnings: Encrypted", report.to_text())
+        self.assertIn("System failures: None reported.", report.to_text())
+        self.assertTrue(report.requires_block)
+        self.assertFalse(report.authorizes_open)
+
+    def test_system_failures_never_downgrade_or_swallow_warnings(self):
+        structural = structural_report(
+            expected_stages=(AnalysisStage.pdfStructure, AnalysisStage.embeddedFiles),
+            stages=(StageAnalysis(AnalysisStage.pdfStructure, StageOutcome.completed, (
+                AnalysisFinding(FindingCode.activeContent, FindingSeverity.critical),
+                AnalysisFinding(FindingCode.inspectionFailure, FindingSeverity.informational),
+                AnalysisFinding(FindingCode.resourceLimit, FindingSeverity.informational),
+                AnalysisFinding(FindingCode.knownMaliciousContent, FindingSeverity.blocking),
+            )),),
+        )
+        report = make_report(ScanResultStatus.scanFailed, structural=structural)
+        self.assertEqual(report.to_dict()["warnings"], {
+            "scanStatus": None, "structuralFindings": 1,
+        })
+        self.assertEqual(report.to_dict()["systemFailures"], {
+            "scanStatus": "scanFailed", "incompleteStages": 1, "structuralFindings": 2,
+        })
+        self.assertIn("Warnings: 1 structural review finding.", report.to_text())
+        self.assertIn("System failures: Scanner failure;", report.to_text())
+        self.assertTrue(report.requires_block)
+        self.assertFalse(report.authorizes_open)
+
+    def test_malware_and_cancellation_are_neither_warning_nor_system_failure(self):
+        for status in (ScanResultStatus.malwareDetected, ScanResultStatus.cancelled):
+            with self.subTest(status=status.value):
+                report = make_report(status)
+                self.assertEqual(report.to_dict()["warnings"], {
+                    "scanStatus": None, "structuralFindings": 0,
+                })
+                self.assertEqual(report.to_dict()["systemFailures"], {
+                    "scanStatus": None, "incompleteStages": 0, "structuralFindings": 0,
+                })
+                self.assertTrue(report.requires_block)
+                self.assertFalse(report.authorizes_open)
+
+    def test_system_failure_channels_are_detached_and_path_free(self):
+        report = make_report(ScanResultStatus.scanTimedOut)
+        payload = report.to_dict()
+        self.assertEqual(payload["systemFailures"]["scanStatus"], "scanTimedOut")
+        payload["systemFailures"]["scanStatus"] = "clean"
+        payload["warnings"]["structuralFindings"] = 9999
+        self.assertEqual(report.to_dict()["systemFailures"]["scanStatus"], "scanTimedOut")
+        self.assertEqual(report.to_dict()["warnings"]["structuralFindings"], 0)
+        self.assertNotIn("/private", report.to_text())
 
     def test_existing_scanner_gate_and_user_profile_defaults_are_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")

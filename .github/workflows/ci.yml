@@ -145,6 +145,22 @@ jobs:
       - name: Verify dependency-map behavior
         run: PYTHONPATH=. python3 tests/general/ci-test-scope.py -v
 
+  parser-filesystem-macos:
+    # Kernel-level Seatbelt denial must be exercised on a real macOS runner.
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
+    name: PDF parser filesystem confinement (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install reviewed optional PDF parser dependency
+        run: python3 -m pip install --disable-pip-version-check --requirement requirements-enhanced-pdf.txt
+      - name: Verify real macOS filesystem sandbox and timed parser
+        run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
+
   scanner-tests:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     runs-on: ubuntu-latest
@@ -595,6 +611,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/file-unavailable-midscan.py -v
       - name: Verify native scan process uses direct Python execution
         run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
+      - name: Reject unexpectedly exiting scanner and launch helpers
+        run: PYTHONPATH=. python3 tests/scan/unexpected-helper-exits.py -v
       - name: Detect installed ClamAV engine version without affecting scanner policy
         run: PYTHONPATH=. python3 tests/general/installed-clamav-version.py -v
       - name: Inspect scanner-advertised capabilities without scanning documents
@@ -787,6 +805,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/subprocess-limit.py -v
       - name: Verify final scan-to-launch validation on macOS
         run: PYTHONPATH=. python3 tests/scan/final-handoff.py -v
+      - name: Reject unexpectedly exiting helper processes on macOS
+        run: PYTHONPATH=. python3 tests/scan/unexpected-helper-exits.py -v
       - name: Verify staged ClamAV signature databases before activation on macOS
         run: PYTHONPATH=. python3 tests/general/validate-signature-database.py -v
       - name: Test signature directory permissions on macOS
@@ -1174,6 +1194,9 @@ jobs:
       - name: Verify native Cancel stops active and queued requests
         timeout-minutes: 2
         run: PYTHONPATH=. python3 tests/native/cancellation.py
+      - name: Verify scanner failures during app shutdown on macOS
+        timeout-minutes: 2
+        run: PYTHONPATH=. python3 tests/app/termination.py -v
       - name: Verify hidden progress does not bypass native scan dispatch
         run: PYTHONPATH=. python3 tests/native/hidden-scan-progress.py
       - name: Verify quarantine extended attributes remain intact on macOS

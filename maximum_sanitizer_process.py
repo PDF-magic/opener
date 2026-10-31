@@ -13,12 +13,15 @@ import subprocess
 import sys
 import time
 
+from maximum_network_isolation import NETWORK_DENY_PROFILE, SANDBOX_EXEC
+
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 MAX_WALL_SECONDS = 45
 MAX_SANITIZER_MEMORY_BYTES = 1024 * 1024 * 1024
 MEMORY_POLL_INTERVAL_SECONDS = 0.05
 MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE = 125
+NETWORK_DENIAL_SETUP_FAILED_EXIT_CODE = 124
 REAP_TIMEOUT_SECONDS = 3
 READ_CHUNK_BYTES = 65536
 BLOCK_MESSAGE = "PDF sanitization exceeded execution limits; no copy was offered."
@@ -46,7 +49,7 @@ class SanitizerProcessMemoryLimitError(SanitizerProcessExecutionError):
 
 
 def _memory_limited_command(command: tuple[str, ...]) -> tuple[str, ...]:
-    """Apply a Linux address-space limit or require the macOS RSS watchdog."""
+    """Require kernel network denial as well as the existing memory controls."""
     if sys.platform == "linux":
         try:
             source = Path(__file__).resolve(strict=True)
@@ -72,7 +75,11 @@ def _memory_limited_command(command: tuple[str, ...]) -> tuple[str, ...]:
     if sys.platform == "darwin":
         if not os.path.isfile("/bin/ps") or not os.access("/bin/ps", os.X_OK):
             raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
-        return command
+        # Seatbelt applies before untrusted PDF bytes enter the converter.
+        # Never fall back to launching an unconfined process.
+        if not os.path.isfile(SANDBOX_EXEC) or not os.access(SANDBOX_EXEC, os.X_OK):
+            raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
+        return (SANDBOX_EXEC, "-p", NETWORK_DENY_PROFILE, *command)
     raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
 
 
@@ -421,7 +428,8 @@ def run_limited_converter(
     """Run a trusted converter with hard input/output/time and memory bounds.
 
     Linux starts the converter through a fixed launcher that imposes RLIMIT_AS
-    before exec. Both supported platforms poll aggregate process-group RSS and
+    and a seccomp network-deny filter before exec. On macOS, Seatbelt denies
+    network access to the child. Both supported platforms poll group RSS and
     terminate the complete group if its 1-GiB budget is exceeded or cannot be
     measured. The caller supplies a fixed executable and sanitized environment;
     document data is provided only on stdin. stdout is capped while reading.
@@ -559,9 +567,11 @@ def run_limited_converter(
         _close_pipe(process.stdin)
         _close_pipe(process.stdout)
         process = None
-        if (sys.platform == "linux" and
-                return_code == MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE):
-            raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+        if sys.platform == "linux":
+            if return_code == MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE:
+                raise SanitizerProcessMemoryLimitError(MEMORY_LIMIT_MESSAGE)
+            if return_code == NETWORK_DENIAL_SETUP_FAILED_EXIT_CODE:
+                raise SanitizerProcessExecutionError(BLOCK_MESSAGE)
         return subprocess.CompletedProcess(command, return_code, bytes(output), None)
     except SanitizerProcessExecutionError:
         raise

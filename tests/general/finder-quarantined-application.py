@@ -305,7 +305,8 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
              patch.object(file_launcher.subprocess, "run") as run:
             file_launcher.launch_clean_file(self.app)
         run.assert_called_once_with(
-            [str(file_launcher.NATIVE_LAUNCHER), str(self.app)], check=True
+            [str(file_launcher.NATIVE_LAUNCHER), str(self.app)],
+            check=True, timeout=30
         )
 
 

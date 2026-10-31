@@ -37,6 +37,13 @@ class DirectNativeProcessTests(unittest.TestCase):
         self.assertIn('environment["PDF_MAGIC_REQUEST_ORIGIN"] = origin', source)
         self.assertIn('appendingPathComponent("record-scan-origin.py")', source)
         self.assertNotIn('process.executableURL = URL(fileURLWithPath: "/bin/bash")', source)
+        self.assertIn("nativeScanProcessTimeout: TimeInterval = 35 * 60", source)
+        self.assertIn("nativeOriginProcessTimeout: TimeInterval = 2", source)
+        self.assertIn("timeout: nativeScanProcessTimeout", source)
+        self.assertIn("timeout: nativeOriginProcessTimeout", source)
+        self.assertIn("let finishedInTime = waitForNativeProcess(", source)
+        self.assertIn("let output = diagnostic.finish(errors)", source)
+        self.assertIn("if !finishedInTime {", source)
         # Finder continues to use its required macOS Run Shell Script action.
         self.assertIn('exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"',
                       (ROOT / "allow-and-open.sh").read_text(encoding="utf-8"))
@@ -68,7 +75,7 @@ class DirectNativeProcessTests(unittest.TestCase):
             )
             harness = folder / "main.swift"
             harness.write_text(
-                'import Foundation\n' + helpers + '''
+                'import Foundation\nimport Darwin\n' + helpers + '''
 let scanner = URL(fileURLWithPath: CommandLine.arguments[1])
 let origin = URL(fileURLWithPath: CommandLine.arguments[2])
 let output = CommandLine.arguments[3]
@@ -119,6 +126,43 @@ recordNativeScanOrigin(script: origin, path: document, environment: env)
                              {"args": [selected], "origin": "desktop-application"})
             self.assertFalse(injected_marker.exists())
             self.assertFalse((folder / "unexpected-shell-execution").exists())
+
+    @unittest.skipUnless(sys.platform == "darwin", "Bounded Swift Process test requires macOS")
+    def test_native_execution_deadline_terminates_stalled_subprocess(self):
+        source = SWIFT.read_text(encoding="utf-8")
+        helpers = source.split(BEGIN, 1)[1].split(END, 1)[0]
+        with tempfile.TemporaryDirectory(prefix="opener-0852-") as directory:
+            root = Path(directory)
+            sleeping = root / "unresponsive.py"
+            sleeping.write_text("import time\ntime.sleep(30)\n", encoding="utf-8")
+            harness = root / "deadline.swift"
+            harness.write_text(
+                "import Foundation\nimport Darwin\n" + helpers + """
+let process = Process()
+process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+process.arguments = [CommandLine.arguments[1]]
+process.standardOutput = FileHandle.nullDevice
+process.standardError = FileHandle.nullDevice
+let finished = DispatchSemaphore(value: 0)
+process.terminationHandler = { _ in finished.signal() }
+try process.run()
+let started = Date()
+let succeeded = waitForNativeProcess(process, completion: finished, timeout: 0.15)
+precondition(!succeeded, "Overdue subprocess must not complete successfully")
+precondition(Date().timeIntervalSince(started) < 5, "Overdue subprocess must stop promptly")
+precondition(!process.isRunning, "Timed-out subprocess must be terminated")
+print("PASS: timed-out native Process is terminated and cannot authorize opening")
+""",
+                encoding="utf-8",
+            )
+            executable = root / "deadline"
+            subprocess.run(["xcrun", "swiftc", "-warnings-as-errors", str(harness),
+                            "-o", str(executable)], check=True, timeout=90)
+            completed = subprocess.run(
+                [str(executable), str(sleeping)], capture_output=True,
+                text=True, check=True, timeout=15,
+            )
+            self.assertIn("PASS: timed-out native Process", completed.stdout)
 
 
 if __name__ == "__main__":
