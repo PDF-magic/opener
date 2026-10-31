@@ -119,7 +119,7 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
                       (ROOT / "README.md").read_text(encoding="utf-8"))
         self.assertIn("(macos-security-controls.md)",
                       (ROOT / "docs/README.md").read_text(encoding="utf-8"))
-        references = re.findall(r"(?<!!)\\[[^\\]]+\\]\\(([^)]+)\\)", guide)
+        references = re.findall(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", guide)
         local = [ref for ref in references if not ref.startswith("https://")]
         self.assertGreaterEqual(len(local), 7)
         for ref in local:
