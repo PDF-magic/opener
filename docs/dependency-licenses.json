@@ -1,0 +1,46 @@
+{
+  "clamav": {
+    "versions": [],
+    "license": "GPL-2.0-only",
+    "source": "https://github.com/Cisco-Talos/clamav#licensing",
+    "distribution_requirements": "ClamAV is installed from an external package manager, not embedded in this application's bundle. Redistributing ClamAV requires its GPLv2 copyright, license and corresponding-source compliance, plus review of its third-party component notices in upstream COPYING.",
+    "use": "Required separately installed clamscan and FreshClam executables."
+  },
+  "pypdf": {
+    "versions": [
+      "5.9.0",
+      "6.21.3"
+    ],
+    "license": "BSD-3-Clause",
+    "source": "https://pypi.org/project/pypdf/6.21.3/",
+    "distribution_requirements": "Retain BSD-3-Clause copyright, license conditions and disclaimer in source or binary redistributions. Version 5.9.0 remains in portable CI only; the Enhanced requirements file selects 6.21.3.",
+    "use": "Optional strict PDF parsing and CI fixtures, not the Built-in scan gate."
+  },
+  "pillow": {
+    "versions": [
+      "11.3.0"
+    ],
+    "license": "MIT-CMU",
+    "source": "https://pypi.org/project/pillow/11.3.0/",
+    "distribution_requirements": "Preserve the MIT-CMU copyright and permission notices in distributed copies; check licenses of additional native libraries included in any redistributed image wheel.",
+    "use": "Optional test and sanitization image handling."
+  },
+  "cryptography": {
+    "versions": [
+      "46.0.4"
+    ],
+    "license": "Apache-2.0 OR BSD-3-Clause",
+    "source": "https://pypi.org/project/cryptography/46.0.4/",
+    "distribution_requirements": "Choose and satisfy an offered license route; preserve required copyright and permission notices, Apache 2.0 license and NOTICE obligations where applicable, and review any bundled native components when redistributing.",
+    "use": "Optional PDF sanitization validation dependencies in CI."
+  },
+  "pymupdf": {
+    "versions": [
+      "2.0"
+    ],
+    "license": "AGPL-3.0-only OR LicenseRef-Artifex-Commercial",
+    "source": "https://pymupdf.io/licensing",
+    "distribution_requirements": "For the AGPLv3 route, comply with applicable source-availability, copyright, license and producer-notice obligations for MuPDF and PyMuPDF. If proprietary distribution cannot meet those terms, obtain an Artifex commercial license; repository AGPL alone is not clearance.",
+    "use": "Isolated optional Maximum PDF rendering worker, not the installed Built-in gate."
+  }
+}

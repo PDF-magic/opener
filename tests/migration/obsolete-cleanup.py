@@ -112,6 +112,7 @@ class MigrationCleanupTests(unittest.TestCase):
             'python3 - "$workflow" <<\'PY\'',
             'python3 "$script_dir/offer-restore-pdf-handler.py"',
             'python3 "$install_dir/pdf-handler-status.py"',
+            'python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"',
         ):
             self.assertLess(source.index(required), completion)
         self.assertIn('if [ "$status" -eq 0 ] && [ "$migration_complete" -eq 1 ]',

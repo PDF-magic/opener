@@ -119,13 +119,116 @@ class UpdateAgentMigrationTests(unittest.TestCase):
         self.assertEqual(installer.count(migration), 1)
         self.assertLess(installer.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py"'),
                         installer.index(migration))
-        self.assertLess(installer.index(migration), installer.index('launchctl bootout "gui/$UID"'))
+        self.assertLess(installer.index(migration), installer.index('python3 "$script_dir/scripts/reconcile_update_agent.py"'))
         # Fresh-install provisioning is exclusive-create; the migrator owns upgrades.
         self.assertIn("os.O_EXCL | os.O_NOFOLLOW", installer)
         self.assertIn("except FileExistsError:", installer)
         self.assertNotIn("agent_path.write_bytes(", installer)
         self.assertIn("migrate_update_agent.py", installer)
 
+
+
+class SingleActiveUpdateAgentTests(unittest.TestCase):
+    """Behavioral launchctl tests without reading or modifying real agents."""
+
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "reconcile_update_agent", ROOT / "scripts/reconcile_update_agent.py"
+        )
+        self.agent_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.agent_module)
+
+    def fake_launchctl(self, *, loaded=False, fail_bootout=False,
+                       persist_after_bootout=False, fail_bootstrap=False,
+                       fail_verification=False):
+        state = {"loaded": loaded, "boots": 0, "calls": []}
+
+        def run(args, **kwargs):
+            state["calls"].append(args)
+            self.assertEqual(args[0], "launchctl")
+            self.assertIs(kwargs["check"], False)
+            self.assertEqual(kwargs["stdout"], subprocess.DEVNULL)
+            self.assertEqual(kwargs["stderr"], subprocess.DEVNULL)
+            if args[1] == "print":
+                code = 0 if state["loaded"] else 113
+                if fail_verification and state["boots"]:
+                    code = 113
+            elif args[1] == "bootout":
+                code = 5 if fail_bootout else 0
+                if not code and not persist_after_bootout:
+                    state["loaded"] = False
+            elif args[1] == "bootstrap":
+                state["boots"] += 1
+                code = 5 if fail_bootstrap or state["loaded"] else 0
+                if not code:
+                    state["loaded"] = True
+            else:
+                self.fail("Unexpected launchctl command")
+            return subprocess.CompletedProcess(args, code)
+
+        return state, run
+
+    def test_absent_agent_bootstraps_once(self):
+        state, run = self.fake_launchctl()
+        self.agent_module.reconcile(self.home_path(), 501, run)
+        self.assertTrue(state["loaded"])
+        self.assertEqual(state["boots"], 1)
+        self.assertEqual([args[1] for args in state["calls"]],
+                         ["print", "bootstrap", "print"])
+        self.assertEqual(state["calls"][1][2], "gui/501")
+        self.assertEqual(state["calls"][1][3], str(
+            self.home_path() / "Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
+        ))
+
+    def home_path(self):
+        return Path("/Users/synthetic-test-user")
+
+    def test_preloaded_agent_is_stopped_by_service_label(self):
+        state, run = self.fake_launchctl(loaded=True)
+        self.agent_module.reconcile(self.home_path(), 501, run)
+        self.assertTrue(state["loaded"])
+        self.assertEqual(state["boots"], 1)
+        self.assertEqual([args[1] for args in state["calls"]],
+                         ["print", "bootout", "print", "bootstrap", "print"])
+        self.assertEqual(
+            state["calls"][1][2], "gui/501/local.studio.pdf-malware-signatures"
+        )
+        # Reinstalling again still leaves precisely one registered service.
+        self.agent_module.reconcile(self.home_path(), 501, run)
+        self.assertTrue(state["loaded"])
+        self.assertEqual(state["boots"], 2)
+
+    def test_failed_bootout_never_bootstraps_duplicate(self):
+        state, run = self.fake_launchctl(loaded=True, fail_bootout=True)
+        with self.assertRaises(self.agent_module.UpdateAgentReconciliationError):
+            self.agent_module.reconcile(self.home_path(), 501, run)
+        self.assertEqual(state["boots"], 0)
+
+    def test_still_registered_old_agent_blocks_bootstrap(self):
+        state, run = self.fake_launchctl(loaded=True, persist_after_bootout=True)
+        with self.assertRaises(self.agent_module.UpdateAgentReconciliationError):
+            self.agent_module.reconcile(self.home_path(), 501, run)
+        self.assertEqual(state["boots"], 0)
+
+    def test_registration_failures_refuse_success(self):
+        for options in ({"fail_bootstrap": True}, {"fail_verification": True}):
+            with self.subTest(options=options):
+                state, run = self.fake_launchctl(**options)
+                with self.assertRaises(self.agent_module.UpdateAgentReconciliationError):
+                    self.agent_module.reconcile(self.home_path(), 501, run)
+                self.assertEqual(state["boots"], 1)
+
+    def test_installer_migrates_before_one_scoped_reconciliation(self):
+        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        migrate = 'python3 "$script_dir/scripts/migrate_update_agent.py"'
+        reconcile = 'python3 "$script_dir/scripts/reconcile_update_agent.py"'
+        self.assertEqual(installer.count(reconcile), 1)
+        self.assertLess(installer.index(migrate), installer.index(reconcile))
+        self.assertLess(installer.index('verify_pdf_opener_bundle.py'),
+                        installer.index(reconcile))
+        self.assertNotIn('launchctl bootout "gui/$UID" "$agent"', installer)
+        self.assertNotIn('launchctl bootstrap "gui/$UID" "$agent"', installer)
 
 if __name__ == "__main__":
     unittest.main()
