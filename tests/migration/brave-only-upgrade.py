@@ -250,7 +250,7 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
     self.assertLess(INSTALLER.index(verify), INSTALLER.index(SWAP_START))
     self.assertLess(INSTALLER.index(SWAP_START), INSTALLER.index("lsregister -f"))
     self.assertLess(INSTALLER.index('python3 "$script_dir/scripts/migrate_update_agent.py"'),
-                    INSTALLER.index('launchctl bootout "gui/$UID"'))
+                    INSTALLER.index('python3 "$script_dir/scripts/reconcile_update_agent.py"'))
     self.assertIn('bash "$install_dir/update-malware-signatures.sh"', INSTALLER)
     scanner = (ROOT / "scan-and-open.py").read_text()
     self.assertIn("check_database()", scanner)
