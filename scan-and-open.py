@@ -2,6 +2,10 @@
 """Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager
 from scanner_concurrency_validation import validate_scanner_concurrency_limit
+from scanner_filesystem_sandbox import (
+    BLOCK_MESSAGE as SCANNER_SANDBOX_BLOCK_MESSAGE,
+    ScannerFilesystemSandboxError, confined_scanner,
+)
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 from scanner_argument_validation import (
     InvalidScannerArguments, validate_scanner_arguments,
@@ -77,6 +81,7 @@ SAFE_SCAN_FAILURES = frozenset((
     'ClamAV scanner version could not be verified. Reinstall ClamAV before opening files.',
     'Unsupported ClamAV scanner version. Install ClamAV 1.4 or 1.5 before opening files.',
     'The requested PDF is not available locally; opening was stopped.',
+    SCANNER_SANDBOX_BLOCK_MESSAGE,
 ))
 
 
@@ -360,17 +365,22 @@ def terminate_scanner_children(process):
 
 
 def run_scan_command(command, timeout):
-    if not native_cancellation_enabled():
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               text=True, start_new_session=True)
-    try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except BaseException:
-        # Includes cancellation and timeouts: never leave scanner children alive.
-        terminate_scanner_children(process)
-        raise
-    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    # Keep the mandatory ClamAV command intact; constrain only the child
+    # process's filesystem access. The parent retains every integrity gate.
+    with confined_scanner(command, scan=True) as (restricted, options):
+        if not native_cancellation_enabled():
+            return subprocess.run(restricted, capture_output=True, text=True,
+                                  timeout=timeout, **options)
+        process = subprocess.Popen(
+            restricted, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True, **options)
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except BaseException:
+            # Includes cancellation and timeouts: never leave scanner children alive.
+            terminate_scanner_children(process)
+            raise
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def cancellable_scan(function):
@@ -704,9 +714,12 @@ def scan_engine_version(scanner):
     version_command = [scanner, '--version']
     try:
         validate_scanner_version_arguments(version_command, scanner=scanner)
-        output = subprocess.check_output(
-            version_command, text=True, timeout=5, stderr=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError, UnicodeError, InvalidScannerArguments):
+        with confined_scanner(version_command, scan=False) as (restricted, options):
+            output = subprocess.check_output(
+                restricted, text=True, timeout=5, stderr=subprocess.DEVNULL,
+                **options)
+    except (OSError, subprocess.SubprocessError, UnicodeError,
+            InvalidScannerArguments, ScannerFilesystemSandboxError):
         return None
     match = re.match(
         r'^ClamAV ([0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?)(?:/|\s|$)',
