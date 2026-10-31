@@ -117,7 +117,12 @@ def check(root=ROOT):
     if package.get(field):
       raise LicenseReviewError("Unreviewed WebExtension dependency: " + field)
   installer = (root / "install-allow-and-open.sh").read_text(encoding="utf-8")
-  if "brew install clamav" not in installer or "clamscan" not in installer:
+  # The reviewed ClamAV route uses the separately validated Homebrew
+  # executable, never an arbitrary installation command or bundled binary.
+  expected_detection = 'brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"'
+  expected_install = '"$brew_executable" install clamav'
+  if (expected_detection not in installer or expected_install not in installer
+      or "clamscan" not in installer):
     raise LicenseReviewError("ClamAV installation route changed; recheck GPL terms")
   project_license = (root / "LICENSE").read_text(encoding="utf-8")
   if "GNU AFFERO GENERAL PUBLIC LICENSE" not in project_license:
