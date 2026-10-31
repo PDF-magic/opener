@@ -94,10 +94,21 @@ class DependencyLicensingTests(unittest.TestCase):
       checker.check(self.root)
 
   def test_rejects_install_route_or_project_license_changes(self):
-    self.edit("install-allow-and-open.sh", "brew install clamav", "brew install unrelated")
+    route = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
+    self.edit("install-allow-and-open.sh", route,
+              'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated')
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh", "brew install unrelated", "brew install clamav")
+    self.edit("install-allow-and-open.sh",
+              'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated', route)
+    self.edit("install-allow-and-open.sh",
+              'python3 "$script_dir/scripts/confirm_clamav_install.py"',
+              'echo "No consent requested"')
+    with self.assertRaises(checker.LicenseReviewError):
+      checker.check(self.root)
+    self.edit("install-allow-and-open.sh",
+              'echo "No consent requested"',
+              'python3 "$script_dir/scripts/confirm_clamav_install.py"')
     self.edit("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE", "INCOMPATIBLE LICENSE")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
