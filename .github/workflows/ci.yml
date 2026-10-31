@@ -620,6 +620,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/icloud-drive.py -v
       - name: Verify literal PDF filenames with Unicode, shell punctuation and control characters
         run: PYTHONPATH=. python3 tests/pdf/filename-paths.py -v
+      - name: Test filesystem maximum-length and overlong PDF filenames
+        run: PYTHONPATH=. python3 tests/scan/long-filenames.py -v
       - name: Reject unsupported configuration values and fill absent keys safely
         run: PYTHONPATH=. python3 tests/configuration/values.py -v
       - name: Validate optional scanner concurrency limits without changing scan safety
@@ -1162,6 +1164,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
       - name: Detect selected symlink changes on macOS
         run: PYTHONPATH=. python3 tests/scanner/symbolic-link-changes.py -v
+      - name: Test maximum-length and overlong PDF filenames on macOS
+        run: PYTHONPATH=. python3 tests/scan/long-filenames.py -v
       - name: Test verified opening handoff of actually quarantined PDFs
         run: PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
       - name: Reject nonexistent local files and dangling links on macOS
