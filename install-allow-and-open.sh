@@ -158,9 +158,8 @@ agent="$HOME/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist"
 launchctl bootout "gui/$UID" "$agent" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID" "$agent"
 
-python3 - "$workflow" "$install_dir/allow-and-open.sh" <<'PY'
+python3 - "$workflow" <<'PY'
 import plistlib
-import shlex
 import sys
 from pathlib import Path
 
@@ -174,7 +173,13 @@ if len(actions) != 1:
 backup = path.with_name('document.wflow.before-brave')
 if not backup.exists():
     backup.write_bytes(path.read_bytes())
-actions[0]['ActionParameters']['COMMAND_STRING'] = 'export PDF_MAGIC_REQUEST_ORIGIN=finder\nexec /bin/bash ' + shlex.quote(sys.argv[2]) + ' "$@"\n'
+# This must be static shell source: document paths are forwarded only as
+# positional arguments, never interpolated into Finder's COMMAND_STRING.
+actions[0]['ActionParameters']['COMMAND_STRING'] = (
+    'export PDF_MAGIC_REQUEST_ORIGIN=finder\n'
+    'exec /bin/bash "$HOME/Library/Application Support/Studio/'
+    'allow-and-open/allow-and-open.sh" "$@"\n'
+)
 actions[0]['ActionParameters']['inputMethod'] = 1
 actions[0]['ActionParameters']['shell'] = '/bin/bash'
 with path.open('wb') as stream:
