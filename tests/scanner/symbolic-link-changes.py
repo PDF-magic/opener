@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """opener-0829: selected symlink changes invalidate otherwise clean scans."""
 
-from contextlib import contextmanager, ExitStack
+from contextlib import contextmanager, ExitStack, nullcontext
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -52,6 +52,10 @@ class SelectedSymlinkChangesTests(unittest.TestCase):
             if scan_callback:
                 scan_callback()
             return subprocess.CompletedProcess(command, 0, "selected.pdf: OK", "")
+        # Preserve the fake ClamAV argv so this fixture tests symlink races,
+        # not the separately verified macOS scanner executable sandbox.
+        stack.enter_context(patch.object(gate, "confined_scanner",
+            side_effect=lambda command, *, scan: nullcontext((command, {}))))
         stack.enter_context(patch.object(gate.subprocess, "run", side_effect=run))
 
     def test_normal_symlink_and_regular_path_still_work(self):

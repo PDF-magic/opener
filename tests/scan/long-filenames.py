@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """opener-0846: real filesystem filename-byte limits at scan admission and handoff."""
 
-from contextlib import ExitStack, redirect_stderr
+from contextlib import ExitStack, nullcontext, redirect_stderr
 import errno
 import importlib.util
 import io
@@ -60,6 +60,10 @@ class ExtremelyLongFilenamesTests(unittest.TestCase):
             self.assertEqual(command[0], "/scanner")
             self.assertEqual(command[-2], "--")
             return subprocess.CompletedProcess(command, 0, "file: OK", "")
+        # A synthetic /scanner checks filename bytes without requiring a real
+        # installed ClamAV executable; actual sandbox permissions have separate tests.
+        stack.enter_context(patch.object(gate, "confined_scanner",
+            side_effect=lambda command, *, scan: nullcontext((command, {}))))
         scanner = stack.enter_context(patch.object(gate.subprocess, "run", side_effect=scan))
         return scanner, launcher, quarantine
 
