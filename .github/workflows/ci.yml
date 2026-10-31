@@ -366,6 +366,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/about-diagnostics-settings-page.py -v
       - name: Verify Advanced Scanning settings page and navigation
         run: PYTHONPATH=. python3 tests/general/advanced-scanning-settings-page.py -v
+      - name: Verify optional scan history remains off by default
+        run: PYTHONPATH=. python3 tests/general/scan-history-default.py -v
       - name: Verify dedicated Updates settings page
         run: PYTHONPATH=. python3 tests/updates/settings-page.py -v
       - name: Verify manual update action behavior
