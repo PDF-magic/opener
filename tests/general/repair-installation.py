@@ -80,10 +80,14 @@ class RepairInstallationTests(unittest.TestCase):
         self.assertIn('exec /bin/bash "$installer"', source)
         self.assertLess(source.index('if [ "$response" != "REPAIR" ]; then'),
                         source.index('exec /bin/bash "$installer"'))
-        for unexpected in ("sudo ", "brew install", "curl ", "wget ", "eval ",
+        for unexpected in ("brew install", "curl ", "wget ", "eval ",
                            "rm -rf", "target-app.txt", "clamscan --"):
             with self.subTest(unexpected=unexpected):
                 self.assertNotIn(unexpected, source)
+        # Explain that sudo is prohibited without mistaking the notice for
+        # a command invocation.
+        self.assertNotIn("\\nsudo ", source)
+        self.assertNotIn("\\n    sudo ", source)
 
     def test_established_installer_skips_healthy_scanner_and_preserves_preferences(self):
         source = INSTALLER.read_text(encoding="utf-8")
