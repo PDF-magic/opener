@@ -101,3 +101,31 @@ request permissions, write to existing settings, or change the scanner's
 fail-closed checks. Required CI already invokes
 `tests/general/first-run-welcome.py`; regressions verify this text against
 the inactive browser manifest, background and native connection status.
+
+## Extension setup instructions (opener-0981)
+
+The first-run **Optional browser extensions** section now displays concise,
+accessible setup guidance without implying that an extension is required or
+that a functioning, publicly distributed browser integration exists:
+
+1. **Safari, development/test builds:** Only after installing a properly
+   signed host app containing the Safari extension, open
+   **Safari > Settings > Extensions**, locate PDF Magic Opener, and enable it manually if desired.
+   If the extension does not appear, check the installed host app rather than
+   bypassing macOS signing or Safari protections. The host app's embedded
+   extension is not automatically enabled.
+2. **Chrome, Edge, Firefox, and other browsers:** There is **no public release**
+   ready to install. The browser packages are development/test artifacts,
+   not production PDF protection. This welcome does not direct users to an
+   unverified store listing or ask them to sideload an unsigned artifact.
+3. **After enabling a test extension:** Its toolbar still reports **Not
+   active**. It cannot scan, approve, or open PDFs, and no verified
+   browser-to-scanner connection exists. For scanned PDF opening, use the
+   installed native PDF handler.
+
+The welcome neither starts extension installation or activation nor requests
+browser permissions, opens browser settings, changes the user's PDF browser
+choice, or affects mandatory local scanner checks and quarantine protections.
+The existing required portable first-run CI suite verifies the instructional
+text, accessible heading, read-only behavior, Safari documentation, inactive
+extension manifest, and lack of publicly released extension artifacts.

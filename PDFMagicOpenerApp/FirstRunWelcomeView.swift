@@ -204,6 +204,16 @@ struct FirstRunWelcomeView: View {
               Text("Current browser extensions are not active: they cannot scan, sanitize, or open PDFs, and have no verified browser-to-scanner connection. Installing one does not automatically protect PDFs viewed directly in a browser.")
               Text("This setup does not install or enable extensions, request browser permissions, or change browser settings. You can continue without an extension.")
                 .foregroundStyle(.secondary)
+
+              Divider()
+              Label("Extension setup instructions", systemImage: "list.number")
+                .font(.headline)
+                .accessibilityIdentifier("firstRunExtensionSetupInstructions")
+
+              Text("Safari (test builds): Install a properly signed PDF Magic Opener app with its Safari extension. In Safari, open Settings > Extensions, find PDF Magic Opener, and enable it manually if you choose. If it is not listed, check the installed host app.")
+              Text("Chrome, Edge, Firefox, and other browsers: No public extension release is available. Current browser packages are for development and testing, not a ready-to-install protective extension.")
+              Text("An enabled test extension still shows Not active and cannot scan or approve PDFs. Continue to use the installed native PDF handler for scanned opening; no extension installation or activation is performed here.")
+                .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
