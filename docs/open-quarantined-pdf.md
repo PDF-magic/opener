@@ -10,7 +10,7 @@ disable macOS Gatekeeper or other system controls.
 The new [quarantined-PDF opening test](../tests/general/open-quarantined-pdf.py)
 creates its own harmless synthetic PDF in a disposable temporary directory.
 On **macOS**, it attaches and reads an actual `com.apple.quarantine` xattr
-using `os.setxattr` and `os.getxattr`. Unlike a purely mocked metadata
+through the real `/usr/bin/xattr -wx` and `-px` commands. Unlike a purely mocked metadata
 test, these assertions exercise the operating system's real extended
 attribute storage.
 
