@@ -39,7 +39,8 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
 
     def test_only_fixed_copy_is_rendered_without_paths_or_untrusted_diagnostics(self):
         source = SOURCE.read_text(encoding="utf-8")
-        self.assertIn("let copy = ScanResultSummaryCopy.forStatus(status)", source)
+        self.assertIn("let copy = inconsistent", source)
+        self.assertIn("ScanResultSummaryCopy.forStatus(status)", source)
         self.assertIn("headingLabel.stringValue = copy.heading", source)
         self.assertIn("explanationLabel.stringValue = copy.explanation", source)
         self.assertNotIn("func show(_ status: String)", source)
