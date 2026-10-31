@@ -55,12 +55,12 @@ classes = classes.replace(
 with tempfile.TemporaryDirectory(prefix="opener-failure-presentation-") as directory:
     work = Path(directory)
     (work / "twilight-reading.png").write_bytes((ROOT / "twilight-reading.png").read_bytes())
-    gate = work / "gate.sh"
+    gate = work / "gate.py"
     gate.write_text(
-        "#!/bin/bash\n"
-        'if [ "$SCAN_TEST_EMPTY" = "1" ]; then exit 7; fi\n'
-        "printf 'Simulated ClamAV signature failure\\n' >&2\n"
-        "exit 7\n"
+        "import os, sys\n"
+        "if os.environ.get('SCAN_TEST_EMPTY') != '1':\n"
+        "    sys.stderr.write('Simulated ClamAV signature failure\\n')\n"
+        "sys.exit(7)\n"
     )
     resolved = work / "resolved.pdf"
     resolved.write_bytes(b"%PDF-1.4\nsynthetic\n")
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix="opener-failure-presentation-") as direc
     alias.symlink_to(resolved)
     original = (
         'FileManager.default.homeDirectoryForCurrentUser\n'
-        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/allow-and-open.sh")'
+        '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
     )
     assert classes.count(original) == 1, "Native scan gate must be isolated from installed scanner"
     classes = classes.replace(original, 'URL(fileURLWithPath: "' + str(gate) + '")')
