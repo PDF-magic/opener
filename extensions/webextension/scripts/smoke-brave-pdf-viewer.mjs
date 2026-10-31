@@ -79,7 +79,25 @@ try {
   // application/pdf embed. Checking the real DOM distinguishes this test from
   // merely fetching a PDF or loading the PDF Magic Opener extension popup.
   const viewer = page.locator('embed[type="application/pdf"]').first();
-  await viewer.waitFor({ state: "attached", timeout: 20000 });
+  try {
+    await viewer.waitFor({ state: "attached", timeout: 15000 });
+  } catch (error) {
+    // Only inspect the generated localhost fixture and browser viewer shell,
+    // never URLs or content from the user's real browsing or PDF documents.
+    const diagnostic = await page.evaluate(() => ({
+      contentType: document.contentType,
+      embedTypes: [...document.querySelectorAll("embed")].map(x => x.type),
+      iframeCount: document.querySelectorAll("iframe").length,
+      domPrefix: document.documentElement?.outerHTML.slice(0, 1800)
+    })).catch(() => ({ inaccessibleViewerDocument: true }));
+    console.log("Synthetic Brave viewer diagnostics:", JSON.stringify({
+      document: diagnostic,
+      frameCount: page.frames().length,
+      pageCount: context.pages().length,
+      downloaded: downloads.length
+    }));
+    throw error;
+  }
   assert.equal(await viewer.getAttribute("type"), "application/pdf");
   assert.equal(new URL(page.url()).origin, origin);
   assert.ok(requests.includes("/inline.pdf"), "Brave must request the PDF from localhost");
