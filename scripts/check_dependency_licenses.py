@@ -128,7 +128,7 @@ def check(root=ROOT):
 if __name__ == "__main__":
   try:
     found = check()
-  except (OSError, ValueError, json.JSONDecodeError, shlex.ValueError) as error:
+  except (OSError, ValueError) as error:
     print("Dependency license review FAILED: " + str(error), file=sys.stderr)
     sys.exit(1)
   print("Reviewed dependency licensing: ClamAV GPLv2 and "

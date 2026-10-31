@@ -47,10 +47,12 @@ class DependencyLicensingTests(unittest.TestCase):
 
   def test_reject_unreviewed_dependency_and_unpinned_install(self):
     workflow = ".github/workflows/ci.yml"
-    self.edit(workflow, "pypdf", "brandnew==1.0 pypdf")
+    original = "pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt"
+    changed = original + " brandnew==1.0"
+    self.edit(workflow, original, changed)
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit(workflow, "brandnew==1.0 pypdf", "pypdf")
+    self.edit(workflow, changed, original)
     self.edit(workflow, "requirements-enhanced-pdf.txt", "unreviewed-package")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
