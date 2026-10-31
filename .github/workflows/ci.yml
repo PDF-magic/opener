@@ -188,6 +188,8 @@ jobs:
           PY
       - name: Verify safe versioned configuration loading
         run: PYTHONPATH=. python3 tests/configuration/loading.py -v
+      - name: Detect pre-existing scan entry points without changing installation state
+        run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Verify staged PDF handler bundle contents and executable permissions
