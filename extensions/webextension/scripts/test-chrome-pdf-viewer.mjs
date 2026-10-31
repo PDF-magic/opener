@@ -8,6 +8,11 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { createAuthenticatedPdfRoutes } from "./authenticated-pdf-routes.mjs";
+import {
+  LARGE_REMOTE_PDF_MIN_BYTES, createLargeRemotePdf,
+  createLargeRemotePdfRoute
+} from "./large-remote-pdf-fixture.mjs";
 
 const binary = process.argv[2] || process.env.CHROME_PATH;
 assert.ok(binary, "Usage: node scripts/test-chrome-pdf-viewer.mjs CHROME_FOR_TESTING_BINARY");
@@ -44,6 +49,8 @@ function makePdf() {
 }
 
 const pdf = makePdf();
+const auth = createAuthenticatedPdfRoutes(pdf);
+const large = createLargeRemotePdfRoute(createLargeRemotePdf());
 const routes = ["/built-in-viewer.pdf", "/mime-only", "/framed-a.pdf", "/framed-b.pdf"];
 const embeddedOnly = process.argv.includes("--embedded-only");
 const htmlRoutes = new Map([
@@ -57,6 +64,8 @@ const htmlRoutes = new Map([
 ]);
 const counts = new Map([...routes, ...htmlRoutes.keys()].map(path => [path, 0]));
 const server = createServer((request, response) => {
+  if (auth.handle(request, response)) return;
+  if (large.handle(request, response)) return;
   // No upstream requests and no outgoing network. Unknown paths fail closed.
   if (request.method !== "GET" || !counts.has(request.url)) {
     response.writeHead(404, { "Cache-Control": "no-store" });
@@ -231,6 +240,94 @@ try {
     }
   }
 
+  if (!embeddedOnly) {
+    // A login preference or a PDF URL must never bypass endpoint authentication.
+    // Exercise the actual browser session: 401 before sign-in, HttpOnly cookie
+    // acquired through ordinary navigation, then a real rendered PDF viewer.
+    const authPdf = "http://127.0.0.1:" + port + auth.pdfRoute;
+    const authLogin = "http://127.0.0.1:" + port + auth.loginRoute;
+    const { targetId: authTargetId } = await command("Target.createTarget", {
+      url: "about:blank"
+    });
+    try {
+      const { sessionId: authSessionId } = await command("Target.attachToTarget", {
+        targetId: authTargetId, flatten: true
+      });
+      await command("Page.enable", {}, authSessionId);
+      await command("Page.navigate", { url: authPdf }, authSessionId);
+      await until(async () => {
+        const { result, exceptionDetails } = await command("Runtime.evaluate", {
+          expression: 'document.readyState === "complete" && ' +
+            'document.body?.textContent?.includes("Authentication required")',
+          returnByValue: true
+        }, authSessionId);
+        return !exceptionDetails && result?.value === true;
+      }, "401 response before browser authentication");
+      assert.equal(auth.snapshot().denied, 1);
+      assert.equal(auth.snapshot().granted, 0,
+        "An unauthenticated PDF must never be served to Chrome");
+
+      await command("Page.navigate", { url: authLogin }, authSessionId);
+      await until(async () => {
+        const { result, exceptionDetails } = await command("Runtime.evaluate", {
+          expression: 'document.readyState === "complete" && ' +
+            'document.body?.textContent?.includes("Signed in") && document.cookie === ""',
+          returnByValue: true
+        }, authSessionId);
+        return !exceptionDetails && result?.value === true;
+      }, "browser-managed HttpOnly authentication cookie");
+      assert.equal(auth.snapshot().signedIn, 1);
+
+      await command("Page.navigate", { url: authPdf }, authSessionId);
+      await until(async () => {
+        const { frameTree } = await command("Page.getFrameTree", {}, authSessionId);
+        if (frameTree.frame?.url !== authPdf) return null;
+        const { root } = await command("DOM.getDocument", {
+          depth: -1, pierce: true
+        }, authSessionId);
+        const { targetInfos } = await command("Target.getTargets");
+        return hasViewerFrame(frameTree) ||
+          targetInfos.some(info => builtinViewer.test(info.url || "")) ||
+          hasViewerEmbed(root);
+      }, "rendered authenticated PDF in Chrome's built-in viewer");
+      assert.ok(auth.snapshot().granted > 0,
+        "The protected PDF must be fetched with the browser session cookie");
+    } finally {
+      await command("Target.closeTarget", { targetId: authTargetId });
+    }
+    // Exercise a large PDF over real HTTP rather than a small in-memory page
+    // or a static URL classification. The loopback endpoint supports single
+    // byte ranges; the browser decides whether to request the whole resource.
+    const largeUrl = "http://127.0.0.1:" + port + large.path;
+    const { targetId: largeTargetId } = await command("Target.createTarget", {
+      url: "about:blank"
+    });
+    try {
+      const { sessionId: largeSessionId } = await command("Target.attachToTarget", {
+        targetId: largeTargetId, flatten: true
+      });
+      await command("Page.enable", {}, largeSessionId);
+      const navigation = await command("Page.navigate", { url: largeUrl }, largeSessionId);
+      assert.equal(navigation.errorText, undefined);
+      await until(async () => {
+        const { frameTree } = await command("Page.getFrameTree", {}, largeSessionId);
+        if (frameTree.frame?.url !== largeUrl) return null;
+        const { root } = await command("DOM.getDocument", {
+          depth: -1, pierce: true
+        }, largeSessionId);
+        const { targetInfos } = await command("Target.getTargets");
+        return hasViewerFrame(frameTree) ||
+          targetInfos.some(info => builtinViewer.test(info.url || "")) ||
+          hasViewerEmbed(root);
+      }, "built-in viewer for the large remote PDF", 60_000);
+      assert.ok(large.size > LARGE_REMOTE_PDF_MIN_BYTES);
+      assert.ok(large.snapshot().requests > 0,
+        "Chrome must request the large remote PDF via real HTTP");
+    } finally {
+      await command("Target.closeTarget", { targetId: largeTargetId });
+    }
+
+  }
 
   if (embeddedOnly) {
     const pageUrl = "http://127.0.0.1:" + port + "/embedded-frames.html";
@@ -288,7 +385,7 @@ try {
     }
   }
 
-  if (!embeddedOnly) console.log("PASS Chrome built-in PDF viewer opens local PDF and MIME-only PDF: " + version);
+  if (!embeddedOnly) console.log("PASS Chrome built-in PDF viewer opens local PDF, MIME-only, authenticated and large remote PDF: " + version);
 } catch (error) {
   // Only local disposable Chrome diagnostics; never log user file contents.
   console.error("Chrome local viewer diagnostic:", stderrTail);

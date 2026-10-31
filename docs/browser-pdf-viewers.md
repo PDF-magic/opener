@@ -103,6 +103,34 @@ all user-selected browser/PDF apps, scanner protections, Chrome settings,
 and native host access are unchanged. The test uses only loopback traffic,
 never reads an actual user's PDFs, and removes the disposable profile.
 
+## Firefox's built-in PDF viewer: real-browser check (opener-0803)
+
+The dedicated **Firefox built-in PDF viewer smoke test** GitHub Actions job
+installs Mozilla Firefox (latest release channel) and geckodriver, and runs
+Firefox in a **new disposable headless profile** with its built-in PDF.js
+viewer enabled. The test creates a valid, small, one-page PDF in memory and
+serves it only over an ephemeral `127.0.0.1` HTTP listener with inline
+`Content-Type: application/pdf` and `Cache-Control: no-store` headers.
+It tests both a normal `.pdf` path and an extensionless MIME-identified path.
+
+The test requires real local PDF requests plus **actual rendered PDF.js
+evidence** in the browser document: the built-in viewer and page controls,
+PDFViewerApplication with an initialized one-page PDF document, and a rendered
+first page. HTTP success, a filename suffix, the mere presence of an empty
+viewer shell, or a downloaded PDF are not sufficient for a pass. The test
+fails if Firefox or geckodriver is missing, the document cannot open, or the
+built-in reader is disabled. See
+[`test-firefox-pdf-viewer.mjs`](../extensions/webextension/scripts/test-firefox-pdf-viewer.mjs)
+and its [regression checks](../extensions/webextension/tests/firefox-pdf-viewer.test.mjs).
+
+The check does **not** install or activate the PDF Magic WebExtension, grant
+browser permissions, call native messaging, run ClamAV, or establish that
+the viewer can be intercepted before rendering. This verifies the native
+**Firefox PDF.js viewing path**, not scanner authority or pre-open
+enforcement, which remain inactive. User PDF files, browser profiles,
+preferences, and preferred PDF applications are never accessed or changed.
+Temporary test profiles and the loopback listener are disposed after the run.
+
 ## Vendor documentation
 
 - [Google Chrome — Manage PDFs](https://support.google.com/chrome/answer/16215622?hl=en)
