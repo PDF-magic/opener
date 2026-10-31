@@ -24,7 +24,7 @@ ATTRIBUTE = "com.apple.quarantine"
 MARKER = b"0081;00000000;PDFMagicOpener;00000000-0000-0000-0000-000000000000"
 SPCTL = "/usr/sbin/spctl"
 DANGEROUS_SPCTL = re.compile(
-    r"\\b(?:/usr/sbin/)?spctl\\b.{0,180}?--(?:master-|global-)?disable\\b",
+    r"\b(?:/usr/sbin/)?spctl\b.{0,180}?--(?:master-|global-)?disable\b",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -41,7 +41,7 @@ def require_gatekeeper_enabled(result):
 def require_rejected_unsigned_app(result):
     """An accepted result, spctl usage error, or unavailable service is not proof."""
     output = result.stdout + "\n" + result.stderr
-    if result.returncode == 0 or not re.search(r"\\brejected\\b", output, re.I):
+    if result.returncode == 0 or not re.search(r"\brejected\b", output, re.I):
         raise AssertionError("Gatekeeper did not explicitly reject unsigned app")
 
 
