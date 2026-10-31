@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """opener-0853: bound scanner subprocess probes across requests and processes."""
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -27,6 +27,14 @@ class ScannerSubprocessLimitTests(unittest.TestCase):
         substitution = patch.object(gate, "CACHE_DB", self.root / "clean.sqlite3")
         substitution.start()
         self.addCleanup(substitution.stop)
+        # Concurrency fixtures use a fake /scanner and mock check_output.
+        # Isolate their queue assertions from the independently kernel-tested
+        # macOS filesystem boundary, which correctly rejects fake executables.
+        isolation = patch.object(
+            gate, "confined_scanner",
+            side_effect=lambda command, *, scan: nullcontext((command, {})))
+        isolation.start()
+        self.addCleanup(isolation.stop)
 
     def test_unqueued_version_probes_obey_two_active_process_slots(self):
         counter = threading.Lock()
