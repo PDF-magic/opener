@@ -193,7 +193,7 @@ class SignatureAgentRestartTests(unittest.TestCase):
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
         self.assertIn('"StartInterval": 14400', migrator)
-        self.assertIn("'ProgramArguments': ['/bin/bash', str(install_dir / 'update-malware-signatures.sh')]", installer)
+        self.assertIn('"ProgramArguments": ["/bin/bash", str(install_dir / "update-malware-signatures.sh")]', migrator)
         script = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertIn("fcntl.flock(descriptor, fcntl.LOCK_EX)", script)
         self.assertIn("previous.st_mtime >= started", script)
