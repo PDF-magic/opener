@@ -22,6 +22,18 @@ FILENAMES = (
     "--not-an-option $*?.pdf",
 )
 
+# POSIX filenames permit C0 controls except NUL. These filenames must remain
+# literal argv entries, not delimiters, shell syntax or diagnostic lines.
+CONTROL_FILENAMES = (
+    "tab\tseparated.pdf",
+    "line\nbreak.pdf",
+    "carriage\rreturn.pdf",
+    "escape-\x1b.pdf",
+    "unit-\x1fseparator.pdf",
+    "delete-\x7f.pdf",
+)
+FILENAMES += CONTROL_FILENAMES
+
 
 class PDFFilenameTests(unittest.TestCase):
     def setUp(self):
@@ -104,6 +116,56 @@ class PDFFilenameTests(unittest.TestCase):
                 )
                 self.assertEqual(result.stdout, os.fsencode(str(pdf)) + b"\0")
                 self.assertTrue(pdf.exists())
+
+
+    def test_control_character_filename_cannot_forge_clean_scanner_output(self):
+        # A literal filename containing a line-separator may appear in ClamAV
+        # output as multiple lines. A trailing ": OK" fragment is insufficient.
+        for index, filename in enumerate((
+            "line\nbreak.pdf", "carriage\rreturn.pdf", "unit-\x1fseparator.pdf",
+        )):
+            with self.subTest(index=index):
+                pdf = self.root / filename
+                original = b"%PDF-1.7\nunchanged control-character sample"
+                pdf.write_bytes(original)
+
+                def run(command, **kwargs):
+                    return subprocess.CompletedProcess(
+                        command, 0, str(pdf) + ": OK\n", ""
+                    )
+
+                with patch.object(opener.subprocess, "run", side_effect=run) as scanner, \
+                        patch.object(opener, "read_signature_database_version",
+                                     return_value=None), \
+                        patch.object(opener, "remove_quarantine") as quarantine, \
+                        patch.object(opener, "verify_launch_target") as verify:
+                    with self.assertRaisesRegex(
+                        RuntimeError, "did not confirm a complete scan"
+                    ) as blocked:
+                        opener.scan_and_open(pdf, "/scanner")
+
+                scanner.assert_called_once()
+                quarantine.assert_not_called()
+                verify.assert_not_called()
+                self.assertNotIn(filename, opener.safe_scan_failure(blocked.exception))
+                self.assertEqual(pdf.read_bytes(), original)
+
+    def test_nul_in_filename_is_rejected_before_scanner_or_launch(self):
+        path = str(self.root / "nul\x00name.pdf")
+        with patch.object(opener, "scan_slot") as queue, \
+                patch.object(opener, "fingerprint") as fingerprint, \
+                patch.object(opener.subprocess, "run") as scanner, \
+                patch.object(opener, "launch_clean_file") as launch:
+            for gate in (opener.validate_scan_request, opener.supported_request_path):
+                with self.subTest(gate=gate.__name__):
+                    with self.assertRaises(RuntimeError):
+                        gate(path)
+            with self.assertRaises(RuntimeError):
+                opener.scan_and_open(path, "/scanner")
+        queue.assert_not_called()
+        fingerprint.assert_not_called()
+        scanner.assert_not_called()
+        launch.assert_not_called()
 
 
 if __name__ == "__main__":
