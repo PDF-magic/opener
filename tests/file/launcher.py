@@ -78,14 +78,14 @@ class FileLauncherTests(unittest.TestCase):
         document.write_text("safe")
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(document)
-        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(document)], check=True)
+        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(document)], check=True, timeout=30)
 
     def test_app_bundle_uses_default_open_behavior(self):
         bundle = self.root / "Example.app"
         bundle.mkdir()
         with patch("file_launcher.subprocess.run") as run:
             launch_clean_file(bundle)
-        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(bundle)], check=True)
+        run.assert_called_once_with([str(NATIVE_LAUNCHER), str(bundle)], check=True, timeout=30)
 
     def test_scanned_identity_is_scoped_and_sent_to_native_launcher(self):
         pdf = self.root / "report.pdf"
