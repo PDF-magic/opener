@@ -747,6 +747,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/results.py
       - name: Verify passive optional local history record format
         run: PYTHONPATH=. python3 tests/scan/history-record.py -v
+      - name: Verify private optional scan-history metadata storage
+        run: PYTHONPATH=. python3 tests/scan/history-metadata.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
