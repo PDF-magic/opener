@@ -137,19 +137,30 @@ not** erase a manifest with an unknown owner.
 ## 5. Retire the managed signature updater, if desired
 
 Only if step 1 reported `existing` and you intend to remove PDF Magic's
-**dedicated** signature updater, stop its exact user service:
+**dedicated** signature updater, run this exact command from the **trusted source
+checkout**. It is never run automatically during installation:
 
 ```sh
-launchctl bootout "gui/$(id -u)/local.studio.pdf-malware-signatures"
+python3 uninstall_signature_launchagent.py --remove
 ```
 
-If the service was not loaded, verify that condition instead of treating a
-failed `bootout` as successful. Do not use a wildcard or unload other agents.
-Only after confirming the service is inactive should you move
-`~/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist` to Trash
-**through Finder**, and only if its inspected identity still matches.
-Preserve any customized schedule, user-owned configuration and logs for
-recovery. An unrecognized or changed plist is a stop condition.
+The command requires an interactive macOS session and the explicit confirmation
+`REMOVE`. It revalidates the LaunchAgent's fixed label and updater invocation,
+checks for symlinks or hardlinks, and uses `launchctl bootout` only for the
+verified exact plist in your own `gui/<user ID>` domain. It then checks the
+service is not loaded and **only then** removes the installed plist. An already
+absent agent is a no-op if its service is also absent. An unknown service
+state, failed stop, changed plist, existing backup, or unsafe file is a
+**stop condition**, not permission to delete another LaunchAgent.
+
+The original, possibly customized plist is retained byte-for-byte at
+`~/Library/LaunchAgents/local.studio.pdf-malware-signatures.plist.before-uninstall`,
+which is not an auto-loaded `.plist` filename. Keep this recovery copy, including
+any customized update interval, disabled state and log settings, until you no
+longer need it. Do not move or delete other LaunchAgents. The helper does not
+change FreshClam configuration, remove signatures, stop unrelated services, or
+modify your chosen PDF/browser defaults. If your agent is unrecognized, do not
+attempt a guessed `launchctl bootout` or manual deletion.
 
 Removing this agent stops PDF Magic's scheduled FreshClam updates; another
 tool may still depend on ClamAV or its definitions. Do not run
