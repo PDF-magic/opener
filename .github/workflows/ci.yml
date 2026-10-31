@@ -759,6 +759,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/history-privacy.py -v
       - name: Verify recent scan-history display is on demand, bounded and private
         run: PYTHONPATH=. python3 tests/scan/recent-history-display.py -v
+      - name: Verify individual scan history result inspection
+        run: PYTHONPATH=. python3 tests/scan/individual-result-inspection.py -v
       - name: Verify confirmation-gated private history deletion
         run: PYTHONPATH=. python3 tests/scan/clear-history-action.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
@@ -925,6 +927,7 @@ jobs:
             PDFMagicOpenerApp/SignatureUpdateStatus.swift \
             PDFMagicOpenerApp/SignatureUpdateProgress.swift \
             PDFMagicOpenerApp/RecentScanHistory.swift \
+            PDFMagicOpenerApp/ScanHistoryResultDetailView.swift \
             PDFMagicOpenerApp/ClearScanHistory.swift \
             test-preferences-large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"

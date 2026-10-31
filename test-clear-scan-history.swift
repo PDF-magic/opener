@@ -12,6 +12,11 @@ struct ClearScanHistoryTests {
     }
   }
 
+  static func assertContents(_ url: URL, _ expected: String) throws {
+    let contents = try String(contentsOf: url, encoding: .utf8)
+    precondition(contents == expected, "Unrelated files must remain unchanged")
+  }
+
   static func main() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(
       "test-clear-history-\(UUID().uuidString)", isDirectory: true)
@@ -56,15 +61,15 @@ struct ClearScanHistoryTests {
       precondition(!FileManager.default.fileExists(atPath:
         folder.appendingPathComponent(filename).path))
     }
-    precondition(try String(contentsOf: unrelated, encoding: .utf8) == "unrelated")
-    precondition(try String(contentsOf: outside, encoding: .utf8) == "keep operational settings")
+    try assertContents(unrelated, "unrelated")
+    try assertContents(outside, "keep operational settings")
     matches(ClearScanHistoryStore.clear(databaseURL: db), .nothingToClear)
     precondition(!FileManager.default.fileExists(atPath: db.path))
 
     // A malicious alias must never delete its target or another file.
     try FileManager.default.createSymbolicLink(at: db, withDestinationURL: outside)
     matches(ClearScanHistoryStore.clear(databaseURL: db), .unavailable)
-    precondition(try String(contentsOf: outside, encoding: .utf8) == "keep operational settings")
+    try assertContents(outside, "keep operational settings")
     try FileManager.default.removeItem(at: db)
 
     try "private".write(to: db, atomically: false, encoding: .utf8)
@@ -78,7 +83,7 @@ struct ClearScanHistoryTests {
     try FileManager.default.createSymbolicLink(at: sidecar, withDestinationURL: outside)
     matches(ClearScanHistoryStore.clear(databaseURL: db), .unavailable)
     precondition(FileManager.default.fileExists(atPath: db.path))
-    precondition(try String(contentsOf: outside, encoding: .utf8) == "keep operational settings")
+    try assertContents(outside, "keep operational settings")
     try FileManager.default.removeItem(at: sidecar)
 
     precondition(chmod(folder.path, 0o755) == 0)
