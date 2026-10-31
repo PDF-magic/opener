@@ -89,6 +89,45 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
         other.write_bytes(self.pdf.read_bytes() + b"\n%blocked")
         self.scan(other, verdict=1)
 
+    def test_macos_security_guide_preserves_independent_system_controls(self):
+        guide = (ROOT / "docs/macos-security-controls.md").read_text(encoding="utf-8")
+        for phrase in (
+            "com.apple.quarantine", "Gatekeeper", "Developer ID",
+            "notarization", "XProtect", "Launch Services", "TCC",
+            "System Integrity Protection (SIP)", "90-day", "48 hours",
+            "clean-cache", "unscannable", "ad hoc signing",
+            "not an XProtect verdict", "not controlled by this scan gate",
+            "do not automate an approval click",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase.lower(), guide.lower())
+        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        self.assertIn('codesign --force --sign - "$app"', installer)
+        self.assertIn("Ad hoc signing is **not** a Developer ID", guide)
+        source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        self.assertIn("def remove_quarantine(path):", source)
+        self.assertIn("    return None\n\n\n@dataclass(frozen=True)", source)
+        self.assertIn("verify_launch_target(path, target_app=", source)
+        self.assertIn("verify_file_integrity(path, before, identity)", source)
+
+    def test_macos_security_guide_is_discoverable_and_links_to_real_files(self):
+        import re
+
+        guide_path = ROOT / "docs/macos-security-controls.md"
+        guide = guide_path.read_text(encoding="utf-8")
+        self.assertIn("(docs/macos-security-controls.md)",
+                      (ROOT / "README.md").read_text(encoding="utf-8"))
+        self.assertIn("(macos-security-controls.md)",
+                      (ROOT / "docs/README.md").read_text(encoding="utf-8"))
+        references = re.findall(r"(?<!!)\\[[^\\]]+\\]\\(([^)]+)\\)", guide)
+        local = [ref for ref in references if not ref.startswith("https://")]
+        self.assertGreaterEqual(len(local), 7)
+        for ref in local:
+            with self.subTest(reference=ref):
+                self.assertTrue((guide_path.parent / ref).is_file(), ref)
+        self.assertIn("https://support.apple.com/en-us/102445", guide)
+
+
     @unittest.skipUnless(sys.platform == "darwin" and hasattr(os, "setxattr"),
                          "macOS quarantine extended attributes only")
     def test_macos_quarantine_attribute_survives_fresh_and_cached_clean_pdf(self):
