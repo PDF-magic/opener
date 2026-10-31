@@ -236,7 +236,7 @@ change the installed PDF handler or scanner.
 
 ## Installation and usage
 
-Install local malware scanning for the existing **Allow and Open** Finder action and native PDF opening (requires Homebrew and Apple command line tools):
+Install local malware scanning for the existing **Allow and Open** Finder action and native PDF opening (requires Apple command line tools; Homebrew is used to provision ClamAV only when a supported installed scanner is not found). See the [ClamAV Homebrew dependency decision](docs/clamav-homebrew-decision.md) for the packaging rationale and supported non-Homebrew installations:
 
 ```sh
 bash install-allow-and-open.sh
