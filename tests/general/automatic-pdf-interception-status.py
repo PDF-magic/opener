@@ -63,7 +63,7 @@ class AutomaticInterceptionEffectiveStatusTests(unittest.TestCase):
     manifest = MANIFEST.read_text(encoding="utf-8")
     background = BACKGROUND.read_text(encoding="utf-8")
     self.assertIn('BrowserAutomaticPDFInterceptionPreference.saveOptIn(', view)
-    self.assertIn('automaticInterceptionOptIns[browser.id] =', view)
+    self.assertIn('automaticInterceptionOptIns[browserID] =', view)
     self.assertIn('selected PDF application', view)
     self.assertIn('"permissions": []', manifest)
     self.assertIn('"host_permissions": []', manifest)
