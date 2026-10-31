@@ -374,11 +374,7 @@ While FreshClam runs, Preferences → Updates shows **Signature update in progre
 bash update-malware-signatures.sh
 ```
 
-The installer keeps the original workflow beside `document.wflow` as `document.wflow.before-brave`. To restore direct Brave opening without this scan gate:
-
-```sh
-swift set-pdf-default-handler.swift
-```
+The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 restore_finder_quick_action.py` or `python3 restore_finder_quick_action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
 
