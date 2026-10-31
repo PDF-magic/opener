@@ -547,6 +547,13 @@ def symbolic_link_identity(item):
                 break
             else:
                 return pending.resolve(strict=True), tuple(links)
+    except FileNotFoundError:
+        # Preserve the existing missing-file policy when an ordinary source
+        # disappears after initial admission. A now-dangling symlink is still
+        # a changed selection, not permission to scan or launch its old target.
+        if not links:
+            raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from None
+        raise RuntimeError('The file changed while checking it; opening was stopped. Try again.') from None
     except (OSError, ValueError, RuntimeError):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.') from None
     raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
