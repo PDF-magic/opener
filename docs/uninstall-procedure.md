@@ -77,8 +77,7 @@ python3 restore_finder_quick_action.py --restore
 ```
 
 The existing restoration tool refuses to overwrite a modified action or
-unrecognized backup and retains the backup. The original Finder action **may
-not perform PDF Magic's malware scans**. If no verified restoration is possible,
+unrecognized backup and retains the backup. The original Finder action **may not perform PDF Magic's malware scans**. If no verified restoration is possible,
 use Finder/Automator to **disable or remove only the PDF Magic-managed action
 after reviewing its identity**, or retain it until you can resolve the
 customization. Do not delete unrelated Services workflows or backups. Do not
@@ -179,5 +178,5 @@ real existing default-handler restoration, Finder Quick Action restoration,
 native messaging cleanup, and signature-agent ownership verification paths.
 It also guards the sequence of actions and rules out destructive recursive
 cleanup, silent association changes and automatic deletion of user data.
-The required `scanner-tests` CI job executes the check. No uninstall commands
-or OS mutations run during CI.
+The required `scanner-tests` CI job executes the check.
+No uninstall commands or OS mutations run during CI.
