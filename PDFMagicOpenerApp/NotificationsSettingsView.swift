@@ -33,12 +33,12 @@ struct NotificationsSettingsView: View {
         GroupBox("System notifications") {
           notificationDetail(
             "Not configured yet",
-            "macOS notification alerts and notification preferences are not currently configured in this app. No notification permission is requested when you view this page."
+            "macOS notification preferences are not configured in this app. The separately installed signature updater can show a generic failure notification through macOS, which controls delivery. No notification permission is requested when you view this page."
           )
         }
         .accessibilityIdentifier("systemNotificationsSection")
 
-        Text("This page is informational. Notification delivery options will require a separate implementation; existing scanner safeguards and your saved preferences remain unchanged.")
+        Text("This page is informational. Other notification delivery options require a separate implementation; signature-update failures are reported by the separate updater. Existing scanner safeguards and your saved preferences remain unchanged.")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
