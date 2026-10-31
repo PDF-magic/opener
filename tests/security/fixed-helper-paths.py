@@ -121,6 +121,7 @@ class FixedHelperPathsTests(unittest.TestCase):
                  "com.brave.Browser", str(selected)],
             )
             run.reset_mock()
+            run.return_value = subprocess.CompletedProcess([], 0, b"", b"")
             file_launcher.verify_launch_target(selected, target_app="com.brave.Browser")
             self.assertEqual(
                 run.call_args.args[0],
