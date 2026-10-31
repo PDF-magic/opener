@@ -55,10 +55,13 @@ class ClearHistoryActionTests(unittest.TestCase):
     for forbidden in (
       'removeItem(', 'removeItemAt(', 'removeItem(at:', 'removeAll(',
       'UserDefaults', 'NSWorkspace', 'Process(', 'PDFDocument',
-      'scan-progress', 'clean-scan', 'scan-results',
+      'scan-progress', 'scan-results',
       'launchServices', 'clamscan(',
     ):
       self.assertNotIn(forbidden, DELETE)
+    # Comments may name other caches to explain what is preserved; only
+    # executable deletion targets must exclude the operational cache.
+    self.assertNotIn('"clean-scan', DELETE)
     self.assertIn("SQLITE_OPEN_READONLY", READER)
 
   def test_xcode_and_ci_run_real_tests(self):
