@@ -8,7 +8,6 @@ No real scanner, native application, user document or preference is touched.
 
 from contextlib import ExitStack
 import importlib.util
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -38,13 +37,25 @@ class UnscannableQuarantineTests(unittest.TestCase):
 
     def tag_quarantine(self, path):
         if sys.platform == "darwin":
-            os.setxattr(path, ATTRIBUTE, MARKER)
-            return os.getxattr(path, ATTRIBUTE)
+            subprocess.run(
+                ["/usr/bin/xattr", "-wx", ATTRIBUTE, MARKER.hex(), str(path)],
+                capture_output=True, check=True
+            )
+            return self.read_quarantine(path)
         return None
+
+    @staticmethod
+    def read_quarantine(path):
+        # macOS CPython does not expose os.getxattr; verify exact marker bytes.
+        result = subprocess.run(
+            ["/usr/bin/xattr", "-px", ATTRIBUTE, str(path)],
+            capture_output=True, check=True
+        )
+        return bytes.fromhex(result.stdout.decode("ascii"))
 
     def assert_quarantine_intact(self, path, expected):
         if expected is not None:
-            self.assertEqual(os.getxattr(path, ATTRIBUTE), expected)
+            self.assertEqual(self.read_quarantine(path), expected)
         self.assertEqual(path.read_bytes(), PDF if path == self.pdf else b"")
 
     def assert_unscannable_is_blocked(self, outcome, *, expected_message):
@@ -124,7 +135,7 @@ class UnscannableQuarantineTests(unittest.TestCase):
         launch.assert_not_called()
         self.assert_quarantine_intact(empty, original)
 
-    @unittest.skipUnless(sys.platform == "darwin" and hasattr(os, "setxattr"),
+    @unittest.skipUnless(sys.platform == "darwin",
                          "Requires the real macOS quarantine extended attribute")
     def test_real_macos_quarantine_survives_failed_scan_and_timeout(self):
         for failure, message in (
