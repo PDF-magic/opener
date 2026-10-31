@@ -67,6 +67,27 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertNotIn("automatically sets your default", source.lower())
     self.assertNotIn("guarantees safety", source.lower())
 
+  def test_default_handler_change_is_optional_not_accepted_on_continue(self):
+    source = WELCOME.read_text(encoding="utf-8")
+    opt_out = (
+      "You can decline any offer to make PDF Magic Opener your default PDF "
+      "application and keep your current macOS PDF handler."
+    )
+    no_consent = (
+      "Continuing to Preferences does not approve or make a "
+      "default-handler change."
+    )
+    self.assertIn('Text("' + opt_out + " " + no_consent + '")', source)
+    self.assertLess(source.index('Label("Your choice of PDF application"'),
+                    source.index(opt_out))
+    self.assertLess(source.index(no_consent),
+                    source.index('Label("Existing settings are preserved"'))
+    # This is disclosure only. No file-association or scanner operation.
+    for forbidden in ("LSSetDefaultRoleHandlerForContentType",
+                      "LSSetDefaultHandlerForURLScheme", "Process(",
+                      "NSWorkspace(", "target-app.txt"):
+      self.assertNotIn(forbidden, source)
+
   def test_finder_quick_action_is_offered_without_silent_configuration(self):
     source = WELCOME.read_text(encoding="utf-8")
     for expected in (
