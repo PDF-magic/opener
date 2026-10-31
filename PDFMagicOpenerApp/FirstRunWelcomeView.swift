@@ -195,6 +195,20 @@ struct FirstRunWelcomeView: View {
             .padding(8)
           }
           .accessibilityIdentifier("firstRunPDFBrowserSection")
+
+          // This is explanation only. Extension installation, activation and
+          // browser permissions are always separate, user-controlled actions.
+          GroupBox("Optional browser extensions") {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("Browser extensions are optional. The installed native PDF handler can scan files opened through it without any browser extension.")
+              Text("Current browser extensions are not active: they cannot scan, sanitize, or open PDFs, and have no verified browser-to-scanner connection. Installing one does not automatically protect PDFs viewed directly in a browser.")
+              Text("This setup does not install or enable extensions, request browser permissions, or change browser settings. You can continue without an extension.")
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+          }
+          .accessibilityIdentifier("firstRunOptionalBrowserExtensions")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
