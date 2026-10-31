@@ -120,14 +120,14 @@ class UninstallProcedureTests(unittest.TestCase):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     for output, expected_status in (
-      (b"local.studio.brave-pdf-opener\\n", "PDF Magic Opener is the default PDF handler."),
-      (b"com.apple.Preview\\n", "PDF Magic Opener is not the default PDF handler."),
-      (b"com.adobe.Reader\\n", "PDF Magic Opener is not the default PDF handler."),
+      (b"local.studio.brave-pdf-opener\n", "PDF Magic Opener is the default PDF handler."),
+      (b"com.apple.Preview\n", "PDF Magic Opener is not the default PDF handler."),
+      (b"com.adobe.Reader\n", "PDF Magic Opener is not the default PDF handler."),
     ):
       with self.subTest(output=output):
         captured, errors = StringIO(), StringIO()
         fake = subprocess.CompletedProcess(["identify-pdf-handler"], 0, output, b"")
-        with patch.object(module.subprocess, "run", return_value=fake) as run, \\
+        with patch.object(module.subprocess, "run", return_value=fake) as run, \
              redirect_stdout(captured), redirect_stderr(errors):
           result = module.main([])
         self.assertEqual(result, 0)
@@ -136,17 +136,17 @@ class UninstallProcedureTests(unittest.TestCase):
         run.assert_called_once_with(
           [str(module.HANDLER_LOOKUP)], capture_output=True, check=True, timeout=10
         )
-    for output in (b"", b"com..wrong\\n", b"com.apple.Preview\\nother\\n", b"\\xff\\n"):
+    for output in (b"", b"com..wrong\n", b"com.apple.Preview\nother\n", b"\xff\n"):
       with self.subTest(output=output):
         captured, errors = StringIO(), StringIO()
         fake = subprocess.CompletedProcess(["identify-pdf-handler"], 0, output, b"")
-        with patch.object(module.subprocess, "run", return_value=fake), \\
+        with patch.object(module.subprocess, "run", return_value=fake), \
              redirect_stdout(captured), redirect_stderr(errors):
           result = module.main([])
         self.assertEqual(result, 1)
         self.assertEqual(captured.getvalue(), "")
         self.assertEqual(errors.getvalue().strip(), module.LOOKUP_ERROR)
-    with patch.object(module.subprocess, "run", side_effect=FileNotFoundError()), \\
+    with patch.object(module.subprocess, "run", side_effect=FileNotFoundError()), \
          redirect_stdout(StringIO()) as captured, redirect_stderr(StringIO()) as errors:
       self.assertEqual(module.main([]), 1)
     self.assertEqual(captured.getvalue(), "")
