@@ -153,6 +153,9 @@ def _apply_linux(paths, prefixes):
     for path, rights in (
         *((prefix, _FS_READ_FILE | _FS_READ_DIR) for prefix in prefixes),
         *((path, _FS_READ_FILE) for path in paths),
+        *((library, _FS_READ_FILE | _FS_READ_DIR)
+          for library in ("/usr/lib", "/usr/lib64", "/lib", "/lib64")
+          if os.path.isdir(library)),
         ("/dev/null", _FS_READ_FILE),
         ("/dev/urandom", _FS_READ_FILE),
     ):
