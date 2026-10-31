@@ -3,7 +3,7 @@
 The existing `pdf-iframe.js` classifier identifies URL-path candidates; it
 does **not** prove a browser rendered an embedded PDF. This task adds an actual
 Chrome Stable browser smoke test to the existing disposable DevTools harness
-and invokes it as an explicit step in the existing Chrome CI job.
+as part of the existing Chrome CI viewer smoke step.
 
 A loopback-only HTML document contains two different `iframe` PDF sources
 and an ordinary HTML iframe control. The real browser must fetch both PDF
@@ -26,6 +26,5 @@ and no browser privileges or scanner integrations are activated. A rendered
 PDF in the browser is **not evidence of native ClamAV scan-before-open**;
 mandatory scanner gates, quarantine rules, and user preferences are untouched.
 
-The regression test is auto-discovered by `npm test`. The Chrome smoke step
-is a separate hard CI requirement for the iframe scenario, complementing the
-existing top-level built-in PDF viewer smoke test.
+The regression test is auto-discovered by `npm test`. The existing Chrome viewer smoke step is a hard CI requirement and now
+also tests iframes, alongside its top-level and authenticated PDF cases.

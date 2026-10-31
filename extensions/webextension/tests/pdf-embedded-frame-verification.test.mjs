@@ -46,8 +46,9 @@ test("real Chrome CI exercise has two PDF iframe children and an HTML control", 
     load("../package.json").then(JSON.parse),
     load("../src/pdf-embedded-frame-verification.md")
   ]);
-  assert.match(workflow, /Verify two embedded PDF frames in a real Chrome viewer/);
-  assert.match(workflow, /node scripts\/test-chrome-pdf-viewer\.mjs "\$CHROME_PATH" --embedded-only/);
+  assert.match(workflow, /Verify Chrome's built-in PDF viewer with local PDFs/);
+  assert.match(workflow, /node scripts\/test-chrome-pdf-viewer\.mjs "\$CHROME_PATH"/);
+  assert.equal(workflow.includes("--embedded-only"), false);
   assert.match(harness, /Target\.createTarget/);
   assert.match(harness, /Page\.navigate/);
   assert.match(harness, /Page\.getFrameTree/);

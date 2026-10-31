@@ -10,6 +10,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { createBraveViewerTestPdf } from "./brave-pdf-viewer-fixture.mjs";
+import { dynamicPdfGeneratorPage } from "./dynamic-pdf-webpage-fixture.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const binary = process.env.BRAVE_BROWSER_PATH || "/usr/bin/brave-browser";
@@ -19,6 +20,18 @@ const pdf = createBraveViewerTestPdf();
 const requests = [];
 const server = createServer((request, response) => {
   requests.push(request.url);
+  if (request.method === "GET" && request.url === "/generated") {
+    const html = dynamicPdfGeneratorPage;
+    response.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Length": Buffer.byteLength(html),
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    });
+    response.end(html);
+    return;
+  }
   if (request.url !== "/inline.pdf") {
     response.writeHead(404, { "Cache-Control": "no-store" });
     response.end();
@@ -114,6 +127,71 @@ try {
   assert.ok(requests.includes("/inline.pdf"), "Brave must request the PDF from localhost");
   assert.deepEqual(downloads, [], "The default clean-profile inline PDF must not download");
   assert.deepEqual(errors, [], "Brave's viewer should not raise document script errors");
+
+  // opener-0807: visit HTML, generate PDF bytes in the webpage's own JS,
+  // create a Blob URL there and open the browser-owned viewer from that URL.
+  // This does not exercise interception, ClamAV or an extension scan.
+  const dynamicPage = await context.newPage();
+  const dynamicDownloads = [];
+  dynamicPage.on("download", event => dynamicDownloads.push(event.suggestedFilename()));
+  const generatorResponse = await dynamicPage.goto(origin + "/generated", {
+    waitUntil: "load", timeout: 30000
+  });
+  assert.equal(generatorResponse?.status(), 200);
+  assert.match(generatorResponse.headers()["content-type"] ?? "", /^text\/html\b/i);
+  const generated = await dynamicPage.evaluate(() => {
+    document.getElementById("generate").click();
+    const current = window.generatedPdf;
+    return {
+      type: current?.blob.type, size: current?.blob.size, url: current?.url,
+      prefix: new TextDecoder().decode(current?.bytes.slice(0, 8)),
+      ready: document.getElementById("open").disabled === false
+    };
+  });
+  assert.equal(generated.type, "application/pdf");
+  assert.equal(generated.prefix, "%PDF-1.4");
+  assert.ok(generated.size > 200 && generated.size < 4096);
+  assert.equal(generated.ready, true);
+  assert.ok(generated.url.startsWith("blob:" + origin + "/"),
+    "The webpage must create the PDF object URL, not fetch a PDF");
+  await dynamicPage.evaluate(() => document.getElementById("open").click());
+  let dynamicViewerFrame = null;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    dynamicViewerFrame = dynamicPage.frames().find(frame => {
+      try {
+        const url = new URL(frame.url());
+        return url.protocol === "chrome-extension:" &&
+          url.hostname === componentId && url.pathname === "/index.html";
+      } catch {
+        return false;
+      }
+    });
+    if (dynamicViewerFrame && dynamicPage.url() === generated.url) break;
+    await dynamicPage.waitForTimeout(100);
+  }
+  if (!dynamicViewerFrame) {
+    // Diagnostics contain only the generated local fixture and frame schemes,
+    // never external URLs, user files, headers, or PDF contents.
+    console.log("Dynamic PDF local viewer diagnostics:", JSON.stringify({
+      frameSchemes: dynamicPage.frames().map(frame => {
+        try { return new URL(frame.url()).protocol; } catch { return "invalid"; }
+      }),
+      documentScheme: (() => {
+        try { return new URL(dynamicPage.url()).protocol; } catch { return "invalid"; }
+      })()
+    }));
+  }
+  assert.ok(dynamicViewerFrame,
+    "Brave must render the PDF generated in webpage JavaScript");
+  assert.equal(dynamicPage.url(), generated.url,
+    "Brave must navigate to the webpage-created Blob PDF");
+  assert.equal(await dynamicPage.evaluate(() => document.contentType), "application/pdf");
+  assert.equal(requests.filter(path => path === "/generated").length, 1);
+  assert.deepEqual(dynamicDownloads, [], "Generated Blob PDF must not silently download");
+  assert.deepEqual(downloads, [], "Existing inline PDF must not download");
+  assert.ok(!requests.some(path => path.endsWith("/generated.pdf")),
+    "The HTTP server must not supply generated PDF bytes");
+  await dynamicPage.close();
 
   // A browser viewer is not a native scanner verdict or an interception gate.
   const worker = context.serviceWorkers().find(
