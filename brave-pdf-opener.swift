@@ -162,15 +162,16 @@ func deliverSuccessfulScanNotification(
 }
 
 // Optional blocked-file notice, separate from the mandatory failure alert.
-func deliverBlockedFileNotification(
-    malwareDetected: Bool,
+func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
     transport: NativeScanNotificationTransport = .system(),
     completion: @escaping () -> Void
 ) {
     enqueueNativeScanNotification(
         body: malwareDetected
             ? "Malware was detected. The PDF was blocked and was not opened."
-            : "A PDF could not be opened because its safety check failed.",
+            : (scanFailed
+                ? "A PDF scan failed or could not finish. The file was not opened."
+                : "A PDF could not be opened because its safety check failed."),
         transport: transport, completion: completion
     )
 }
@@ -602,7 +603,10 @@ DispatchQueue.main.async {
                 if blockedNotificationKind != .none {
                     self.pendingSuccessNotifications += 1
                     deliverBlockedFileNotification(
-                        malwareDetected: blockedNotificationKind == .malwareDetected
+                        malwareDetected: blockedNotificationKind == .malwareDetected,
+                        scanFailed: FailedScanNotificationClassification.shouldShowFailedScanNotice(
+                            failure: failure, cancelled: cancelled
+                        )
                     ) { [weak self] in
                         DispatchQueue.main.async {
                             guard let self else { return }
