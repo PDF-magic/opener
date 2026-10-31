@@ -390,7 +390,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/settings-page.py -v
       - name: Verify persistent configuration storage location and user customizations
         run: PYTHONPATH=. python3 tests/configuration/location.py -v
-      - name: Verify upgrade preserves the installed PDF browser choice
+      - name: Verify installation migration preserves browser, FreshClam and update schedule settings
         run: PYTHONPATH=. python3 tests/general/persistent-installer-preferences.py -v
       - name: Verify versioned configuration contract without rewriting preferences
         run: PYTHONPATH=. python3 tests/configuration/schema.py -v
