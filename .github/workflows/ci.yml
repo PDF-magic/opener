@@ -192,6 +192,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+      - name: Check declared dependency license obligations before optional installs
+        run: python3 scripts/check_dependency_licenses.py
+      - name: Verify license checker rejects unreviewed dependencies and missing notices
+        run: PYTHONPATH=. python3 tests/general/dependency-licensing.py -v
       - name: Verify staged PDF handler bundle contents and executable permissions
         run: PYTHONPATH=. python3 tests/bundle/preinstall.py -v
       - name: Verify safe Finder Quick Action migration and literal argv forwarding
