@@ -10,6 +10,17 @@ It then explains the existing local scanner gate, the user's selected PDF
 application, and where to review settings. It does **not** claim that ClamAV
 is installed, that a PDF has already been scanned, or that scans guarantee safety.
 
+The first-run screen also offers an optional **Default PDF browser** picker
+using the same installed-browser discovery and verified atomic chooser as
+General preferences. Its initial selection reflects the saved PDF destination,
+including a custom or unavailable selection without replacing it. Selecting a
+browser in the picker does not save anything. Only an explicit **Save browser
+choice** action invokes the existing installed verifier, and failures leave the
+previous selection unchanged. The chooser needs the installed PDF Magic Opener
+helper; if it is unavailable, saving fails without weakening scan protections.
+The picker never changes the macOS default PDF handler. Users may skip it and
+continue with all settings untouched.
+
 Before continuing, the user must explicitly choose **Standard**, **Enhanced**
 or **Maximum** as an initial *future-profile preference*. The choice is saved
 only when **Continue to Preferences** is selected, using the existing
@@ -34,7 +45,8 @@ not consent to make PDF Magic Opener the default, and the welcome never
 changes the association. The default PDF handler is independent of the user's
 chosen post-scan PDF application.
 
-The welcome neither changes the configured PDF browser nor macOS PDF default,
+Without an explicit, verified browser save, the welcome neither changes the configured
+PDF browser nor macOS PDF default,
 starts malware scans, provisions dependencies, activates planned protection
 policies, updates signatures, or replaces any other user customization. The separate native
 PDF handler and its fail-closed scanner admission continue to work independently

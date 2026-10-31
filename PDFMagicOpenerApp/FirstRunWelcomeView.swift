@@ -27,6 +27,54 @@ struct FirstRunWelcomeGate<Content: View>: View {
 struct FirstRunWelcomeView: View {
   let onContinue: () -> Void
   @State private var signatureAvailability = FirstRunSignatureAvailability.readInstalled()
+
+  @State private var installedBrowserOptions: [PDFBrowserOption] = []
+  @State private var savedBrowserID = ""
+  @State private var selectedBrowserID = ""
+  @State private var browserChoiceStatus = ""
+  @State private var savingBrowserChoice = false
+  @State private var browserChoiceLoaded = false
+
+  private func loadBrowserChoice() {
+    // Inspect existing preferences only. Merely seeing the welcome must never
+    // replace a previous custom choice or write to scanner configuration.
+    guard !browserChoiceLoaded else { return }
+    browserChoiceLoaded = true
+    installedBrowserOptions = DefaultPDFBrowserPreferences.discover()
+    if let existing = DefaultPDFBrowserPreferences.currentSelection() {
+      savedBrowserID = existing
+      selectedBrowserID = existing
+    } else {
+      browserChoiceStatus = "The current PDF browser preference could not be read. Nothing was changed."
+    }
+  }
+
+  private func saveBrowserChoice() {
+    guard !savingBrowserChoice, selectedBrowserID != savedBrowserID,
+          let option = installedBrowserOptions.first(where: { $0.id == selectedBrowserID }) else {
+      return
+    }
+    savingBrowserChoice = true
+    browserChoiceStatus = "Verifying the selected browser…"
+    // Reuse the existing installed, verified atomic chooser. In particular,
+    // do not write target preferences, bypass PDF verification or change the
+    // macOS default handler from the preferences application.
+    DispatchQueue.global(qos: .userInitiated).async {
+      let saved = DefaultPDFBrowserPreferences.saveVerified(option)
+      DispatchQueue.main.async {
+        savingBrowserChoice = false
+        if saved {
+          savedBrowserID = option.id
+          selectedBrowserID = option.id
+          browserChoiceStatus = "Default PDF browser saved."
+        } else {
+          selectedBrowserID = savedBrowserID
+          browserChoiceStatus = "Could not verify or save that browser. Your previous choice is unchanged. Check that the PDF Magic Opener helper is installed."
+        }
+      }
+    }
+  }
+
   @State private var initialProfile: PreferredProtectionLevel? =
     PlannedProtectionLevelPreference.selected()
   @State private var failedToSaveProfile = false
@@ -69,7 +117,7 @@ struct FirstRunWelcomeView: View {
 
             Label("Your choice of PDF application", systemImage: "macwindow")
               .font(.headline)
-            Text("Use Preferences to review your selected PDF application and macOS default-handler status. This welcome does not change either selection.")
+            Text("Choose an installed browser below or use Preferences to review your PDF application and macOS default-handler status. This welcome does not change either selection unless you explicitly save a verified browser choice.")
             Text("You can decline any offer to make PDF Magic Opener your default PDF application and keep your current macOS PDF handler. Continuing to Preferences does not approve or make a default-handler change.")
 
             Label("Existing settings are preserved", systemImage: "gearshape")
@@ -101,6 +149,48 @@ struct FirstRunWelcomeView: View {
             }
           }
           .fixedSize(horizontal: false, vertical: true)
+
+          GroupBox("Default PDF browser") {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("Choose which browser opens PDFs after a successful scan. This does not change the macOS default PDF handler.")
+                .foregroundStyle(.secondary)
+
+              Picker("Browser for scanned PDFs", selection: $selectedBrowserID) {
+                Text("Choose an installed browser").tag("")
+                ForEach(installedBrowserOptions) { option in
+                  Text(option.name).tag(option.id)
+                }
+                if !savedBrowserID.isEmpty &&
+                    !installedBrowserOptions.contains(where: { $0.id == savedBrowserID }) {
+                  Text("Existing custom or unavailable selection (preserved)").tag(savedBrowserID)
+                }
+              }
+              .disabled(savingBrowserChoice || installedBrowserOptions.isEmpty)
+              .accessibilityIdentifier("firstRunPDFBrowserSelector")
+
+              HStack {
+                Button("Save browser choice", action: saveBrowserChoice)
+                  .disabled(savingBrowserChoice ||
+                    selectedBrowserID == savedBrowserID ||
+                    !installedBrowserOptions.contains(where: { $0.id == selectedBrowserID }))
+                  .accessibilityIdentifier("firstRunSavePDFBrowserButton")
+
+                Text("Optional. Continue without saving to keep your current choice.")
+                  .font(.subheadline)
+                  .foregroundStyle(.secondary)
+              }
+
+              if !browserChoiceStatus.isEmpty {
+                Text(browserChoiceStatus)
+                  .font(.subheadline)
+                  .foregroundStyle(.secondary)
+                  .accessibilityIdentifier("firstRunPDFBrowserStatus")
+              }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+          }
+          .accessibilityIdentifier("firstRunPDFBrowserSection")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
@@ -111,12 +201,14 @@ struct FirstRunWelcomeView: View {
         Spacer()
         Button("Continue to Preferences", action: finishSetup)
           .disabled(initialProfile == nil)
+          .disabled(savingBrowserChoice)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("firstRunContinueButton")
       }
     }
     .padding(28)
     .frame(minWidth: 680, minHeight: 420)
+    .onAppear(perform: loadBrowserChoice)
     .accessibilityIdentifier("firstRunWelcomeScreen")
   }
 }
