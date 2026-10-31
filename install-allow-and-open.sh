@@ -10,6 +10,9 @@ if [ ! -f "$workflow" ]; then
     exit 1
 fi
 
+# Detect the installed updater before modifying files. Unknown agents are never overwritten.
+agent_state="$(python3 "$script_dir/signature_update_launchagent.py")"
+
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
     brew install clamav
 fi
@@ -125,7 +128,8 @@ cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.
     "$script_dir/PDFMagicOpenerApp/ScanProgressPreference.swift" \
     -o "$app/Contents/MacOS/PDFOpener"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
-python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
+python3 - "$app" "$install_dir" "$app_name" "$agent_state" <<'CONFIG'
+import os
 import plistlib
 import sys
 from pathlib import Path
@@ -157,8 +161,13 @@ agent = {
     'StandardOutPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.log'),
     'StandardErrorPath': str(Path.home() / 'Library/Logs/Studio/pdf-malware-signatures.error.log'),
 }
-with (Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.plist').open('wb') as stream:
-    plistlib.dump(agent, stream)
+# Preserve an existing recognized agent, including a customized update interval.
+# A missing agent may only be created exclusively, never clobbering a new file.
+if sys.argv[4] == "absent":
+    agent_path = Path.home() / 'Library/LaunchAgents/local.studio.pdf-malware-signatures.plist'
+    fd = os.open(agent_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "wb") as stream:
+        plistlib.dump(agent, stream)
 CONFIG
 /usr/bin/codesign --force --sign - "$app"
 # No installed app is replaced or registered until staged contents, PDF identity,
