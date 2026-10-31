@@ -14,6 +14,9 @@ struct ScanResultSummaryComponentTests {
         precondition(first.explanationLabel.stringValue.contains("not authorized"))
         precondition(first.headingLabel.accessibilityIdentifier() == "scanResultSummaryHeading")
         precondition(first.explanationLabel.accessibilityIdentifier() == "scanResultSummaryExplanation")
+        precondition(first.malwareStatusLabel.accessibilityIdentifier() == "scanResultSummaryMalware")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
+        precondition(first.malwareStatusLabel.accessibilityLabel() == "Malware: Not determined")
         precondition(first.documentNameLabel.accessibilityIdentifier() == "scanResultSummaryDocument")
         precondition(first.selectedProtectionLevelLabel.accessibilityIdentifier()
                      == "scanResultSummaryProtectionLevel")
@@ -53,7 +56,11 @@ struct ScanResultSummaryComponentTests {
             precondition(first.displayedStatus == status)
             precondition(first.displayedStructureAnalysisCompleted == nil)
             precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
-                         "a scanner verdict cannot establish structural completion")
+                         "scanner result does not imply structural completion")
+            let expectedMalware = status == .malwareDetected ? "Malware: Detected"
+                : status == .clean ? "Malware: Not detected" : "Malware: Not determined"
+            precondition(first.malwareStatusLabel.stringValue == expectedMalware)
+            precondition(first.malwareStatusLabel.accessibilityLabel() == expectedMalware)
             precondition(first.displayedSanitization == nil)
             precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(!first.headingLabel.stringValue.isEmpty)
@@ -121,6 +128,7 @@ struct ScanResultSummaryComponentTests {
                      == "Selected protection level: Built-in")
         precondition(first.displayedProtectionLevel == .builtIn)
         precondition(first.headingLabel.stringValue == "Scan complete")
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not detected")
         precondition(first.explanationLabel.stringValue.contains("still apply"))
         second.show(.scanFailed, documentURL: URL(fileURLWithPath: "/tmp/other.pdf"),
                     selectedProtectionLevel: .enhanced, sanitization: .notPerformed,
@@ -131,11 +139,12 @@ struct ScanResultSummaryComponentTests {
         precondition(second.structureAnalysisLabel.accessibilityLabel()
                      == "Structure analysis: Not completed")
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Completed",
-                     "separate views must not share completion state")
+                     "independent views must not share completion state")
         precondition(second.sanitizationLabel.stringValue == "Sanitization: Not performed")
         precondition(second.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Not performed")
         precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(second.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(second.documentNameLabel.stringValue == "Document: other.pdf")
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("Enhanced"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
@@ -170,6 +179,7 @@ struct ScanResultSummaryComponentTests {
         first.show(.clean, documentURL: target, selectedProtectionLevel: .maximum)
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
         first.show(.malwareDetected, sanitization: .performed)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Detected")
         precondition(first.sanitizationLabel.stringValue == "Sanitization: Performed")
         precondition(first.headingLabel.stringValue == "Malware detected")
         precondition(first.explanationLabel.stringValue.contains("Opening was stopped"))
@@ -183,7 +193,7 @@ struct ScanResultSummaryComponentTests {
                      == "Selected protection level: Unavailable")
         precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
-                     "new scan results without structural evidence must clear old completion")
+                     "new results without structural evidence must clear old completion")
         for unsafe in [
             "/tmp/line\nspoof.pdf",
             "/tmp/\u{202E}fdp.dab.pdf",
@@ -195,6 +205,7 @@ struct ScanResultSummaryComponentTests {
         }
         first.reset()
         precondition(first.displayedStatus == nil)
+        precondition(first.malwareStatusLabel.stringValue == "Malware: Not determined")
         precondition(first.displayedProtectionLevel == nil)
         precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")

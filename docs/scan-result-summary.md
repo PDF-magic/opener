@@ -90,17 +90,33 @@ The existing Linux presentation contract and native macOS interaction harness
 exercise availability, accessibility, status-specific codes, expand/collapse,
 isolation, safety boundaries and reset; both remain wired to required CI.
 
+## Malware detection display
+
+The summary always includes an accessible, explicitly labelled malware status.
+A trusted `.malwareDetected` terminal result displays **Malware: Detected**;
+only a trusted `.clean` result displays **Malware: Not detected**. Every
+other terminal outcome and `nil` displays **Malware: Not determined**, never
+mistaking a scanner failure, cancellation or incomplete inspection for a
+negative malware finding. Each new `show` call and `reset()` replaces the
+previous text; a former clean result cannot be carried into another request.
+
+The label is presentation-only and receives the same trusted canonical status
+as the existing heading. It does not infer status from file content, scanner
+logs, document names or user preferences, and it does not grant permission
+to open a PDF. Portable contract tests and the macOS AppKit rendering harness
+cover every canonical outcome, accessibility, isolation and reset in required CI.
+
 ## Structure analysis completion
 
 The optional `structureAnalysisCompleted: Bool?` argument to `show` accepts
 only a **trusted, request-correlated structure-analysis completion result**.
 `true` displays `Structure analysis: Completed`, `false` displays `Structure
 analysis: Not completed`, and `nil` displays `Structure analysis: Unavailable`.
-Unknown is the default, not evidence of successful analysis. The independent,
-accessible field cannot infer completion from a scanner verdict, sanitization,
-technical details or a preview protection level.
+Unknown is the default rather than evidence of success. This independently
+accessible field never infers completion from malware status, sanitization,
+technical details or selected preview protection levels.
 
-Every new `show` or `reset()` clears prior completion unless current evidence
-is supplied. This display-only field cannot skip analysis, authorize opening,
-change scanner policy or modify preferences. Required macOS rendering and
-portable tests cover all states, reset, and independent view instances.
+Each `show` update or `reset()` clears stale completion unless fresh evidence
+is supplied. This view-only addition cannot skip analysis, authorize opening,
+modify scanning policy or change preferences. Required macOS and portable
+tests cover all states, stale resets and instance isolation.

@@ -143,6 +143,7 @@ private enum ScanResultSummaryTechnicalCopy {
 final class ScanResultSummaryView: NSView {
     let headingLabel = NSTextField(labelWithString: "")
     let explanationLabel = NSTextField(wrappingLabelWithString: "")
+    let malwareStatusLabel = NSTextField(labelWithString: "Malware: Not determined")
     let documentNameLabel = NSTextField(labelWithString: "Document: Unavailable")
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
@@ -178,6 +179,9 @@ final class ScanResultSummaryView: NSView {
         explanationLabel.lineBreakMode = .byWordWrapping
         explanationLabel.maximumNumberOfLines = 0
         explanationLabel.setAccessibilityIdentifier("scanResultSummaryExplanation")
+        malwareStatusLabel.font = .systemFont(ofSize: 12)
+        malwareStatusLabel.textColor = .secondaryLabelColor
+        malwareStatusLabel.setAccessibilityIdentifier("scanResultSummaryMalware")
 
         documentNameLabel.font = .systemFont(ofSize: 12)
         documentNameLabel.textColor = .secondaryLabelColor
@@ -206,8 +210,8 @@ final class ScanResultSummaryView: NSView {
 
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
-            sanitizationLabel, structureAnalysisLabel, explanationLabel,
-            technicalDetailsButton, technicalDetailsLabel
+            sanitizationLabel, malwareStatusLabel, structureAnalysisLabel,
+            explanationLabel, technicalDetailsButton, technicalDetailsLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -264,8 +268,8 @@ final class ScanResultSummaryView: NSView {
     // or extension messages. Unknown or absent selections stay unavailable.
     // A new request clears any prior name, tier, sanitization evidence or scan result.
     // This is trusted coordinator evidence, never a guess from tier or scan status.
-    // Structural completion is an independent request-correlated observation;
-    // the absence of evidence must never imply that analysis finished.
+    // Structural completion comes from independent, request-correlated evidence;
+    // a missing result must not imply successful structural analysis.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
@@ -292,6 +296,19 @@ final class ScanResultSummaryView: NSView {
         } ?? "Structure analysis: Unavailable"
         structureAnalysisLabel.stringValue = structure
         structureAnalysisLabel.setAccessibilityLabel(structure)
+        // Only a verified clean terminal outcome supports a negative detection
+        // statement. Every other unsuccessful or absent result is inconclusive.
+        let malwareStatus: String
+        switch status {
+        case .malwareDetected:
+            malwareStatus = "Malware: Detected"
+        case .clean:
+            malwareStatus = "Malware: Not detected"
+        default:
+            malwareStatus = "Malware: Not determined"
+        }
+        malwareStatusLabel.stringValue = malwareStatus
+        malwareStatusLabel.setAccessibilityLabel(malwareStatus)
         let copy = ScanResultSummaryCopy.forStatus(status)
         headingLabel.stringValue = copy.heading
         explanationLabel.stringValue = copy.explanation
