@@ -38,8 +38,10 @@ class PreferencesKeyboardNavigationTests(unittest.TestCase):
       "selection = sections[nextIndex]",
       "sidebarFocused = true",
       ".disabled(selectedIndex == 0)",
-      ".disabled(selectedIndex == MainPreferenceSection.allCases.count - 1)",
-      "MainPreferenceSection.allCases.firstIndex(of: selection ?? .general)",
+      ".disabled(selectedIndex == visibleSections.count - 1)",
+      "visibleSections.firstIndex(of: selection ?? .general)",
+      "let sections = visibleSections",
+      "MainPreferenceSection.allCases.filter { $0 != .scanHistory || scanHistoryEnabled }",
       "ToolbarItemGroup",
     ):
       with self.subTest(text=text):
