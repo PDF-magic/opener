@@ -7,6 +7,7 @@ import SwiftUI
 struct PrivacyAndLogsSettingsView: View {
   // User action only. Merely opening this page never reads the history store.
   @State private var recentScanHistory: RecentScanHistoryLoad?
+  @State private var inspectedResult: RecentScanHistoryRow?
 
   var body: some View {
     ScrollView {
@@ -43,6 +44,7 @@ struct PrivacyAndLogsSettingsView: View {
             )
 
             Button("Show recent scan results") {
+              inspectedResult = nil
               recentScanHistory = RecentScanHistoryReader.load()
             }
             .accessibilityIdentifier("showRecentScanResultsButton")
@@ -65,16 +67,26 @@ struct PrivacyAndLogsSettingsView: View {
               case .entries(let rows):
                 VStack(alignment: .leading, spacing: 12) {
                   ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                      Text(row.statusLabel)
-                        .font(.headline)
-                      Text(row.scannedAt.formatted(date: .abbreviated, time: .shortened))
-                      Text("Scanner: \(row.scannerVersion ?? "Unknown") · Profile: \(row.profile)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Button {
+                      // Inspect only the already verified in-memory result.
+                      inspectedResult = row
+                    } label: {
+                      VStack(alignment: .leading, spacing: 4) {
+                        Text(row.statusLabel)
+                          .font(.headline)
+                        Text(row.scannedAt.formatted(date: .abbreviated, time: .shortened))
+                        Text("Scanner: \(row.scannerVersion ?? "Unknown") · Profile: \(row.profile)")
+                          .font(.footnote)
+                          .foregroundStyle(.secondary)
+                      }
+                      .frame(maxWidth: .infinity, alignment: .leading)
+                      .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Inspect \(row.statusLabel) result")
+                    .accessibilityHint("Show saved metadata for this individual scan result")
+                    .accessibilityIdentifier("inspectScanHistoryResult-\(row.id)")
                   }
                 }
                 .accessibilityIdentifier("recentScanHistoryResults")
@@ -103,6 +115,9 @@ struct PrivacyAndLogsSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityIdentifier("privacyAndLogsSettingsPage")
+    .sheet(item: $inspectedResult) { row in
+      ScanHistoryResultDetailView(row: row)
+    }
   }
 
   private func privacyDetail(_ title: String, _ description: String) -> some View {
