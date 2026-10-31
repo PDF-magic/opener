@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Guard the safe, user-directed uninstall procedure without touching user state."""
 
+from contextlib import redirect_stderr, redirect_stdout
+import importlib.util
+from io import StringIO
 from pathlib import Path
+import subprocess
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "docs/uninstall-procedure.md"
 CI = ROOT / ".github/workflows/ci.yml"
+STATUS_SOURCE = ROOT / "pdf-handler-status.py"
+STATUS_COMMAND = (
+  'python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"'
+)
 
 
 class UninstallProcedureTests(unittest.TestCase):
@@ -83,6 +92,69 @@ class UninstallProcedureTests(unittest.TestCase):
     self.assertIn("detect_existing_signature_update_agent", agent)
     self.assertIn("Existing LaunchAgent does not match the updater identity", agent)
     self.assertIn("os.O_NOFOLLOW", agent)
+
+
+  def test_pdf_handler_lookup_is_required_before_removal_and_repeated(self):
+    guide = GUIDE.read_text(encoding="utf-8")
+    self.assertEqual(guide.count(STATUS_COMMAND), 2)
+    self.assertLess(guide.index(STATUS_COMMAND), guide.index("## 2. Restore"))
+    self.assertLess(guide.rindex(STATUS_COMMAND), guide.index("## 3. Restore"))
+    self.assertLess(guide.rindex(STATUS_COMMAND), guide.index("## 6. Remove"))
+    for requirement in (
+      "Current macOS PDF handler",
+      "PDF Magic Opener is the default PDF handler",
+      "PDF Magic Opener is not the default PDF handler",
+      "stop uninstallation",
+      "stop before removing the app or its helpers",
+      "known non-PDF-Magic default",
+      "another application is already the default",
+      "preserve that choice",
+    ):
+      with self.subTest(requirement=requirement):
+        self.assertIn(requirement.lower(), guide.lower())
+
+  def test_uninstall_status_reports_exact_current_handler_or_fails_closed(self):
+    # Run the real read-only status CLI against fake native-helper responses.
+    # No macOS associations, installed binaries or real user data are touched.
+    spec = importlib.util.spec_from_file_location("uninstall_status_check", STATUS_SOURCE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for output, expected_status in (
+      (b"local.studio.brave-pdf-opener\n", "PDF Magic Opener is the default PDF handler."),
+      (b"com.apple.Preview\n", "PDF Magic Opener is not the default PDF handler."),
+      (b"com.adobe.Reader\n", "PDF Magic Opener is not the default PDF handler."),
+    ):
+      with self.subTest(output=output):
+        captured, errors = StringIO(), StringIO()
+        fake = subprocess.CompletedProcess(["identify-pdf-handler"], 0, output, b"")
+        with patch.object(module.subprocess, "run", return_value=fake) as run, \
+             redirect_stdout(captured), redirect_stderr(errors):
+          result = module.main([])
+        self.assertEqual(result, 0)
+        self.assertIn(expected_status, captured.getvalue())
+        self.assertEqual(errors.getvalue(), "")
+        run.assert_called_once_with(
+          [str(module.HANDLER_LOOKUP)], capture_output=True, check=True, timeout=10
+        )
+    for output in (b"", b"com..wrong\n", b"com.apple.Preview\nother\n", b"\xff\n"):
+      with self.subTest(output=output):
+        captured, errors = StringIO(), StringIO()
+        fake = subprocess.CompletedProcess(["identify-pdf-handler"], 0, output, b"")
+        with patch.object(module.subprocess, "run", return_value=fake), \
+             redirect_stdout(captured), redirect_stderr(errors):
+          result = module.main([])
+        self.assertEqual(result, 1)
+        self.assertEqual(captured.getvalue(), "")
+        self.assertEqual(errors.getvalue().strip(), module.LOOKUP_ERROR)
+    with patch.object(module.subprocess, "run", side_effect=FileNotFoundError()), \
+         redirect_stdout(StringIO()) as captured, redirect_stderr(StringIO()) as errors:
+      self.assertEqual(module.main([]), 1)
+    self.assertEqual(captured.getvalue(), "")
+    self.assertEqual(errors.getvalue().strip(), module.LOOKUP_ERROR)
+    source = STATUS_SOURCE.read_text(encoding="utf-8")
+    for forbidden in ("LSSetDefault", "setDefaultApplication", "target-app.txt", "UserDefaults",
+                      "os.unlink", "os.remove", "shutil.rmtree"):
+      self.assertNotIn(forbidden, source)
 
   def test_ci_executes_procedure_checks(self):
     workflow = CI.read_text(encoding="utf-8")
