@@ -159,6 +159,14 @@ export, erase, or change log records, and does not claim a particular log
 retention duration. The installed scanner and operating system retain their
 existing behavior. No document or scanner preferences are modified.
 
+**Optional local scan history (opener-0900):** The default is **off**.
+This version does not implement optional, user-visible scan history or an
+opt-in control. Any future history of individual scan outcomes must require
+affirmative consent; installing or upgrading must not silently opt users in.
+The existing clean-scan cache and operational request metadata are separate
+from optional history and remain unchanged. See
+[scan-history default decision](docs/scan-history-default.md).
+
 Press **⌘,** (Command-comma), or choose **PDF Magic Opener → Settings…**,
 to open the native macOS Settings window. This standard system command shows
 the existing preferences view without changing browser choices, running a

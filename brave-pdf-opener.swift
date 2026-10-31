@@ -154,15 +154,27 @@ func deliverSuccessfulScanNotification(identifier: String,
         identifier: identifier, completion: completion)
 }
 
-// Confirmed malware takes precedence over scan failures; never deliver both.
+// The verified Maximum report callback already deduplicates per report and
+// currently supplies no document identity. Do not coalesce distinct reports.
+private func uniqueSanitizerNotificationIdentifier() -> String {
+    return "pdf-magic-opener.scan.sanitizer." + UUID().uuidString
+}
+
+// Confirmed malware takes precedence over sanitizer and scan failures.
 func deliverBlockedFileNotification(malwareDetected: Bool, scanFailed: Bool,
-                                    identifier: String, completion: @escaping () -> Void) {
+                                    sanitizerFailed: Bool = false, identifier: String? = nil,
+                                    completion: @escaping () -> Void) {
     let body = malwareDetected
         ? "Malware was detected. The PDF was blocked and was not opened."
-        : (scanFailed
-            ? "A PDF scan failed or could not finish. The file was not opened."
-            : "A PDF could not be opened because its safety check failed.")
-    deliverScanNotification(body: body, identifier: identifier, completion: completion)
+        : (sanitizerFailed
+            ? "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
+            : (scanFailed
+                ? "A PDF scan failed or could not finish. The file was not opened."
+                : "A PDF could not be opened because its safety check failed."))
+    // The existing Maximum-panel callback already emits once per verified
+    // report. Its independent future events have no document path yet.
+    let deliveryIdentifier = identifier ?? uniqueSanitizerNotificationIdentifier()
+    deliverScanNotification(body: body, identifier: deliveryIdentifier, completion: completion)
 }
 
 // A request's arrival time is distinct from its eventual clean-scan cache time.
@@ -408,6 +420,23 @@ final class PDFOpener: NSObject, NSApplicationDelegate {
         if panel == nil {
             panel = ScanProgressPanel(
                 cancelTarget: self, cancelAction: #selector(cancelScans(_:)))
+            // Maximum's trusted panel decoder emits once per verified report.
+            // It has no canonical document identity yet; preserve independent
+            // reports rather than falsely coalescing different failures.
+            panel?.onVerifiedMaximumSanitizationFailure = { [weak self] in
+                guard let self, BlockedFileNotificationPreference.isEnabled() else { return }
+                self.pendingSuccessNotifications += 1
+                deliverBlockedFileNotification(malwareDetected: false, scanFailed: false,
+                                               sanitizerFailed: true) { [weak self] in
+                    DispatchQueue.main.async {
+                        guard let self else { return }
+                        self.pendingSuccessNotifications -= 1
+                        if self.pending.isEmpty && self.pendingSuccessNotifications == 0 && !self.attentionRequired {
+                            NSApp.terminate(nil)
+                        }
+                    }
+                }
+            }
         }
         // Prefer a currently scanning file; use a queued request before launch.
         // Sorting makes the displayed filename stable when two scans run together.
