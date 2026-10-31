@@ -110,16 +110,12 @@ class MainPreferencesWindowTests(unittest.TestCase):
     ):
       with self.subTest(required=required):
         self.assertIn(required, page)
-    # The only new action explicitly requests read-only history metadata.
-    self.assertEqual(page.count("Button("), 1)
-    self.assertIn('Button("Show recent scan results")', page)
-    self.assertIn("recentScanHistory = RecentScanHistoryReader.load()", page)
     for forbidden in (
         "@AppStorage", "UserDefaults", "FileManager", "NSWorkspace",
         "Process(", "FileHandle(", "URLSession", "URLRequest",
         "write(to:", "removeItem(", "setDefault", "LSSetDefault",
         "onOpenURL", "DocumentGroup", "target-app.txt",
-        "Toggle(", "Picker(", "Slider(", "onAppear",
+        "Button(", "Toggle(", "Picker(", "Slider(", "onAppear",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, page)

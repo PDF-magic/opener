@@ -1,8 +1,9 @@
 # On-demand recent scan results (opener-0912)
 
-The standalone preferences app now offers **Show recent scan results** under
-**Privacy and Logs → Optional local scan history**. No history is read just by
-opening the page. Clicking the button retrieves **at most 20** existing
+The standalone preferences app now offers **Show recent scan results** on its
+**Scan History** page. This destination remains hidden by default and can only
+be shown when the owning integration independently verifies opt-in. No history
+is read just by opening the gated page. Clicking the button retrieves **at most 20** existing
 metadata-only entries from the optional private SQLite store, ordered by
 timestamp (newest first) and insertion ID for ties. Only timestamp, canonical
 final status, scanner version (or Unknown), and the actually enforced Built-in
@@ -13,7 +14,8 @@ This viewer is read-only. It never creates a history database, enables
 history collection, saves preferences, reads PDFs, launches files, or changes
 scan blocking, quarantine, scanner settings, or operational scan caches.
 Optional history remains **off by default**, and the native scan coordinator
-does not yet collect history automatically. An absent store produces a clear
+does not yet collect history automatically. This change neither enables the
+gated destination nor grants history collection consent. An absent store produces a clear
 empty state; an unsafe, corrupt or unexpected schema produces an unavailable
 state, not invented scan outcomes.
 

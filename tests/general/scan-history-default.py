@@ -31,16 +31,13 @@ class ScanHistoryDefaultTests(unittest.TestCase):
   def test_page_remains_informational_and_side_effect_free(self):
     page = PAGE.read_text(encoding="utf-8")
     for forbidden in (
-      "Toggle(", "Picker(", "@AppStorage", "UserDefaults",
+      "Toggle(", "Button(", "Picker(", "@AppStorage", "UserDefaults",
       "FileManager", "FileHandle", "Process(", "write(to:", "createFile(",
       "removeItem(", "NSWorkspace", "URLSession", "clamscan(",
     ):
       with self.subTest(forbidden=forbidden):
         self.assertNotIn(forbidden, page)
     self.assertIn("This page does not read, display, export, or clear log files.", page)
-    self.assertIn('Button("Show recent scan results")', page)
-    self.assertIn("recentScanHistory = RecentScanHistoryReader.load()", page)
-    self.assertNotIn(".onAppear", page)
     self.assertIn("Viewing this page leaves active scans, quarantine safeguards", page)
 
   def test_documented_default_requires_opt_in_and_preserves_existing_cache(self):

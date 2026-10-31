@@ -5,13 +5,16 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 MODEL = (ROOT / "PDFMagicOpenerApp/RecentScanHistory.swift").read_text()
-PAGE = (ROOT / "PDFMagicOpenerApp/PrivacyAndLogsSettingsView.swift").read_text()
+PAGE = (ROOT / "PDFMagicOpenerApp/ScanHistorySettingsView.swift").read_text()
+MAIN = (ROOT / "PDFMagicOpenerApp/MainPreferencesView.swift").read_text()
 PROJECT = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
 
 class RecentScanHistoryDisplayTests(unittest.TestCase):
     def test_explicit_action_only_and_accessible_outcomes(self):
-        self.assertIn('GroupBox("Optional local scan history")', PAGE)
+        self.assertIn('GroupBox("History availability")', PAGE)
+        self.assertIn("init(scanHistoryEnabled: Bool = false)", MAIN)
+        self.assertIn("if section != .scanHistory || scanHistoryEnabled {", MAIN)
         self.assertIn('Button("Show recent scan results")', PAGE)
         self.assertIn('recentScanHistory = RecentScanHistoryReader.load()', PAGE)
         self.assertIn('accessibilityIdentifier("recentScanHistoryResults")', PAGE)
@@ -22,7 +25,8 @@ class RecentScanHistoryDisplayTests(unittest.TestCase):
         self.assertIn('row.statusLabel', PAGE)
         self.assertIn('row.scannedAt.formatted(', PAGE)
         self.assertNotIn('row.filename', PAGE)
-        self.assertIn('scan history is off by default', PAGE)
+        self.assertIn("Automatic history collection remains off", PAGE)
+        self.assertIn("independently verify the user's opt-in", PAGE)
 
     def test_exact_private_schema_read_only_and_bounded(self):
         self.assertIn('SQLITE_OPEN_READONLY', MODEL)

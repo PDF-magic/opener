@@ -1,6 +1,6 @@
 # Inspect an individual scan result (opener-0913)
 
-After explicitly clicking **Show recent scan results** in **Privacy and Logs**,
+After explicitly clicking **Show recent scan results** on the conditionally enabled **Scan History** preferences page,
 users may select any validated result to inspect that single entry. The
 keyboard/VoiceOver-accessible detail sheet presents only the scan time,
 canonical final status, scanner engine version (or Unknown), and effective
