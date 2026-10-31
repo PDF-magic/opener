@@ -70,9 +70,11 @@ class PDFFilenameTests(unittest.TestCase):
                 scan, launch = calls
                 self.assertEqual(scan[0], "/scanner")
                 self.assertEqual(scan[-2:], ["--", str(pdf)])
+                proof = ":".join(map(str, opener.file_identity(pdf)[0][1:]))
                 self.assertEqual(
                     launch,
-                    [str(NATIVE_LAUNCHER), "--bundle-id", "com.brave.Browser", str(pdf)],
+                    [str(NATIVE_LAUNCHER), "--expected-identity", proof,
+                     "--bundle-id", "com.brave.Browser", str(pdf)],
                 )
                 verify.assert_called_once_with(pdf, target_app="com.brave.Browser")
                 quarantine.assert_called_once_with(pdf)
