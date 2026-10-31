@@ -40,6 +40,8 @@ struct NotificationsWhileMainAppClosedTests {
             deliverBlockedFileNotification(malwareDetected: false, scanFailed: false, transport: transport, completion: finished)
         case "failed":
             deliverBlockedFileNotification(malwareDetected: false, scanFailed: true, transport: transport, completion: finished)
+        case "sanitizer":
+            deliverBlockedFileNotification(malwareDetected: false, scanFailed: false, sanitizerFailed: true, transport: transport, completion: finished)
         case "malware":
             deliverBlockedFileNotification(malwareDetected: true, scanFailed: false, transport: transport, completion: finished)
         default:
@@ -84,11 +86,14 @@ struct NotificationsWhileMainAppClosedTests {
         let blocked = "A PDF could not be opened because its safety check failed."
         let malware = "Malware was detected. The PDF was blocked and was not opened."
         let failed = "A PDF scan failed or could not finish. The file was not opened."
+        let sanitized = "PDF sanitization failed. No sanitized copy was produced. This is not a malware detection."
         // A closed preferences process must not prevent either opted-in notice.
         check(status: .authorized, authorizationGranted: false, kind: "success",
               expectedNotice: success)
         check(status: .provisional, authorizationGranted: false, kind: "blocked",
               expectedNotice: blocked)
+        check(status: .authorized, authorizationGranted: false, kind: "sanitizer",
+              expectedNotice: sanitized)
         check(status: .authorized, authorizationGranted: false, kind: "failed",
               expectedNotice: failed)
         check(status: .authorized, authorizationGranted: false, kind: "malware",
@@ -97,7 +102,7 @@ struct NotificationsWhileMainAppClosedTests {
               expectedNotice: success, expectedPermissionRequests: 1)
         check(status: .notDetermined, authorizationGranted: false, kind: "blocked",
               expectedNotice: nil, expectedPermissionRequests: 1)
-        for kind in ["success", "blocked", "failed", "malware"] {
+        for kind in ["success", "blocked", "failed", "sanitizer", "malware"] {
             check(status: .denied, authorizationGranted: true, kind: kind, expectedNotice: nil)
         }
 

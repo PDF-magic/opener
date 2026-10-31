@@ -148,11 +148,13 @@ final class ScanResultSummaryView: NSView {
     let selectedProtectionLevelLabel = NSTextField(
         wrappingLabelWithString: "Selected protection level: Unavailable")
     let sanitizationLabel = NSTextField(labelWithString: "Sanitization: Unavailable")
+    let structureAnalysisLabel = NSTextField(labelWithString: "Structure analysis: Unavailable")
     let technicalDetailsButton = NSButton(title: "Show technical details", target: nil, action: nil)
     let technicalDetailsLabel = NSTextField(wrappingLabelWithString: "")
     private(set) var displayedStatus: ScanResultSummaryStatus?
     private(set) var displayedProtectionLevel: ScanResultSummaryProtectionLevel?
     private(set) var displayedSanitization: ScanResultSummarySanitization?
+    private(set) var displayedStructureAnalysisCompleted: Bool?
     private(set) var technicalDetailsExpanded = false
 
     override init(frame frameRect: NSRect) {
@@ -193,6 +195,9 @@ final class ScanResultSummaryView: NSView {
         sanitizationLabel.font = .systemFont(ofSize: 12)
         sanitizationLabel.textColor = .secondaryLabelColor
         sanitizationLabel.setAccessibilityIdentifier("scanResultSummarySanitization")
+        structureAnalysisLabel.font = .systemFont(ofSize: 12)
+        structureAnalysisLabel.textColor = .secondaryLabelColor
+        structureAnalysisLabel.setAccessibilityIdentifier("scanResultSummaryStructureAnalysis")
 
         technicalDetailsButton.setAccessibilityIdentifier("scanResultSummaryTechnicalDetailsToggle")
         technicalDetailsButton.target = self
@@ -205,8 +210,8 @@ final class ScanResultSummaryView: NSView {
 
         let stack = NSStackView(views: [
             headingLabel, documentNameLabel, selectedProtectionLevelLabel,
-            sanitizationLabel, malwareStatusLabel, explanationLabel,
-            technicalDetailsButton, technicalDetailsLabel
+            sanitizationLabel, malwareStatusLabel, structureAnalysisLabel,
+            explanationLabel, technicalDetailsButton, technicalDetailsLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -263,15 +268,19 @@ final class ScanResultSummaryView: NSView {
     // or extension messages. Unknown or absent selections stay unavailable.
     // A new request clears any prior name, tier, sanitization evidence or scan result.
     // This is trusted coordinator evidence, never a guess from tier or scan status.
+    // Structural completion comes from independent, request-correlated evidence;
+    // a missing result must not imply successful structural analysis.
     func show(
         _ status: ScanResultSummaryStatus?,
         documentURL: URL? = nil,
         selectedProtectionLevel: ScanResultSummaryProtectionLevel? = nil,
-        sanitization: ScanResultSummarySanitization? = nil
+        sanitization: ScanResultSummarySanitization? = nil,
+        structureAnalysisCompleted: Bool? = nil
     ) {
         displayedStatus = status
         displayedProtectionLevel = selectedProtectionLevel
         displayedSanitization = sanitization
+        displayedStructureAnalysisCompleted = structureAnalysisCompleted
         let sanitizationCopy = sanitization?.displayText ?? "Sanitization: Unavailable"
         sanitizationLabel.stringValue = sanitizationCopy
         sanitizationLabel.setAccessibilityLabel(sanitizationCopy)
@@ -282,6 +291,11 @@ final class ScanResultSummaryView: NSView {
             ?? "Selected protection level: Unavailable"
         selectedProtectionLevelLabel.stringValue = protection
         selectedProtectionLevelLabel.setAccessibilityLabel(protection)
+        let structure = structureAnalysisCompleted.map {
+            $0 ? "Structure analysis: Completed" : "Structure analysis: Not completed"
+        } ?? "Structure analysis: Unavailable"
+        structureAnalysisLabel.stringValue = structure
+        structureAnalysisLabel.setAccessibilityLabel(structure)
         // Only a verified clean terminal outcome supports a negative detection
         // statement. Every other unsuccessful or absent result is inconclusive.
         let malwareStatus: String

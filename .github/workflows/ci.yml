@@ -254,6 +254,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Verify ClamAV signature update failures are recorded safely
         run: PYTHONPATH=. python3 tests/signature/update-failures.py -v
+      - name: Verify private macOS signature-update failure notifications
+        run: PYTHONPATH=. python3 tests/notifications/signature-update-failure.py -v
       - name: Detect incomplete ClamAV signature downloads
         run: PYTHONPATH=. python3 tests/general/incomplete-signature-downloads.py -v
       - name: Handle interrupted signature update network transfers
@@ -366,6 +368,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/about-diagnostics-settings-page.py -v
       - name: Verify Advanced Scanning settings page and navigation
         run: PYTHONPATH=. python3 tests/general/advanced-scanning-settings-page.py -v
+      - name: Verify optional scan history remains off by default
+        run: PYTHONPATH=. python3 tests/general/scan-history-default.py -v
       - name: Verify dedicated Updates settings page
         run: PYTHONPATH=. python3 tests/updates/settings-page.py -v
       - name: Verify manual update action behavior
@@ -394,6 +398,8 @@ jobs:
           PYTHONPATH=. python3 tests/general/show-blocked-file-notifications.py -v
       - name: Verify failed-scan notices remain private and scanner-gated
         run: PYTHONPATH=. python3 tests/notifications/failed-scan.py -v
+      - name: Verify sanitizer-failure notices only follow validated reports and opt-in
+        run: PYTHONPATH=. python3 tests/notifications/sanitizer-failure.py -v
       - name: Verify confirmed malware-detection notices preserve blocking and privacy
         run: PYTHONPATH=. python3 tests/notifications/malware-detection.py -v
       - name: Verify notifications work without an open Settings window
@@ -741,6 +747,8 @@ jobs:
 
       - name: Verify scan result contract
         run: PYTHONPATH=. python3 tests/scan/results.py
+      - name: Verify passive optional local history record format
+        run: PYTHONPATH=. python3 tests/scan/history-record.py -v
       - name: Verify stable structured Enhanced finding identifiers and incomplete-stage safety
         run: PYTHONPATH=. python3 tests/enhanced/analysis-findings.py -v
       - name: Explain each Enhanced analysis finding with safe handling guidance
