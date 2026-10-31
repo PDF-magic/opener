@@ -48,6 +48,7 @@ PDF_LAUNCH_UNAVAILABLE_MESSAGE = (
 
 UNREADABLE_SCAN_INPUT_MESSAGE = 'The selected file is unreadable; opening was stopped.'
 NONEXISTENT_SCAN_INPUT_MESSAGE = 'The selected file or application does not exist; opening was stopped.'
+MOUNTED_VOLUME_UNAVAILABLE_MESSAGE = 'The selected filesystem volume is unavailable; opening was stopped.'
 
 # Only these fixed, path-free errors may appear in scan diagnostics.
 # Unexpected system or scanner exceptions may contain private source paths.
@@ -58,6 +59,7 @@ SAFE_SCAN_FAILURES = frozenset((
     PDF_LAUNCH_UNAVAILABLE_MESSAGE,
     UNREADABLE_SCAN_INPUT_MESSAGE,
     NONEXISTENT_SCAN_INPUT_MESSAGE,
+    MOUNTED_VOLUME_UNAVAILABLE_MESSAGE,
     'Application bundle contains a link outside the bundle; opening was stopped.',
     'The file exceeds the 512 MB scan limit; opening was stopped.',
     'A zero-length file cannot be scanned; opening was stopped.',
@@ -231,6 +233,19 @@ def parse_scan_requests(args):
     return [BrowserDownloadRequest(path) for path in args]
 
 
+def require_accessible_volume(path):
+    """Policy for local and mounted network volumes: require a usable mount.
+
+    A mounted SMB/NFS regular file receives the same mandatory scanner,
+    integrity and verified-opening checks as a local file. Never fetch a
+    remote URL or assume a cached verdict makes an inaccessible mount safe.
+    """
+    try:
+        os.statvfs(path)
+    except (OSError, ValueError):
+        raise RuntimeError(MOUNTED_VOLUME_UNAVAILABLE_MESSAGE) from None
+
+
 def require_readable_file(path):
     """Fail closed when a selected file cannot be read or an app enumerated.
 
@@ -267,6 +282,7 @@ def validate_scan_request(item):
         raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from error
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Select a file or application, rather than a folder.')
+    require_accessible_volume(path)
     require_readable_file(path)
     return path
 
@@ -545,6 +561,7 @@ def file_identity(path, include_ctime=True):
 def verify_file_integrity(path, original_digest, original_identity,
                           allow_ctime_change=False):
     """Revalidate bytes and filesystem identity before any launch."""
+    require_accessible_volume(path)
     expected = (tuple(entry[:-1] for entry in original_identity)
                 if allow_ctime_change else original_identity)
     def current_identity():
@@ -552,6 +569,7 @@ def verify_file_integrity(path, original_digest, original_identity,
     if (current_identity() != expected or fingerprint(path) != original_digest
             or current_identity() != expected):
         raise RuntimeError('The file changed while checking it; opening was stopped. Try again.')
+    require_accessible_volume(path)
 
 
 def cache_key(digest, is_pdf):
@@ -875,6 +893,7 @@ def supported_request_path(item):
         raise RuntimeError(NONEXISTENT_SCAN_INPUT_MESSAGE) from error
     if not path.is_file() and not (path.is_dir() and path.suffix.lower() == '.app'):
         raise RuntimeError('Unsupported scan request type: select a file or application bundle.')
+    require_accessible_volume(path)
     require_readable_file(path)
     return path
 
