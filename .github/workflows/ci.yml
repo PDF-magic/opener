@@ -1192,7 +1192,7 @@ jobs:
       - name: Verify actual multi-document progress and unknown single-file progress
         timeout-minutes: 3
         run: PYTHONPATH=. python3 tests/native/determinate-progress.py -v
-      - name: Verify scan failures identify the PDF and show useful details
+      - name: Verify native scan failures hide raw tracebacks and retain safe explanations
         timeout-minutes: 2
         run: PYTHONPATH=. python3 tests/native/scan-failure.py
       - name: Verify blocked scans keep the progress window until user acknowledgement

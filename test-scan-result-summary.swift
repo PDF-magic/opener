@@ -32,6 +32,14 @@ struct ScanResultSummaryComponentTests {
         precondition(first.structureAnalysisLabel.accessibilityLabel()
                      == "Structure analysis: Unavailable")
         precondition(first.displayedStructureAnalysisCompleted == nil)
+        precondition(first.technicalDetailsButton.accessibilityIdentifier()
+                     == "scanResultSummaryTechnicalDetailsToggle")
+        precondition(first.technicalDetailsLabel.accessibilityIdentifier()
+                     == "scanResultSummaryTechnicalDetails")
+        precondition(first.technicalDetailsButton.isHidden)
+        precondition(first.technicalDetailsLabel.isHidden)
+        precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!first.technicalDetailsExpanded)
         precondition(first.subviews.count == 1, "the component must own its layout")
 
         let expected = [
@@ -45,7 +53,7 @@ struct ScanResultSummaryComponentTests {
             precondition(first.displayedStatus == status)
             precondition(first.displayedStructureAnalysisCompleted == nil)
             precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
-                         "scanner verdict must not establish structural completion")
+                         "a scanner verdict cannot establish structural completion")
             precondition(first.displayedSanitization == nil)
             precondition(first.sanitizationLabel.stringValue == "Sanitization: Unavailable")
             precondition(!first.headingLabel.stringValue.isEmpty)
@@ -60,6 +68,35 @@ struct ScanResultSummaryComponentTests {
             }
             if status != .malwareDetected {
                 precondition(!first.headingLabel.stringValue.contains("Malware detected"))
+            }
+            if status == .clean || status == .cancelled {
+                precondition(first.technicalDetailsButton.isHidden)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+            } else {
+                precondition(!first.technicalDetailsButton.isHidden)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(!first.technicalDetailsExpanded)
+                precondition(first.technicalDetailsButton.title == "Show technical details")
+                precondition(first.technicalDetailsLabel.stringValue.contains(
+                    "Result code: " + status.rawValue))
+                precondition(first.technicalDetailsLabel.stringValue.contains(
+                    "Opening was not authorized."))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("/Users/"))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("secret.pdf"))
+                precondition(!first.technicalDetailsLabel.stringValue.contains("stderr"))
+                first.technicalDetailsButton.performClick(nil)
+                precondition(first.technicalDetailsExpanded)
+                precondition(!first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsButton.title == "Hide technical details")
+                precondition(first.technicalDetailsButton.accessibilityLabel()
+                             == "Hide technical details")
+                precondition(first.technicalDetailsLabel.accessibilityLabel()
+                             == first.technicalDetailsLabel.stringValue)
+                first.technicalDetailsButton.performClick(nil)
+                precondition(!first.technicalDetailsExpanded)
+                precondition(first.technicalDetailsLabel.isHidden)
+                precondition(first.technicalDetailsButton.title == "Show technical details")
             }
         }
 
@@ -94,7 +131,7 @@ struct ScanResultSummaryComponentTests {
         precondition(second.structureAnalysisLabel.accessibilityLabel()
                      == "Structure analysis: Not completed")
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Completed",
-                     "views must not share completion state")
+                     "separate views must not share completion state")
         precondition(second.sanitizationLabel.stringValue == "Sanitization: Not performed")
         precondition(second.sanitizationLabel.accessibilityLabel()
                      == "Sanitization: Not performed")
@@ -104,6 +141,11 @@ struct ScanResultSummaryComponentTests {
         precondition(second.selectedProtectionLevelLabel.stringValue.contains("preview only"))
         precondition(second.selectedProtectionLevelLabel.stringValue.contains(
             "Built-in scanning remains active"))
+        precondition(!second.technicalDetailsButton.isHidden)
+        second.technicalDetailsButton.performClick(nil)
+        precondition(second.technicalDetailsExpanded)
+        precondition(second.technicalDetailsLabel.stringValue.contains("scanFailed"))
+        precondition(first.technicalDetailsButton.isHidden)
         precondition(first.selectedProtectionLevelLabel.stringValue
                      == "Selected protection level: Built-in")
         precondition(first.headingLabel.stringValue == "Scan complete",
@@ -141,7 +183,7 @@ struct ScanResultSummaryComponentTests {
                      == "Selected protection level: Unavailable")
         precondition(first.displayedStructureAnalysisCompleted == nil)
         precondition(first.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable",
-                     "new result without evidence must clear prior completion")
+                     "new scan results without structural evidence must clear old completion")
         for unsafe in [
             "/tmp/line\nspoof.pdf",
             "/tmp/\u{202E}fdp.dab.pdf",
@@ -168,8 +210,18 @@ struct ScanResultSummaryComponentTests {
         precondition(first.headingLabel.stringValue == "No verified scan result")
         precondition(first.explanationLabel.stringValue.contains("not authorized"),
                      "reset must not leave stale clean status visible")
-        precondition(second.headingLabel.stringValue == "Scan failed")
+        precondition(first.technicalDetailsButton.isHidden)
+        precondition(first.technicalDetailsLabel.isHidden)
+        precondition(first.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!first.technicalDetailsExpanded)
+        precondition(second.technicalDetailsExpanded, "separate instances must retain state")
         precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Not completed")
+        precondition(second.headingLabel.stringValue == "Scan failed")
+        second.show(nil)
+        precondition(second.technicalDetailsButton.isHidden)
+        precondition(second.technicalDetailsLabel.stringValue.isEmpty)
+        precondition(!second.technicalDetailsExpanded)
+        precondition(second.structureAnalysisLabel.stringValue == "Structure analysis: Unavailable")
         print("Reusable scan result summary component passed")
     }
 }
