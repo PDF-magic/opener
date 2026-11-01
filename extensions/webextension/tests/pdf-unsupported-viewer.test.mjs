@@ -194,3 +194,31 @@ test("no browser, native scanner, or permission effects are introduced", async (
     assert.ok(guide.toLowerCase().includes(phrase.toLowerCase()), phrase);
   }
 });
+
+test("opener-1070 exercises real Firefox unsupported inline viewers without scanner approval", async () => {
+  const read = path => readFile(new URL(path, import.meta.url), "utf8");
+  const [smoke, workflow, background, manifest] = await Promise.all([
+    read("../scripts/test-firefox-native-pdf-download.mjs"),
+    read("../../../.github/workflows/browser-native-pdf-downloads.yml"),
+    read("../src/background.js"),
+    read("../manifest.json").then(JSON.parse)
+  ]);
+  for (const required of [
+    '"pdfjs.disabled": true', "unsupportedInline", "Content-Disposition",
+    '"inline"', '"application/pdf"', '"application/octet-stream"',
+    '"/unsupported-inline/not-really.pdf"', "HTML control, not a PDF viewer",
+    'value: "#inline-" + index', '"/execute/sync"',
+    "unsupportedHits.get(item.path)", "htmlControlHits",
+    "readFile(join(downloadDir, item.name))", "await rm(profile",
+    "PASS Firefox unsupported inline viewer fallbacks"
+  ]) assert.ok(smoke.includes(required), required);
+  assert.match(workflow, /node scripts\\/test-firefox-native-pdf-download\\.mjs "\\$FIREFOX_PATH"/);
+  for (const forbidden of [
+    "--load-extension=", "sendNativeMessage(", "connectNative(",
+    "permissions.request(", "downloads.open(", "clamscan(", "https://"
+  ]) assert.equal(smoke.includes(forbidden), false, forbidden);
+  assert.equal(background.trimEnd().endsWith("void 0;"), true);
+  assert.deepEqual(manifest.permissions, []);
+  assert.deepEqual(manifest.host_permissions, []);
+  assert.deepEqual(manifest.optional_permissions, ["downloads"]);
+});
