@@ -215,10 +215,14 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Verify troubleshooting instructions and scan safety boundaries
+        run: PYTHONPATH=. python3 tests/general/troubleshooting-docs.py -v
       - name: Verify documented application upgrade process
         run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
       - name: Keep scanner installation instructions browser-neutral
         run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
+      - name: Verify browser extension installation documentation
+        run: PYTHONPATH=. python3 tests/general/browser-extension-installation.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
@@ -231,6 +235,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/sanitization-documentation.py -v
       - name: Verify documented limitations of antivirus signatures
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
+      - name: Verify documented offline behavior
+        run: PYTHONPATH=. python3 tests/general/offline-behavior-documentation.py -v
       - name: Verify documented handling of quarantined files
         run: PYTHONPATH=. python3 tests/general/quarantined-files-documentation.py -v
       - name: Verify documented signature update process

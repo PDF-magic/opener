@@ -15,7 +15,7 @@ For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/ch
 
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
-- [Release versioning scheme](release-versioning.md) — stable SemVer tags, component versions, build numbers, and the guarded source-release policy.
+- [Troubleshooting](troubleshooting.md) — diagnose safe installation, scan, signature, PDF handler, and browser-handoff failures without bypassing protections.
 
 - [Handling quarantined files](quarantined-files.md) — what macOS File Quarantine means for clean, blocked, and unscannable managed opens, plus safe troubleshooting.
 
@@ -26,6 +26,8 @@ General installation, application, browser, and operational guides remain in thi
 - [macOS security controls](macos-security-controls.md) — what the scan gate does and does not do alongside Quarantine, Gatekeeper, notarization, XProtect, Launch Services, TCC, and SIP.\n- [Known unsupported PDF routes](browser-unsupported-routes.md) — the audited nine-browser, 27-route register of inactive or unverified automatic scan-before-render entry paths, with evidence and fail-closed next steps.
 
 - [Antivirus signature limitations](scanner/signature-limitations.md) — why a clean ClamAV result does not guarantee safety, including freshness and cache limitations.
+- [Offline behavior](offline-behavior.md) — when local scanning works without a network, how the 48-hour signature gate applies, and what remains online-only.
+
 
 - [Signature update process](scanner/signature-update-process.md) — how FreshClam checks, safely verifies, publishes, and reports signature updates.
 
@@ -34,6 +36,8 @@ General installation, application, browser, and operational guides remain in thi
 - [Browser download monitoring support](browser-download-monitoring-support.md) — which browsers expose relevant download events, what still needs verification, and why monitoring is inactive.
 
 - [PDF structural analysis limitations](pdf/analysis-limitations.md) — what structural parsing can and cannot establish, supported limits, and the active protection boundary.
+- [Browser extension installation](browser-extension-installation.md) — local development loading for Chromium-family browsers, Firefox, and Safari; release and scanner-safety limits.
+
 
 - [Security reporting process](../SECURITY.md) — how to privately disclose suspected vulnerabilities without posting exploit details publicly.
 
@@ -45,3 +49,5 @@ General installation, application, browser, and operational guides remain in thi
 - GitHub Actions workflow files remain directly in `.github/workflows/`, as GitHub requires.
 
 The CI documentation check verifies that pages in these feature folders retain kebab-case names, avoid duplicate directory prefixes, and point to existing local Markdown destinations.
+
+For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
