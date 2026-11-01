@@ -68,7 +68,7 @@ class MediumPDFBenchmarkTests(unittest.TestCase):
   def test_benchmark_is_not_the_scanner_or_an_open_authorization(self):
     source = (ROOT / "medium_pdf_benchmark.py").read_text()
     scanner = (ROOT / "scan-and-open.py").read_text()
-    workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    workflow = (ROOT / ".github/workflows/medium-pdf-benchmark.yml").read_text()
     docs = (ROOT / "docs/performance/medium-pdf.md").read_text()
     self.assertNotIn("medium_pdf_benchmark", scanner)
     self.assertIn("if not cached_clean(cache_id):", scanner)

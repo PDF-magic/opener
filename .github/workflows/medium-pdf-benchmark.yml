@@ -1,0 +1,27 @@
+name: Medium PDF performance benchmark
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  medium-pdf-benchmark:
+    name: Benchmark isolated medium-PDF structure inspection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the reviewed PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Verify workload, measurement contract and scanner isolation
+        run: PYTHONPATH=. python3 tests/performance/medium-pdf.py -v
+      - name: Time the real supervised medium-PDF parser
+        run: PYTHONPATH=. python3 medium_pdf_benchmark.py --runs 3
