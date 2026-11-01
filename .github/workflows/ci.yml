@@ -338,6 +338,8 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
           PYTHONPATH=. python3 tests/enhanced/embedded-files.py -v
+      - name: Test Enhanced policy with a PDF containing embedded attachments
+        run: PYTHONPATH=. python3 tests/enhanced/profile-embedded-attachments.py -v
       - name: Inspect embedded PDF filenames without opening attachments
         run: PYTHONPATH=. python3 tests/pdf/embedded-filenames.py -v
       - name: Detect suspiciously large PDF embedded objects
