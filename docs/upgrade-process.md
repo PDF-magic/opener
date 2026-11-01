@@ -60,7 +60,7 @@ take back a default that the user changed.
    the migration journal: expect `complete` for a successful recorded run;
    `partial` requires investigation and a safe retry.
 2. Verify the effective PDF handler using the installed
-   `"$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"`
+   `python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"`
    command or the General settings status. Check that the handler matches
    **your intended association**; do not silently reassign it.
 3. In **Settings → Updates**, review the displayed version and the last
