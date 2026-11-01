@@ -24,6 +24,7 @@ REVIEWED = {
   "pillow": (("11.3.0",), "MIT-CMU"),
   "cryptography": (("46.0.4",), "Apache-2.0 OR BSD-3-Clause"),
   "pymupdf": (("2.0",), "AGPL-3.0-only OR LicenseRef-Artifex-Commercial"),
+  "ruff": (("0.14.3",), "MIT"),
 }
 PIN = re.compile(r"([a-zA-Z][a-zA-Z0-9_.-]*)==([0-9][a-zA-Z0-9.]*)\Z")
 

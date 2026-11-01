@@ -43,6 +43,7 @@ class DependencyLicensingTests(unittest.TestCase):
     self.assertIn(("pypdf", "6.21.4"), found)
     self.assertIn(("pypdf", "5.9.0"), found)
     self.assertIn(("pymupdf", "2.0"), found)
+    self.assertIn(("ruff", "0.14.3"), found)
     self.assertEqual(manifest.read_bytes(), before)
 
   def test_reject_unreviewed_dependency_and_unpinned_install(self):
@@ -59,6 +60,11 @@ class DependencyLicensingTests(unittest.TestCase):
 
   def test_rejects_changed_version_even_if_json_is_updated(self):
     self.edit(checker.REQUIREMENTS, "pypdf==6.21.4", "pypdf==999.1")
+    with self.assertRaises(checker.LicenseReviewError):
+      checker.check(self.root)
+
+  def test_rejects_unreviewed_ruff_pin(self):
+    self.edit(".github/workflows/source-lint.yml", "ruff==0.14.3", "ruff==0.14.4")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
 
