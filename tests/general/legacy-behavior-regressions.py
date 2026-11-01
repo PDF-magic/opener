@@ -144,7 +144,7 @@ class LegacyBehaviorRegressions(unittest.TestCase):
             result = gate.scan_and_open(document, "/scanner")
         self.assertEqual(result.status, "clean")
         self.assertIn("--max-filesize=512M", scanner.call_args.args[0])
-        self.assertEqual(scanner.call_args.kwargs["timeout"], gate.OTHER_SCAN_TIMEOUT)
+        self.assertEqual(scanner.call_args.kwargs["timeout"], gate.DEFAULT_SCAN_POLICY.other_timeout_seconds)
         self.launch.assert_called_once_with(document, target_app=None)
         self.assertEqual(self.preference.read_text(encoding="ascii"), "org.mozilla.firefox\n")
 
