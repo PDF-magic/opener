@@ -14,7 +14,7 @@ test-only libraries.
 | Dependency | Reviewed licensing | Use |
 | --- | --- | --- |
 | ClamAV / FreshClam | GPLv2 | External executable installed by Homebrew, not bundled with the application |
-| pypdf 6.21.3, 5.9.0 | BSD-3-Clause | Enhanced requirements pin 6.21.3; legacy portable CI jobs still pin 5.9.0 |
+| pypdf 6.21.4, 5.9.0 | BSD-3-Clause | Enhanced requirements pin 6.21.4; legacy portable CI jobs still pin 5.9.0 |
 | Pillow 11.3.0 | MIT-CMU | Optional sanitization tests |
 | cryptography 46.0.4 | Apache-2.0 OR BSD-3-Clause | Optional validation tests |
 | PyMuPDF 2.0 / MuPDF | AGPLv3 or Artifex commercial license | Optional isolated Maximum renderer |

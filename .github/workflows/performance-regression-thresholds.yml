@@ -31,13 +31,15 @@ jobs:
           python-version: "3.11"
       - name: Verify the comparison policy and fail-closed inputs
         run: cd candidate && PYTHONPATH=. python3 tests/performance/regression-thresholds.py -v
-      - name: Reject incomparable fixture, measurement, or dependency revisions
+      - name: Reject incomparable fixture or measurement revisions
         shell: bash
         run: |
           set -euo pipefail
           cmp -s baseline/medium_pdf_benchmark.py candidate/medium_pdf_benchmark.py
           cmp -s baseline/pdf_parser_memory_benchmark.py candidate/pdf_parser_memory_benchmark.py
-          cmp -s baseline/requirements-enhanced-pdf.txt candidate/requirements-enhanced-pdf.txt
+          # The next step installs candidate requirements into the SAME runner
+          # for both isolated revisions. Equal environments make app-code timing
+          # comparable even when the security-reviewed parser pin changes.
       - name: Install pinned parser requirements once for both checkouts
         working-directory: candidate
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt

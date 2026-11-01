@@ -19,8 +19,8 @@ class PDFParserEvaluationTests(unittest.TestCase):
     requirements = (ROOT / "requirements-enhanced-pdf.txt").read_text()
     active = [line.strip() for line in requirements.splitlines()
               if line.strip() and not line.lstrip().startswith("#")]
-    self.assertEqual(active, ["pypdf==6.21.3"])
-    self.assertEqual(version("pypdf"), "6.21.3")
+    self.assertEqual(active, ["pypdf==6.21.4"])
+    self.assertEqual(version("pypdf"), "6.21.4")
     self.assertEqual(metadata("pypdf").get("License-Expression"), "BSD-3-Clause")
 
   def test_benchmark_uses_only_synthetic_bounded_pdf_bytes(self):
@@ -46,7 +46,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
     report, = json.loads(run.stdout)
     self.assertEqual(report["status"], "ok")
     self.assertEqual(report["parser"], "pypdf")
-    self.assertEqual(report["version"], "6.21.3")
+    self.assertEqual(report["version"], "6.21.4")
     self.assertEqual(report["pages"], 16)
     self.assertGreater(report["peak_rss_mib"], 0)
 
@@ -57,7 +57,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
     scanner = (ROOT / "scan-and-open.py").read_text()
     for item in ("pypdf", "pikepdf", "PyMuPDF", "PDF 2.0",
                  "Malformed", "memory", "MPL-2.0", "BSD-3-Clause",
-                 "AGPL", "When", "6.21.3"):
+                 "AGPL", "When", "6.21.4"):
       # The selection document uses descriptive labels rather than
       # asserting that a library supports every PDF 2.0 feature.
       if item == "When":

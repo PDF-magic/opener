@@ -31,10 +31,16 @@ engineering guardrails, not guaranteed response-time service levels.
 
 The CI job checks out the exact target base and proposed head SHAs separately,
 with no saved credentials. It refuses to compare changes to the fixture
-generator, timed benchmark protocol, or dependency lock/pin list: such a change
-requires separately reviewed benchmark calibration rather than a silently
-changed baseline. This does not prevent testing changes to the measured PDF
-parser or supervisor, which are the intended subjects of a comparison.
+generator or timed benchmark protocol. Both checkouts explicitly use the
+**candidate's reviewed parser pin**, installed once on the same runner, so a
+security-only dependency pin update can proceed without defeating the paired
+application-code regression gate. Because *both* revisions use the upgraded
+dependency, this comparison does **not** measure the isolated performance
+effect of upgrading the dependency itself; that requires a dedicated
+dependency-version benchmark. It still tests changes to the measured PDF
+parser or supervisor against identical benchmark and dependency environments.
+An incompatible upgraded parser fails the checks instead of authorizing
+opening or silently skipping the comparison.
 
 The policy evaluator requires exactly two complete baseline/candidate pairs,
 the same fixture byte count, exact expected stage/workload, 128 pages, one

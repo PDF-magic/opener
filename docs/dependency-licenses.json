@@ -9,11 +9,11 @@
   "pypdf": {
     "versions": [
       "5.9.0",
-      "6.21.3"
+      "6.21.4"
     ],
     "license": "BSD-3-Clause",
-    "source": "https://pypi.org/project/pypdf/6.21.3/",
-    "distribution_requirements": "Retain BSD-3-Clause copyright, license conditions and disclaimer in source or binary redistributions. Version 5.9.0 remains in portable CI only; the Enhanced requirements file selects 6.21.3.",
+    "source": "https://pypi.org/project/pypdf/6.21.4/",
+    "distribution_requirements": "Retain BSD-3-Clause copyright, license conditions and disclaimer in source or binary redistributions. Version 5.9.0 remains in portable CI only; the Enhanced requirements file selects 6.21.4.",
     "use": "Optional strict PDF parsing and CI fixtures, not the Built-in scan gate."
   },
   "pillow": {

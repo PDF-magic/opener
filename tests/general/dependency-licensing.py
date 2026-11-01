@@ -40,7 +40,7 @@ class DependencyLicensingTests(unittest.TestCase):
     manifest = self.root / checker.INVENTORY
     before = manifest.read_bytes()
     found = checker.check(self.root)
-    self.assertIn(("pypdf", "6.21.3"), found)
+    self.assertIn(("pypdf", "6.21.4"), found)
     self.assertIn(("pypdf", "5.9.0"), found)
     self.assertIn(("pymupdf", "2.0"), found)
     self.assertEqual(manifest.read_bytes(), before)
@@ -58,7 +58,7 @@ class DependencyLicensingTests(unittest.TestCase):
       checker.check(self.root)
 
   def test_rejects_changed_version_even_if_json_is_updated(self):
-    self.edit(checker.REQUIREMENTS, "pypdf==6.21.3", "pypdf==999.1")
+    self.edit(checker.REQUIREMENTS, "pypdf==6.21.4", "pypdf==999.1")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
 

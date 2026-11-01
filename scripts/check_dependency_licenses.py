@@ -20,7 +20,7 @@ BROWSER_PACKAGE = "extensions/webextension/package.json"
 # evidence-backed inventory. It must not silently pass by updating JSON alone.
 REVIEWED = {
   "clamav": ((), "GPL-2.0-only"),
-  "pypdf": (("5.9.0", "6.21.3"), "BSD-3-Clause"),
+  "pypdf": (("5.9.0", "6.21.4"), "BSD-3-Clause"),
   "pillow": (("11.3.0",), "MIT-CMU"),
   "cryptography": (("46.0.4",), "Apache-2.0 OR BSD-3-Clause"),
   "pymupdf": (("2.0",), "AGPL-3.0-only OR LicenseRef-Artifex-Commercial"),
