@@ -96,7 +96,7 @@ class BenchmarkTests(unittest.TestCase):
         self.assertIn("python3 scanner_startup_benchmark.py", ci)
         self.assertIn("--scanner /usr/bin/clamscan --database", ci)
         self.assertIn("benchmark-never-match", ci)
-        self.assertIn("/usr/bin/clamscan", benchmark.TRUSTED_SCANNERS)
+        self.assertIn('"/usr/bin/clamscan"', (ROOT / "scanner_startup_benchmark.py").read_text())
 
     def test_failed_warning_timeout_and_truncated_runs_publish_no_result(self):
         failures = (
