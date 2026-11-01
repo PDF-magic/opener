@@ -1,0 +1,23 @@
+name: macOS notarization safety regression tests
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  notarization-regressions:
+    name: Offline notarization submission and stapling checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify notarization is fail-closed without Apple credentials
+        run: PYTHONPATH=. python3 tests/general/macos-notarization.py -v
