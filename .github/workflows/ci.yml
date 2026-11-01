@@ -245,6 +245,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/object-limit.py -v
       - name: Reject PDFs exceeding bounded decoded-stream data
         run: PYTHONPATH=. python3 tests/pdf/decompressed-size.py -v
+      - name: Verify deterministic PDF memory-stress corpus and bounded fail-closed inspection
+        run: PYTHONPATH=. python3 tests/pdf/memory-stress-corpus.py -v
       - name: Reject excessive PDF recursion depth and cyclic page trees
         run: PYTHONPATH=. python3 tests/pdf/recursion-depth.py -v
       - name: Enforce hard wall-clock timeout on optional PDF structure analysis
