@@ -215,8 +215,14 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Verify the three documented protection levels
+        run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented Standard protection checks
         run: PYTHONPATH=. python3 tests/protection/standard-documentation.py -v
+      - name: Verify documented Maximum protection checks
+        run: PYTHONPATH=. python3 tests/protection/maximum-documentation.py -v
+      - name: Verify documented limitations of antivirus signatures
+        run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Verify actionable failure-report formatting and metadata handling
