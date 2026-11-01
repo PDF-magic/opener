@@ -32,6 +32,8 @@ General installation, application, browser, and operational guides remain in thi
 - [Browser download monitoring support](browser-download-monitoring-support.md) — which browsers expose relevant download events, what still needs verification, and why monitoring is inactive.
 
 - [PDF structural analysis limitations](pdf/analysis-limitations.md) — what structural parsing can and cannot establish, supported limits, and the active protection boundary.
+- [Browser extension installation](browser-extension-installation.md) — local development loading for Chromium-family browsers, Firefox, and Safari; release and scanner-safety limits.
+
 
 - [Security reporting process](../SECURITY.md) — how to privately disclose suspected vulnerabilities without posting exploit details publicly.
 

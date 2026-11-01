@@ -219,6 +219,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
       - name: Keep scanner installation instructions browser-neutral
         run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
+      - name: Verify browser extension installation documentation
+        run: PYTHONPATH=. python3 tests/general/browser-extension-installation.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
