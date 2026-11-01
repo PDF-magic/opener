@@ -428,6 +428,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/invalid-headers-corpus.py -v
       - name: Verify incorrectly named PDFs and extension-spoofing corpus
         run: PYTHONPATH=. python3 tests/pdf/incorrectly-named-files.py -v
+      - name: Validate large, structurally sound PDF security corpus
+        run: PYTHONPATH=. python3 tests/pdf/large-valid-corpus.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
