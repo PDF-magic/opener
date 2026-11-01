@@ -1,6 +1,32 @@
 import AppKit
+import Darwin
 import Security
 import UniformTypeIdentifiers
+
+// Bundle caches Info.plist for a given URL even after an application is
+// replaced in place. Do not use a cached identity to authorize a new bundle.
+private func currentPDFTargetIdentity(at application: URL) -> (id: String, executable: String)? {
+    let path = application.appendingPathComponent("Contents/Info.plist").path
+    let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+    guard descriptor >= 0 else { return nil }
+    defer { close(descriptor) }
+
+    let limit = 1024 * 1024
+    var metadata = stat()
+    guard fstat(descriptor, &metadata) == 0,
+          (metadata.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+          metadata.st_size > 0, metadata.st_size <= limit else { return nil }
+    let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: false)
+    guard let bytes = try? file.read(upToCount: limit + 1),
+          !bytes.isEmpty, bytes.count <= limit,
+          let raw = try? PropertyListSerialization.propertyList(
+              from: bytes, options: [], format: nil),
+          let info = raw as? [String: Any],
+          let identifier = info["CFBundleIdentifier"] as? String, !identifier.isEmpty,
+          let executable = info["CFBundleExecutable"] as? String, !executable.isEmpty
+    else { return nil }
+    return (identifier, executable)
+}
 
 // Launch Services may keep registrations for deleted, moved, or damaged apps.
 // Validate each discovered bundle without opening it or changing preferences.
@@ -21,9 +47,12 @@ func verifiedDiscoveredApplication(
           files.isReadableFile(atPath: info.path),
           (try? info.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
           let bundle = Bundle(url: target),
+          let diskIdentity = currentPDFTargetIdentity(at: target),
           let identifier = bundle.bundleIdentifier, !identifier.isEmpty,
+          diskIdentity.id == identifier,
           expectedBundleIdentifier == nil || identifier == expectedBundleIdentifier,
           let executable = bundle.executableURL?.resolvingSymlinksInPath(),
+          diskIdentity.executable == executable.lastPathComponent,
           (try? executable.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
           files.isExecutableFile(atPath: executable.path) else {
         return nil

@@ -22,7 +22,65 @@ const verifyMacHandoff = process.argv.includes("--macos-handoff");
 if (verifyMacHandoff) assert.equal(process.platform, "darwin",
   "The quarantine/scan-open integration requires a real macOS runner");
 const fixture = createNativePdfDownloadFixture();
+
+// Two genuine inline responses with Firefox's PDF.js deliberately disabled in
+// this disposable profile, plus a .pdf-looking HTML control. These test
+// unsupported inline viewing, not the existing attachment download cases.
+const unsupportedInline = Object.freeze([
+  Object.freeze({
+    path: "/unsupported-inline/disabled.pdf", name: "disabled.pdf",
+    mime: "application/pdf"
+  }),
+  Object.freeze({
+    path: "/unsupported-inline/octet.pdf", name: "octet.pdf",
+    mime: "application/octet-stream"
+  })
+]);
+const unsupportedHits = new Map(unsupportedInline.map(item => [item.path, 0]));
+let htmlControlHits = 0;
 const server = createServer((request, response) => {
+  if (request.url?.startsWith("/unsupported-inline/")) {
+    if (request.method !== "GET") {
+      response.writeHead(405, { "Allow": "GET", "Cache-Control": "no-store" });
+      response.end();
+      return;
+    }
+    if (request.url === "/unsupported-inline/index") {
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"
+      });
+      response.end("<!doctype html><title>Unsupported inline PDF fixture</title>" +
+        unsupportedInline.map((item, index) =>
+          '<a id="inline-' + index + '" href="' + item.path + '">Local PDF</a>'
+        ).join(""));
+      return;
+    }
+    const item = unsupportedInline.find(entry => entry.path === request.url);
+    if (item) {
+      unsupportedHits.set(item.path, unsupportedHits.get(item.path) + 1);
+      response.writeHead(200, {
+        "Content-Type": item.mime,
+        "Content-Disposition": "inline",
+        "Content-Length": fixture.pdf.length,
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"
+      });
+      response.end(fixture.pdf);
+      return;
+    }
+    if (request.url === "/unsupported-inline/not-really.pdf") {
+      htmlControlHits++;
+      const html = "<!doctype html><title>Not a PDF</title>" +
+        "<p>HTML control, not a PDF viewer</p>";
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": Buffer.byteLength(html),
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"
+      });
+      response.end(html);
+      return;
+    }
+  }
   if (fixture.handle(request, response)) return;
   response.writeHead(404, { "Cache-Control": "no-store" });
   response.end();
@@ -167,15 +225,59 @@ try {
     }
   }
 
+  // When the built-in PDF.js viewer is disabled by this temporary profile,
+  // inline PDF MIME and unknown/octet MIME must take the browser-owned
+  // download path rather than claiming a rendered or scanned inline viewer.
+  for (const [index, item] of unsupportedInline.entries()) {
+    await webdriver("POST", "/session/" + sessionId + "/url", {
+      url: origin + "/unsupported-inline/index"
+    });
+    const element = await webdriver("POST", "/session/" + sessionId + "/element", {
+      using: "css selector", value: "#inline-" + index
+    });
+    const elementId = element["element-6066-11e4-a52e-4f735466cecf"];
+    assert.ok(elementId, "Firefox must expose the real inline link");
+    await webdriver("POST", "/session/" + sessionId +
+      "/element/" + elementId + "/click", {}, 35_000);
+    await until(async () => unsupportedHits.get(item.path) === 1,
+      "Firefox requesting unsupported inline PDF " + item.name);
+    await until(async () => {
+      const downloaded = await stat(join(downloadDir, item.name));
+      const files = await readdir(downloadDir);
+      return downloaded.size === fixture.pdf.length &&
+        !files.some(name => name.endsWith(".part"));
+    }, "Firefox saving unsupported inline PDF " + item.name, 55_000);
+    assert.deepEqual(await readFile(join(downloadDir, item.name)), fixture.pdf,
+      "Disabled inline viewer must preserve the exact PDF bytes on download");
+    assert.equal(unsupportedHits.get(item.path), 1,
+      "Unsupported inline route must only be requested once");
+  }
+
+  // A .pdf suffix with an actual HTML MIME type is not PDF evidence; the
+  // browser must display the harmless HTML control, not save/approve a PDF.
+  const notPdf = origin + "/unsupported-inline/not-really.pdf";
+  await webdriver("POST", "/session/" + sessionId + "/url", { url: notPdf });
+  await until(async () => {
+    const observed = await webdriver("POST", "/session/" + sessionId +
+      "/execute/sync", {
+        script: "return {url: location.href, text: document.body.textContent};",
+        args: []
+      });
+    return observed.url === notPdf &&
+      observed.text?.includes("HTML control, not a PDF viewer");
+  }, "HTML content at a misleading .pdf URL");
+  assert.equal(htmlControlHits, 1, "HTML fallback must be served only once");
+
   assert.deepEqual((await readdir(downloadDir)).sort(),
-    fixture.cases.map(item => item.name).sort(),
-    "Only the requested native PDFs may be saved");
+    [...fixture.cases, ...unsupportedInline].map(item => item.name).sort(),
+    "Only the expected downloaded PDFs may be saved");
   assert.ok(fixture.snapshot().landingRequests >= fixture.cases.length);
   for (const item of fixture.cases) {
     assert.equal(fixture.snapshot().requests[item.path], 1,
       "One user-like click must fetch one PDF");
   }
   console.log("PASS Firefox browser-native PDF attachment and octet downloads: " + version);
+  console.log("PASS Firefox unsupported inline viewer fallbacks and HTML MIME control: " + version);
   if (verifyMacHandoff) console.log(
     "PASS Firefox-downloaded PDF safe-opening and quarantine scenarios on macOS"
   );
