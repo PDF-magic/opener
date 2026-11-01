@@ -339,7 +339,8 @@ class MaximumRendererTests(unittest.TestCase):
             ("incomplete_image", subprocess.CompletedProcess([], 0, valid[:-1])),
         )
         for reason, outcome in failures:
-            with self.subTest(reason=reason), (
+            with (
+                self.subTest(reason=reason),
                 patch.object(renderer, "_renderer_command", return_value=("trusted-worker",)),
                 patch.object(renderer.subprocess, "run", return_value=outcome) as run,
                 self.assertRaises(renderer.MaximumPDFRenderError) as failure,
