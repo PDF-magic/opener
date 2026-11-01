@@ -36,7 +36,7 @@ class BrowserDownloadMonitoringSupportTests(unittest.TestCase):
       if (line.startswith("| ") and len(fields) == 4
           and fields[1].startswith("`") and fields[1].endswith("`")
           and fields[3] == "**Inactive**"):
-        match = re.match(r"^\\*\\*(Documented|Conditional|Unverified)\\*\\*", fields[2])
+        match = re.match(r"^\*\*(Documented|Conditional|Unverified)\*\*", fields[2])
         self.assertIsNotNone(match, line)
         rows.append((fields[0], fields[1].strip("`"), match.group(1)))
     self.assertEqual(len(rows), len(EXPECTED))
