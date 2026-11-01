@@ -411,6 +411,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/embedded-filenames.py -v
       - name: Detect suspiciously large PDF embedded objects
         run: PYTHONPATH=. python3 tests/pdf/embedded-object-sizes.py -v
+      - name: Verify bounded many embedded PDF objects benchmark
+        run: PYTHONPATH=. python3 tests/pdf/many-embedded-objects-benchmark.py -v
+      - name: Benchmark many real synthetic embedded PDF objects
+        run: PYTHONPATH=. python3 many_embedded_objects_benchmark.py --samples 3
       - name: Validate oversized embedded-stream security PDF corpus
         run: PYTHONPATH=. python3 tests/pdf/oversized-stream-corpus.py -v
       - name: Detect excessive PDF decompression requirements safely
