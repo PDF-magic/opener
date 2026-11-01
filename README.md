@@ -4,6 +4,19 @@ Safe & reliable document launcher for macOS.
 
 Scan PDFs locally with ClamAV before opening them in a configurable application (Brave by default), with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
 
+## Supported macOS versions
+
+PDF Magic Opener supports **macOS 13 (Ventura) or later**. macOS 13.0 is
+the minimum deployment target for the SwiftUI application and the minimum
+accepted by the installer preflight. macOS 12 (Monterey) and earlier are
+not supported. See [installation prerequisites](docs/installation-prerequisites.md)
+for the required Apple command-line tooling and ClamAV setup.
+
+The Xcode project targets macOS 13.0 and later, but CI builds and tests
+on GitHub's current macOS runners rather than every eligible OS release.
+Compatibility with each individual macOS version is not independently
+verified by that CI coverage.
+
 For technical reference material, see the [organized documentation index](docs/README.md).
 
 ## Protection levels
@@ -33,6 +46,30 @@ or malware-cleared document.
 
 Python regression tests are grouped by topic in [`tests/`](tests/README.md). Run one using
 `PYTHONPATH=. python3 tests/pdf/structure-parser.py -v` from the repository root.
+
+## Browser-independent PDF opening
+
+PDF Magic Opener's **native macOS PDF opening does not depend on a browser
+extension or on which browser downloaded the PDF**. After installation, when
+PDF Magic Opener is the macOS default PDF handler, double-clicking a locally
+available PDF in Finder invokes its ClamAV scan gate. You can also explicitly
+choose **Open With → PDF Magic Opener** in Finder; the **Allow and Open**
+Finder action uses the same scan gate. A browser download must be available
+as a local file before this native workflow can scan and open it.
+
+Only after a clean scan and file-integrity checks does PDF Magic Opener
+hand the PDF to the **separately selected PDF-capable application** (Brave by
+default). Selecting the native PDF handler does not change the macOS default
+web browser or erase a custom PDF destination. A blocked scan, stale
+signatures, changed file, or missing or unverified destination stops opening
+without silently falling back or removing quarantine.
+
+**Browser-independent local opening is not universal in-browser interception.**
+Inline, embedded, and online browser PDF viewers can render PDFs outside
+this native file-opening path; installing PDF Magic Opener does not guarantee
+those pages are scanned first. See [known unsupported and unverified browser
+entry routes](docs/browser-unsupported-routes.md). To use the native gate
+for a browser download, save it locally and open it with PDF Magic Opener.
 
 ## SwiftUI application target (opener-0163)
 
@@ -839,6 +876,18 @@ new queued request. Self-transitions and skipped stages are invalid.
 `can_transition`, and a validating `transition_state` helper. This module
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
+
+## Standard protection checks (opener-1112)
+
+**Standard** is a planned, preview-only protection level, **not** an active,
+selectable scan policy. Its four required checks—**ClamAV malware scanning**,
+**signature freshness**, **file integrity**, and **fail-closed verified
+opening**—are already enforced by the separate **Built-in** scan policy.
+**PDF structure validation is optional and planned**, not active Standard
+protection; isolated behavior analysis is not included in Standard.
+
+See [what Standard checks](docs/protection/standard-checks.md) for the
+individual safeguards, their failure behavior, and the activation boundary.
 
 ## Effective protection policy resolution (opener-0260)
 
