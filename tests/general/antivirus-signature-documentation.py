@@ -37,7 +37,7 @@ class AntivirusSignatureDocumentationTests(unittest.TestCase):
                  "verified-destination", "file-integrity", "not every PDF",
                  "no scan settings", "user-selected PDF application"):
       with self.subTest(term=term):
-        self.assertIn(term.lower(), self.document.lower())
+        self.assertIn(term.lower(), self.document.replace("**", "").lower())
     self.assertRegex(self.scanner, r"(?m)^def check_database\(\):")
     self.assertIn("check_database()", self.scanner)
 
