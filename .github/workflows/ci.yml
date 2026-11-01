@@ -253,6 +253,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
         run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
+      - name: Verify Enhanced admission refuses a password-protected PDF
+        run: PYTHONPATH=. python3 tests/enhanced/password-protected.py -v
       - name: Reject malformed direct and indirect PDF stream lengths
         run: PYTHONPATH=. python3 tests/pdf/stream-lengths.py -v
       - name: Verify bounded structured PDF parser output contract
@@ -389,12 +391,21 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
       - name: Test Standard baseline with a structurally valid clean PDF
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
+      - name: Verify safe protection preview switches between consecutive scans
+        run: PYTHONPATH=. python3 tests/protection/consecutive-profile-switches.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
-      - name: Install pinned Maximum sanitizer image dependency for unsupported-feature test
-        run: python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+      - name: Verify planned Maximum rejects malformed PDFs and blocks sanitization
+        run: |
+          # The Maximum sanitizer imports Pillow even on an early input rejection.
+          python3 -m pip install --disable-pip-version-check "Pillow==11.3.0"
+          PYTHONPATH=. python3 tests/protection/maximum-malformed-pdf.py -v
       - name: Block unsupported portfolio PDFs under planned Maximum protection
         run: PYTHONPATH=. python3 tests/protection/maximum-unsupported-feature.py -v
+      - name: Test Maximum fails closed when generated output fails validation
+        run: |
+          python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+          PYTHONPATH=. python3 tests/maximum/output-validation-failure.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
