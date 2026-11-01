@@ -394,6 +394,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/stop-owned-processes.py -v
       - name: Verify guided uninstall procedure and safety boundaries
         run: PYTHONPATH=. python3 tests/general/uninstall-procedure.py -v
+      - name: Verify post-uninstall opening with another PDF application
+        run: PYTHONPATH=. python3 tests/general/uninstall-other-pdf-open.py -v
       - name: Verify uninstall never selects unrelated or customized app bundles
         run: PYTHONPATH=. python3 tests/general/uninstall-app-ownership.py -v
       - name: Verify guided uninstall scan-history retention choice

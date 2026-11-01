@@ -332,8 +332,28 @@ policy remains unchanged for normal application operation.
 
 ## 7. Verify and retain a recovery path
 
-1. Confirm macOS opens PDFs with your **chosen other** application, not the
-   removed handler. This does **not** prove that viewer scans documents.
+1. After the PDF Magic handler is no longer the default and its verified
+   application has been removed, **verify that another application still opens
+   PDFs**. From the trusted source checkout on the same Mac, run:
+
+   ```sh
+   python3 verify-other-pdf-open.py --live
+   ```
+
+   This is an **explicit, interactive** verification, not an uninstall command.
+   It creates one harmless, single-page test PDF in a private temporary folder,
+   opens it with macOS's **actual default PDF application** (without forcing
+   a particular app), then removes the temporary test file. It does not read
+   user PDFs, change Launch Services defaults, edit browser preferences, or
+   modify the scanner. In the opened window, check that the page visibly
+   says **PDF viewer verification** and that the application is your **chosen
+   other PDF viewer**, **not PDF Magic Opener**. Answer `yes` only when both
+   checks are true. A successful macOS open request alone does not prove the
+   document was displayed. Any failure, unrecognized viewer, missing window,
+   interruption, or unanswered prompt means verification **failed**: keep
+   backups and repair the PDF association before calling uninstall complete.
+   A replacement viewer may open PDFs **without** PDF Magic's scan gate.
+   This does **not** prove that viewer scans documents.
 2. Confirm the Finder **Allow and Open** action is restored, intentionally
    disabled, or retained with its required helper; verify the action does
    not point to a removed executable.
