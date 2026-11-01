@@ -4,9 +4,10 @@
 // substitute. The only document is a generated PDF served from loopback.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { createBraveViewerTestPdf } from "./brave-pdf-viewer-fixture.mjs";
@@ -128,6 +129,39 @@ try {
   assert.deepEqual(downloads, [], "The default clean-profile inline PDF must not download");
   assert.deepEqual(errors, [], "Brave's viewer should not raise document script errors");
 
+  // opener-1051 (§16.4): an actual local file:// PDF opening is separate
+  // from an HTTP-served inline PDF or a page-generated Blob PDF. No user's
+  // documents, default app associations, or persistent browser profile change.
+  const localPdfPath = join(profile, "brave-local-opening.pdf");
+  await writeFile(localPdfPath, pdf, { flag: "wx", mode: 0o600 });
+  const localPdfUrl = pathToFileURL(localPdfPath).href;
+  const localPage = await context.newPage();
+  const localDownloads = [];
+  localPage.on("download", event => localDownloads.push(event.suggestedFilename()));
+  await localPage.goto(localPdfUrl, { waitUntil: "commit", timeout: 30000 });
+  assert.equal(localPage.url(), localPdfUrl,
+    "Brave must navigate to the actual local PDF, not a browser download");
+  let localViewerFrame = null;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    localViewerFrame = localPage.frames().find(frame => {
+      try {
+        const address = new URL(frame.url());
+        return address.protocol === "chrome-extension:" &&
+          address.hostname === componentId && address.pathname === "/index.html";
+      } catch {
+        return false;
+      }
+    });
+    if (localViewerFrame) break;
+    await localPage.waitForTimeout(100);
+  }
+  assert.ok(localViewerFrame, "Brave must attach its built-in viewer for a file:// PDF");
+  assert.equal(await localPage.evaluate(() => document.contentType), "application/pdf");
+  assert.deepEqual(localDownloads, [],
+    "Brave must display the local PDF instead of downloading it");
+  assert.deepEqual(downloads, [], "Opening a local PDF must not download the inline PDF");
+  await localPage.close();
+
   // opener-0807: visit HTML, generate PDF bytes in the webpage's own JS,
   // create a Blob URL there and open the browser-owned viewer from that URL.
   // This does not exercise interception, ClamAV or an extension scan.
@@ -202,7 +236,7 @@ try {
   });
   assert.equal(await worker.evaluate(async () =>
     chrome.permissions.contains({ permissions: ["downloads"] })), false);
-  console.log("Brave Stable built-in PDF viewer verified with local inline PDF; no download or scanner permissions.");
+  console.log("Brave Stable viewer verified for inline HTTP, local file, and generated Blob PDFs; no downloads or scanner permissions.");
 } finally {
   try { await context?.close(); } finally {
     if (listening) await new Promise(resolveClose => server.close(resolveClose));

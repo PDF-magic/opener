@@ -66,6 +66,41 @@ test("Brave's real built-in PDF viewer is exercised in a separate headed CI step
   assert.match(pkg.scripts.test, /tests\/\*\.test\.mjs/);
 });
 
+test("opener-1051 opens a synthetic file:// PDF in real Brave CI without changing scanner behavior", async () => {
+  const [smoke, workflow, docs] = await Promise.all([
+    read("../scripts/smoke-brave-pdf-viewer.mjs"),
+    read("../../../.github/workflows/brave-webextension.yml"),
+    read("../brave/README.md")
+  ]);
+  const start = smoke.indexOf("// opener-1051");
+  const end = smoke.indexOf("// opener-0807", start);
+  assert.ok(start >= 0 && end > start, "local opening must be a distinct real-Brave scenario");
+  const scenario = smoke.slice(start, end);
+  for (const evidence of [
+    'join(profile, "brave-local-opening.pdf")',
+    'writeFile(localPdfPath, pdf, { flag: "wx", mode: 0o600 })',
+    "pathToFileURL(localPdfPath).href",
+    "localPage.goto(localPdfUrl",
+    "localPage.url(), localPdfUrl",
+    'address.protocol === "chrome-extension:"',
+    'address.hostname === componentId',
+    "localViewerFrame",
+    'document.contentType), "application/pdf"',
+    "assert.deepEqual(localDownloads, []",
+    "await localPage.close()"
+  ]) assert.ok(scenario.includes(evidence), evidence);
+  assert.ok(smoke.includes('headless: false'), "actual headed Brave is required");
+  assert.ok(smoke.includes("await rm(profile, { recursive: true, force: true })"),
+    "temporary local fixture and profile must always be removed");
+  assert.ok(workflow.includes("xvfb-run -a node scripts/smoke-brave-pdf-viewer.mjs"));
+  assert.ok(workflow.includes("tests/brave-pdf-viewer.test.mjs"));
+  assert.match(workflow, /Install official Brave stable browser/);
+  assert.match(docs, /opener-1051/);
+  assert.match(docs, /file:\/\//);
+  assert.match(docs, /not.*ClamAV/i);
+  assert.doesNotMatch(scenario, /sendNativeMessage|connectNative|permissions\.request|downloads\.open/);
+});
+
 test("Brave viewer documentation distinguishes verified CI behavior from scanner enforcement", async () => {
   const doc = await read("../brave/README.md");
   for (const phrase of [

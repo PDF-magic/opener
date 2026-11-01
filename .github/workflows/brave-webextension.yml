@@ -60,7 +60,7 @@ jobs:
         run: node scripts/smoke-brave.mjs
       - name: Install virtual display for Brave built-in PDF viewer verification
         run: sudo apt-get install -y -qq xvfb
-      - name: Exercise Brave built-in PDF viewer with a local synthetic PDF
+      - name: Verify Brave inline and local-file PDF opening with synthetic documents
         working-directory: extensions/webextension
         env:
           BRAVE_BROWSER_PATH: /usr/bin/brave-browser
