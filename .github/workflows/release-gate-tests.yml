@@ -1,0 +1,23 @@
+name: Release gating regression tests
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate-regressions:
+    name: Release gating regression suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify release gate rejects missing checks and unsafe publication
+        run: PYTHONPATH=. python3 tests/general/release-check-gate.py -v
