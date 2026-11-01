@@ -249,6 +249,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/recursion-depth.py -v
       - name: Enforce hard wall-clock timeout on optional PDF structure analysis
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
+      - name: Verify adversarial parser-timeout PDF corpus under real worker supervision
+        run: PYTHONPATH=. python3 tests/pdf/parser-timeout-corpus.py -v
       - name: Verify traditional xref tables, xref streams and object streams
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
       - name: Reject malformed classic cross-reference table corpus
