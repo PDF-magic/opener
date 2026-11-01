@@ -1,0 +1,42 @@
+name: Browser-independent WebExtension tests
+
+on:
+  pull_request:
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/browser-mocks.yml"
+  push:
+    branches: [main]
+    paths:
+      - "extensions/webextension/**"
+      - ".github/workflows/browser-mocks.yml"
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-mocks:
+    name: Browser API mock suite (no browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Node.js without installing a browser
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build inert extension fixtures
+        working-directory: extensions/webextension
+        run: |
+          npm run build
+          npm run package:chrome
+          npm run package:firefox
+      - name: Run mockable tests with browser launches prohibited
+        working-directory: extensions/webextension
+        run: node --require ./scripts/forbid-browser-launch.cjs --test --test-concurrency=1 tests/*.test.mjs
