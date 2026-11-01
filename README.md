@@ -815,6 +815,18 @@ new queued request. Self-transitions and skipped stages are invalid.
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
 
+## Standard protection checks (opener-1112)
+
+**Standard** is a planned, preview-only protection level, **not** an active,
+selectable scan policy. Its four required checks—**ClamAV malware scanning**,
+**signature freshness**, **file integrity**, and **fail-closed verified
+opening**—are already enforced by the separate **Built-in** scan policy.
+**PDF structure validation is optional and planned**, not active Standard
+protection; isolated behavior analysis is not included in Standard.
+
+See [what Standard checks](docs/protection/standard-checks.md) for the
+individual safeguards, their failure behavior, and the activation boundary.
+
 ## Effective protection policy resolution (opener-0260)
 
 The pure `resolve_effective_policy(saved_preferences)` function in
