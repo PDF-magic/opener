@@ -264,6 +264,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/active-protection-profile.py -v
       - name: Verify planned protection profile catalog and existing fail-closed policy
         run: PYTHONPATH=. python3 tests/protection/profiles.py -v
+      - name: Check Standard baseline with canonical EICAR antivirus test fixture
+        run: PYTHONPATH=. python3 tests/protection/standard-antivirus-fixture.py -v
       - name: Verify signature update check is within the existing 48-hour window
         run: PYTHONPATH=. python3 tests/signature/freshness-window.py -v
       - name: Detect the last attempted and successful ClamAV signature update times
