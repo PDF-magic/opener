@@ -37,3 +37,33 @@ macOS CI checks both staging and verification after building the app and
 keeps the existing Safari-only package independent and unchanged. Do not
 ship the staging output as a trusted release without the separate signing,
 notarization, and installer review.
+
+## Unsigned macOS release ZIP (opener-1144)
+
+After staging and verifying the **preferences app and its helpers** as above,
+create a portable ZIP with macOS `ditto`, which retains application bundle
+metadata and executable permissions:
+
+```sh
+python3 scripts/create_release_archive.py \\
+  --app /path/to/unsigned-staging/PDFMagicOpener.app \\
+  --output /path/to/output/PDFMagicOpener-unsigned.zip
+python3 scripts/create_release_archive.py \\
+  --verify /path/to/output/PDFMagicOpener-unsigned.zip
+ditto -x -k /path/to/output/PDFMagicOpener-unsigned.zip /path/to/verification
+python3 scripts/package_application_helpers.py \\
+  --verify /path/to/verification/PDFMagicOpener.app
+```
+
+The ZIP generator requires a previously validated, separately staged app,
+checks ZIP member integrity, bundled helper completeness, prohibited fixture
+names and link containment, and refuses to replace any existing archive.
+Packaging is read-only with respect to the staged app, scanner, PDF handler
+associations, browser choices and installed preferences. CI also extracts
+the generated ZIP on macOS to verify the preserved app structure.
+
+**This archive is unsigned development output, not an approved public
+download.** Developer ID signing, hardened runtime, notarization, staple
+validation, and distribution readiness remain separate release prerequisites.
+The existing guarded GitHub release workflow remains source-only and must not
+publish this ZIP until those requirements are independently satisfied.

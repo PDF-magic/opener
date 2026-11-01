@@ -1172,6 +1172,17 @@ jobs:
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/pdf-magic-native-host"
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/launch-scanned-file"
           test ! -e "$app/Contents/Helpers"
+      - name: Create, verify and extract an unsigned macOS release ZIP
+        run: |
+          stage="$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
+          archive="$RUNNER_TEMP/PDFMagicOpener-unsigned.zip"
+          extracted="$RUNNER_TEMP/PDFMagicOpenerReleaseExtract"
+          python3 scripts/create_release_archive.py --app "$stage" --output "$archive"
+          python3 scripts/create_release_archive.py --verify "$archive"
+          mkdir -p "$extracted"
+          ditto -x -k "$archive" "$extracted"
+          python3 scripts/package_application_helpers.py --verify "$extracted/PDFMagicOpener.app"
+          test -x "$extracted/PDFMagicOpener.app/Contents/MacOS/PDFMagicOpener"
       - name: Smoke-test staged macOS app from a fresh uninstalled location
         run: python3 tests/app/fresh-launch.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
       - name: Measure first SwiftUI appearance of the staged app on macOS
