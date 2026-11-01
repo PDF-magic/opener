@@ -673,6 +673,8 @@ jobs:
         run: |
           python3 tools/audit_quarantine_removal.py
           PYTHONPATH=. python3 tests/general/quarantine-removal-inventory.py -v
+      - name: Guard changed legacy scan-and-open behavior and regression wiring
+        run: PYTHONPATH=. python3 tests/general/legacy-behavior-regressions.py -v
       - name: Verify Standard baseline parity with the existing scanner
         run: PYTHONPATH=. python3 tests/general/standard-scanner-parity.py -v
       - name: Reject arbitrary deletion during Maximum temporary-output cleanup
