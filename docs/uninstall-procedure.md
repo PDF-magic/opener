@@ -179,6 +179,31 @@ Applications folder; if the bundle is renamed, symlinked, substituted or
 customized, stop rather than guessing another path. Do not remove
 `Open PDFs in Brave.app` or other app bundles by similarity of name.
 
+For installations that have a native helper ownership record written by the
+verified installer, you may first inspect the recorded compiled helper binaries
+without changing anything:
+
+```sh
+python3 scripts/retire_installed_helpers.py
+```
+
+Only after the default PDF handler is confirmed to be another application, the
+Finder action and native messaging hosts are **already disconnected**, and any
+needed signature-update service is stopped, you may explicitly remove these
+unchanged, recorded native binaries from the trusted source checkout:
+
+```sh
+python3 scripts/retire_installed_helpers.py --remove
+```
+
+This requires typing `REMOVE`. It checks the exact installer-recorded SHA-256
+hash for each of ten named native executables before any removal, refuses
+modified files, unsafe directories, links, and unknown ownership records, and
+keeps the record for an idempotent subsequent check. A legacy installation
+without a record must be reviewed manually or upgraded through the verified
+installer first; **never guess ownership from a filename alone**. Neither
+ClamAV executables nor customized scripts or user data are removed.
+
 If you wish to retire the remaining per-user scripts, **review their contents
 and ownership individually** within
 `~/Library/Application Support/Studio/allow-and-open`. They can include
@@ -214,6 +239,9 @@ No guaranteed malware safety or data-erasure claim is made.
 
 ## CI and ownership boundaries
 
+`tests/general/retire-helpers.py` verifies the installed native binary ownership
+record, explicit opt-in removal, preflight failures, and preservation of user
+files without mutating real installations.
 `tests/general/uninstall-procedure.py` checks this procedure against the
 real existing default-handler restoration, Finder Quick Action restoration,
 native messaging cleanup, and signature-agent ownership verification paths.
