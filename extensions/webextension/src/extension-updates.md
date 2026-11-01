@@ -39,3 +39,22 @@ versioned contract; an update event alone is not consent to change settings.
 
 The existing `npm test` wildcard runs
 `tests/extension-updates.test.mjs` in the required WebExtensions CI suite.
+
+## Browser upgrade regression (opener-1067)
+
+The Chromium compatibility workflow runs `scripts/test-extension-upgrade.mjs`
+with real unbranded Chromium. It copies the reviewed **inert** build to a
+throwaway extension directory, starts a fresh disposable browser profile with
+version `0.0.0`, writes synthetic extension-origin preference markers, then
+restarts the **same profile and unpacked extension path** with the actual
+packaged version. It verifies that Chromium reports the new version and the
+same extension ID, that synthetic state survives, that the optional downloads
+permission has not been granted, and that scanning stays disabled. A further
+same-version restart checks state is not cleared on routine launches.
+
+This tests a browser-observed unpacked extension upgrade, **not** an update
+through the Chrome Web Store, Firefox add-ons, or Safari distribution. It does
+not activate the background update observer, migrate native preferences, read
+real browser profiles, contact the native app, claim scanner success, or make
+any PDF opening decision. The separate pure `extension-updates.test.mjs`
+continues to test safe `runtime.onInstalled` version-change notifications.
