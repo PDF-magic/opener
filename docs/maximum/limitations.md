@@ -80,5 +80,5 @@ all documents below the limits are supported or safe. See
 The optional module does not, by itself, save or open the copy, choose a PDF
 viewer, relax scanner settings, remove macOS quarantine or change existing
 customizations. Until a complete Maximum interface and its prerequisites are
-implemented, **do not describe sanitization as an active, automatic PDF
-protection**.
+implemented, **sanitization is not an active, automatic PDF protection**.
+Do not describe it as deployed.
