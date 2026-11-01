@@ -451,7 +451,7 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
 
-The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. To update manually:
+The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. See the [signature update process](docs/scanner/signature-update-process.md) for scheduling, verified publication, failure handling, and recovery. To update manually:
 
 The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
 
