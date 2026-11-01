@@ -1,0 +1,58 @@
+name: Source lint
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+# The lint gate reads checked-out sources only. It never rewrites them or
+# accesses installed scanner databases, browser profiles, or user preferences.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+
+jobs:
+  source-lint:
+    name: Python lint and WebExtension syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned Ruff
+        run: python3 -m pip install --disable-pip-version-check 'ruff==0.14.3'
+      - name: Lint Python source and regression tests
+        run: ruff check --select E9,F63,F7,F82 --output-format github .
+      - name: Parse checked-in browser extension JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          find extensions/webextension -type f \( -name '*.js' -o -name '*.mjs' \) \
+            -not -path '*/node_modules/*' -not -path '*/dist/*' -print0 \
+            | xargs -0 -r -n1 node --check
+      - name: Verify lint gates reject broken code
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture_dir="$(mktemp -d)"
+          trap 'rm -rf "$fixture_dir"' EXIT
+          printf 'def example():\n    return missing_variable\n' > "$fixture_dir/invalid.py"
+          if ruff check --select E9,F63,F7,F82 "$fixture_dir/invalid.py"; then
+            echo 'Ruff accepted an undefined name' >&2
+            exit 1
+          fi
+          printf 'function () {\n' > "$fixture_dir/invalid.mjs"
+          if node --check "$fixture_dir/invalid.mjs" >/dev/null 2>&1; then
+            echo 'Node accepted invalid extension JavaScript' >&2
+            exit 1
+          fi
