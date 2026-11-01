@@ -21,6 +21,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Browser download monitoring support](browser-download-monitoring-support.md) — which browsers expose relevant download events, what still needs verification, and why monitoring is inactive.
 
+- [PDF structural analysis limitations](pdf/analysis-limitations.md) — what structural parsing can and cannot establish, supported limits, and the active protection boundary.
+
 ## Filename conventions
 
 - Use lowercase **kebab-case** for documentation, scripts, and non-importable assets.
