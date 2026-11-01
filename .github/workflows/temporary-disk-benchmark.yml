@@ -1,0 +1,45 @@
+name: Temporary disk benchmark
+
+on:
+  pull_request:
+    paths:
+      - temporary_disk_benchmark.py
+      - maximum_temporary_output.py
+      - pdf_parser_memory_benchmark.py
+      - tests/maximum/temporary-disk-benchmark.py
+      - .github/workflows/temporary-disk-benchmark.yml
+  push:
+    branches: [main]
+    paths:
+      - temporary_disk_benchmark.py
+      - maximum_temporary_output.py
+      - pdf_parser_memory_benchmark.py
+      - tests/maximum/temporary-disk-benchmark.py
+      - .github/workflows/temporary-disk-benchmark.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-maximum-temp-disk:
+    name: Maximum temporary disk staging (Ubuntu and macOS)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify owned temporary PDF staging protections
+        run: PYTHONPATH=. python3 tests/maximum/temporary-output.py -v
+      - name: Verify disk measurements, cleanup and failure isolation
+        run: PYTHONPATH=. python3 tests/maximum/temporary-disk-benchmark.py -v
+      - name: Measure real allocated blocks with bounded generated PDFs
+        run: |
+          python3 temporary_disk_benchmark.py --stream-kib 64 --copies 2 --runs 3
+          python3 temporary_disk_benchmark.py --stream-kib 1024 --copies 2 --runs 2
