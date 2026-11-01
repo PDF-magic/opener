@@ -79,6 +79,8 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
       - name: pdf / pdf-incremental-revisions / Inspect incremental PDF revisions without authorizing opening
         run: PYTHONPATH=. python3 tests/pdf/incremental-revisions.py -v
+      - name: pdf / incremental-corpus / Validate PDFs with incremental updates
+        run: PYTHONPATH=. python3 tests/pdf/incremental-corpus.py -v
 
       - name: pdf / pdf-repeated-structures / Install pinned optional PDF parser
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
