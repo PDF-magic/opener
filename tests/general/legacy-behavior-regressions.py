@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import DEFAULT, patch
 
 import file_launcher
 
@@ -22,8 +22,8 @@ spec.loader.exec_module(gate)
 
 
 class LegacyBehaviorRegressions(unittest.TestCase):
-    def stub(self, module, name, value=None, **kwargs):
-        control = patch.object(module, name, value) if not kwargs else patch.object(module, name, **kwargs)
+    def stub(self, module, name, value=DEFAULT, **kwargs):
+        control = patch.object(module, name, value, **kwargs)
         mocked = control.start()
         self.addCleanup(control.stop)
         return mocked
