@@ -215,6 +215,10 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Verify documented application upgrade process
+        run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
+      - name: Keep scanner installation instructions browser-neutral
+        run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
@@ -229,6 +233,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
       - name: Verify documented signature update process
         run: PYTHONPATH=. python3 tests/general/signature-update-documentation.py -v
+      - name: Verify scanner error documentation against the enforced failure policy
+        run: PYTHONPATH=. python3 tests/scanner/error-documentation.py -v
+      - name: Verify the security reporting process
+        run: PYTHONPATH=. python3 tests/general/security-reporting-documentation.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Verify actionable failure-report formatting and metadata handling
@@ -694,6 +702,8 @@ jobs:
       - name: Verify every known unsupported PDF route is documented and fail-closed
         working-directory: extensions/webextension
         run: node --test tests/browser-unsupported-routes.test.mjs
+      - name: Verify when automatic PDF interception cannot be guaranteed
+        run: PYTHONPATH=. python3 tests/browser/automatic-interception-limitations-docs.py -v
       - name: Reject unsupported data URLs before PDF candidate selection
         working-directory: extensions/webextension
         run: node --test tests/pdf-data-url.test.mjs
