@@ -13,7 +13,7 @@ Once those prerequisites are reviewed and explicitly cleared, create a
 on `main` with that tag. The gate refuses tags pointing anywhere else, stale
 `main` commits, missing or duplicated critical GitHub Actions checks, check
 API failures, and any required check that is pending, failed, skipped, or
-cancelled. The required checks cover the scanner regressions, real EICAR
+cancelled. The required checks, including the reproducible unsigned candidate build, cover the scanner regressions, real EICAR
 baseline, macOS build and native integration, macOS parser confinement, Chrome
 package smoke, Python/JS lint, dependency vulnerability audit, and browser
 extension distribution audit, and release-gate regressions. The release job repeats this verification

@@ -1,0 +1,38 @@
+name: Reproducible release candidate build
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+# Unsigned CI evidence is not a signed installable or published release.
+permissions:
+  contents: read
+
+jobs:
+  reproducible-release:
+    name: Reproducible unsigned release candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify two clean browser release builds are byte-identical
+        run: python3 scripts/build_reproducible_release.py --output-dir "$RUNNER_TEMP/reproducible-candidates"
+      - name: Regression-test reproducibility and fail-closed safety
+        run: PYTHONPATH=. python3 tests/general/reproducible-release-build.py -v
+      - name: Retain unsigned CI build evidence for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-release-candidates
+          path: ${{ runner.temp }}/reproducible-candidates/
+          if-no-files-found: error
+          retention-days: 7

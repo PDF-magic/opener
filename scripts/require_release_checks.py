@@ -21,6 +21,7 @@ REQUIRED_CHECKS = (
   "Python lint and WebExtension syntax",
   "Audit pinned Python dependencies",
   "Verify unsigned packages and signing prerequisites",
+  "Reproducible unsigned release candidates",
   "Release gating regression suite",
 )
 TAG_PATTERN = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\Z")
