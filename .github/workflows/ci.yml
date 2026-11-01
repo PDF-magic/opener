@@ -225,6 +225,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/maximum-documentation.py -v
       - name: Verify documented limitations of antivirus signatures
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
+      - name: Verify scanner error documentation against the enforced failure policy
+        run: PYTHONPATH=. python3 tests/scanner/error-documentation.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Verify actionable failure-report formatting and metadata handling
