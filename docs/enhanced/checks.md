@@ -56,8 +56,8 @@ Enhanced scan, **not a guarantee that all these checks execute today**:
   as successful inspections. See [inconclusive results](inconclusive-results.md).
 
 A reported suspicious action is **not necessarily malware**. Findings can
-require review or block opening, but a report with no findings is **not** a
-clean ClamAV result. The [structured findings contract](../structured-enhanced-findings.md)
+require review or block opening, but a report with no findings is
+**not a clean ClamAV result**. The [structured findings contract](../structured-enhanced-findings.md)
 and [blocking policy](blocking-policy.md) do not grant opening permission.
 Future integration must preserve the current scanner, signature-freshness,
 file-integrity, quarantine and verified-handoff requirements, as well as
