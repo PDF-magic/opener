@@ -858,6 +858,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/selected-browser-removed.py -v
       - name: Verify explicit custom application choice and atomic persistence
         run: PYTHONPATH=. python3 tests/general/select-custom-pdf-application.py -v
+      - name: Verify custom browser selection and scan-gated PDF opening
+        run: PYTHONPATH=. python3 tests/browser/custom-selection.py -v
       - name: Verify Brave PDF opening separately
         env:
           PDF_MAGIC_TEST_BROWSER: brave
