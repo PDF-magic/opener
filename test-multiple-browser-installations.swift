@@ -73,9 +73,10 @@ struct MultipleBrowserInstallationsTests {
                      "Multiple browsers and separate copies must retain their own physical paths")
         precondition(inventory() == expected,
                      "Repeat discovery must not duplicate aliases or change ordering")
-        precondition(try JSONDecoder().decode(
-            [InstalledBrowser].self, from: JSONEncoder().encode(inventory())) == expected,
-            "Multiple installations must survive browser inventory serialization")
+        let encoded = try JSONEncoder().encode(inventory())
+        let decoded = try JSONDecoder().decode([InstalledBrowser].self, from: encoded)
+        precondition(decoded == expected,
+                     "Multiple installations must survive browser inventory serialization")
 
         // Exercise the actual PDF-target resolver, not just the read-only
         // inventory: a different installed browser must never replace the
@@ -129,7 +130,8 @@ struct MultipleBrowserInstallationsTests {
         precondition(inventory() == expected.filter { $0.path != brave.path &&
                                                      $0.path != alternateBrave.path },
                      "Removing Brave must leave other browsers discoverable")
-        precondition(try String(contentsOf: preference, encoding: .utf8) == chosenID + "\n",
+        let savedSelection = try String(contentsOf: preference, encoding: .utf8)
+        precondition(savedSelection == chosenID + "\n",
                      "Discovery and verification must preserve the user's saved selection")
         precondition(!files.fileExists(atPath: launchMarker.path),
                      "No browser executable may run during inventory or PDF preflight")
