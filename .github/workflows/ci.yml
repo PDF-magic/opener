@@ -106,6 +106,8 @@ jobs:
         with:
           firefox-version: latest
       - uses: browser-actions/setup-geckodriver@latest
+        with:
+          token: ${{ github.token }}
       - name: Verify Firefox's bundled PDF.js viewer with local PDFs
         working-directory: extensions/webextension
         env:
@@ -192,6 +194,8 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Require authenticated geckodriver installation in every workflow
+        run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Check Python test organization
         run: |
           python3 - <<'PY'
