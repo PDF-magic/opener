@@ -129,7 +129,7 @@ class ScannedImageBenchmarkTests(unittest.TestCase):
         self.assertNotIn("scanned_pdf_benchmark", production)
         self.assertIn("verify_file_integrity", production)
         self.assertIn("if not cached_clean(cache_id):", production)
-        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        ci = (ROOT / ".github/workflows/scanned-image-pdf-benchmark.yml").read_text(encoding="utf-8")
         self.assertIn("PYTHONPATH=. python3 tests/pdf/scanned-image-benchmark.py -v", ci)
         guide = (ROOT / "docs/scanned-image-pdf-benchmark.md").read_text(
             encoding="utf-8")
