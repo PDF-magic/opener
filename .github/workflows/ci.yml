@@ -1434,6 +1434,12 @@ jobs:
             discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-newly-installed-browser.swift \
             -o "$RUNNER_TEMP/TestNewlyInstalledBrowser"
           "$RUNNER_TEMP/TestNewlyInstalledBrowser"
+      - name: Test multiple installed browsers and verified PDF target isolation
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D PDF_TARGET_TESTING \
+            discover-installed-browsers.swift verify-pdf-target.swift test-multiple-browser-installations.swift \
+            -o "$RUNNER_TEMP/TestMultipleBrowserInstallations"
+          "$RUNNER_TEMP/TestMultipleBrowserInstallations"
       - name: Verify removal of the selected installed browser
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
