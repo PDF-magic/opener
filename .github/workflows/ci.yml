@@ -368,6 +368,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/update-progress.py -v
       - name: Verify scanner-failure response policy and existing fail-closed gate
         run: PYTHONPATH=. python3 tests/scanner/failure-policy.py -v
+      - name: Security regressions for scanner verdicts, cached bytes and opening handoff
+        run: PYTHONPATH=. python3 tests/security/scan-gate-regressions.py -v
       - name: Reject unapproved ClamAV arguments before scanner invocation
         run: PYTHONPATH=. python3 tests/scanner/arguments.py -v
       - name: Validate scanner file-size limits without relaxing active flags
