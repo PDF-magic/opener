@@ -158,6 +158,8 @@ jobs:
 
       - name: maximum / maximum-generated-content-marking / Install pinned sanitizer PDF inspection dependencies
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
+      - name: maximum / performance / Verify Maximum sanitization benchmark rejects failed or incomplete timings
+        run: PYTHONPATH=. python3 tests/maximum/sanitization-benchmark.py -v
       - name: maximum / maximum-generated-content-marking / Verify trusted generated-copy labeling and reject original relabeling
         run: PYTHONPATH=. python3 tests/maximum/generated-content-marking.py -v
       - name: maximum / sanitization-completion / Indicate completion only for verified generated copies
@@ -369,6 +371,10 @@ jobs:
 
       - name: mac / maximum-sanitized-copy / Install strict PDF validation dependency
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0' 'cryptography==46.0.4'
+      - name: mac / performance / Verify Maximum benchmark contract before live conversion
+        run: PYTHONPATH=. python3 tests/maximum/sanitization-benchmark.py -v
+      - name: mac / performance / Benchmark actual Maximum rasterization and output verification
+        run: PYTHONPATH=. python3 maximum_sanitization_benchmark.py --samples 3
       - name: mac / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
       - name: mac / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
