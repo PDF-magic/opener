@@ -279,6 +279,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/parser-evaluation.py -v
       - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
         run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
+      - name: Verify medium-PDF benchmark workload, measurements and scanner isolation
+        run: PYTHONPATH=. python3 tests/performance/medium-pdf.py -v
+      - name: Benchmark real isolated medium-PDF structure inspection
+        run: PYTHONPATH=. python3 medium_pdf_benchmark.py --runs 3
       - name: Inspect indirect PDF object links and page-tree consistency
         run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
       - name: Detect suspiciously repeated PDF object structures
