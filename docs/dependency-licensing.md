@@ -18,6 +18,7 @@ test-only libraries.
 | Pillow 11.3.0 | MIT-CMU | Optional sanitization tests |
 | cryptography 46.0.4 | Apache-2.0 OR BSD-3-Clause | Optional validation tests |
 | PyMuPDF 2.0 / MuPDF | AGPLv3 or Artifex commercial license | Optional isolated Maximum renderer |
+| Ruff 0.14.3 | MIT | Pinned GitHub Actions linting only; not shipped with the application |
 
 **Distribution requirements:** retain the required license and attribution
 notices of each dependency, satisfy corresponding-source and downstream

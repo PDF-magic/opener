@@ -42,5 +42,14 @@
     "source": "https://pymupdf.io/licensing",
     "distribution_requirements": "For the AGPLv3 route, comply with applicable source-availability, copyright, license and producer-notice obligations for MuPDF and PyMuPDF. If proprietary distribution cannot meet those terms, obtain an Artifex commercial license; repository AGPL alone is not clearance.",
     "use": "Isolated optional Maximum PDF rendering worker, not the installed Built-in gate."
+  },
+  "ruff": {
+    "versions": [
+      "0.14.3"
+    ],
+    "license": "MIT",
+    "source": "https://pypi.org/project/ruff/0.14.3/",
+    "distribution_requirements": "Ruff is installed only as an ephemeral CI tool, not bundled with this application. Any redistribution of Ruff must preserve the MIT copyright and permission notice in copies or substantial portions of the software.",
+    "use": "Pinned CI-only Python source linting and regression verification; not installed by the PDF opener."
   }
 }
