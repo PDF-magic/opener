@@ -7,6 +7,7 @@ The reference pages are grouped by feature rather than keeping every page in one
 | [Enhanced](enhanced/) | Analysis and inspection behavior |
 | [Maximum](maximum/) | Maximum-profile isolation, conversion, and fidelity |
 | [PDF](pdf/) | PDF structures, metadata, embedded content, and parsing |
+| [Performance](performance/results.md) | Recorded benchmark observations, CI provenance, and measurement limits |
 | [Protection](protection/) | Protection policies, choices, and exceptions |
 | [Scanner](scanner/) | Scanner arguments, safety, and failure handling |
 
