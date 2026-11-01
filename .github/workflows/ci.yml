@@ -389,6 +389,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
       - name: Test Standard baseline with a structurally valid clean PDF
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
+      - name: Verify safe protection preview switches between consecutive scans
+        run: PYTHONPATH=. python3 tests/protection/consecutive-profile-switches.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
       - name: Identify PDF format and declared version from file bytes
