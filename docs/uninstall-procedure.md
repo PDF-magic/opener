@@ -19,7 +19,8 @@ actions triggered by opening the preferences app.
 ## 1. Inspect and back up before changing anything
 
 1. Stop opening new PDFs with the native handler, and finish or cancel any
-   in-flight scans. Keep Preferences available through the retention decisions in steps 2–4,\n   then quit the
+   in-flight scans. Keep Preferences available through the retention decisions in steps 2–4,
+   then quit the
    app before moving its bundle or retiring its helpers.
 2. **Ask whether PDF Magic Opener preferences should be retained.** From
    the trusted source checkout, run this interactive, non-destructive prompt:
