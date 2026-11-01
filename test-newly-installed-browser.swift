@@ -121,8 +121,8 @@ struct NewlyInstalledBrowserTests {
                      "Being newly installed alone cannot authorize PDF opening")
         precondition(targetSupportsPDF(application: edge, registeredPDFHandlers: [edge]),
                      "A separately verified, registered PDF handler can be eligible")
-        precondition(try String(contentsOf: savedPreference, encoding: .utf8)
-                     == preferredID + "\n",
+        let savedAfterInstall = try String(contentsOf: savedPreference, encoding: .utf8)
+        precondition(savedAfterInstall == preferredID + "\n",
                      "Discovery must not switch or erase the existing user selection")
         precondition(!files.fileExists(atPath: launchMarker.path),
                      "Neither discovery nor verification may execute a browser")
