@@ -13,6 +13,22 @@ KEBAB_MD = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md\Z")
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 
 
+def _check_local_links(page, errors):
+  if not page.is_file():
+    errors.append(f"Missing documentation page: {page.relative_to(ROOT)}")
+    return
+  for match in MARKDOWN_LINK.finditer(page.read_text(encoding="utf-8")):
+    target = match.group(1).strip().split(" ", 1)[0]
+    if not target or target.startswith(("#", "<")):
+      continue
+    url = urlsplit(target)
+    if url.scheme or url.netloc:
+      continue
+    path = unquote(url.path)
+    if path and not (page.parent / path).exists():
+      errors.append(f"Broken link in {page.relative_to(ROOT)}: {target}")
+
+
 def check_docs():
   errors = []
   for category in CATEGORIES:
@@ -26,16 +42,8 @@ def check_docs():
         continue
       if not KEBAB_MD.fullmatch(page.name) or page.stem.startswith(category + "-"):
         errors.append(f"Invalid or repetitive name: {page.relative_to(ROOT)}")
-      for match in MARKDOWN_LINK.finditer(page.read_text(encoding="utf-8")):
-        target = match.group(1).strip().split(" ", 1)[0]
-        if not target or target.startswith(("#", "<")):
-          continue
-        url = urlsplit(target)
-        if url.scheme or url.netloc:
-          continue
-        path = unquote(url.path)
-        if path and not (page.parent / path).exists():
-          errors.append(f"Broken link in {page.relative_to(ROOT)}: {target}")
+      _check_local_links(page, errors)
+  _check_local_links(ROOT / "README.md", errors)
   return errors
 
 
