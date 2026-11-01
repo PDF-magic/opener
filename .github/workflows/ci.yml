@@ -448,6 +448,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/incorrectly-named-files.py -v
       - name: Validate large, structurally sound PDF security corpus
         run: PYTHONPATH=. python3 tests/pdf/large-valid-corpus.py -v
+      - name: Verify bounded, fail-closed large PDF benchmark behavior
+        run: PYTHONPATH=. python3 tests/pdf/large-pdf-benchmark.py -v
+      - name: Sample real 256-page large PDF parsing in an isolated worker
+        run: python3 large_pdf_benchmark.py --case many-large-pages --runs 1
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
