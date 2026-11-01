@@ -105,10 +105,10 @@ class EnhancedJavaScriptActionProfileTests(unittest.TestCase):
         )
 
         # Reject unsupported selection *before* any scanner or opening attempt.
-        with patch("unittest.mock.MagicMock") as unused:
+        with patch("subprocess.Popen", side_effect=AssertionError("scan started")) as scan:
             with self.assertRaises(UnsupportedEffectivePolicy):
                 resolve_effective_policy({SELECTED_PROFILE_KEY: "enhanced"})
-        self.assertIsNotNone(unused)
+            scan.assert_not_called()
         self.assertEqual(resolve_effective_policy().profile_id, "built-in")
         self.assertNotIn(
             "pdf_javascript_actions",
