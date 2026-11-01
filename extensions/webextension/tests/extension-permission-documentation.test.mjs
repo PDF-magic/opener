@@ -56,7 +56,7 @@ test("public guide describes consent and keeps browser permissions separate from
   assert.match(guide, /future-only/i);
   assert.match(guide, /app sandbox only/i);
   assert.match(guide, /ClamAV signature freshness/i);
-  assert.match(guide, /user.s chosen PDF destination/i);
+  assert.match(guide, /user.s\s+chosen PDF destination/i);
   for (const path of [
     "../extensions/webextension/permissions.md",
     "../extensions/webextension/host-permissions.md",
