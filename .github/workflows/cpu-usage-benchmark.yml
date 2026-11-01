@@ -1,0 +1,44 @@
+name: ClamAV CPU usage benchmark
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  clamscan-cpu:
+    name: Validate and measure isolated scanner CPU on disposable Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify CPU accounting, fail-closed behavior and no production hook
+        run: PYTHONPATH=. python3 tests/performance/cpu-usage.py -v
+      - name: Install real ClamAV on disposable runner
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends clamav
+      - name: Measure actual scanner child CPU with isolated inert signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark_db="$(mktemp -d)"
+          trap 'rm -rf "$benchmark_db"' EXIT
+          python3 - "$benchmark_db" <<'PY'
+          from pathlib import Path
+          import sys
+          (Path(sys.argv[1]) / "benchmark.ndb").write_text(
+              "PDFMagicSyntheticBenchmark:0:*:" + b"benchmark-never-match".hex() + "\n",
+              encoding="ascii",
+          )
+          PY
+          PYTHONPATH=. python3 cpu_usage_benchmark.py \
+            --scanner /usr/bin/clamscan --database "$benchmark_db" --samples 3
