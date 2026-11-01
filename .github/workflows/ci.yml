@@ -391,6 +391,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
       - name: Test Standard baseline with a structurally valid clean PDF
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
+      - name: Install pinned image decoder for Maximum simple-PDF verification
+        run: python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+      - name: Verify a simple PDF under planned Maximum protection without unsafe handoff
+        run: PYTHONPATH=. python3 tests/maximum/simple-pdf.py -v
       - name: Verify safe protection preview switches between consecutive scans
         run: PYTHONPATH=. python3 tests/protection/consecutive-profile-switches.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
