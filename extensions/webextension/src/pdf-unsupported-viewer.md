@@ -60,3 +60,31 @@ The focused Node suite checks browser-native shell matching and mismatching,
 PDF.js, scripted/plugin/embedded viewers, unknown internal pages, malformed
 or hostile metadata, unchanged permissions and privacy. The existing
 WebExtensions `npm test` glob runs this suite in required GitHub CI.
+
+## Browser compatibility: unsupported inline cases (opener-1070)
+
+The existing real **Firefox browser-native PDF downloads** CI job also
+exercises three negative inline-viewer cases in a fresh, throwaway Firefox
+profile. It disables `pdfjs.disabled` only **as a true Boolean preference**
+(`"pdfjs.disabled": true`), without touching any installed browser settings.
+
+- A valid `application/pdf` response marked `Content-Disposition: inline`
+  must be saved intact when Firefox's built-in PDF.js is disabled.
+- A valid PDF served as `application/octet-stream` with an inline disposition
+  must also be downloaded rather than treated as an active PDF viewer.
+- A `.pdf`-looking URL served as `text/html` must remain an HTML page,
+  not an inferred PDF preview, download or scanner-clean result.
+
+Real WebDriver clicks, exact saved bytes, response counts, correct MIME headers
+and an HTML document check make these browser-level regressions rather than
+just simulated metadata assertions. They run inside the existing
+`firefox-native-pdf-download` job; the same fixture remains loopback-only,
+and the test continues to require temporary-profile cleanup.
+
+**Unsupported for automatic interception does not mean a browser cannot
+open the PDF.** A browser may download or display content independently.
+This test verifies only the tested Firefox profile's behavior, not a working
+PDF Magic interception mechanism, ClamAV verdict, external PDF application
+handoff or behavior across all installed browsers. The shipped extension's
+inactive background, minimal permissions, native scanner safety and user
+customizations are unchanged.

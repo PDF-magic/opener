@@ -136,10 +136,11 @@ class SignatureLoadBenchmarkTests(unittest.TestCase):
         self.assertNotIn("signature_database_load_benchmark", live)
         self.assertNotIn("cl_engine_new", live)
         self.assertNotIn("cl_engine_compile", live)
-        ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 tests/scanner/signature-database-load-benchmark.py -v", ci)
-        readme = (ROOT / "README.md").read_text()
-        self.assertIn("signature_database_load_benchmark.py", readme)
+        workflow = (ROOT / ".github/workflows/signature-database-load-benchmark.yml").read_text()
+        self.assertIn("python3 tests/scanner/signature-database-load-benchmark.py -v", workflow)
+        self.assertIn("python3 tests/scanner/startup-benchmark.py -v", workflow)
+        doc = (ROOT / "docs/signature-database-load-benchmark.md").read_text()
+        self.assertIn("signature_database_load_benchmark.py", doc)
 
 
 if __name__ == "__main__":

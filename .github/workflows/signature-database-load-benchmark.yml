@@ -1,0 +1,35 @@
+name: ClamAV signature database loading benchmark tests
+
+on:
+  pull_request:
+    paths:
+      - signature_database_load_benchmark.py
+      - tests/scanner/signature-database-load-benchmark.py
+      - docs/signature-database-load-benchmark.md
+      - .github/workflows/signature-database-load-benchmark.yml
+  push:
+    branches: [main]
+    paths:
+      - signature_database_load_benchmark.py
+      - tests/scanner/signature-database-load-benchmark.py
+      - docs/signature-database-load-benchmark.md
+      - .github/workflows/signature-database-load-benchmark.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signature-load-benchmark:
+    name: Signature database loading benchmark (synthetic CI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Test signature loading and native API safety in isolation
+        run: PYTHONPATH=. python3 tests/scanner/signature-database-load-benchmark.py -v
+      - name: Confirm scanner startup remains isolated from the live scan gate
+        run: PYTHONPATH=. python3 tests/scanner/startup-benchmark.py -v

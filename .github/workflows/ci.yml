@@ -88,6 +88,24 @@ jobs:
         env:
           PDF_MAGIC_EICAR_CLAMAV: /usr/bin/clamscan
         run: PYTHONPATH=. python3 tests/protection/standard-antivirus-fixture.py -v
+      - name: Measure real ClamAV startup on disposable CI signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark_db="$(mktemp -d)"
+          trap 'rm -rf "$benchmark_db"' EXIT
+          python3 - "$benchmark_db" <<'PY'
+          from pathlib import Path
+          import sys
+          # Local, minimal CI signature only; never read a user's documents or DB.
+          (Path(sys.argv[1]) / "benchmark.ndb").write_text(
+              "PDFMagicSyntheticBenchmark:0:*:" + b"benchmark-never-match".hex() + "\n",
+              encoding="ascii",
+          )
+          PY
+          python3 scanner_startup_benchmark.py \
+            --scanner /usr/bin/clamscan --database "$benchmark_db" \
+            --files 5 --cycles 3
 
   firefox-pdf-viewer-smoke:
     # Use actual Mozilla Firefox and its bundled PDF.js, not a static mock
@@ -279,6 +297,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/parser-evaluation.py -v
       - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
         run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
+      - name: Verify bounded small text PDF timing and fail-closed benchmark behavior
+        run: PYTHONPATH=. python3 tests/pdf/small-text-benchmark.py -v
+      - name: Benchmark a real small text-based PDF through supervised structure analysis
+        run: PYTHONPATH=. python3 small_text_pdf_benchmark.py --samples 5
       - name: Inspect indirect PDF object links and page-tree consistency
         run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
       - name: Detect suspiciously repeated PDF object structures
@@ -448,6 +470,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/incorrectly-named-files.py -v
       - name: Validate large, structurally sound PDF security corpus
         run: PYTHONPATH=. python3 tests/pdf/large-valid-corpus.py -v
+      - name: Verify bounded, fail-closed large PDF benchmark behavior
+        run: PYTHONPATH=. python3 tests/pdf/large-pdf-benchmark.py -v
+      - name: Sample real 256-page large PDF parsing in an isolated worker
+        run: python3 large_pdf_benchmark.py --case many-large-pages --runs 1
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
@@ -514,8 +540,6 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/performance-implications.py -v
       - name: Verify opt-in ClamAV startup benchmark is isolated and unmeasured by default
         run: PYTHONPATH=. python3 tests/scanner/startup-benchmark.py -v
-      - name: Verify read-only signature database loading benchmark and fail-closed diagnostics
-        run: PYTHONPATH=. python3 tests/scanner/signature-database-load-benchmark.py -v
       - name: Verify displayed checks for each protection level match the policy schema
         run: PYTHONPATH=. python3 tests/protection/settings-checks.py -v
       - name: Audit increased system text size layout
@@ -1448,6 +1472,12 @@ jobs:
             discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-selected-browser-removed.swift \
             -o "$RUNNER_TEMP/TestSelectedBrowserRemoved"
           "$RUNNER_TEMP/TestSelectedBrowserRemoved"
+      - name: Test in-place browser upgrades and fail-closed PDF-target recovery
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
+            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-browser-upgrades.swift \
+            -o "$RUNNER_TEMP/TestBrowserUpgrades"
+          "$RUNNER_TEMP/TestBrowserUpgrades"
 
       - name: Test discovery and preferences with no third-party browsers
         run: |

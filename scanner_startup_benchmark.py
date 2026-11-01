@@ -20,6 +20,7 @@ TRUSTED_SCANNERS = (
     "/opt/homebrew/bin/clamscan",
     "/usr/local/bin/clamscan",
     "/usr/local/clamav/bin/clamscan",
+    "/usr/bin/clamscan",  # Disposable Ubuntu CI runner only; not a production selection.
 )
 DEFAULT_DATABASE = Path.home() / "Library/Application Support/Studio/allow-and-open/signatures"
 MIN_FILES = 5
@@ -106,22 +107,28 @@ def measure(scanner, database, file_count=5, cycles=3, *, runner=subprocess.run,
             raise RuntimeError(ERROR)
         # Explicit warmup: neither a cold filesystem cache nor scan policy
         # setup should be presented as a persistent-daemon speed comparison.
-        timed_scan(scanner, database, files[0], 1, runner=runner, clock=clock)
+        first_invocation = timed_scan(scanner, database, files[0], 1,
+                                      runner=runner, clock=clock)
         singles = []
+        single_invocations = []
         batches = []
         for cycle in range(cycles):
             # Alternate phase order to reduce warm-cache order bias.
             if cycle % 2:
                 batches.append(timed_scan(scanner, database, root, file_count,
                                           runner=runner, clock=clock))
-            singles.append(sum(timed_scan(scanner, database, path, 1,
-                                          runner=runner, clock=clock) for path in files))
+            cycle_times = [timed_scan(scanner, database, path, 1,
+                                      runner=runner, clock=clock) for path in files]
+            single_invocations.extend(cycle_times)
+            singles.append(sum(cycle_times))
             if not cycle % 2:
                 batches.append(timed_scan(scanner, database, root, file_count,
                                           runner=runner, clock=clock))
         # No result is published until *all* runs have completed successfully.
         one_shot = statistics.median(singles)
         batched = statistics.median(batches)
+        sorted_invocations = sorted(single_invocations)
+        p90_invocation = sorted_invocations[math.ceil(0.9 * len(sorted_invocations)) - 1]
         return {
             "schemaVersion": 1,
             "scope": "syntheticClamscanStartupExperiment",
@@ -129,6 +136,9 @@ def measure(scanner, database, file_count=5, cycles=3, *, runner=subprocess.run,
             "fixtureCount": file_count,
             "pairedCycles": cycles,
             "oneShotInvocationsPerCycle": file_count,
+            "firstInvocationMs": round(first_invocation * 1000, 3),
+            "medianSingleInvocationMs": round(statistics.median(single_invocations) * 1000, 3),
+            "p90SingleInvocationMs": round(p90_invocation * 1000, 3),
             "medianRepeatedOneShotMs": round(one_shot * 1000, 3),
             "medianOneProcessBatchMs": round(batched * 1000, 3),
             "medianExcessOneShotMs": round((one_shot - batched) * 1000, 3),
