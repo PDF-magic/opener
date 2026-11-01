@@ -1,0 +1,26 @@
+name: Scanned image-based PDF benchmark contract
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scanned-pdf-benchmark:
+    name: Validate synthetic scanned PDF workload (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned structural PDF parser for fixture validation
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Verify scanned image-based PDF benchmark safety and structure
+        run: PYTHONPATH=. python3 tests/pdf/scanned-image-benchmark.py -v
