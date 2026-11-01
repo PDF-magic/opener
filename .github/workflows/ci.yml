@@ -403,6 +403,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/consecutive-profile-switches.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
+      - name: Validate tracked truncated PDF security-corpus fixtures
+        run: PYTHONPATH=. python3 tests/security/truncated-pdfs.py -v
       - name: Verify planned Maximum rejects malformed PDFs and blocks sanitization
         run: |
           # The Maximum sanitizer imports Pillow even on an early input rejection.
