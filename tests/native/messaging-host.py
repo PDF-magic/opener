@@ -393,7 +393,7 @@ class NativeMessagingHostTests(unittest.TestCase):
     first = decode_native_message(read_native_frame(output_stream))
     second = decode_native_message(read_native_frame(output_stream))
     self.assertIsNone(read_native_frame(output_stream))
-    self.assertEqual(first, handshake_response())
+    self.assert_handshake_response(first)
     self.assertEqual(second, {
       "version": 1, "kind": "response", "topic": "host.ping",
       "requestId": "codec_ping", "payload": {
