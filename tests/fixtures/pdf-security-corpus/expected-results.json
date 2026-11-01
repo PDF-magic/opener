@@ -1,0 +1,762 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Expected *passive test evidence* for PDF-magic security and baseline fixtures; never scanner authorization",
+  "fixtures": [
+    {
+      "collection": "reference",
+      "id": "clean-basic",
+      "expectedResult": "simulated-scanner-verdict",
+      "details": {
+        "simulatedScannerOutcome": "clean",
+        "note": "Test stub only; not an actual malware detection or opening authorization"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "reference",
+      "id": "clean-second",
+      "expectedResult": "simulated-scanner-verdict",
+      "details": {
+        "simulatedScannerOutcome": "clean",
+        "note": "Test stub only; not an actual malware detection or opening authorization"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "reference",
+      "id": "detected-verdict",
+      "expectedResult": "simulated-scanner-verdict",
+      "details": {
+        "simulatedScannerOutcome": "detected",
+        "note": "Test stub only; not an actual malware detection or opening authorization"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "reference",
+      "id": "incomplete-verdict",
+      "expectedResult": "simulated-scanner-verdict",
+      "details": {
+        "simulatedScannerOutcome": "incomplete",
+        "note": "Test stub only; not an actual malware detection or opening authorization"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "reference",
+      "id": "scanner-error",
+      "expectedResult": "simulated-scanner-verdict",
+      "details": {
+        "simulatedScannerOutcome": "failed",
+        "note": "Test stub only; not an actual malware detection or opening authorization"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "reference",
+      "id": "scanner-timeout",
+      "expectedResult": "simulated-scanner-verdict",
+      "details": {
+        "simulatedScannerOutcome": "timeout",
+        "note": "Test stub only; not an actual malware detection or opening authorization"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "real-pdf.txt",
+      "expectedResult": "pdf-header",
+      "details": {
+        "isPdf": true,
+        "filename": "real-pdf.txt"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "real-pdf.png",
+      "expectedResult": "pdf-header",
+      "details": {
+        "isPdf": true,
+        "filename": "real-pdf.png"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "real-pdf.pdf.txt",
+      "expectedResult": "pdf-header",
+      "details": {
+        "isPdf": true,
+        "filename": "real-pdf.pdf.txt"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "real-pdf-no-extension",
+      "expectedResult": "pdf-header",
+      "details": {
+        "isPdf": true,
+        "filename": "real-pdf-no-extension"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "real-pdf.PDF",
+      "expectedResult": "pdf-header",
+      "details": {
+        "isPdf": true,
+        "filename": "real-pdf.PDF"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "plain-text.pdf",
+      "expectedResult": "not-pdf",
+      "details": {
+        "isPdf": false,
+        "filename": "plain-text.pdf"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "png-header.pdf",
+      "expectedResult": "not-pdf",
+      "details": {
+        "isPdf": false,
+        "filename": "png-header.pdf"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incorrectly-named",
+      "id": "embedded-pdf-header.pdf",
+      "expectedResult": "not-pdf",
+      "details": {
+        "isPdf": false,
+        "filename": "embedded-pdf-header.pdf"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "missing-magic",
+      "expectedResult": "not-pdf",
+      "details": {
+        "headerStatus": "notPdf",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "wrong-magic",
+      "expectedResult": "not-pdf",
+      "details": {
+        "headerStatus": "notPdf",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "leading-bom",
+      "expectedResult": "not-pdf",
+      "details": {
+        "headerStatus": "notPdf",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "unsupported-minor-version",
+      "expectedResult": "undetermined",
+      "details": {
+        "headerStatus": "undetermined",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "unsupported-major-version",
+      "expectedResult": "undetermined",
+      "details": {
+        "headerStatus": "undetermined",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "nonnumeric-version",
+      "expectedResult": "undetermined",
+      "details": {
+        "headerStatus": "undetermined",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "nonascii-version",
+      "expectedResult": "undetermined",
+      "details": {
+        "headerStatus": "undetermined",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "space-instead-of-newline",
+      "expectedResult": "undetermined",
+      "details": {
+        "headerStatus": "undetermined",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "invalid-header",
+      "id": "nul-instead-of-newline",
+      "expectedResult": "undetermined",
+      "details": {
+        "headerStatus": "undetermined",
+        "strictStructure": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incremental",
+      "id": "incremental-added-metadata",
+      "expectedResult": "incremental-revisions-detected",
+      "details": {
+        "revisionCount": 2,
+        "simulatedScannerOutcome": "clean",
+        "passiveInspection": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incremental",
+      "id": "incremental-replaced-font",
+      "expectedResult": "incremental-revisions-detected",
+      "details": {
+        "revisionCount": 2,
+        "simulatedScannerOutcome": "clean",
+        "passiveInspection": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "incremental",
+      "id": "incremental-two-updates",
+      "expectedResult": "incremental-revisions-detected",
+      "details": {
+        "revisionCount": 3,
+        "simulatedScannerOutcome": "clean",
+        "passiveInspection": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-xref",
+      "id": "xref-out-of-bounds-offset",
+      "expectedResult": "recovered-or-rejected-no-open",
+      "details": {
+        "strictXref": "parser may recover inconsistent offset rows",
+        "authorization": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-xref",
+      "id": "xref-conflicting-object-offsets",
+      "expectedResult": "recovered-or-rejected-no-open",
+      "details": {
+        "strictXref": "parser may recover inconsistent offset rows",
+        "authorization": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-xref",
+      "id": "xref-generation-mismatch",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "strictXref": "must fail closed",
+        "authorization": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-xref",
+      "id": "xref-overdeclared-subsection",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "strictXref": "must fail closed",
+        "authorization": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-xref",
+      "id": "xref-nonnumeric-subsection",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "strictXref": "must fail closed",
+        "authorization": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-xref",
+      "id": "xref-truncated-entry-table",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "strictXref": "must fail closed",
+        "authorization": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "valid-object-stream",
+      "id": "plain-object-stream",
+      "expectedResult": "valid-structure",
+      "details": {
+        "pdfVersion": "1.5",
+        "pageCount": 1,
+        "objectStream": "valid"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "valid-object-stream",
+      "id": "flate-object-stream",
+      "expectedResult": "valid-structure",
+      "details": {
+        "pdfVersion": "1.5",
+        "pageCount": 1,
+        "objectStream": "valid"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "zero-member-count",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "first-points-into-header",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "member-offset-past-object",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "nonnumeric-member-id",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "broken-object-dictionary",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "declared-length-underflow",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "missing-endstream-terminator",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "malformed-object-stream",
+      "id": "corrupt-flate-payload",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "failureCode": "invalidStructure",
+        "pageObject": "unresolvable"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "encrypted",
+      "id": "user-and-owner-passwords",
+      "expectedResult": "encrypted-block",
+      "details": {
+        "keyBits": 128,
+        "noDecryption": true,
+        "preserveQuarantine": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "encrypted",
+      "id": "empty-user-password",
+      "expectedResult": "encrypted-block",
+      "details": {
+        "keyBits": 128,
+        "noDecryption": true,
+        "preserveQuarantine": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "encrypted",
+      "id": "legacy-40-bit",
+      "expectedResult": "encrypted-block",
+      "details": {
+        "keyBits": 40,
+        "noDecryption": true,
+        "preserveQuarantine": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "javascript",
+      "id": "javascript-document-open",
+      "expectedResult": "javascript-actions-detected",
+      "details": {
+        "trigger": "document_open",
+        "payloadType": "text",
+        "hints": [
+          "dynamic_execution"
+        ],
+        "actionCount": 1,
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "javascript",
+      "id": "javascript-page-additional",
+      "expectedResult": "javascript-actions-detected",
+      "details": {
+        "trigger": "page_additional",
+        "payloadType": "text",
+        "hints": [
+          "network"
+        ],
+        "actionCount": 1,
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "javascript",
+      "id": "javascript-document-name-tree-stream",
+      "expectedResult": "javascript-actions-detected",
+      "details": {
+        "trigger": "document_javascript",
+        "payloadType": "stream",
+        "hints": [
+          "file_access"
+        ],
+        "actionCount": 1,
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "external-launch",
+      "id": "launch-document-open-file",
+      "expectedResult": "external-launch-detected",
+      "details": {
+        "trigger": "document_open",
+        "actionCount": 1,
+        "targets": [
+          "file"
+        ],
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "external-launch",
+      "id": "launch-page-additional-filespec",
+      "expectedResult": "external-launch-detected",
+      "details": {
+        "trigger": "page_additional",
+        "actionCount": 1,
+        "targets": [
+          "file"
+        ],
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "external-launch",
+      "id": "launch-click-only-windows",
+      "expectedResult": "external-launch-detected",
+      "details": {
+        "trigger": null,
+        "actionCount": 1,
+        "targets": [
+          "windows_command"
+        ],
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "external-launch",
+      "id": "launch-chained-document-open",
+      "expectedResult": "external-launch-detected",
+      "details": {
+        "trigger": "document_open",
+        "actionCount": 2,
+        "targets": [
+          "file",
+          "windows_command"
+        ],
+        "noExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "oversized-stream",
+      "id": "oversized-raw-attachment",
+      "expectedResult": "large-embedded-object-detected",
+      "details": {
+        "encoded": 1,
+        "decoded": 1,
+        "highExpansion": 0,
+        "declared": 0
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "oversized-stream",
+      "id": "oversized-flate-attachment",
+      "expectedResult": "large-embedded-object-detected",
+      "details": {
+        "encoded": 0,
+        "decoded": 1,
+        "highExpansion": 1,
+        "declared": 0
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "oversized-stream",
+      "id": "oversized-orphan-embedded-stream",
+      "expectedResult": "large-embedded-object-detected",
+      "details": {
+        "encoded": 1,
+        "decoded": 1,
+        "highExpansion": 0,
+        "declared": 0
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "oversized-stream",
+      "id": "oversized-declared-attachment",
+      "expectedResult": "large-embedded-object-detected",
+      "details": {
+        "encoded": 0,
+        "decoded": 0,
+        "highExpansion": 0,
+        "declared": 1
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "large-valid",
+      "id": "single-large-stream",
+      "expectedResult": "structure-size-limit",
+      "details": {
+        "pageCount": 1,
+        "failureCode": "sizeLimit",
+        "structurallyValid": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "large-valid",
+      "id": "many-large-pages",
+      "expectedResult": "structure-size-limit",
+      "details": {
+        "pageCount": 256,
+        "failureCode": "sizeLimit",
+        "structurallyValid": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "memory-stress",
+      "id": "high-reference-fanout",
+      "expectedResult": "valid-structure",
+      "details": {
+        "pageCount": 1,
+        "referenceFanout": 50000
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "memory-stress",
+      "id": "dense-object-table",
+      "expectedResult": "structure-size-limit",
+      "details": {
+        "failureCode": "sizeLimit",
+        "budget": "objectCount"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "memory-stress",
+      "id": "aggregate-flate-expansion",
+      "expectedResult": "structure-size-limit",
+      "details": {
+        "failureCode": "sizeLimit",
+        "budget": "aggregateDecodedStreamBytes"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "deep-reference",
+      "id": "deeply-nested-object-references",
+      "expectedResult": "valid-reference-chain",
+      "details": {
+        "referenceDepth": 96,
+        "pageCount": 1,
+        "relationshipCheck": "resolved"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "digital-signature",
+      "id": "approval-signature",
+      "expectedResult": "untrusted-signature",
+      "details": {
+        "docmdp": false,
+        "declaredDocMdpLevel": null,
+        "signatureVerified": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "digital-signature",
+      "id": "certification-docmdp",
+      "expectedResult": "untrusted-signature",
+      "details": {
+        "docmdp": true,
+        "declaredDocMdpLevel": 2,
+        "signatureVerified": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "truncated",
+      "id": "truncated-stream.pdf",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "path": "tests/fixtures/pdf-security-corpus/truncated/truncated-stream.pdf",
+        "failureCode": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "truncated",
+      "id": "truncated-xref.pdf",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "path": "tests/fixtures/pdf-security-corpus/truncated/truncated-xref.pdf",
+        "failureCode": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "truncated",
+      "id": "truncated-eof.pdf",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "path": "tests/fixtures/pdf-security-corpus/truncated/truncated-eof.pdf",
+        "failureCode": "invalidStructure"
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "empty",
+      "id": "empty",
+      "expectedResult": "empty-rejected-before-scan",
+      "details": {
+        "path": "tests/fixtures/empty",
+        "bytes": 0,
+        "scanned": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "empty",
+      "id": "empty.pdf",
+      "expectedResult": "empty-rejected-before-scan",
+      "details": {
+        "path": "tests/fixtures/empty.pdf",
+        "bytes": 0,
+        "scanned": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "empty",
+      "id": "empty.txt",
+      "expectedResult": "empty-rejected-before-scan",
+      "details": {
+        "path": "tests/fixtures/empty.txt",
+        "bytes": 0,
+        "scanned": false
+      },
+      "authorizesOpen": false
+    }
+  ]
+}
