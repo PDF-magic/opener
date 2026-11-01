@@ -2,7 +2,9 @@
 
 **Decision: retain the installed per-request clamscan scanner.** No trustworthy
 benchmark of repeated clamscan initialization costs has yet been collected
-on representative user hardware and workloads. There is no clamd migration,
+on representative user hardware and workloads. A disposable Ubuntu CI runner
+now records a genuine but deliberately nonrepresentative minimal-signature
+baseline; those values must not be used to justify a production engine change. There is no clamd migration,
 no daemon launcher, no socket, no new service, and no change to how files are
 opened. Merely configuring a timeout or running the CI tests is **not** a
 performance measurement. Existing successful clean-cache reuse already avoids
@@ -27,16 +29,23 @@ and the configured signature directory. Each invocation is bounded to 180
 seconds; an error, timeout, warning, incomplete output or abnormal exit
 aborts the experiment **without publishing timing data**.
 
-The JSON summary contains only sample counts and measured aggregate
-milliseconds, not scanner output, filesystem paths, file contents or user
-document details. The two metrics are the median total time of the repeated
+The JSON summary contains only sample counts and measured milliseconds
+(first invocation, median/p90 of the individual one-shot invocations, and
+aggregate paired cycles), not scanner output, filesystem paths, file contents
+or user document details. The first invocation is not a guaranteed cold-cache
+start; an individual one-shot duration includes signature loading, scanning,
+and process termination, not process launch alone. The two metrics are the median total time of the repeated
 one-shot invocations and the median total time of a single batched invocation.
 The difference may reflect signature loading, cache effects and other
 per-invocation costs. **It is not an isolated process-start duration, a
 production end-to-end latency estimate, a clamd benchmark, nor proof that a
-persistent daemon would be faster.** No data is bundled or reported
-automatically. CI mocks scan completions and clocks to test the harness; its
-synthetic timing values are not measurements.
+persistent daemon would be faster.** No data is bundled or reported to an external service. CI's mocked
+unit-test clocks are not measurements. A separate real-ClamAV CI step on a
+disposable Ubuntu runner executes this opt-in harness with a temporary,
+one-signature database, prints aggregate numbers only to its job log, and
+destroys that database afterward. These are real invocations but are **not
+macOS or production-database measurements**. CI enforces completion and safe
+output, never a timing threshold or claimed speedup.
 
 ## Conditions before considering clamd
 

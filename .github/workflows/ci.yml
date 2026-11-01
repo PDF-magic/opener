@@ -88,6 +88,24 @@ jobs:
         env:
           PDF_MAGIC_EICAR_CLAMAV: /usr/bin/clamscan
         run: PYTHONPATH=. python3 tests/protection/standard-antivirus-fixture.py -v
+      - name: Measure real ClamAV startup on disposable CI signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark_db="$(mktemp -d)"
+          trap 'rm -rf "$benchmark_db"' EXIT
+          python3 - "$benchmark_db" <<'PY'
+          from pathlib import Path
+          import sys
+          # Local, minimal CI signature only; never read a user's documents or DB.
+          (Path(sys.argv[1]) / "benchmark.ndb").write_text(
+              "PDFMagicSyntheticBenchmark:0:*:" + b"benchmark-never-match".hex() + "\n",
+              encoding="ascii",
+          )
+          PY
+          python3 scanner_startup_benchmark.py \
+            --scanner /usr/bin/clamscan --database "$benchmark_db" \
+            --files 5 --cycles 3
 
   firefox-pdf-viewer-smoke:
     # Use actual Mozilla Firefox and its bundled PDF.js, not a static mock
