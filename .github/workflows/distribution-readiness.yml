@@ -26,6 +26,8 @@ jobs:
           npm run package:firefox
       - name: Verify malicious and sensitive fixtures cannot enter release packages
         run: PYTHONPATH=. python3 tests/general/application-helper-packaging.py -v
+      - name: Verify release ZIP path safety, contents and non-overwrite rules
+        run: PYTHONPATH=. python3 tests/general/release-archive.py -v
       - name: Audit channel packages and signing blockers
         run: PYTHONPATH=. python3 tests/general/extension-distribution.py -v
       - name: Check Safari embedded app extension target
