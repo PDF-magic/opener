@@ -1,0 +1,37 @@
+name: Signed PDF security corpus
+
+on:
+  pull_request:
+    paths:
+      - digital_signature_corpus.py
+      - tests/pdf/digital-signature-corpus.py
+      - docs/pdf/digital-signature-corpus.md
+      - .github/workflows/pdf-digital-signature-corpus.yml
+  push:
+    branches: [main]
+    paths:
+      - digital_signature_corpus.py
+      - tests/pdf/digital-signature-corpus.py
+      - docs/pdf/digital-signature-corpus.md
+      - .github/workflows/pdf-digital-signature-corpus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-pdf-corpus:
+    name: Validate genuine detached CMS PDF signatures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test-only pinned parser and signing dependency
+        run: |
+          python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+          python3 -m pip install --disable-pip-version-check 'cryptography==46.0.4'
+      - name: Validate signed documents and fail-closed passive interpretation
+        run: PYTHONPATH=. python3 tests/pdf/digital-signature-corpus.py -v
