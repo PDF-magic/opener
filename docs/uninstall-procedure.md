@@ -169,6 +169,39 @@ definitions and update configuration are separate user-managed resources.
 
 ## 6. Remove the verified application and retire its entry points
 
+**Before moving the bundle or any installed helper**, stop the program's
+remaining active per-user processes. First inspect without signalling:
+
+```sh
+python3 stop_owned_background_processes.py
+```
+
+Once you have finished or cancelled any in-flight scans, closed the PDF Magic
+preferences window, and (if removing scheduled updates) retired the verified
+LaunchAgent in step 5, explicitly stop remaining recognized PDF Magic processes:
+
+```sh
+python3 stop_owned_background_processes.py --stop
+```
+
+Type `STOP` when prompted. The helper uses macOS kernel executable paths,
+an exact installed app identity, current user identity, installed script paths
+and process start times. It sends SIGTERM only to verified PDF Magic opener,
+native host, or installed scan/update helper processes, rechecking each PID
+just before signalling and waiting for shutdown. It **does not** send signals
+to shared `clamscan`, `freshclam`, browsers, unknown processes, or an
+arbitrary process group; scan and updater scripts retain their own existing
+child-cancellation cleanup. It never escalates to SIGKILL. A read-only check
+requires no confirmation, and a missing/unverifiable installation identity,
+a reused PID, an inaccessible process table, or a remaining process is an
+explicit **stop condition**: do not delete the bundle or helper files. Repeat
+the read-only command and verify **0 verified PDF Magic process(es)** before
+proceeding. If you intentionally keep the signature-update LaunchAgent, keep
+its supporting updater script; scheduled updates may start a new process later.
+This command does not retire a LaunchAgent (step 5), disable browser extensions,
+change user settings or remove any files.
+
+
 Only after **the fresh step 2 PDF-handler check has reported a known
 non-PDF-Magic default**, and after confirming steps 2–5 have disconnected
 the PDF handler, Finder action and any opted-in browser registrations,
@@ -200,7 +233,9 @@ Never run a script in that directory simply to identify it.
 3. Confirm opted-in native messaging registrations are gone using the
    reviewed registration tools, not by modifying browser profiles.
 4. If retired, confirm `launchctl` no longer lists the exact PDF Magic
-   signature-update agent. Confirm no unexpected update processes remain.
+   signature-update agent. Run `python3 stop_owned_background_processes.py`
+   to verify no owned processes remain; resolve any unexpected update processes
+   without signalling shared scanner services.
 5. Keep retained application data and backups until you no longer need
    rollback. If any step fails, leave remaining components intact; use the
    trusted [repair procedure](repair-installation.md) to recover a verified
