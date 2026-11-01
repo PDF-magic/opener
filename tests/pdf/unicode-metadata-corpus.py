@@ -77,7 +77,8 @@ class UnicodeMetadataCorpusTests(unittest.TestCase):
                 with (patch("subprocess.Popen", side_effect=AssertionError("process")) as process,
                       patch("socket.create_connection", side_effect=AssertionError("network")) as network):
                     report = extract_pdf_declared_metadata(item.content)
-                self.assertEqual(dict(report.info_fields), dict(item.info))
+                self.assertEqual(dict(report.info_fields),
+                                 {"producer": "pypdf", **dict(item.info)})
                 self.assertEqual(dict(report.xmp_fields), dict(item.xmp))
                 self.assertEqual(report.has_xmp_stream, bool(item.xmp))
                 self.assertIs(report.authorizes_open, False)
