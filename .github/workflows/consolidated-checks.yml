@@ -232,6 +232,8 @@ jobs:
           PYTHONPATH=. python3 tests/maximum/active-content-removal.py -v
           PYTHONPATH=. python3 tests/maximum/sanitized-copy.py -v
           PYTHONPATH=. python3 tests/maximum/sanitizer-reporting.py -v
+      - name: maximum / sanitizer-regressions / Verify output stripping and fail-closed copy offers
+        run: PYTHONPATH=. python3 tests/maximum/sanitizer-regressions.py -v
       - name: maximum / maximum-sanitized-copy / Verify optional OCR stays separate from sanitized copies
         run: PYTHONPATH=. python3 tests/maximum/ocr-separation.py -v
       - name: maximum / maximum-sanitized-copy / Require an explicit warning for meaningful PDF conversion changes
