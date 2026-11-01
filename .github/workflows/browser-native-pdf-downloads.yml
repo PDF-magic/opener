@@ -54,6 +54,8 @@ jobs:
         with:
           firefox-version: latest
       - uses: browser-actions/setup-geckodriver@latest
+        with:
+          token: ${{ github.token }}
       - name: Verify Firefox handles downloaded PDF attachments
         working-directory: extensions/webextension
         env:
