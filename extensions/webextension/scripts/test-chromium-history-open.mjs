@@ -102,8 +102,24 @@ try {
     }));
     throw new Error(error.message + " (" + JSON.stringify(diagnostics) + ")");
   }
-  assert.equal(await row.locator("#file-link").count(), 1,
-    "History must expose its own browser-controlled Open link");
+  const fileLink = row.locator("#file-link");
+  try {
+    await until(async () => (await fileLink.count()) === 1,
+      "history row exposing the browser-owned Open link", 12000);
+  } catch (error) {
+    // Only DOM structure for this generated PDF in a fresh test profile.
+    const detail = await row.evaluate(element => ({
+      fields: Object.keys(element.data ?? {}).sort().slice(0, 30),
+      elements: [...(element.shadowRoot?.querySelectorAll("a,button") ?? [])]
+        .map(node => ({
+          name: node.localName,
+          id: node.id,
+          label: node.getAttribute("aria-label"),
+          text: node.textContent?.trim().slice(0, 70)
+        })).slice(0, 25)
+    }));
+    throw new Error(error.message + " (" + JSON.stringify(detail) + ")");
+  }
   const before = await row.evaluate(element => ({
     name: element.data?.fileName,
     opened: element.data?.opened
@@ -113,7 +129,7 @@ try {
 
   // Trusted click on the real Chromium history entry. This is not the
   // WebExtensions downloads.open API and never grants scanner authority.
-  await row.locator("#file-link").click({ noWaitAfter: true, timeout: 15000 });
+  await fileLink.click({ noWaitAfter: true, timeout: 15000 });
   await until(async () => await row.evaluate(element =>
     element.data?.opened === true), "Chromium marking the PDF as opened");
   assert.equal(fixture.snapshot().requests[item.path], 1,
