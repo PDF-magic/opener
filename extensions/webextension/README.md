@@ -15,8 +15,16 @@ From this directory, with Node.js 20 or newer:
 
 ```sh
 npm run build
+npm run package:firefox
+npm run validate:manifests
 npm test
 ```
+
+The read-only `validate:manifests` command checks the shared source, generated
+Chromium and Firefox manifests, and Safari's reviewed `nativeMessaging`-only
+difference. It rejects missing or additional fields, unexpected privileges,
+incorrect browser metadata and drift between packaged and source manifests.
+CI runs it after packaging; it does not install extensions or approve PDFs.
 
 The shared Manifest V3 `action` displays the existing PDF Magic Opener icon
 in the browser toolbar with the truthful title **PDF Magic Opener (not active)**.

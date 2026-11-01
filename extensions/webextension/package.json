@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "validate:manifests": "node scripts/validate-manifests.mjs",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "package:chrome": "node scripts/package-chrome.mjs",
     "package:firefox": "node scripts/package-firefox.mjs"
