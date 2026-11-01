@@ -27,7 +27,26 @@ actions triggered by opening the preferences app.
    It may contain user-customized configuration, historical scan metadata,
    signatures or unrelated files; **do not delete the directory wholesale**.
    Do not share private paths, PDF names, logs or proxy credentials.
-3. **Detect the current macOS PDF handler before any removal or restoration.**
+3. **Decide whether to retain scan history.** Before quitting Preferences or
+   removing anything, run the read-only question from the trusted source checkout:
+
+   ```sh
+   python3 ask_scan_history_retention.py
+   ```
+
+   Answer **yes** (or press Return) to retain scan history unchanged. Answer
+   **no** only if you intend to delete optional scan-history metadata.
+   This prompt **never deletes history** and never affects the separate
+   90-day clean-scan cache, diagnostic logs, browser preferences or scanner.
+   If you answer no, while the app is still installed use
+   **Preferences > Scan History > Clear History…**, explicitly confirm removal,
+   and verify the success message before continuing. That page is available
+   only if optional history has been enabled; do not assume a hidden page
+   proves no history exists. **Stop uninstallation** if it is unavailable or
+   deletion cannot be verified, and preserve the data instead of manually
+   removing files. Cancellation, interrupted input, and unknown answers must
+   not cause deletion. Do not conflate this choice with other application data.
+4. **Detect the current macOS PDF handler before any removal or restoration.**
    While the installed support helpers are still present, run this established
    read-only status command in Terminal (it uses the PDF-specific Launch
    Services lookup, not your default web browser or post-scan viewer):
@@ -47,7 +66,7 @@ actions triggered by opening the preferences app.
    second read-only view if needed, but do not interpret a missing or unknown
    answer as permission to remove the current PDF handler. Confirm you know
    which viewer should receive PDFs after removal.
-4. From the trusted source checkout, check whether the managed signature-update
+5. From the trusted source checkout, check whether the managed signature-update
    LaunchAgent is recognized (read-only, does not start or stop anything):
 
    ```sh
@@ -179,6 +198,31 @@ Applications folder; if the bundle is renamed, symlinked, substituted or
 customized, stop rather than guessing another path. Do not remove
 `Open PDFs in Brave.app` or other app bundles by similarity of name.
 
+For installations that have a native helper ownership record written by the
+verified installer, you may first inspect the recorded compiled helper binaries
+without changing anything:
+
+```sh
+python3 scripts/retire_installed_helpers.py
+```
+
+Only after the default PDF handler is confirmed to be another application, the
+Finder action and native messaging hosts are **already disconnected**, and any
+needed signature-update service is stopped, you may explicitly remove these
+unchanged, recorded native binaries from the trusted source checkout:
+
+```sh
+python3 scripts/retire_installed_helpers.py --remove
+```
+
+This requires typing `REMOVE`. It checks the exact installer-recorded SHA-256
+hash for each of ten named native executables before any removal, refuses
+modified files, unsafe directories, links, and unknown ownership records, and
+keeps the record for an idempotent subsequent check. A legacy installation
+without a record must be reviewed manually or upgraded through the verified
+installer first; **never guess ownership from a filename alone**. Neither
+ClamAV executables nor customized scripts or user data are removed.
+
 If you wish to retire the remaining per-user scripts, **review their contents
 and ownership individually** within
 `~/Library/Application Support/Studio/allow-and-open`. They can include
@@ -238,6 +282,9 @@ No guaranteed malware safety or data-erasure claim is made.
 
 ## CI and ownership boundaries
 
+`tests/general/retire-helpers.py` verifies the installed native binary ownership
+record, explicit opt-in removal, preflight failures, and preservation of user
+files without mutating real installations.
 `tests/general/uninstall-procedure.py` checks this procedure against the
 real existing default-handler restoration, Finder Quick Action restoration,
 native messaging cleanup, and signature-agent ownership verification paths.

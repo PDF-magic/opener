@@ -20,7 +20,7 @@ PROGRAMS = (
     "discover-installed-browsers", "installed-applications", "identify-pdf-handler",
     "detect-pdf-handler-change", "pdf-handler-history", "verify-pdf-target",
     "select-custom-pdf-application.py", "select-custom-pdf-application",
-    "browser-preference-list",
+    "browser-preference-list", ".pdf-magic-native-helpers.json",
 )
 MANIFEST = "snapshot.json"
 
