@@ -289,7 +289,7 @@ test("opener-1069 exercises live Chromium history rather than faking a history c
     'page.waitForEvent("download"', "page.locator(item.selector).click()",
     "download.failure()", "readFile(await download.path())",
     "await page.close()", '"chrome://downloads/"',
-    'history.locator("downloads-item")', 'row.locator("#file-link")',
+    'history.locator("downloads-item")', 'row.locator("#fileLink")',
     "await fileLink.click(", "element.data?.opened === true",
     "fixture.snapshot().requests[item.path]", "await context?.close()",
     "await rm(profile"

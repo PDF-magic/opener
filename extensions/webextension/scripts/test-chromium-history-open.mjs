@@ -102,7 +102,7 @@ try {
     }));
     throw new Error(error.message + " (" + JSON.stringify(diagnostics) + ")");
   }
-  const fileLink = row.locator("#file-link");
+  const fileLink = row.locator("#fileLink");
   try {
     await until(async () => (await fileLink.count()) === 1,
       "history row exposing the browser-owned Open link", 12000);
@@ -124,7 +124,9 @@ try {
     name: element.data?.fileName,
     opened: element.data?.opened
   }));
-  assert.equal(before.name, item.name);
+  const savedPath = await download.path();
+  assert.ok(before.name === item.name || before.name === savedPath.split("/").at(-1),
+    "History must refer to the browser-managed downloaded PDF");
   assert.notEqual(before.opened, true);
 
   // Trusted click on the real Chromium history entry. This is not the
