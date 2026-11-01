@@ -51,6 +51,7 @@ COLLECTIONS = {
     "external-launch": ("external_launch_action_corpus", "EXTERNAL_LAUNCH_PDFS", "identifier"),
     "embedded-file": ("embedded_file_corpus", "EMBEDDED_FILE_PDFS", "identifier"),
     "interactive-form": ("interactive_form_corpus", "INTERACTIVE_FORM_PDFS", "identifier"),
+    "unicode-metadata": ("unicode_metadata_corpus", "UNICODE_METADATA_PDFS", "identifier"),
     "oversized-stream": ("oversized_stream_corpus", "OVERSIZED_STREAM_PDFS", "identifier"),
     "large-valid": ("large_valid_pdf_corpus", "LARGE_VALID_PDF_CASES", "identifier"),
     "memory-stress": ("memory_stress_pdf_corpus", "MEMORY_STRESS_PDFS", "identifier"),
