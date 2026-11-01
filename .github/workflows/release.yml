@@ -1,0 +1,60 @@
+name: Guarded GitHub release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing vX.Y.Z tag at the exact current main commit"
+        required: true
+        type: string
+
+# No tag creation, signing, store publication, or artifact upload is performed.
+# GitHub Releases created outside this workflow require repository-admin
+# governance; repository YAML cannot prohibit direct UI/API publication.
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: guarded-github-release
+  cancel-in-progress: false
+
+jobs:
+  critical-release-gate:
+    name: Verify critical checks and distribution readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reject missing, failed, skipped or unfinished critical checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/require_release_checks.py --tag "$RELEASE_TAG"
+      - name: Run the release gate regression suite
+        run: PYTHONPATH=. python3 tests/general/release-check-gate.py -v
+
+  publish-source-release:
+    name: Publish verified source-only GitHub release
+    needs: critical-release-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      checks: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reverify the exact main commit immediately before publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/require_release_checks.py --tag "$RELEASE_TAG"
+      - name: Publish source-only release (no unsigned browser packages)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: gh release create "$RELEASE_TAG" --verify-tag --target "$GITHUB_SHA" --title "$RELEASE_TAG" --generate-notes
