@@ -4,6 +4,8 @@
 
 **Terminology matters.** `uncontrolled` means the current PDF Magic Opener integration has *no proven veto* over this entry route. `unverified` means a conditional browser API or path may exist, but effective permission, installed-version behavior, and native scanner enforcement have **not been established**. Neither status says the underlying browser is incapable of viewing a PDF. Neither is a successful scan, nor proof that all PDF opening is blocked; a PDF-viewer smoke-test pass is **not a successful scan**. The [machine-readable register](browser-unsupported-routes.json) is the source for the rows below; CI checks its completeness against the existing code-defined path lists.
 
+For a user-facing explanation of **when no automatic interception guarantee can be made** and what to do instead, see [automatic interception limitations](automatic-interception-limitations.md).
+
 ## Browser-by-browser deployment limits
 
 | Browser ID | Browser | Current limitation | Effective automatic scan-before-render |
