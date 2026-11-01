@@ -112,7 +112,7 @@ class PDFStructureParserTests(unittest.TestCase):
         self.assertNotIn("pypdf", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
-        self.assertIn("pypdf==6.21.3", requirements)
+        self.assertIn("pypdf==6.21.4", requirements)
         self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
         self.assertIn("python3 tests/pdf/structure-parser.py -v", workflow)
         for forbidden in ("subprocess.", "remove_quarantine(", "launch_clean_file(",
