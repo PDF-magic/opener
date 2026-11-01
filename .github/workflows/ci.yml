@@ -251,6 +251,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
+      - name: Reject malformed classic cross-reference table corpus
+        run: PYTHONPATH=. python3 tests/pdf/malformed-xref-corpus.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
         run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
       - name: Verify reusable encrypted PDF security corpus and fail-closed inspection
