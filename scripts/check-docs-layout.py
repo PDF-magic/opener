@@ -47,8 +47,23 @@ def check_docs():
   return errors
 
 
+def check_macos_support_docs():
+  """Keep the published minimum macOS version aligned with the Xcode target."""
+  errors = []
+  project = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+  versions = set(re.findall(r"MACOSX_DEPLOYMENT_TARGET\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*;", project))
+  if len(versions) != 1:
+    return ["Expected one consistent macOS deployment target in the Xcode project"]
+
+  major = next(iter(versions)).split(".", 1)[0]
+  readme = (ROOT / "README.md").read_text(encoding="utf-8")
+  if not re.search(rf"\*\*macOS {re.escape(major)} \([^)]+\) or later\*\*", readme):
+    errors.append(f"README must document macOS {major} or later as the supported minimum")
+  return errors
+
+
 if __name__ == "__main__":
-  errors = check_docs()
+  errors = check_docs() + check_macos_support_docs()
   for error in errors:
     print(error, file=sys.stderr)
   if errors:
