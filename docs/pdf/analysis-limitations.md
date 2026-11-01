@@ -37,8 +37,7 @@ reports only `pdfVersion` and `pageCount` and has
 
 ## Boundaries and incomplete inspection
 
-The current strict parser limits input to **16 MiB input**, **4,096 indexed
-indirect objects**, **1,024 pages**, and **64 nested structure levels**.
+The current strict parser limits input to **16 MiB input**, **4,096 indexed indirect objects**, **1,024 pages**, and **64 nested structure levels**.
 Its decoded-stream budgets are **8 MiB per indexed stream** and **32 MiB
 cumulative**. These are admission and decoding limits, not a guarantee
 against CPU exhaustion, memory pressure, or parser vulnerabilities.
@@ -52,7 +51,7 @@ or prove every system resource is isolated.
 
 Malformed, encrypted, oversized, unsupported, ambiguous, unavailable-parser,
 or otherwise uninspectable cases must be handled as **incomplete/blocked**
-inspection, never a clean result. The parser returns a fixed, path-free
+inspection, not a clean result. The parser returns a fixed, path-free
 failure instead of PDF-controlled text or partial opening authorization.
 The separate unsupported-feature inventory can identify known markers, but
 an empty feature list only means none of those markers were found within
