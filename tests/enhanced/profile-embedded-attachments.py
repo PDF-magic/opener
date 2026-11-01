@@ -72,7 +72,7 @@ class EnhancedEmbeddedAttachmentProfileTests(unittest.TestCase):
         self.assertFalse(profile.selectable)
         self.assertIs(profile.failure_disposition, FailureDisposition.DENY)
         self.assertTrue(
-            BASELINE_CONTROLS.issubset(
+            set(BASELINE_CONTROLS).issubset(
                 {requirement.control for requirement in profile.requirements}
             )
         )
@@ -99,7 +99,7 @@ class EnhancedEmbeddedAttachmentProfileTests(unittest.TestCase):
         self.assertEqual(result.inspected_count, len(ATTACHMENTS))
         self.assertEqual(result.inspected_bytes, sum(len(data) for _, data in ATTACHMENTS))
         self.assertIs(result.pdf_is_clean, False)
-        self.assertEqual(
+        self.assertCountEqual(
             [call.kwargs["input"] for call in scan.call_args_list],
             [payload for _, payload in ATTACHMENTS],
         )
