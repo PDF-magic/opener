@@ -1,0 +1,44 @@
+name: First-pass versus repeated ClamAV scan benchmark
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  cold-warm-clamscan:
+    name: Compare first and repeated real ClamAV scans (disposable Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify paired timing, failure handling and scanner isolation
+        run: PYTHONPATH=. python3 tests/performance/cold-warm-scans.py -v
+      - name: Install real ClamAV on disposable runner
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends clamav
+      - name: Compare real first-pass and repeat scans with inert signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark_db="$(mktemp -d)"
+          trap 'rm -rf "$benchmark_db"' EXIT
+          python3 - "$benchmark_db" <<'PY'
+          from pathlib import Path
+          import sys
+          (Path(sys.argv[1]) / "benchmark.ndb").write_text(
+              "PDFMagicSyntheticBenchmark:0:*:" + b"benchmark-never-match".hex() + "\n",
+              encoding="ascii",
+          )
+          PY
+          PYTHONPATH=. python3 cold_warm_scan_benchmark.py \
+            --scanner /usr/bin/clamscan --database "$benchmark_db" --pairs 3
