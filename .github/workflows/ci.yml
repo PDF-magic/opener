@@ -221,6 +221,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
       - name: Keep scanner installation instructions browser-neutral
         run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
+      - name: Verify browser extension installation documentation
+        run: PYTHONPATH=. python3 tests/general/browser-extension-installation.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
@@ -233,6 +235,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/sanitization-documentation.py -v
       - name: Verify documented limitations of antivirus signatures
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
+      - name: Verify documented handling of quarantined files
+        run: PYTHONPATH=. python3 tests/general/quarantined-files-documentation.py -v
+      - name: Verify documented signature update process
+        run: PYTHONPATH=. python3 tests/general/signature-update-documentation.py -v
       - name: Verify scanner error documentation against the enforced failure policy
         run: PYTHONPATH=. python3 tests/scanner/error-documentation.py -v
       - name: Verify the security reporting process
