@@ -235,6 +235,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/sanitization-documentation.py -v
       - name: Verify documented limitations of antivirus signatures
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
+      - name: Verify documented offline behavior
+        run: PYTHONPATH=. python3 tests/general/offline-behavior-documentation.py -v
       - name: Verify documented handling of quarantined files
         run: PYTHONPATH=. python3 tests/general/quarantined-files-documentation.py -v
       - name: Verify documented signature update process
