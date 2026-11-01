@@ -404,6 +404,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/exceptions-review.py -v
       - name: Verify structured policies for every planned protection profile
         run: PYTHONPATH=. python3 tests/general/structured-protection-policy.py -v
+      - name: Verify protection policy CI contract resists unsafe downgrades
+        run: PYTHONPATH=. python3 tests/protection/ci-safety-contract.py -v
       - name: Inspect embedded PDF attachments under the planned Enhanced policy
         run: |
           python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt

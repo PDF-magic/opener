@@ -101,6 +101,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: policy / baseline-contract / Verify active security floor and inactive profiles
+        run: |
+          PYTHONPATH=. python3 tests/protection/ci-safety-contract.py -v
+          PYTHONPATH=. python3 tests/general/structured-protection-policy.py -v
+          PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: policy / clamav-structural-success-priority / Install the pinned passive PDF parser
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
       - name: policy / clamav-structural-success-priority / Ensure structural success cannot override a ClamAV detection
