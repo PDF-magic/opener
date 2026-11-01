@@ -29,6 +29,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [PDF structural analysis limitations](pdf/analysis-limitations.md) — what structural parsing can and cannot establish, supported limits, and the active protection boundary.
 
+- [Security reporting process](../SECURITY.md) — how to privately disclose suspected vulnerabilities without posting exploit details publicly.
+
 ## Filename conventions
 
 - Use lowercase **kebab-case** for documentation, scripts, and non-importable assets.
