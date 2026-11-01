@@ -66,12 +66,22 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(len(calls), 1 + 3 * (5 + 1))
         self.assertEqual(report["scope"], "syntheticClamscanStartupExperiment")
         self.assertIs(report["evidenceForClamdSwitch"], False)
+        self.assertEqual(report["firstInvocationMs"], 1000.0)
+        self.assertEqual(report["medianSingleInvocationMs"], 1000.0)
+        self.assertEqual(report["p90SingleInvocationMs"], 1000.0)
         self.assertEqual(report["medianRepeatedOneShotMs"], 5000.0)
         self.assertEqual(report["medianOneProcessBatchMs"], 1000.0)
         self.assertEqual(report["medianExcessOneShotMs"], 4000.0)
         self.assertEqual(report["pairedCycles"], 3)
         self.assertEqual(report["fixtureCount"], 5)
         self.assertNotIn("authorizesOpen", report)
+        self.assertEqual(set(report), {
+            "schemaVersion", "scope", "evidenceForClamdSwitch",
+            "fixtureCount", "pairedCycles", "oneShotInvocationsPerCycle",
+            "firstInvocationMs", "medianSingleInvocationMs",
+            "p90SingleInvocationMs", "medianRepeatedOneShotMs",
+            "medianOneProcessBatchMs", "medianExcessOneShotMs",
+        })
         self.assertNotIn(str(self.root), json.dumps(report))
         for args in calls:
             self.assertEqual(args[0], str(self.scanner))
@@ -79,6 +89,14 @@ class BenchmarkTests(unittest.TestCase):
             self.assertEqual(args[1:-1], benchmark.command(str(self.scanner), self.database, "x")[1:-1])
             self.assertNotIn("clamd", " ".join(args))
             self.assertTrue(Path(args[-1]).name.startswith(("fixture-", "clamscan-startup-")))
+
+    def test_ci_runs_a_real_isolated_clamscan_benchmark(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("Measure real ClamAV startup on disposable CI signatures", ci)
+        self.assertIn("python3 scanner_startup_benchmark.py", ci)
+        self.assertIn("--scanner /usr/bin/clamscan --database", ci)
+        self.assertIn("benchmark-never-match", ci)
+        self.assertIn("/usr/bin/clamscan", benchmark.TRUSTED_SCANNERS)
 
     def test_failed_warning_timeout_and_truncated_runs_publish_no_result(self):
         failures = (
