@@ -102,7 +102,7 @@ class ScannerExecutableAccessTests(unittest.TestCase):
         scanners, macos = ci.split("  macos-build:", maxsplit=1)
         self.assertIn("  scanner-tests:", scanners)
         self.assertIn("python3 tests/scanner/executable-access.py -v", scanners)
-        self.assertIn("python3 tests/general/brave-pdf-opener.py", macos)
+        self.assertIn("python3 tests/general/native-pdf-opener.py", macos)
 
 
 if __name__ == "__main__":

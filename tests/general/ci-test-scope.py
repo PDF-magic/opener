@@ -52,6 +52,14 @@ class CITestScopeTests(unittest.TestCase):
         )
         self.assertIn("cancel-in-progress: false", integration)
 
+    def test_native_opener_regression_uses_browser_neutral_name(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / ".github/workflows/ci.yml").read_text()
+        self.assertTrue((root / "tests/general/native-pdf-opener.py").is_file())
+        self.assertFalse((root / "tests/general/brave-pdf-opener.py").exists())
+        self.assertIn("PYTHONPATH=. python3 tests/general/native-pdf-opener.py", workflow)
+        self.assertNotIn("tests/general/brave-pdf-opener.py", workflow)
+
     def test_unclassified_and_empty_changes_fail_safe_to_full_suite(self):
         self.assertEqual(select_groups(["new-security-module.py"]), ALL_GROUPS)
         self.assertEqual(select_groups([]), ALL_GROUPS)
