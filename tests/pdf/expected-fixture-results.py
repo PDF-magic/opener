@@ -27,6 +27,7 @@ COLLECTIONS = {
   "javascript": ("javascript_action_corpus", "JAVASCRIPT_ACTION_PDFS", "identifier"),
   "external-launch": ("external_launch_action_corpus", "EXTERNAL_LAUNCH_PDFS", "identifier"),
   "embedded-file": ("embedded_file_corpus", "EMBEDDED_FILE_PDFS", "identifier"),
+  "interactive-form": ("interactive_form_corpus", "INTERACTIVE_FORM_PDFS", "identifier"),
   "oversized-stream": ("oversized_stream_corpus", "OVERSIZED_STREAM_PDFS", "identifier"),
   "large-valid": ("large_valid_pdf_corpus", "LARGE_VALID_PDF_CASES", "identifier"),
   "memory-stress": ("memory_stress_pdf_corpus", "MEMORY_STRESS_PDFS", "identifier"),
@@ -34,6 +35,7 @@ COLLECTIONS = {
 }
 TRACKED = {
   "truncated": "tests/fixtures/pdf-security-corpus/truncated",
+  "parser-timeout": "tests/fixtures/pdf-security-corpus/parser-timeouts",
   "empty": "tests/fixtures",
 }
 SIGNED_IDS = {"approval-signature", "certification-docmdp"}
@@ -62,7 +64,7 @@ class ExpectedFixtureResultTests(unittest.TestCase):
         self.assertIs(type(entry["details"]), dict)
         self.assertTrue(entry["details"], "An expected result must include evidence")
         self.assertIs(entry["authorizesOpen"], False)
-    self.assertGreaterEqual(len(observed), 74)
+    self.assertGreaterEqual(len(observed), 80)
 
   def test_each_live_collection_is_fully_and_exclusively_documented(self):
     entries = {}
@@ -79,6 +81,8 @@ class ExpectedFixtureResultTests(unittest.TestCase):
     truncated = {p.name for p in (ROOT / TRACKED["truncated"]).glob("*.pdf")}
     empty = {"empty", "empty.pdf", "empty.txt"}
     self.assertEqual(entries["truncated"], truncated)
+    self.assertEqual(entries["parser-timeout"],
+                     {p.name for p in (ROOT / TRACKED["parser-timeout"]).glob("*.pdf")})
     self.assertEqual(entries["empty"], empty)
     for name in empty:
       self.assertTrue((ROOT / "tests/fixtures" / name).is_file())
@@ -127,6 +131,10 @@ class ExpectedFixtureResultTests(unittest.TestCase):
       self.assertEqual(expected["trigger"], item.expected_trigger)
       self.assertEqual(expected["actionCount"], item.expected_actions)
       self.assertEqual(expected["targets"], list(item.expected_targets))
+    for item in importlib.import_module("interactive_form_corpus").INTERACTIVE_FORM_PDFS:
+      expected = entries["interactive-form", item.identifier]["details"]
+      self.assertEqual(expected["fieldType"], item.field_type)
+      self.assertEqual(expected["fieldValue"], item.field_value)
     for item in importlib.import_module("embedded_file_corpus").EMBEDDED_FILE_PDFS:
       expected = entries["embedded-file", item.identifier]["details"]
       self.assertEqual(expected["location"], item.location)

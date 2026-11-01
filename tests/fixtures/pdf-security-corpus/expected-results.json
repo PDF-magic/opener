@@ -801,6 +801,78 @@
         "requiresNoExecution": true
       },
       "authorizesOpen": false
+    },
+    {
+      "collection": "interactive-form",
+      "id": "acroform-text",
+      "expectedResult": "interactive-form-detected",
+      "details": {
+        "fieldType": "/Tx",
+        "fieldValue": "Fixture text",
+        "formActions": 0,
+        "containsXfa": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "interactive-form",
+      "id": "acroform-checkbox",
+      "expectedResult": "interactive-form-detected",
+      "details": {
+        "fieldType": "/Btn",
+        "fieldValue": "/Yes",
+        "formActions": 0,
+        "containsXfa": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "interactive-form",
+      "id": "acroform-choice",
+      "expectedResult": "interactive-form-detected",
+      "details": {
+        "fieldType": "/Ch",
+        "fieldValue": "Option A",
+        "formActions": 0,
+        "containsXfa": false
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "parser-timeout",
+      "id": "wide-page-tree.pdf",
+      "expectedResult": "valid-structure",
+      "details": {
+        "path": "tests/fixtures/pdf-security-corpus/parser-timeouts/wide-page-tree.pdf",
+        "pageCount": 1024,
+        "boundedWorker": "success",
+        "deadlineSeconds": 30
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "parser-timeout",
+      "id": "deep-page-tree.pdf",
+      "expectedResult": "valid-structure",
+      "details": {
+        "path": "tests/fixtures/pdf-security-corpus/parser-timeouts/deep-page-tree.pdf",
+        "pageCount": 1,
+        "boundedWorker": "success",
+        "deadlineSeconds": 30
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "parser-timeout",
+      "id": "cyclic-page-tree.pdf",
+      "expectedResult": "invalid-structure",
+      "details": {
+        "path": "tests/fixtures/pdf-security-corpus/parser-timeouts/cyclic-page-tree.pdf",
+        "pageCount": null,
+        "boundedWorker": "reject",
+        "deadlineSeconds": 30
+      },
+      "authorizesOpen": false
     }
   ]
 }
