@@ -47,10 +47,11 @@ class OfflineBehaviorDocumentationTests(unittest.TestCase):
     self.assertLess(
         self.updater.index('run_freshclam_with_network_recovery "$updater"'),
         self.updater.index('success_tmp='))
+    normalized = " ".join(self.doc.split())
     for statement in ("FreshClam updater", "retained", "does not publish",
-                      "does\n  not extend", "when connectivity is\nrestored"):
+                      "does not extend", "when connectivity is restored"):
       with self.subTest(statement=statement):
-        self.assertIn(statement, self.doc)
+        self.assertIn(statement, normalized)
 
   def test_remote_browser_paths_are_not_claimed_to_be_scanned(self):
     for statement in ("already downloaded", "inline/embedded/remote PDFs",
