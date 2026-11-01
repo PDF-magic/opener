@@ -1,0 +1,65 @@
+name: Notarize signed macOS application
+
+on:
+  workflow_dispatch:
+    inputs:
+      signed_run_id:
+        description: "Successful main-branch workflow run containing the signed app ZIP"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: notarize-macos-release
+  cancel-in-progress: false
+
+jobs:
+  notarize:
+    # Never expose Apple credentials on a PR, fork, tag, or arbitrary branch.
+    if: github.repository == 'PDF-magic/opener' && github.ref == 'refs/heads/main'
+    name: Verify, notarize and staple signed application
+    runs-on: macos-latest
+    environment: macos-notarization
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm the artifact originates from successful current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNED_RUN_ID: ${{ inputs.signed_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SIGNED_RUN_ID" =~ ^[1-9][0-9]*$ ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SIGNED_RUN_ID" \
+            --jq '[.status, .conclusion, .head_branch, .head_sha, .repository.full_name] | @tsv' \
+            | grep -Fx $'completed\tsuccess\tmain\t'"$GITHUB_SHA"$'\tPDF-magic/opener'
+      - name: Download signed application from verified workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-macos-app
+          run-id: ${{ inputs.signed_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/signed-input
+      - name: Submit for notarization and verify stapled result
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          python3 scripts/notarize_release.py \
+            --signed-zip "$RUNNER_TEMP/signed-input/PDFMagicOpener-signed.zip" \
+            --output-zip "$RUNNER_TEMP/PDFMagicOpener-notarized.zip"
+      - name: Publish only the verified stapled archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: notarized-macos-app
+          path: ${{ runner.temp }}/PDFMagicOpener-notarized.zip
+          if-no-files-found: error
+          retention-days: 14
