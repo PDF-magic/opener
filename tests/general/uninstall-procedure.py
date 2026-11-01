@@ -3,9 +3,12 @@
 
 from contextlib import redirect_stderr, redirect_stdout
 import importlib.util
+import os
 from io import StringIO
 from pathlib import Path
 import subprocess
+import sys
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
@@ -155,6 +158,76 @@ class UninstallProcedureTests(unittest.TestCase):
     for forbidden in ("LSSetDefault", "setDefaultApplication", "target-app.txt", "UserDefaults",
                       "os.unlink", "os.remove", "shutil.rmtree"):
       self.assertNotIn(forbidden, source)
+
+  def test_preference_retention_prompt_precedes_removal(self):
+    guide = GUIDE.read_text(encoding="utf-8")
+    helper = ROOT / "ask_uninstall_preferences.py"
+    self.assertTrue(helper.is_file())
+    question = "Ask whether PDF Magic Opener preferences should be retained"
+    self.assertIn(question, guide)
+    self.assertLess(guide.index("python3 ask_uninstall_preferences.py"),
+                    guide.index(STATUS_COMMAND))
+    self.assertLess(guide.index("python3 ask_uninstall_preferences.py"),
+                    guide.index("## 2. Restore"))
+    for requirement in (
+      "default when pressing Enter",
+      "**No** answer is not blanket authorization",
+      "not an automated preference-deletion step",
+      "local.studio.pdf-magic-opener.plist",
+    ):
+      self.assertIn(requirement, guide)
+
+  def test_retention_prompt_choices_do_not_change_user_files(self):
+    helper = ROOT / "ask_uninstall_preferences.py"
+    spec = importlib.util.spec_from_file_location("retention_prompt_test", helper)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    with TemporaryDirectory() as folder:
+      home = Path(folder)
+      prefs = home / "Library/Preferences/local.studio.pdf-magic-opener.plist"
+      scanner = home / "Library/Application Support/Studio/allow-and-open/target-app.txt"
+      for path, data in ((prefs, b"custom preference"), (scanner, b"selected browser")):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+      for answer, expected in (
+        ("", "Decision: RETAIN"),
+        ("y", "Decision: RETAIN"),
+        ("YES", "Decision: RETAIN"),
+        ("n", "Decision: DO NOT RETAIN"),
+        ("No", "Decision: DO NOT RETAIN"),
+      ):
+        with self.subTest(answer=answer):
+          out, err = StringIO(), StringIO()
+          with patch.dict(os.environ, {"HOME": str(home)}), \
+               patch("builtins.input", return_value=answer) as prompt, \
+               redirect_stdout(out), redirect_stderr(err):
+            self.assertEqual(module.main([]), 0)
+          prompt.assert_called_once_with(module.PROMPT)
+          self.assertIn(expected, out.getvalue())
+          self.assertEqual(err.getvalue(), "")
+          self.assertEqual(prefs.read_bytes(), b"custom preference")
+          self.assertEqual(scanner.read_bytes(), b"selected browser")
+      for bad in ("maybe", EOFError(), KeyboardInterrupt()):
+        with self.subTest(bad=str(bad)):
+          out, err = StringIO(), StringIO()
+          with patch("builtins.input", side_effect=bad if isinstance(bad, BaseException) else None,
+                     return_value=bad if isinstance(bad, str) else None), \
+               redirect_stdout(out), redirect_stderr(err):
+            self.assertEqual(module.main([]), 1)
+          self.assertIn("No retention decision recorded" if not isinstance(bad, str)
+                        else "Invalid answer", err.getvalue())
+          self.assertEqual(prefs.read_bytes(), b"custom preference")
+          self.assertEqual(scanner.read_bytes(), b"selected browser")
+      result = subprocess.run(
+        [sys.executable, str(helper)],
+        input="no\n", text=True, capture_output=True, check=False,
+        env={**os.environ, "HOME": str(home)},
+      )
+      self.assertEqual(result.returncode, 0, result.stderr)
+      self.assertIn("Decision: DO NOT RETAIN", result.stdout)
+      self.assertEqual(prefs.read_bytes(), b"custom preference")
+      self.assertEqual(scanner.read_bytes(), b"selected browser")
 
   def test_ci_executes_procedure_checks(self):
     workflow = CI.read_text(encoding="utf-8")
