@@ -635,6 +635,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/download-connection-health.py -v
       - name: Verify browser download monitoring protection and limits explanation
         run: PYTHONPATH=. python3 tests/general/download-monitoring-limits.py -v
+      - name: Verify per-browser download monitoring support documentation
+        run: PYTHONPATH=. python3 tests/general/browser-download-monitoring-support.py -v
       - name: Verify dedicated Browsers settings page and safe navigation
         run: PYTHONPATH=. python3 tests/general/browsers-settings-page.py -v
       - name: Verify automatic PDF interception preference is browser-gated and inert
