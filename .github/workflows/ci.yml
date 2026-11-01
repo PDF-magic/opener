@@ -1114,6 +1114,10 @@ jobs:
           test ! -e "$app/Contents/Helpers"
       - name: Smoke-test staged macOS app from a fresh uninstalled location
         run: python3 tests/app/fresh-launch.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
+      - name: Measure first SwiftUI appearance of the staged app on macOS
+        run: |
+          PYTHONPATH=. python3 tests/app/launch-benchmark.py -v
+          python3 app_launch_benchmark.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app" --samples 3
       - name: Test native notifications after quitting the built Settings application
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission
