@@ -404,6 +404,8 @@ jobs:
           # The Maximum sanitizer imports Pillow even on an early input rejection.
           python3 -m pip install --disable-pip-version-check "Pillow==11.3.0"
           PYTHONPATH=. python3 tests/protection/maximum-malformed-pdf.py -v
+      - name: Block unsupported portfolio PDFs under planned Maximum protection
+        run: PYTHONPATH=. python3 tests/protection/maximum-unsupported-feature.py -v
       - name: Test Maximum fails closed when generated output fails validation
         run: |
           python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
