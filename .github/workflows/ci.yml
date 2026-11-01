@@ -739,6 +739,8 @@ jobs:
         run: node --test tests/pdf-inline-disposition.test.mjs
       - name: Verify versioned native JSON message contract
         run: PYTHONPATH=. python3 tests/native/message-format.py -v
+      - name: Verify end-to-end native messaging protocol framing and codecs
+        run: PYTHONPATH=. python3 tests/native/protocol.py -v
       - name: Upload validated Chrome extension package
         uses: actions/upload-artifact@v4
         with:
