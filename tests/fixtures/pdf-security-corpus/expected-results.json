@@ -873,6 +873,86 @@
         "deadlineSeconds": 30
       },
       "authorizesOpen": false
+    },
+    {
+      "collection": "unicode-metadata",
+      "id": "multilingual-info",
+      "expectedResult": "unicode-metadata-preserved",
+      "details": {
+        "infoKeys": [
+          "author",
+          "subject",
+          "title"
+        ],
+        "hasXmp": false,
+        "compressedXmp": false,
+        "pageCount": 1,
+        "preserveExactCodepoints": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "unicode-metadata",
+      "id": "normalization-forms",
+      "expectedResult": "unicode-metadata-preserved",
+      "details": {
+        "infoKeys": [
+          "author",
+          "title"
+        ],
+        "hasXmp": false,
+        "compressedXmp": false,
+        "pageCount": 1,
+        "preserveExactCodepoints": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "unicode-metadata",
+      "id": "bidirectional-and-invisible",
+      "expectedResult": "unicode-metadata-preserved",
+      "details": {
+        "infoKeys": [
+          "keywords",
+          "title"
+        ],
+        "hasXmp": false,
+        "compressedXmp": false,
+        "pageCount": 1,
+        "preserveExactCodepoints": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "unicode-metadata",
+      "id": "xmp-multilingual",
+      "expectedResult": "unicode-metadata-preserved",
+      "details": {
+        "infoKeys": [
+          "author",
+          "title"
+        ],
+        "hasXmp": true,
+        "compressedXmp": false,
+        "pageCount": 1,
+        "preserveExactCodepoints": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "unicode-metadata",
+      "id": "xmp-compressed-combining",
+      "expectedResult": "unicode-metadata-preserved",
+      "details": {
+        "infoKeys": [
+          "title"
+        ],
+        "hasXmp": true,
+        "compressedXmp": true,
+        "pageCount": 1,
+        "preserveExactCodepoints": true
+      },
+      "authorizesOpen": false
     }
   ]
 }
