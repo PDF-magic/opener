@@ -267,6 +267,8 @@ jobs:
         run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Inspect indirect PDF object links and page-tree consistency
         run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
+      - name: Validate deeply nested indirect-object PDF security corpus
+        run: PYTHONPATH=. python3 tests/pdf/deep-object-references.py -v
       - name: Detect suspiciously repeated PDF object structures
         run: PYTHONPATH=. python3 tests/pdf/repeated-structures.py -v
       - name: Inspect automatic PDF action hooks without executing them
