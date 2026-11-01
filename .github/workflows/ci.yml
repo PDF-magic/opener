@@ -389,6 +389,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/inherits-enhanced.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
+      - name: Reject zero-byte PDF and other empty-file corpus fixtures before scanner handoff
+        run: PYTHONPATH=. python3 tests/general/empty-file-corpus.py -v
       - name: Test Standard baseline with a structurally valid clean PDF
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
       - name: Install pinned image decoder for Maximum simple-PDF verification
