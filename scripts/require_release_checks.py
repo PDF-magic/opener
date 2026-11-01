@@ -24,7 +24,7 @@ REQUIRED_CHECKS = (
   "Reproducible unsigned release candidates",
   "Release gating regression suite",
 )
-TAG_PATTERN = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\Z")
+TAG_PATTERN = re.compile(r"v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 SHA_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,9 +39,28 @@ def ensure_context(repository, ref, sha, tag, distribution_doc):
   if not SHA_PATTERN.fullmatch(sha):
     raise GateError("Release source SHA is missing or invalid")
   if not TAG_PATTERN.fullmatch(tag):
-    raise GateError("Release tag must be a semantic version beginning with v")
+    raise GateError("Source release tag must be canonical stable vMAJOR.MINOR.PATCH")
   if "**Status: RELEASE READY.**" not in distribution_doc or "NOT RELEASE READY" in distribution_doc:
     raise GateError("Distribution remains NOT RELEASE READY; resolve and review signing and publication blockers first")
+
+
+
+def ensure_version_metadata(tag, root=ROOT):
+  """Require all product version declarations to match the stable release tag."""
+  expected = tag[1:]
+  try:
+    package = json.loads((root / "extensions/webextension/package.json").read_text(encoding="utf-8"))
+    manifest = json.loads((root / "extensions/webextension/manifest.json").read_text(encoding="utf-8"))
+    project = (root / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+  except (OSError, ValueError, TypeError) as error:
+    raise GateError("Release version metadata could not be verified") from error
+
+  marketing_versions = re.findall(r"\bMARKETING_VERSION\s*=\s*([^;]+)\s*;", project)
+  if (not isinstance(package, dict) or not isinstance(manifest, dict)
+      or package.get("version") != expected or manifest.get("version") != expected
+      or not marketing_versions
+      or any(value.strip() != expected for value in marketing_versions)):
+    raise GateError("Release version differs from the native or WebExtension metadata")
 
 
 def ensure_checks(check_runs):
@@ -103,6 +122,7 @@ def get_check_runs(sha, token):
 
 def verify_release(repository, ref, sha, tag, distribution_doc, token):
   ensure_context(repository, ref, sha, tag, distribution_doc)
+  ensure_version_metadata(tag)
   if not token:
     raise GateError("GitHub verification token is missing")
   branch = github_json("branches/main", token)

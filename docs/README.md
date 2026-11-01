@@ -51,3 +51,5 @@ General installation, application, browser, and operational guides remain in thi
 - GitHub Actions workflow files remain directly in `.github/workflows/`, as GitHub requires.
 
 The CI documentation check verifies that pages in these feature folders retain kebab-case names, avoid duplicate directory prefixes, and point to existing local Markdown destinations.
+
+For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
