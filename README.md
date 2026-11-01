@@ -6,6 +6,31 @@ Scan PDFs locally with ClamAV before opening them in a configurable application 
 
 For technical reference material, see the [organized documentation index](docs/README.md).
 
+## Protection levels
+
+**Currently enforced: Built-in.** The installed PDF-opening handler requires
+local ClamAV malware scanning, current signature checks, file-integrity
+verification, and a fail-closed verified handoff. An unsafe, failed, or
+unverified scan cannot authorize opening. The three named levels in
+**Settings → Protection** are **planned, preview-only** policies; previewing a
+card or saving its preview preference never activates a different scan gate.
+
+| Level | Planned protections | Availability |
+| --- | --- | --- |
+| **Standard** | Retains the four Built-in safeguards; PDF structure validation is an optional planned check. | Preview only — the named Standard policy is not integrated with the installed scan gate. |
+| **Enhanced** | Retains all four safeguards and requires planned PDF structure validation; isolated behavior analysis is optional and planned. | Preview only — mandatory PDF structure validation is not integrated into the scan gate. |
+| **Maximum** | Inherits all Enhanced requirements and additionally requires planned isolated behavior analysis. A future sanitized-copy workflow may remove PDF interactive features. | Preview only — mandatory PDF structure validation and isolated behavior analysis are not integrated into the scan gate. |
+
+These are cumulative **policy definitions, not active scanning engines**.
+Optional planned checks never weaken the mandatory Built-in safeguards.
+No representative end-to-end performance comparison of these inactive levels
+is available. For the exact current and planned checks, see
+[protection-level checks](docs/protection/settings-checks.md); for activation
+blockers, see [profile dependencies](docs/protection/profile-dependencies.md).
+The [Maximum capability-loss explanation](docs/protection/settings-cards.md)
+describes the limitations of a future sanitized copy, not a currently generated
+or malware-cleared document.
+
 Python regression tests are grouped by topic in [`tests/`](tests/README.md). Run one using
 `PYTHONPATH=. python3 tests/pdf/structure-parser.py -v` from the repository root.
 
