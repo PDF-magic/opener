@@ -172,7 +172,23 @@ definitions and update configuration are separate user-managed resources.
 Only after **the fresh step 2 PDF-handler check has reported a known
 non-PDF-Magic default**, and after confirming steps 2–5 have disconnected
 the PDF handler, Finder action and any opted-in browser registrations,
-move **only**
+**verify the exact installed application identity** from the trusted source
+checkout:
+
+```sh
+python3 scripts/verify_uninstall_app.py
+```
+
+This read-only check validates the per-user `~/Applications/PDF Magic
+Opener.app` path, directory and file ownership, unchanged expected bundle
+layout, native PDF-handler identifier and contents, and rejects symlinked,
+hardlinked, substituted or customized app bundles. A same-named app from
+another vendor is **not** presumed to belong to PDF Magic. An absent app is a
+no-op. A refusal is a **stop condition**, not permission to manually delete
+the unknown bundle; retain customized files and seek an explicit recovery
+decision. The verifier does not itself remove anything and cannot protect
+against a change after it runs. Confirm the identity again in Finder before
+moving **only**
 `~/Applications/PDF Magic Opener.app` to Trash **using Finder**. Before moving
 it, verify in Finder's Get Info that it is the intended app in your own home
 Applications folder; if the bundle is renamed, symlinked, substituted or
