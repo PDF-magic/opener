@@ -219,6 +219,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented Standard protection checks
         run: PYTHONPATH=. python3 tests/protection/standard-documentation.py -v
+      - name: Verify documented Maximum protection checks
+        run: PYTHONPATH=. python3 tests/protection/maximum-documentation.py -v
       - name: Verify documented limitations of antivirus signatures
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
       - name: Require authenticated geckodriver installation in every workflow
