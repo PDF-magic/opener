@@ -9,6 +9,30 @@ For technical reference material, see the [organized documentation index](docs/R
 Python regression tests are grouped by topic in [`tests/`](tests/README.md). Run one using
 `PYTHONPATH=. python3 tests/pdf/structure-parser.py -v` from the repository root.
 
+## Browser-independent PDF opening
+
+PDF Magic Opener's **native macOS PDF opening does not depend on a browser
+extension or on which browser downloaded the PDF**. After installation, when
+PDF Magic Opener is the macOS default PDF handler, double-clicking a locally
+available PDF in Finder invokes its ClamAV scan gate. You can also explicitly
+choose **Open With → PDF Magic Opener** in Finder; the **Allow and Open**
+Finder action uses the same scan gate. A browser download must be available
+as a local file before this native workflow can scan and open it.
+
+Only after a clean scan and file-integrity checks does PDF Magic Opener
+hand the PDF to the **separately selected PDF-capable application** (Brave by
+default). Selecting the native PDF handler does not change the macOS default
+web browser or erase a custom PDF destination. A blocked scan, stale
+signatures, changed file, or missing or unverified destination stops opening
+without silently falling back or removing quarantine.
+
+**Browser-independent local opening is not universal in-browser interception.**
+Inline, embedded, and online browser PDF viewers can render PDFs outside
+this native file-opening path; installing PDF Magic Opener does not guarantee
+those pages are scanned first. See [known unsupported and unverified browser
+entry routes](docs/browser-unsupported-routes.md). To use the native gate
+for a browser download, save it locally and open it with PDF Magic Opener.
+
 ## SwiftUI application target (opener-0163)
 
 The repository includes a standalone macOS SwiftUI application target in
