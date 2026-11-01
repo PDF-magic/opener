@@ -45,3 +45,35 @@ test("private browsing exclusion adds no event listeners or scanner authority", 
   assert.match(doc, /incognito.*not_allowed|not_allowed.*private/is);
   assert.match(doc, /Safari.*user-managed|Safari.*private-browsing/is);
 });
+
+test("real Chrome and Chromium browser smokes verify private-browsing exclusion", async () => {
+  const [chromeSmoke, chromiumSmoke, chromeWorkflow, chromiumWorkflow] = await Promise.all([
+    read("scripts/test-chrome.mjs"),
+    read("scripts/test-chromium.mjs"),
+    read("../../.github/workflows/ci.yml"),
+    read("../../.github/workflows/chromium-webextension.yml")
+  ]);
+  for (const required of [
+    "chrome.extension.isAllowedIncognitoAccess(resolve)",
+    'assert.equal(access.result?.value, false',
+    'command("Target.createBrowserContext"',
+    'command("Target.createTarget"',
+    'command("Target.getTargetInfo"',
+    'target.browserContextId === browserContextId',
+    'command("Target.disposeBrowserContext"'
+  ]) assert.ok(chromeSmoke.includes(required), required);
+  for (const required of [
+    "chrome.extension.isAllowedIncognitoAccess(resolve)",
+    'assert.equal(privateAccessAllowed, false',
+    "launchPersistentContext",
+    "await context?.close()"
+  ]) assert.ok(chromiumSmoke.includes(required), required);
+  assert.match(chromeWorkflow, /node scripts\/test-chrome\.mjs "\$CHROME_PATH" "\$PACKAGE_DIR"/);
+  assert.match(chromiumWorkflow, /node scripts\/test-chromium\.mjs/);
+  for (const content of [chromeSmoke, chromiumSmoke]) {
+    for (const forbidden of [
+      "permissions.request(", "sendNativeMessage(", "connectNative(",
+      "clamscan(", "https://example.com"
+    ]) assert.equal(content.includes(forbidden), false, forbidden);
+  }
+});

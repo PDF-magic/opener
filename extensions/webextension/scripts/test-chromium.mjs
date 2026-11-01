@@ -91,6 +91,13 @@ try {
   );
   assert.equal(response?.status(), 200, "Chromium must render the local popup");
   assert.equal(await popup.locator("#popup-title").innerText(), "PDF Magic Opener");
+  // Read actual runtime policy in a loaded extension, not just packaged JSON.
+  // This does not request incognito permission or create persistent state.
+  const privateAccessAllowed = await popup.evaluate(() => new Promise(resolve =>
+    chrome.extension.isAllowedIncognitoAccess(resolve)
+  ));
+  assert.equal(privateAccessAllowed, false,
+    "Chromium must exclude the installed extension from incognito browsing");
   assert.match(await popup.locator(".heading .status").innerText(), /Not active/);
   assert.equal(await popup.locator("#explicitPdfScanResult").innerText(),
     "No verified scan result is available.");

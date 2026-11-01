@@ -88,6 +88,17 @@ bridge. This task does not attempt to override Safari's user settings or
 claim that a manifest setting substitutes for an independently reviewed
 private-window runtime guard if Safari integration is later activated.
 
+The §16.4 browser compatibility smokes additionally test this policy in
+**running Chrome for Testing and unbranded Chromium**, not merely in a copied
+manifest. Both query the loaded extension's
+`chrome.extension.isAllowedIncognitoAccess` runtime decision and require
+`false`. The Chrome test also creates a disposable, off-the-record DevTools
+browser context, confirms the test target belongs to it, verifies the excluded
+extension has no worker in that context, and disposes the private context.
+The existing Chrome package and Chromium MV3 smoke CI jobs run these assertions
+on pull requests. These are browser extension exclusion tests, not claims about
+an active PDF interception or Safari private-window enforcement.
+
 Changing this exclusion, including a user opt-in/private-window feature, needs
 separate privacy review and explicit browser-specific testing. No browser
 permissions, host origins, user settings or native scanner rules are changed.

@@ -168,6 +168,42 @@ try {
     name: "PDF Magic Opener", incognito: "not_allowed",
     permissions: [], host_permissions: [], optional_permissions: ["downloads"]
   });
+
+  // Query the installed extension's actual browser-granted incognito access.
+  // A manifest-only check cannot establish that the browser enforces denial.
+  const access = await command("Runtime.evaluate", {
+    expression: "new Promise(resolve => chrome.extension.isAllowedIncognitoAccess(resolve))",
+    awaitPromise: true, returnByValue: true
+  }, sessionId);
+  assert.equal(access.exceptionDetails, undefined, "Chrome must expose the incognito access API");
+  assert.equal(access.result?.value, false,
+    "The installed PDF Magic extension must not be enabled in private browsing");
+
+  // Open a separate, throwaway off-the-record browser context and confirm the
+  // normal extension's worker is not running inside that private context.
+  // Never enable the extension in incognito or touch a user's real profile.
+  const { browserContextId } = await command("Target.createBrowserContext", {
+    disposeOnDetach: true
+  });
+  try {
+    const privateTarget = await command("Target.createTarget", {
+      url: "about:blank", browserContextId
+    });
+    const privateInfo = await command("Target.getTargetInfo", {
+      targetId: privateTarget.targetId
+    });
+    assert.equal(privateInfo.targetInfo.browserContextId, browserContextId,
+      "The target must belong to the isolated incognito context");
+    const { targetInfos } = await command("Target.getTargets");
+    assert.equal(targetInfos.some((target) =>
+      target.browserContextId === browserContextId &&
+      target.type === "service_worker" &&
+      target.url.startsWith("chrome-extension://" + extensionId + "/")), false,
+    "The excluded extension must have no worker in private browsing");
+  } finally {
+    await command("Target.disposeBrowserContext", { browserContextId });
+  }
+  console.log("PASS Chrome private-browsing exclusion in isolated incognito context");
   console.log("PASS Chrome for Testing package install, popup and inactive scanner: " + version);
 } catch (error) {
   // Only browser startup diagnostics from this fresh, local-only test profile.
