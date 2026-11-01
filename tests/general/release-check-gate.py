@@ -123,7 +123,8 @@ class ReleaseGateTests(unittest.TestCase):
                                       (SHA, "b"*40, success_runs()),
                                       (SHA, SHA, success_runs()[:-1])):
       with self.subTest(branch_sha=branch_sha, tag_sha=tag_sha):
-        with patch.object(gate, "github_json", return_value={"commit": {"sha": branch_sha}}), \
+        with patch.object(gate, "ensure_version_metadata"), \
+             patch.object(gate, "github_json", return_value={"commit": {"sha": branch_sha}}), \
              patch.object(gate, "resolve_tag", return_value=tag_sha), \
              patch.object(gate, "get_check_runs", return_value=runs):
           with self.assertRaises(gate.GateError):
