@@ -215,6 +215,8 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Verify documented application upgrade process
+        run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
       - name: Keep scanner installation instructions browser-neutral
         run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
       - name: Verify the three documented protection levels
