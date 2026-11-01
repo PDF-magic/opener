@@ -26,6 +26,7 @@ COLLECTIONS = {
   "encrypted": ("encrypted_pdf_collection", "ENCRYPTED_REFERENCE_PDFS", "identifier"),
   "javascript": ("javascript_action_corpus", "JAVASCRIPT_ACTION_PDFS", "identifier"),
   "external-launch": ("external_launch_action_corpus", "EXTERNAL_LAUNCH_PDFS", "identifier"),
+  "embedded-file": ("embedded_file_corpus", "EMBEDDED_FILE_PDFS", "identifier"),
   "oversized-stream": ("oversized_stream_corpus", "OVERSIZED_STREAM_PDFS", "identifier"),
   "large-valid": ("large_valid_pdf_corpus", "LARGE_VALID_PDF_CASES", "identifier"),
   "memory-stress": ("memory_stress_pdf_corpus", "MEMORY_STRESS_PDFS", "identifier"),
@@ -61,7 +62,7 @@ class ExpectedFixtureResultTests(unittest.TestCase):
         self.assertIs(type(entry["details"]), dict)
         self.assertTrue(entry["details"], "An expected result must include evidence")
         self.assertIs(entry["authorizesOpen"], False)
-    self.assertGreaterEqual(len(observed), 70)
+    self.assertGreaterEqual(len(observed), 74)
 
   def test_each_live_collection_is_fully_and_exclusively_documented(self):
     entries = {}
@@ -126,6 +127,10 @@ class ExpectedFixtureResultTests(unittest.TestCase):
       self.assertEqual(expected["trigger"], item.expected_trigger)
       self.assertEqual(expected["actionCount"], item.expected_actions)
       self.assertEqual(expected["targets"], list(item.expected_targets))
+    for item in importlib.import_module("embedded_file_corpus").EMBEDDED_FILE_PDFS:
+      expected = entries["embedded-file", item.identifier]["details"]
+      self.assertEqual(expected["location"], item.location)
+      self.assertEqual(expected["attachmentCount"], len(item.attachments))
     for item in importlib.import_module("oversized_stream_corpus").OVERSIZED_STREAM_PDFS:
       expected = entries["oversized-stream", item.identifier]["details"]
       self.assertEqual(tuple(expected[key] for key in

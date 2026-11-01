@@ -757,6 +757,50 @@
         "scanned": false
       },
       "authorizesOpen": false
+    },
+    {
+      "collection": "embedded-file",
+      "id": "name-tree-multiple",
+      "expectedResult": "embedded-files-detected",
+      "details": {
+        "location": "name-tree",
+        "attachmentCount": 2,
+        "requiresNoExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "embedded-file",
+      "id": "catalog-associated-only",
+      "expectedResult": "embedded-files-detected",
+      "details": {
+        "location": "catalog-associated",
+        "attachmentCount": 1,
+        "requiresNoExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "embedded-file",
+      "id": "page-associated-only",
+      "expectedResult": "embedded-files-detected",
+      "details": {
+        "location": "page-associated",
+        "attachmentCount": 1,
+        "requiresNoExecution": true
+      },
+      "authorizesOpen": false
+    },
+    {
+      "collection": "embedded-file",
+      "id": "annotation-only",
+      "expectedResult": "embedded-files-detected",
+      "details": {
+        "location": "annotation",
+        "attachmentCount": 1,
+        "requiresNoExecution": true
+      },
+      "authorizesOpen": false
     }
   ]
 }
