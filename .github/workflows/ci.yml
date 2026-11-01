@@ -266,6 +266,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
         run: PYTHONPATH=. python3 tests/pdf/structure-parser.py -v
+      - name: Guard PDF parser regressions across valid, mutated, and repeated inputs
+        run: PYTHONPATH=. python3 tests/pdf/parser-regressions.py -v
       - name: Enforce the total PDF object budget before graph traversal
         run: PYTHONPATH=. python3 tests/pdf/object-limit.py -v
       - name: Reject PDFs exceeding bounded decoded-stream data
