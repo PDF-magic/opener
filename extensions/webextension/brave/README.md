@@ -91,6 +91,34 @@ the PDF appears in the browser tab. Then separately test a download-preferring
 profile and Brave policies; never change an existing user's PDF preferences
 or rely on a viewer display as proof of a verified native scan.
 
+## Local-file PDF opening in real Brave (opener-1051, §16.4)
+
+The existing **real Brave Stable**, **headed Xvfb** CI smoke now also writes the
+same harmless, deterministic PDF to a **mode-0600 temporary file** inside the
+disposable browser-profile directory. It navigates Brave to the actual
+`file://` URL, requires the browser-owned PDF viewer component frame and
+`application/pdf` document type, and fails if Brave downloads the document
+instead of opening it. The original HTTP-inline and Blob-generated PDF tests
+remain separate, and the profile and PDF file are removed together even on
+failure. The scoped CI job runs this opening scenario and the accompanying
+regression assertions on extension changes.
+
+This confirms local-file opening in **the Linux Brave Stable build run by CI**.
+It does **not** establish that the macOS native PDF Magic Opener has performed
+a clean ClamAV scan, that an installed Brave app passed macOS signature and
+PDF-handler verification, or that a real Finder handoff succeeded. Those
+scanner, destination verification, quarantine, file-identity and launch gates
+have existing independent tests and are not bypassed. No production scanner
+code, permissions, browser preference, PDF default or user document changes.
+
+For a full manual macOS integration check, use a disposable test account and
+an inert synthetic PDF, select installed Brave as the PDF destination in PDF
+Magic Opener, and open that file through the normal **scan-approved native
+flow**. Confirm the scan and destination verification succeed before Brave
+displays the PDF; separately verify that scanner or verifier failures never
+launch it. Do not change existing users' Brave settings or assume the Linux
+viewer smoke supplies a native scan verdict.
+
 ## Denied browser permission verification (opener-0812)
 
 The real Brave Stable extension smoke runs against a disposable browser
