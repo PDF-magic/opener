@@ -15,6 +15,8 @@ For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/ch
 
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
+- [Handling quarantined files](quarantined-files.md) — what macOS File Quarantine means for clean, blocked, and unscannable managed opens, plus safe troubleshooting.
+
 - [Choose a PDF browser](select-browser.md) — select a verified post-scan browser in Settings or use the installed custom-application chooser.
 
 - [macOS security controls](macos-security-controls.md) — what the scan gate does and does not do alongside Quarantine, Gatekeeper, notarization, XProtect, Launch Services, TCC, and SIP.\n- [Known unsupported PDF routes](browser-unsupported-routes.md) — the audited nine-browser, 27-route register of inactive or unverified automatic scan-before-render entry paths, with evidence and fail-closed next steps.
