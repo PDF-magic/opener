@@ -253,6 +253,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
         run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
+      - name: Verify Enhanced admission refuses a password-protected PDF
+        run: PYTHONPATH=. python3 tests/enhanced/password-protected.py -v
       - name: Reject malformed direct and indirect PDF stream lengths
         run: PYTHONPATH=. python3 tests/pdf/stream-lengths.py -v
       - name: Verify bounded structured PDF parser output contract
@@ -391,6 +393,11 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
+      - name: Verify planned Maximum rejects malformed PDFs and blocks sanitization
+        run: |
+          # The Maximum sanitizer imports Pillow even on an early input rejection.
+          python3 -m pip install --disable-pip-version-check "Pillow==11.3.0"
+          PYTHONPATH=. python3 tests/protection/maximum-malformed-pdf.py -v
       - name: Test Maximum fails closed when generated output fails validation
         run: |
           python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
