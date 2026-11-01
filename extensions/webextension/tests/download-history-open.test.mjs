@@ -290,7 +290,8 @@ test("opener-1069 exercises live Chromium history rather than faking a history c
     "download.failure()", "readFile(await download.path())",
     "await page.close()", '"chrome://downloads/"',
     'history.locator("downloads-item")', 'row.locator("#fileLink")',
-    "await fileLink.click(", "element.data?.opened === true",
+    "await fileLink.click(", "openFileRequiringGesture",
+    "__pdfMagicHistoryOpenIds",
     "fixture.snapshot().requests[item.path]", "await context?.close()",
     "await rm(profile"
   ]) assert.ok(smoke.includes(required), required);

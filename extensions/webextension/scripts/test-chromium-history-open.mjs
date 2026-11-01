@@ -122,18 +122,37 @@ try {
   }
   const before = await row.evaluate(element => ({
     name: element.data?.fileName,
-    opened: element.data?.opened
+    id: element.data?.id
   }));
   const savedPath = await download.path();
   assert.ok(before.name === item.name || before.name === savedPath.split("/").at(-1),
     "History must refer to the browser-managed downloaded PDF");
-  assert.notEqual(before.opened, true);
+  assert.equal(typeof before.id, "string");
 
-  // Trusted click on the real Chromium history entry. This is not the
-  // WebExtensions downloads.open API and never grants scanner authority.
+  // Observe the real WebUI-to-browser OpenFileRequiringGesture call without
+  // replacing the browser implementation. Chromium's download Data model does
+  // NOT expose an "opened" flag. The handler forwards to the actual browser,
+  // and any external OS app result is independently platform-dependent.
+  const observed = await row.evaluate(element => {
+    const handler = element.mojoHandler_;
+    if (typeof handler?.openFileRequiringGesture !== "function") return false;
+    const original = handler.openFileRequiringGesture.bind(handler);
+    window.__pdfMagicHistoryOpenIds = [];
+    handler.openFileRequiringGesture = id => {
+      window.__pdfMagicHistoryOpenIds.push(id);
+      return original(id);
+    };
+    return true;
+  });
+  assert.equal(observed, true,
+    "Chromium must expose its real browser-owned OpenFileRequiringGesture handler");
   await fileLink.click({ noWaitAfter: true, timeout: 15000 });
-  await until(async () => await row.evaluate(element =>
-    element.data?.opened === true), "Chromium marking the PDF as opened");
+  await until(async () => await history.evaluate(() =>
+    window.__pdfMagicHistoryOpenIds?.length === 1),
+  "trusted history click dispatching the real browser Open action");
+  assert.deepEqual(await history.evaluate(() =>
+    window.__pdfMagicHistoryOpenIds), [before.id],
+  "Only the selected saved PDF may be opened through Chromium history");
   assert.equal(fixture.snapshot().requests[item.path], 1,
     "History opening must reuse the downloaded file, not fetch it again");
   assert.equal(context.serviceWorkers().some(worker =>

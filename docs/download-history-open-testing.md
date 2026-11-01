@@ -31,8 +31,11 @@ a separate live Chromium browser regression (opener-1069)** in the existing
 It downloads an innocuous, locally generated PDF from loopback, verifies
 the complete bytes, closes the source tab, finds the persisted entry in
 `chrome://downloads/`, and performs a trusted click on the history
-**Open** link. It requires Chromium to mark the entry as opened without
-re-fetching the document. The run uses a disposable profile and makes no
+**Open** link. The test observes the actual browser-owned
+`openFileRequiringGesture` command forwarded for exactly that history item,
+without replacing the native Chromium handler or re-fetching the document.
+Chromium's history data has no `opened` field, and OS-level external
+application success is not inferred from this command. The run uses a disposable profile and makes no
 PDF Magic scan, native handoff, or safety claim.
 
 The live test verifies browser-owned opening in the tested Chromium version,
