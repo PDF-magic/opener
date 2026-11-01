@@ -52,6 +52,9 @@ def validate_zip(archive):
         path = PurePosixPath(name)
         # ditto can include Apple resource-fork metadata in __MACOSX.
         allowed = (name.startswith(APP_NAME + "/")
+                   or name == "__MACOSX/"
+                   or name == "__MACOSX/" + APP_NAME + "/"
+                   or name == "__MACOSX/._" + APP_NAME
                    or name.startswith("__MACOSX/" + APP_NAME + "/"))
         if (not allowed or path.is_absolute()
             or ".." in path.parts or "\\" in name or "\x00" in name):
@@ -108,7 +111,10 @@ def notary_json(args, credentials):
   raw = checked(["xcrun", "notarytool", *args, *credentials,
                  "--output-format", "json"], timeout=3600).stdout
   try:
-    return json.loads(raw)
+    response = json.loads(raw)
+    if not isinstance(response, dict):
+      raise ValueError("Notarization status must be an object")
+    return response
   except (ValueError, TypeError) as error:
     raise NotarizationError("Apple returned an invalid notarization response") from error
 

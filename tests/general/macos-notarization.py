@@ -114,6 +114,17 @@ class NotarizationTests(unittest.TestCase):
     self.assertFalse(self.output.exists())
     self.assertEqual(self.commands, [])
 
+  def test_ditto_metadata_entries_are_safe(self):
+    with zipfile.ZipFile(self.signed, "a") as archive:
+      archive.writestr("__MACOSX/", b"")
+      archive.writestr("__MACOSX/._" + notary.APP_NAME, b"metadata")
+    notary.validate_zip(self.signed)
+
+  def test_malformed_notary_response_blocks_release(self):
+    with patch.object(notary, "checked", return_value=subprocess.CompletedProcess([], 0, "[]", "")):
+      with self.assertRaises(notary.NotarizationError):
+        notary.notary_json(["info", SUBMISSION_ID], ["--team-id", TEAM_ID])
+
   def test_signature_requires_correct_identity_team_runtime_and_developer_id(self):
     app = self.root / notary.APP_NAME
     (app / "Contents/Helpers").mkdir(parents=True)
