@@ -291,6 +291,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/enhanced/legitimate-forms.py -v
       - name: Extract declared PDF document metadata without executing contents
         run: PYTHONPATH=. python3 tests/pdf/declared-metadata.py -v
+      - name: Validate unusual Unicode metadata PDF corpus without authorizing open
+        run: PYTHONPATH=. python3 tests/pdf/unicode-metadata-corpus.py -v
       - name: Inspect PDF document permissions without decryption
         run: PYTHONPATH=. python3 tests/pdf/document-permissions.py -v
       - name: Verify built-in active protection profile label and unchanged scanner gates
