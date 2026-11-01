@@ -661,6 +661,7 @@ jobs:
           npm run build
           npm run package:chrome
           npm run package:firefox
+          npm run validate:manifests
           unzip -t dist/firefox-packages/pdf-magic-opener-firefox-*-unsigned.zip
           npm test
       - name: Verify three concurrent PDF tab correlation and closure isolation
