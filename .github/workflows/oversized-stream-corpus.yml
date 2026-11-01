@@ -1,0 +1,38 @@
+name: Oversized embedded PDF stream corpus
+
+on:
+  pull_request:
+    paths:
+      - oversized_stream_corpus.py
+      - tests/pdf/oversized-stream-corpus.py
+      - .github/workflows/oversized-stream-corpus.yml
+  push:
+    branches: [main]
+    paths:
+      - oversized_stream_corpus.py
+      - tests/pdf/oversized-stream-corpus.py
+      - .github/workflows/oversized-stream-corpus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  oversized-stream-corpus:
+    name: Validate oversized embedded PDF stream corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned passive PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Validate oversized PDF corpus and non-authorizing evidence
+        run: PYTHONPATH=. python3 tests/pdf/oversized-stream-corpus.py -v
+      - name: Preserve existing embedded-object and decompression limits
+        run: |
+          PYTHONPATH=. python3 tests/pdf/embedded-object-sizes.py -v
+          PYTHONPATH=. python3 tests/pdf/decompressed-size.py -v
+          PYTHONPATH=. python3 tests/pdf/stream-lengths.py -v

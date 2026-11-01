@@ -253,6 +253,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
+      - name: Reject malformed PDF object streams from the security corpus
+        run: PYTHONPATH=. python3 tests/pdf/malformed-object-stream-corpus.py -v
       - name: Reject malformed classic cross-reference table corpus
         run: PYTHONPATH=. python3 tests/pdf/malformed-xref-corpus.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
@@ -379,6 +381,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/embedded-filenames.py -v
       - name: Detect suspiciously large PDF embedded objects
         run: PYTHONPATH=. python3 tests/pdf/embedded-object-sizes.py -v
+      - name: Validate oversized embedded-stream security PDF corpus
+        run: PYTHONPATH=. python3 tests/pdf/oversized-stream-corpus.py -v
       - name: Detect excessive PDF decompression requirements safely
         run: PYTHONPATH=. python3 tests/pdf/decompression-requirements.py -v
       - name: Detect unexpected executable signatures in embedded PDF streams
@@ -428,6 +432,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/invalid-headers-corpus.py -v
       - name: Verify incorrectly named PDFs and extension-spoofing corpus
         run: PYTHONPATH=. python3 tests/pdf/incorrectly-named-files.py -v
+      - name: Validate large, structurally sound PDF security corpus
+        run: PYTHONPATH=. python3 tests/pdf/large-valid-corpus.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
