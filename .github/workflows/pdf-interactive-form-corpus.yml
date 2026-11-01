@@ -1,0 +1,35 @@
+name: Interactive-form PDF security corpus
+
+on:
+  pull_request:
+    paths:
+      - interactive_form_corpus.py
+      - tests/pdf/interactive-form-corpus.py
+      - docs/pdf/interactive-form-corpus.md
+      - .github/workflows/pdf-interactive-form-corpus.yml
+  push:
+    branches: [main]
+    paths:
+      - interactive_form_corpus.py
+      - tests/pdf/interactive-form-corpus.py
+      - docs/pdf/interactive-form-corpus.md
+      - .github/workflows/pdf-interactive-form-corpus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  interactive-form-corpus:
+    name: Validate inert interactive AcroForm PDFs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Verify real PDF fields, passive inspection, and scanner isolation
+        run: PYTHONPATH=. python3 tests/pdf/interactive-form-corpus.py -v
