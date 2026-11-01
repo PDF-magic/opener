@@ -394,7 +394,7 @@ jobs:
       - name: Verify planned Maximum rejects malformed PDFs and blocks sanitization
         run: |
           # The Maximum sanitizer imports Pillow even on an early input rejection.
-          python3 -m pip install --disable-pip-version-check "Pillow==12.0.0"
+          python3 -m pip install --disable-pip-version-check "Pillow==11.3.0"
           PYTHONPATH=. python3 tests/protection/maximum-malformed-pdf.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
