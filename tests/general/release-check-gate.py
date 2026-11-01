@@ -74,7 +74,7 @@ class ReleaseGateTests(unittest.TestCase):
       (extension / "package.json").write_text('{"version":"0.1.0"}', encoding="utf-8")
       (extension / "manifest.json").write_text('{"version":"0.1.0"}', encoding="utf-8")
       (project / "project.pbxproj").write_text(
-        "MARKETING_VERSION = 0.1.0;\\nMARKETING_VERSION = 0.1.0;\\n", encoding="utf-8")
+        "MARKETING_VERSION = 0.1.0;\nMARKETING_VERSION = 0.1.0;\n", encoding="utf-8")
       gate.ensure_version_metadata("v0.1.0", root)
       for filename in ("package.json", "manifest.json"):
         path = extension / filename
@@ -83,7 +83,7 @@ class ReleaseGateTests(unittest.TestCase):
           gate.ensure_version_metadata("v0.1.0", root)
         path.write_text('{"version":"0.1.0"}', encoding="utf-8")
       (project / "project.pbxproj").write_text(
-        "MARKETING_VERSION = 0.1.0;\\nMARKETING_VERSION = 0.1.1;\\n", encoding="utf-8")
+        "MARKETING_VERSION = 0.1.0;\nMARKETING_VERSION = 0.1.1;\n", encoding="utf-8")
       with self.assertRaises(gate.GateError):
         gate.ensure_version_metadata("v0.1.0", root)
 
