@@ -1,0 +1,39 @@
+name: Embedded-file PDF security corpus
+
+on:
+  pull_request:
+    paths:
+      - embedded_file_corpus.py
+      - tests/pdf/embedded-file-corpus.py
+      - docs/pdf/embedded-file-corpus.md
+      - .github/workflows/pdf-embedded-file-corpus.yml
+  push:
+    branches: [main]
+    paths:
+      - embedded_file_corpus.py
+      - tests/pdf/embedded-file-corpus.py
+      - docs/pdf/embedded-file-corpus.md
+      - .github/workflows/pdf-embedded-file-corpus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-file-corpus:
+    name: Validate inert embedded-file PDF corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Validate real embedded-file PDF documents and scan isolation
+        run: PYTHONPATH=. python3 tests/pdf/embedded-file-corpus.py -v
+      - name: Preserve existing embedded-file inspection regressions
+        run: |
+          PYTHONPATH=. python3 tests/enhanced/embedded-files.py -v
+          PYTHONPATH=. python3 tests/pdf/embedded-file-types.py -v
