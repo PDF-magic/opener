@@ -82,7 +82,7 @@ notes under [WebExtensions](../extensions/webextension/README.md).
    Firefox restarts; reload from the built manifest when testing again.
 
 The generated Firefox ZIP is **unsigned**, contains a development-only
-`example.invalid` Gecko ID, and is **not** a signed XPI. Ordinary release
+`example.invalid` Gecko ID, and is not a signed XPI. Ordinary release
 installation requires a publisher-owned ID and Mozilla signing through AMO,
 even for unlisted distribution. Do not turn off Firefox signature checks
 to install this development package as a permanent add-on.
