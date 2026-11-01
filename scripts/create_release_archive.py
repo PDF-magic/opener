@@ -86,7 +86,7 @@ def verify_archive(archive):
         mode = member.external_attr >> 16
         if stat.S_ISLNK(mode):
           _validate_symlink(name, package.read(member).decode("utf-8"))
-        elif mode and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+        elif stat.S_IFMT(mode) not in (0, stat.S_IFREG, stat.S_IFDIR):
           raise ValueError("Unsupported archived file type")
       missing = REQUIRED - set(names)
       if missing:
