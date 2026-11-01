@@ -253,6 +253,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
         run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
+      - name: Verify Enhanced admission refuses a password-protected PDF
+        run: PYTHONPATH=. python3 tests/enhanced/password-protected.py -v
       - name: Reject malformed direct and indirect PDF stream lengths
         run: PYTHONPATH=. python3 tests/pdf/stream-lengths.py -v
       - name: Verify bounded structured PDF parser output contract
