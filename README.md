@@ -71,8 +71,10 @@ without silently falling back or removing quarantine.
 Inline, embedded, and online browser PDF viewers can render PDFs outside
 this native file-opening path; installing PDF Magic Opener does not guarantee
 those pages are scanned first. See [known unsupported and unverified browser
-entry routes](docs/browser-unsupported-routes.md). To use the native gate
-for a browser download, save it locally and open it with PDF Magic Opener.
+entry routes](docs/browser-unsupported-routes.md). For the nine-browser
+support matrix, see [inline PDF scanning support](docs/inline-pdf-scanning-support.md).
+To use the native gate for a browser download, save it locally and open it
+with PDF Magic Opener.
 
 ## SwiftUI application target (opener-0163)
 

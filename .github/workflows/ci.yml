@@ -966,6 +966,8 @@ jobs:
           python3 tests/browser/safari-pdf-viewer-contract.py -v
       - name: Verify browser PDF viewer comparison documentation
         run: PYTHONPATH=. python3 tests/browser/viewer-docs.py -v
+      - name: Verify per-browser inline PDF scanning documentation
+        run: PYTHONPATH=. python3 tests/browser/inline-scanning-docs.py -v
       - name: Verify optional PDF fallback selection and safety
         run: PYTHONPATH=. python3 tests/general/fallback-app.py -v
       - name: Verify clean scan results survive launch failures
