@@ -49,6 +49,9 @@ jobs:
         run: |
           npm run build
           node --test tests/brave-compatibility.test.mjs tests/brave-pdf-viewer.test.mjs
+      - name: Verify browser permission revocation and fail-closed cancellation
+        working-directory: extensions/webextension
+        run: node --test tests/browser-permission-revocation.test.mjs
       - name: Install CI-only Brave automation driver
         working-directory: extensions/webextension
         run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
