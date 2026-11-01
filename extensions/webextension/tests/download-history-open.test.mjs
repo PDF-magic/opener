@@ -276,3 +276,32 @@ test("download-history acceptance instructions and inert extension protections s
   assert.deepEqual(manifest.optional_permissions, ["downloads"]);
   assert.equal(manifest.permissions.includes("downloads.open"), false);
 });
+
+test("opener-1069 exercises live Chromium history rather than faking a history click", async () => {
+  const [smoke, workflow, manifest, worker] = await Promise.all([
+    readFile(new URL("../scripts/test-chromium-history-open.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../../.github/workflows/chromium-webextension.yml", import.meta.url), "utf8"),
+    readFile(new URL("../manifest.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(new URL("../src/background.js", import.meta.url), "utf8")
+  ]);
+  for (const required of [
+    "chromium.launchPersistentContext", "createNativePdfDownloadFixture",
+    'page.waitForEvent("download"', "page.locator(item.selector).click()",
+    "download.failure()", "readFile(await download.path())",
+    "await page.close()", '"chrome://downloads/"',
+    'history.locator("downloads-item")', 'row.locator("#file-link")',
+    "await row.locator(\"#file-link\").click(", "element.data?.opened === true",
+    "fixture.snapshot().requests[item.path]", "await context?.close()",
+    "await rm(profile"
+  ]) assert.ok(smoke.includes(required), required);
+  assert.match(workflow, /node scripts\/test-chromium-history-open\.mjs "\$CHROMIUM_BINARY_PATH"/);
+  assert.match(workflow, /playwright-core@1\.56\.1/);
+  for (const forbidden of [
+    "downloads.open(", "permissions.request(", "connectNative(",
+    "sendNativeMessage(", "clamscan(", "shell: true"
+  ]) assert.equal(smoke.includes(forbidden), false, forbidden);
+  assert.deepEqual(manifest.permissions, []);
+  assert.deepEqual(manifest.host_permissions, []);
+  assert.deepEqual(manifest.optional_permissions, ["downloads"]);
+  assert.ok(worker.trimEnd().endsWith("void 0;"));
+});
