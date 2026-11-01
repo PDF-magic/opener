@@ -27,7 +27,26 @@ actions triggered by opening the preferences app.
    It may contain user-customized configuration, historical scan metadata,
    signatures or unrelated files; **do not delete the directory wholesale**.
    Do not share private paths, PDF names, logs or proxy credentials.
-3. **Detect the current macOS PDF handler before any removal or restoration.**
+3. **Decide whether to retain scan history.** Before quitting Preferences or
+   removing anything, run the read-only question from the trusted source checkout:
+
+   ```sh
+   python3 ask_scan_history_retention.py
+   ```
+
+   Answer **yes** (or press Return) to retain scan history unchanged. Answer
+   **no** only if you intend to delete optional scan-history metadata.
+   This prompt **never deletes history** and never affects the separate
+   90-day clean-scan cache, diagnostic logs, browser preferences or scanner.
+   If you answer no, while the app is still installed use
+   **Preferences > Scan History > Clear History…**, explicitly confirm removal,
+   and verify the success message before continuing. That page is available
+   only if optional history has been enabled; do not assume a hidden page
+   proves no history exists. **Stop uninstallation** if it is unavailable or
+   deletion cannot be verified, and preserve the data instead of manually
+   removing files. Cancellation, interrupted input, and unknown answers must
+   not cause deletion. Do not conflate this choice with other application data.
+4. **Detect the current macOS PDF handler before any removal or restoration.**
    While the installed support helpers are still present, run this established
    read-only status command in Terminal (it uses the PDF-specific Launch
    Services lookup, not your default web browser or post-scan viewer):
@@ -47,7 +66,7 @@ actions triggered by opening the preferences app.
    second read-only view if needed, but do not interpret a missing or unknown
    answer as permission to remove the current PDF handler. Confirm you know
    which viewer should receive PDFs after removal.
-4. From the trusted source checkout, check whether the managed signature-update
+5. From the trusted source checkout, check whether the managed signature-update
    LaunchAgent is recognized (read-only, does not start or stop anything):
 
    ```sh
