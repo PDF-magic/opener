@@ -1,0 +1,77 @@
+name: Unsigned macOS application bundle
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+# Produce a reviewable app artifact; signing, notarization, and installation
+# belong to separate release tasks and must not be inferred from this build.
+permissions:
+  contents: read
+
+jobs:
+  macos-application-bundle:
+    name: Build and verify unsigned macOS application bundle
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify the application bundle distribution contract
+        run: PYTHONPATH=. python3 tests/general/macos-application-bundle.py -v
+      - name: Build the unsigned Release application and embedded Safari extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project PDFMagicOpener.xcodeproj \
+            -scheme PDFMagicOpener -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/PDFMagicOpenerReleaseDerived" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Stage reviewed native helpers without modifying the Xcode build
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/PDFMagicOpenerReleaseDerived/Build/Products/Release/PDFMagicOpener.app"
+          stage="$RUNNER_TEMP/PDFMagicOpenerReleasePackage"
+          python3 scripts/package_application_helpers.py --app "$app" --output-dir "$stage"
+          python3 scripts/package_application_helpers.py --verify "$stage/PDFMagicOpener.app"
+          test ! -e "$app/Contents/Helpers"
+          test ! -e "$stage/PDFMagicOpener.app/Contents/Helpers/PDFOpener"
+          test ! -e "$stage/PDFMagicOpener.app/Contents/Helpers/MakePDFMagicDefault"
+      - name: Archive and verify the complete unsigned application bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/PDFMagicOpenerReleasePackage"
+          archive_dir="$RUNNER_TEMP/PDFMagicOpenerDistribution"
+          archive="$archive_dir/pdf-magic-opener-macos-unsigned.zip"
+          extracted="$RUNNER_TEMP/PDFMagicOpenerArchiveRoundTrip"
+          mkdir -p "$archive_dir" "$extracted"
+          ditto -c -k --keepParent "$stage/PDFMagicOpener.app" "$archive"
+          unzip -t "$archive"
+          ditto -x -k "$archive" "$extracted"
+          python3 - "$extracted" <<'PY'
+          from pathlib import Path
+          import sys
+
+          root = Path(sys.argv[1])
+          assert sorted(path.name for path in root.iterdir()) == ["PDFMagicOpener.app"], (
+              "Archive must contain exactly one application bundle"
+          )
+          PY
+          python3 scripts/package_application_helpers.py --verify "$extracted/PDFMagicOpener.app"
+          test -x "$extracted/PDFMagicOpener.app/Contents/MacOS/PDFMagicOpener"
+          test ! -e "$extracted/PDFMagicOpener.app/Contents/Helpers/PDFOpener"
+          test ! -e "$extracted/PDFMagicOpener.app/Contents/Helpers/MakePDFMagicDefault"
+          python3 tests/app/fresh-launch.py --app "$extracted/PDFMagicOpener.app"
+      - name: Upload verified unsigned macOS application
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-magic-opener-macos-unsigned
+          path: ${{ runner.temp }}/PDFMagicOpenerDistribution/pdf-magic-opener-macos-unsigned.zip
+          if-no-files-found: error
+          retention-days: 7
