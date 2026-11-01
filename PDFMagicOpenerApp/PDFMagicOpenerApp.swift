@@ -1,5 +1,8 @@
 import AppKit
 import SwiftUI
+#if DEBUG
+import Darwin
+#endif
 
 // Menu bar decision (opener-0176): do not install a persistent status item.
 // This windowed preferences app does not own ongoing PDF scans or offer
@@ -30,6 +33,11 @@ struct PDFMagicOpenerApp: App {
           guard url.absoluteString == "pdfmagicopener://preferences" else { return }
           NSApplication.shared.activate(ignoringOtherApps: true)
         }
+        .onAppear {
+#if DEBUG
+          LaunchBenchmarkMarker.markFirstViewAppearance()
+#endif
+        }
     }
     .commands {
       AboutMenuCommands()
@@ -55,6 +63,22 @@ struct PDFMagicOpenerApp: App {
     .keyboardShortcut(",", modifiers: .command)
   }
 }
+
+#if DEBUG
+private enum LaunchBenchmarkMarker {
+  private static var emitted = false
+
+  static func markFirstViewAppearance() {
+    guard !emitted else { return }
+    emitted = true
+    // Only a specifically opted-in Debug run can receive the one-byte marker.
+    guard let raw = ProcessInfo.processInfo.environment["PDFMAGIC_LAUNCH_BENCHMARK_FD"],
+          let fd = Int32(raw), fd >= 3 && fd <= 1024 else { return }
+    var marker: UInt8 = 49 // ASCII "1"; no paths, preferences or document content.
+    _ = withUnsafePointer(to: &marker) { Darwin.write(fd, $0, 1) }
+  }
+}
+#endif
 
 private struct AboutMenuCommands: Commands {
   @Environment(\.openWindow) private var openWindow
