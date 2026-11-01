@@ -1388,7 +1388,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/initialization-errors.py -v
       - name: Verify duplicate-open handling and queued native scans
         timeout-minutes: 5
-        run: PYTHONPATH=. python3 tests/general/brave-pdf-opener.py
+        run: PYTHONPATH=. python3 tests/general/native-pdf-opener.py
       - name: Verify actual multi-document progress and unknown single-file progress
         timeout-minutes: 3
         run: PYTHONPATH=. python3 tests/native/determinate-progress.py -v
