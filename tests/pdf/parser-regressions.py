@@ -46,7 +46,7 @@ class PDFParserRegressionTests(unittest.TestCase):
         with self.assertRaises(PDFStructureParseError) as failure:
             parse_pdf_structure(contents)
         self.assertEqual(str(failure.exception), _ERROR)
-        self.assertTrue(failure.exception.__suppress_context__)
+        self.assertIsNone(failure.exception.__cause__)
         result = parse_pdf_structure_result(contents)
         self.assertIs(type(result), PDFStructureParseFailure)
         self.assertIs(result.code, PDFStructureFailureCode.invalidStructure)
@@ -64,7 +64,8 @@ class PDFParserRegressionTests(unittest.TestCase):
                 contents = GOOD.replace(
                     b"%PDF-1.4\\n", f"%PDF-{version}\\n".encode("ascii"), 1
                 )
-                self.assertNotEqual(contents, GOOD) if version != "1.4" else None
+                if version != "1.4":
+                    self.assertNotEqual(contents, GOOD)
                 direct = parse_pdf_structure(contents)
                 self.assertEqual(direct, PDFStructure(version, 1))
                 self.assertEqual(parse_pdf_structure_result(contents), direct)
