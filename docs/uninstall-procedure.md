@@ -21,13 +21,32 @@ actions triggered by opening the preferences app.
 1. Stop opening new PDFs with the native handler, and finish or cancel any
    in-flight scans. Keep Preferences available through step 2, then quit the
    app before moving its bundle or retiring its helpers.
-2. Back up only the data **you choose** to retain, including your PDF browser
+2. **Ask whether PDF Magic Opener preferences should be retained.** From
+   the trusted source checkout, run this interactive, non-destructive prompt:
+
+   ```sh
+   python3 ask_uninstall_preferences.py
+   ```
+
+   Answer **Yes** to retain your preferences for a future reinstall (the
+   default when pressing Enter), or **No** to indicate that you do not want
+   to retain them. Invalid, interrupted, or unavailable input records no
+   decision; resolve it before proceeding. This helper never reads, changes,
+   or deletes your settings, the macOS PDF handler, or scanner components.
+   A **No** answer is not blanket authorization to delete application support,
+   shared scanner data, signatures, logs, credentials, or customized files:
+   any later removal requires separate identity checks and user authorization.
+   The macOS preference domain is
+   `~/Library/Preferences/local.studio.pdf-magic-opener.plist`; the scanner's
+   application support directory is separate. This is a **retention choice**,
+   not an automated preference-deletion step.
+3. Back up only the data **you choose** to retain, including your PDF browser
    preference and FreshClam mirror/proxy configuration. The installed support
    directory is `~/Library/Application Support/Studio/allow-and-open`.
    It may contain user-customized configuration, historical scan metadata,
    signatures or unrelated files; **do not delete the directory wholesale**.
    Do not share private paths, PDF names, logs or proxy credentials.
-3. **Detect the current macOS PDF handler before any removal or restoration.**
+4. **Detect the current macOS PDF handler before any removal or restoration.**
    While the installed support helpers are still present, run this established
    read-only status command in Terminal (it uses the PDF-specific Launch
    Services lookup, not your default web browser or post-scan viewer):
@@ -47,7 +66,7 @@ actions triggered by opening the preferences app.
    second read-only view if needed, but do not interpret a missing or unknown
    answer as permission to remove the current PDF handler. Confirm you know
    which viewer should receive PDFs after removal.
-4. From the trusted source checkout, check whether the managed signature-update
+5. From the trusted source checkout, check whether the managed signature-update
    LaunchAgent is recognized (read-only, does not start or stop anything):
 
    ```sh
@@ -214,7 +233,7 @@ No guaranteed malware safety or data-erasure claim is made.
 
 ## CI and ownership boundaries
 
-`tests/general/uninstall-procedure.py` checks this procedure against the
+`tests/general/uninstall-procedure.py` checks the interactive preference-retention\nquestion (including the safe default, explicit refusal, cancelled input and\nnon-mutation of user settings), and this procedure against the
 real existing default-handler restoration, Finder Quick Action restoration,
 native messaging cleanup, and signature-agent ownership verification paths.
 It also guards the order and repeatability of the installed read-only PDF
