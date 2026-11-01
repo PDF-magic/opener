@@ -392,7 +392,9 @@ jobs:
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
       - name: Test Maximum fails closed when generated output fails validation
-        run: PYTHONPATH=. python3 tests/maximum/output-validation-failure.py -v
+        run: |
+          python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+          PYTHONPATH=. python3 tests/maximum/output-validation-failure.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
