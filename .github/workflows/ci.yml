@@ -942,6 +942,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/file/lifecycle.py
       - name: Measure extra Enhanced analysis time without changing scan outcomes
         run: PYTHONPATH=. python3 tests/enhanced/analysis-timing.py -v
+      - name: Verify Enhanced structural benchmark contracts and real workers
+        run: PYTHONPATH=. python3 tests/enhanced/structural-benchmark.py -v
+      - name: Benchmark Enhanced structural inspection on generated PDFs
+        run: PYTHONPATH=. python3 enhanced_structure_benchmark.py --samples 3
       - name: Verify cross-process scan concurrency
         run: PYTHONPATH=. python3 tests/scan/concurrency.py
       - name: Verify native owner termination aborts active scans
