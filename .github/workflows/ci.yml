@@ -233,6 +233,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
       - name: Verify documented handling of quarantined files
         run: PYTHONPATH=. python3 tests/general/quarantined-files-documentation.py -v
+      - name: Verify documented signature update process
+        run: PYTHONPATH=. python3 tests/general/signature-update-documentation.py -v
       - name: Verify scanner error documentation against the enforced failure policy
         run: PYTHONPATH=. python3 tests/scanner/error-documentation.py -v
       - name: Verify the security reporting process
