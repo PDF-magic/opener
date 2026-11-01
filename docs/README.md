@@ -15,6 +15,8 @@ For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/ch
 
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
+- [Handling quarantined files](quarantined-files.md) — what macOS File Quarantine means for clean, blocked, and unscannable managed opens, plus safe troubleshooting.
+
 - [Upgrade PDF Magic Opener](upgrade-process.md) — safely reinstall a trusted newer version, verify migration, and recover from a failed upgrade without resetting preferences.
 
 - [Choose a PDF browser](select-browser.md) — select a verified post-scan browser in Settings or use the installed custom-application chooser.
