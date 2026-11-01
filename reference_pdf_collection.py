@@ -58,6 +58,31 @@ REFERENCE_PDFS = (
 )
 
 
+@dataclass(frozen=True)
+class IncorrectlyNamedFile:
+    """Inert real PDF or non-PDF bytes under a deliberately misleading name."""
+
+    filename: str
+    content: bytes
+    is_pdf: bool
+
+
+# opener-1028: filename extensions are not evidence of PDF format. Keeping
+# these separate from REFERENCE_PDFS preserves the stable six-profile corpus.
+# Tests materialize each file only inside a disposable temporary directory.
+INCORRECTLY_NAMED_FILES = (
+    IncorrectlyNamedFile("real-pdf.txt", REFERENCE_PDFS[0].content, True),
+    IncorrectlyNamedFile("real-pdf.png", REFERENCE_PDFS[1].content, True),
+    IncorrectlyNamedFile("real-pdf.pdf.txt", REFERENCE_PDFS[0].content, True),
+    IncorrectlyNamedFile("real-pdf-no-extension", REFERENCE_PDFS[1].content, True),
+    IncorrectlyNamedFile("real-pdf.PDF", REFERENCE_PDFS[0].content, True),
+    IncorrectlyNamedFile("plain-text.pdf", b"Harmless text, not a PDF.\n", False),
+    IncorrectlyNamedFile("png-header.pdf", b"\x89PNG\r\n\x1a\n" + bytes(16), False),
+    IncorrectlyNamedFile(
+        "embedded-pdf-header.pdf", b"Harmless non-PDF prefix\n%PDF-1.4\n", False
+    ),
+)
+
 DEEP_OBJECT_REFERENCE_DEPTH = 96
 
 

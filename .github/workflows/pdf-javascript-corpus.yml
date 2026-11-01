@@ -1,0 +1,37 @@
+name: JavaScript-action PDF security corpus
+
+on:
+  pull_request:
+    paths:
+      - javascript_action_corpus.py
+      - tests/pdf/javascript-action-corpus.py
+      - .github/workflows/pdf-javascript-corpus.yml
+  push:
+    branches: [main]
+    paths:
+      - javascript_action_corpus.py
+      - tests/pdf/javascript-action-corpus.py
+      - .github/workflows/pdf-javascript-corpus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  javascript-action-corpus:
+    name: Validate inert JavaScript PDF corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Validate real JavaScript-action PDF samples and scanner boundaries
+        run: PYTHONPATH=. python3 tests/pdf/javascript-action-corpus.py -v
+      - name: Preserve existing passive JavaScript and action-hook inspectors
+        run: |
+          PYTHONPATH=. python3 tests/pdf/javascript-actions.py -v
+          PYTHONPATH=. python3 tests/pdf/automatic-actions.py -v
