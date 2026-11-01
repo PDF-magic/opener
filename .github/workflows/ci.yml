@@ -215,6 +215,8 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Verify troubleshooting instructions and scan safety boundaries
+        run: PYTHONPATH=. python3 tests/general/troubleshooting-docs.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
