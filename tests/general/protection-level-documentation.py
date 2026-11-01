@@ -2,7 +2,6 @@
 """Ensure the user-facing README describes the actual protection-level contract."""
 
 from pathlib import Path
-import re
 import unittest
 
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
@@ -27,7 +26,7 @@ class ProtectionLevelDocumentationTests(unittest.TestCase):
             label = PROTECTION_PROFILES[identifier].display_name
             with self.subTest(level=label):
                 self.assertEqual(
-                    len(re.findall(r"^\\| \\*\\*" + re.escape(label) + r"\\*\\* \\|", self.section, re.M)),
+                    sum(line.startswith(f"| **{label}** |") for line in self.section.splitlines()),
                     1,
                 )
         self.assertEqual(self.section.count("Preview only —"), 3)
