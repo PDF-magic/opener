@@ -1,7 +1,7 @@
 # Browser-native PDF download handling — real-browser verification (opener-0811)
 
 The dedicated [browser-native download CI workflow](../.github/workflows/browser-native-pdf-downloads.yml)
-tests actual **Chrome for Testing and Mozilla Firefox download managers**.
+tests actual **Chrome for Testing, unbranded Chromium, and Mozilla Firefox download managers**.
 The earlier simulated [automatic-opening regressions](download-automatic-browser-opening-test.md)
 do not demonstrate an installed browser writing a downloaded file.
 
@@ -29,6 +29,14 @@ expected URL and suggested filename, a matching
 `Browser.downloadProgress: completed` event, the correct received byte
 count, and exactly the original PDF bytes saved at the expected filename.
 
+**Chromium:** The separate `chromium-native-pdf-download` CI job installs
+unbranded Chromium (`chrome-version: latest`) and requires its executable
+to report a `Chromium` version before launching. The [Chromium smoke](../extensions/webextension/scripts/test-chromium-native-pdf-download.mjs)
+reuses the existing real-browser download checks: genuine DevTools start and
+completion events, both safe loopback response types, correct filenames, and
+exactly matching PDF bytes on disk. Its own disposable profile cannot enter
+Chrome's macOS artifact handoff path.
+
 **Firefox:** An isolated Firefox profile is explicitly configured to save
 PDF and octet-stream responses to its disposable directory. Its built-in
 inline PDF.js handling is disabled **only within this throwaway test profile**
@@ -36,7 +44,7 @@ so that the test exercises the browser's download path. WebDriver performs
 actual link clicks, then the test verifies the HTTP request, complete PDF
 bytes on disk, and expected filenames with no pending `.part` transfer.
 
-Both require only the two expected files in the temporary download folder.
+All three require only the two expected files in the temporary download folder.
 The browser processes, HTTP listeners and temporary profiles are cleaned up
 at the end. A separate [Node regression suite](../extensions/webextension/tests/browser-native-pdf-download.test.mjs)
 checks the server responses, PDF validity, CI wiring and scanner isolation;

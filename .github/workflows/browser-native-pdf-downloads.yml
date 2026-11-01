@@ -40,6 +40,28 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  chromium-native-pdf-download:
+    name: Chromium browser-native PDF downloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v2
+        id: chromium
+        with:
+          # Official unbranded Chromium, not the branded stable Chrome build.
+          chrome-version: latest
+      - name: Verify real Chromium downloads PDF attachments
+        working-directory: extensions/webextension
+        env:
+          CHROMIUM_BINARY_PATH: ${{ steps.chromium.outputs.chrome-path }}
+          # Only the disposable CI Chromium profile may use this exception.
+          CHROMIUM_TEST_NO_SANDBOX: "1"
+        run: node scripts/test-chromium-native-pdf-download.mjs "$CHROMIUM_BINARY_PATH"
+
   firefox-native-pdf-download:
     name: Firefox browser-native PDF downloads
     runs-on: ubuntu-latest
