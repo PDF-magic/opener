@@ -30,11 +30,15 @@ class BrowserDownloadMonitoringSupportTests(unittest.TestCase):
         "| Browser | macOS bundle ID | Download events API | Current PDF Magic Opener monitoring |",
         page,
     )
-    rows = re.findall(
-        r"^\\| ([^|]+) \\| \`([^\`]+)\` \\| \\*\\*(Documented|Conditional|Unverified)\\*\\*[^|]*"
-        r" \\| \\*\\*Inactive\\*\\* \\|$",
-        page, flags=re.MULTILINE,
-    )
+    rows = []
+    for line in page.splitlines():
+      fields = [value.strip() for value in line.strip("|").split("|")]
+      if (line.startswith("| ") and len(fields) == 4
+          and fields[1].startswith("`") and fields[1].endswith("`")
+          and fields[3] == "**Inactive**"):
+        match = re.match(r"^\\*\\*(Documented|Conditional|Unverified)\\*\\*", fields[2])
+        self.assertIsNotNone(match, line)
+        rows.append((fields[0], fields[1].strip("`"), match.group(1)))
     self.assertEqual(len(rows), len(EXPECTED))
     self.assertEqual(len(set(name for name, _, _ in rows)), len(EXPECTED))
     actual = {name: (bundle, support) for name, bundle, support in rows}
@@ -52,7 +56,7 @@ class BrowserDownloadMonitoringSupportTests(unittest.TestCase):
   def test_support_labels_do_not_misrepresent_live_monitoring(self):
     page = DOC.read_text(encoding="utf-8")
     for phrase in (
-        "inactive in every", "not that a", "not a grant",
+        "inactive in every", "not that a", "**not** a grant",
         "trusted user gesture", "transport-only", "saves a preference",
         "do **not** include PDFs displayed inline",
         "block browser automatic opening", "not** this extension's monitoring",
@@ -84,7 +88,7 @@ class BrowserDownloadMonitoringSupportTests(unittest.TestCase):
     self.assertEqual(
         workflow.count("tests/general/browser-download-monitoring-support.py -v"), 1,
     )
-    for target in re.findall(r"\\]\\(([^)]+\\.md)\\)", DOC.read_text()):
+    for target in re.findall(r"\]\(([^)]+\.md)\)", DOC.read_text()):
       if target.startswith(("http:", "https:")):
         continue
       with self.subTest(target=target):
