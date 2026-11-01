@@ -252,6 +252,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/action-chains.py -v
       - name: Inspect JavaScript action payloads without evaluating them
         run: PYTHONPATH=. python3 tests/pdf/javascript-actions.py -v
+      - name: Verify a JavaScript-bearing PDF respects inactive Enhanced protection
+        run: PYTHONPATH=. python3 tests/enhanced/javascript-action-profile.py -v
       - name: Detect hidden active PDF content in incremental revisions
         run: PYTHONPATH=. python3 tests/pdf/revision-active-content.py -v
       - name: Detect XFA form entries without decoding XML
