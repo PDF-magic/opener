@@ -403,6 +403,10 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/inherits-enhanced.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
+      - name: Exercise the complete PDF security corpus across every defined protection profile
+        run: |
+          python3 -m pip install --disable-pip-version-check 'cryptography==46.0.4'
+          PYTHONPATH=. python3 tests/protection/security-corpus-matrix.py -v
       - name: Reject zero-byte PDF and other empty-file corpus fixtures before scanner handoff
         run: PYTHONPATH=. python3 tests/general/empty-file-corpus.py -v
       - name: Test Standard baseline with a structurally valid clean PDF
