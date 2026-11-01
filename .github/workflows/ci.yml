@@ -255,6 +255,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/malformed-object-stream-corpus.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
         run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
+      - name: Verify reusable encrypted PDF security corpus and fail-closed inspection
+        run: PYTHONPATH=. python3 tests/pdf/encrypted-documents.py -v
       - name: Verify Enhanced admission refuses a password-protected PDF
         run: PYTHONPATH=. python3 tests/enhanced/password-protected.py -v
       - name: Reject malformed direct and indirect PDF stream lengths
@@ -391,6 +393,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/inherits-enhanced.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
+      - name: Reject zero-byte PDF and other empty-file corpus fixtures before scanner handoff
+        run: PYTHONPATH=. python3 tests/general/empty-file-corpus.py -v
       - name: Test Standard baseline with a structurally valid clean PDF
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
       - name: Install pinned image decoder for Maximum simple-PDF verification
@@ -401,6 +405,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/consecutive-profile-switches.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
+      - name: Validate tracked truncated PDF security-corpus fixtures
+        run: PYTHONPATH=. python3 tests/security/truncated-pdfs.py -v
       - name: Verify planned Maximum rejects malformed PDFs and blocks sanitization
         run: |
           # The Maximum sanitizer imports Pillow even on an early input rejection.
@@ -414,6 +420,8 @@ jobs:
           PYTHONPATH=. python3 tests/maximum/output-validation-failure.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
+      - name: Verify incorrectly named PDFs and extension-spoofing corpus
+        run: PYTHONPATH=. python3 tests/pdf/incorrectly-named-files.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
