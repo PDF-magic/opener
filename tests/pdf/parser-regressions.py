@@ -32,7 +32,7 @@ def corrupted_documents():
         "invalid-header": GOOD.replace(b"%PDF-1.4\n", b"%PDF-1.8\n", 1),
         "missing-eof": GOOD.rsplit(b"%%EOF", 1)[0],
         "missing-trailer-root": GOOD.replace(b"/Root 1 0 R", b"/Xoot 1 0 R", 1),
-        "empty-page-tree": GOOD.replace(b"/Count 1", b"/Count 0", 1),
+        "missing-page-tree-link": GOOD.replace(b"/Pages 2 0 R", b"/Other 2 0 R", 1),
         "invalid-catalog": GOOD.replace(b"/Type /Catalog", b"/Type /Invalid", 1),
     }
     for name, contents in changes.items():
