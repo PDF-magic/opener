@@ -130,7 +130,8 @@ class MaximumInvalidOutputTests(unittest.TestCase):
             verify.assert_called_with(generated, 1)
 
     def test_mismatched_verified_page_count_cannot_be_offered(self):
-        generated = sample_pdf()
+        # Distinct from the original so the independent count gate is reached.
+        generated = sample_pdf() + b"\nsynthetic-rebuilt-copy"
         trusted, run = self.converter()
         with trusted, run, patch.object(
             sanitizer, "remove_active_pdf_functionality",
