@@ -29,7 +29,7 @@ _ERROR = "PDF structure could not be verified; opening was stopped."
 def corrupted_documents():
     """Mutate an otherwise valid PDF without introducing external payloads."""
     changes = {
-        "invalid-header": GOOD.replace(b"%PDF-1.4\\n", b"%PDF-1.8\\n", 1),
+        "invalid-header": GOOD.replace(b"%PDF-1.4\n", b"%PDF-1.8\n", 1),
         "missing-eof": GOOD.rsplit(b"%%EOF", 1)[0],
         "missing-trailer-root": GOOD.replace(b"/Root 1 0 R", b"/Xoot 1 0 R", 1),
         "empty-page-tree": GOOD.replace(b"/Count 1", b"/Count 0", 1),
@@ -62,7 +62,7 @@ class PDFParserRegressionTests(unittest.TestCase):
         for version in ("1.0", "1.1", "1.4", "1.7", "2.0"):
             with self.subTest(version=version):
                 contents = GOOD.replace(
-                    b"%PDF-1.4\\n", f"%PDF-{version}\\n".encode("ascii"), 1
+                    b"%PDF-1.4\n", f"%PDF-{version}\n".encode("ascii"), 1
                 )
                 if version != "1.4":
                     self.assertNotEqual(contents, GOOD)
