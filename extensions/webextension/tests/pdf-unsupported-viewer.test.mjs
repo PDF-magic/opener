@@ -212,7 +212,7 @@ test("opener-1070 exercises real Firefox unsupported inline viewers without scan
     "readFile(join(downloadDir, item.name))", "await rm(profile",
     "PASS Firefox unsupported inline viewer fallbacks"
   ]) assert.ok(smoke.includes(required), required);
-  assert.match(workflow, /node scripts\\/test-firefox-native-pdf-download\\.mjs "\\$FIREFOX_PATH"/);
+  assert.ok(workflow.includes('node scripts/test-firefox-native-pdf-download.mjs "$FIREFOX_PATH"'));
   for (const forbidden of [
     "--load-extension=", "sendNativeMessage(", "connectNative(",
     "permissions.request(", "downloads.open(", "clamscan(", "https://"
