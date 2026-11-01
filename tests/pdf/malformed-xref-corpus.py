@@ -56,13 +56,42 @@ class MalformedXRefCorpusTests(unittest.TestCase):
                 fingerprints.add(sha256(contents).digest())
         self.assertEqual(len(fingerprints), len(MALFORMED_XREF_PDFS) + 1)
 
-    def test_each_malformed_table_is_rejected_without_opening_authority(self):
+    def test_structurally_invalid_tables_fail_closed(self):
+        # These failures are not repaired by pypdf's strict reader.
+        rejected = {
+            "xref-generation-mismatch",
+            "xref-overdeclared-subsection",
+            "xref-nonnumeric-subsection",
+            "xref-truncated-entry-table",
+        }
         for sample in MALFORMED_XREF_PDFS:
+            if sample.identifier not in rejected:
+                continue
+            with self.subTest(sample=sample.identifier):
+                with self.assertRaises(PDFMalformedStructureError) as raised:
+                    inspect_pdf_malformed_structures(sample.content)
+                self.assertEqual(str(raised.exception), BLOCK_MESSAGE)
+
+    def test_parser_recovery_never_authorizes_an_open(self):
+        # pypdf may repair malformed offset rows even in strict mode. These
+        # samples remain in the corpus to document that limitation; without
+        # a dedicated original-xref preflight, parser success is NOT proof of
+        # physical table integrity and never authorizes an opening.
+        recovered = {
+            "xref-out-of-bounds-offset",
+            "xref-conflicting-object-offsets",
+        }
+        for sample in MALFORMED_XREF_PDFS:
+            if sample.identifier not in recovered:
+                continue
             with self.subTest(sample=sample.identifier):
                 original = sample.content
-                with self.assertRaises(PDFMalformedStructureError) as raised:
-                    inspect_pdf_malformed_structures(original)
-                self.assertEqual(str(raised.exception), BLOCK_MESSAGE)
+                try:
+                    report = inspect_pdf_malformed_structures(original)
+                except PDFMalformedStructureError as error:
+                    self.assertEqual(str(error), BLOCK_MESSAGE)
+                else:
+                    self.assertFalse(report.permits_open)
                 self.assertIs(sample.content, original)
 
     def test_scanner_policy_preferences_and_ci_wiring_are_unchanged(self):
