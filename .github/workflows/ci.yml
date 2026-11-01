@@ -217,6 +217,8 @@ jobs:
         run: python3 scripts/check-docs-layout.py
       - name: Verify documented application upgrade process
         run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
+      - name: Keep scanner installation instructions browser-neutral
+        run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
