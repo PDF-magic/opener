@@ -165,3 +165,48 @@ test("macOS Chrome download-to-safe-open CI retains actual filesystem quarantine
   assert.ok(!safeOpen.includes("os.removexattr("));
   assert.ok(retention.includes("test_macos_quarantine_attribute_survives_blocked_pdf"));
 });
+
+test("unbranded Chromium downloads PDFs in a real isolated CI browser", async () => {
+  const [script, chrome, workflow, manifest] = await Promise.all([
+    load("../scripts/test-chromium-native-pdf-download.mjs"),
+    load("../scripts/test-chrome-native-pdf-download.mjs"),
+    load("../../../.github/workflows/browser-native-pdf-downloads.yml"),
+    load("../manifest.json").then(JSON.parse)
+  ]);
+  const start = workflow.indexOf("  chromium-native-pdf-download:");
+  const end = workflow.indexOf("  firefox-native-pdf-download:", start);
+  assert.ok(start > 0 && end > start, "Chromium needs a distinct CI job");
+  const job = workflow.slice(start, end);
+  for (const expected of [
+    "Chromium browser-native PDF downloads",
+    "browser-actions/setup-chrome@v2",
+    "chrome-version: latest",
+    "CHROMIUM_BINARY_PATH:",
+    "CHROMIUM_TEST_NO_SANDBOX:",
+    "test-chromium-native-pdf-download.mjs"
+  ]) assert.ok(job.includes(expected), expected);
+  for (const expected of [
+    "execFileSync(binary, [\"--version\"]",
+    "/^Chromium\\s+\\d+",
+    "spawnSync(process.execPath, [sharedSmoke, binary]",
+    "test-chrome-native-pdf-download.mjs",
+    'CHROME_TEST_NO_SANDBOX: process.env.CHROMIUM_TEST_NO_SANDBOX === "1"',
+    'PDF_MAGIC_CHROME_HANDOFF_DIR: ""',
+    'stdio: "inherit"',
+    "assert.equal(result.status, 0"
+  ]) assert.ok(script.includes(expected), expected);
+  for (const expected of [
+    "createNativePdfDownloadFixture",
+    "Browser.downloadWillBegin", "Browser.downloadProgress",
+    'event.state === "completed"',
+    "readFile(join(downloadDir, item.name))",
+    "await rm(profile, { recursive: true, force: true })"
+  ]) assert.ok(chrome.includes(expected), expected);
+  for (const forbidden of [
+    "--load-extension=", "permissions.request(", "connectNative(",
+    "sendNativeMessage(", "downloads.open(", "clamscan(", "https://"
+  ]) assert.equal(script.includes(forbidden), false, forbidden);
+  assert.deepEqual(manifest.permissions, []);
+  assert.deepEqual(manifest.host_permissions, []);
+  assert.deepEqual(manifest.optional_permissions, ["downloads"]);
+});
