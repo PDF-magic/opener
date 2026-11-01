@@ -42,7 +42,7 @@ def integer_constants(source):
 class SanitizationDocumentationTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    cls.guide = GUIDE.read_text(encoding="utf-8")
+    cls.guide = " ".join(GUIDE.read_text(encoding="utf-8").split())
     cls.index = INDEX.read_text(encoding="utf-8")
 
   def test_guide_is_discoverable_and_maximum_remains_unavailable(self):
