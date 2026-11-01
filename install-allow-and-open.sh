@@ -426,6 +426,9 @@ python3 "$script_dir/offer-restore-pdf-handler.py" \
     "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
 # Display the effective association whether restoration was accepted or not.
 python3 "$install_dir/pdf-handler-status.py"
+# Record hashes of exactly the installed native executables for safe later removal.
+# This is journalled with other overwritten programs for rollback on failure.
+python3 "$script_dir/scripts/retire_installed_helpers.py" --record-install
 # Only record success after all migration operations finish.
 python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
