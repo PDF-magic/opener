@@ -391,6 +391,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
+      - name: Install pinned Maximum sanitizer image dependency for unsupported-feature test
+        run: python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
       - name: Block unsupported portfolio PDFs under planned Maximum protection
         run: PYTHONPATH=. python3 tests/protection/maximum-unsupported-feature.py -v
       - name: Identify PDF format and declared version from file bytes
