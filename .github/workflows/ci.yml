@@ -106,6 +106,9 @@ jobs:
           python3 scanner_startup_benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" \
             --files 5 --cycles 3
+          python3 peak_memory_benchmark.py \
+            --scanner /usr/bin/clamscan --database "$benchmark_db" \
+            --samples 3
 
   firefox-pdf-viewer-smoke:
     # Use actual Mozilla Firefox and its bundled PDF.js, not a static mock
@@ -540,6 +543,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/performance-implications.py -v
       - name: Verify opt-in ClamAV startup benchmark is isolated and unmeasured by default
         run: PYTHONPATH=. python3 tests/scanner/startup-benchmark.py -v
+      - name: Verify opt-in ClamAV peak-RSS accounting and fail-closed behavior
+        run: PYTHONPATH=. python3 tests/scanner/peak-memory.py -v
       - name: Verify displayed checks for each protection level match the policy schema
         run: PYTHONPATH=. python3 tests/protection/settings-checks.py -v
       - name: Audit increased system text size layout
