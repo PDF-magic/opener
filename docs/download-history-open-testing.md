@@ -24,10 +24,24 @@ verified native scan or a native-controlled opening command, that browser
 URLs/paths are not included in assessment results, and that the inactive
 manifest and user preferences remain unchanged.
 
-**These tests do not drive a real browser downloads page.** They prove only
-the extension integration's current boundaries, not that any installed browser
-was successfully intercepted. CI passing is not evidence of end-to-end
-browser opening enforcement.
+The synthetic Node regressions alone do not drive a real browser download
+page or establish browser-wide opening enforcement. **Section 16.4 now adds
+a separate live Chromium browser regression (opener-1069)** in the existing
+[Chromium CI workflow](../.github/workflows/chromium-webextension.yml).
+It downloads an innocuous, locally generated PDF from loopback, verifies
+the complete bytes, closes the source tab, finds the persisted entry in
+`chrome://downloads/`, and performs a trusted click on the history
+**Open** link. The test confirms that the browser process records exactly one
+`Download.DOMEvent` **Open file** handler event, through the actual Chromium
+DevTools histogram after the trusted click. This verifies browser-owned
+opening dispatch without modifying the WebUI internals or re-fetching the
+document. Chromium's history data has no `opened` field, and OS-level
+external application success is not inferred from this command. The run uses a disposable profile and makes no
+PDF Magic scan, native handoff, or safety claim.
+
+The live test verifies browser-owned opening in the tested Chromium version,
+not every OS-associated external opener, Chrome/Firefox/Safari history UI,
+or interception by PDF Magic. It does not certify a clean scanner verdict.
 
 ## Manual installed-browser acceptance procedure
 

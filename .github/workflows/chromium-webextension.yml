@@ -53,6 +53,12 @@ jobs:
           CHROMIUM_BINARY_PATH: ${{ steps.chromium.outputs.chrome-path }}
         timeout-minutes: 3
         run: node scripts/test-chromium.mjs
+      - name: Open a downloaded PDF from real Chromium history
+        working-directory: extensions/webextension
+        env:
+          CHROMIUM_BINARY_PATH: ${{ steps.chromium.outputs.chrome-path }}
+        timeout-minutes: 3
+        run: node scripts/test-chromium-history-open.mjs "$CHROMIUM_BINARY_PATH"
       - name: Upgrade the same unpacked extension in a disposable Chromium profile
         working-directory: extensions/webextension
         env:
