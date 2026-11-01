@@ -3,6 +3,7 @@
 
 import importlib.util
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -49,6 +50,52 @@ class ReleaseGateTests(unittest.TestCase):
     ):
       with self.subTest(tag=tag, ref=ref), self.assertRaises(gate.GateError):
         gate.ensure_context(repo, ref, sha, tag, READY)
+
+  def test_release_tag_grammar_is_canonical_stable_semver(self):
+    for tag in ("v0.0.0", "v0.1.0", "v1.2.3", "v10.20.30"):
+      with self.subTest(tag=tag):
+        gate.ensure_context(gate.REPOSITORY, "refs/heads/main", SHA, tag, READY)
+    for tag in ("1.2.3", "v1.2", "v1.2.3.4", "v01.2.3", "v1.02.3",
+                "v1.2.03", "v1.2.3-rc.1", "v1.2.3+build", "v1.2.3 ",
+                "v１.2.3", "v1.2.-3"):
+      with self.subTest(tag=tag), self.assertRaises(gate.GateError):
+        gate.ensure_context(gate.REPOSITORY, "refs/heads/main", SHA, tag, READY)
+
+  def test_release_versions_match_all_published_component_metadata(self):
+    gate.ensure_version_metadata("v0.1.0", ROOT)
+    with self.assertRaises(gate.GateError):
+      gate.ensure_version_metadata("v0.1.1", ROOT)
+    with tempfile.TemporaryDirectory() as directory:
+      root = Path(directory)
+      extension = root / "extensions/webextension"
+      project = root / "PDFMagicOpener.xcodeproj"
+      extension.mkdir(parents=True)
+      project.mkdir()
+      (extension / "package.json").write_text('{"version":"0.1.0"}', encoding="utf-8")
+      (extension / "manifest.json").write_text('{"version":"0.1.0"}', encoding="utf-8")
+      (project / "project.pbxproj").write_text(
+        "MARKETING_VERSION = 0.1.0;\\nMARKETING_VERSION = 0.1.0;\\n", encoding="utf-8")
+      gate.ensure_version_metadata("v0.1.0", root)
+      for filename in ("package.json", "manifest.json"):
+        path = extension / filename
+        path.write_text('{"version":"0.1.1"}', encoding="utf-8")
+        with self.subTest(filename=filename), self.assertRaises(gate.GateError):
+          gate.ensure_version_metadata("v0.1.0", root)
+        path.write_text('{"version":"0.1.0"}', encoding="utf-8")
+      (project / "project.pbxproj").write_text(
+        "MARKETING_VERSION = 0.1.0;\\nMARKETING_VERSION = 0.1.1;\\n", encoding="utf-8")
+      with self.assertRaises(gate.GateError):
+        gate.ensure_version_metadata("v0.1.0", root)
+
+  def test_release_versioning_policy_is_discoverable(self):
+    guide = (ROOT / "docs/release-versioning.md").read_text(encoding="utf-8")
+    index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+    self.assertIn("(release-versioning.md)", index)
+    for term in ("MAJOR", "MINOR", "PATCH", "vX.Y.Z", "MARKETING_VERSION",
+                 "CURRENT_PROJECT_VERSION", "package.json", "manifest.json",
+                 "NOT RELEASE READY", "source-only", "prerelease"):
+      with self.subTest(term=term):
+        self.assertIn(term, guide)
 
   def test_distribution_blockers_must_be_explicitly_cleared(self):
     for content in ("**Status: NOT RELEASE READY.**", "", READY + " NOT RELEASE READY"):
