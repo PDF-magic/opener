@@ -387,6 +387,7 @@
         ALWAYS_SEARCH_USER_PATHS = NO;
         CLANG_ENABLE_MODULES = YES;
         CODE_SIGN_STYLE = Automatic;
+        CODE_SIGN_ENTITLEMENTS = PDFMagicOpenerApp/PDFMagicOpener.entitlements;
         COPY_PHASE_STRIP = NO;
         DEBUG_INFORMATION_FORMAT = dwarf;
         GENERATE_INFOPLIST_FILE = YES;
@@ -413,6 +414,8 @@
         ALWAYS_SEARCH_USER_PATHS = NO;
         CLANG_ENABLE_MODULES = YES;
         CODE_SIGN_STYLE = Automatic;
+        ENABLE_HARDENED_RUNTIME = YES;
+        CODE_SIGN_ENTITLEMENTS = PDFMagicOpenerApp/PDFMagicOpener.entitlements;
         COPY_PHASE_STRIP = YES;
         DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
         GENERATE_INFOPLIST_FILE = YES;
@@ -620,6 +623,7 @@
         APPLICATION_EXTENSION_API_ONLY = YES;
         CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;
         CODE_SIGN_STYLE = Automatic;
+        ENABLE_HARDENED_RUNTIME = YES;
         CURRENT_PROJECT_VERSION = 1;
         GENERATE_INFOPLIST_FILE = NO;
         INFOPLIST_FILE = extensions/safari/Info.plist;

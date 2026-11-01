@@ -30,3 +30,21 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/extension-distribution.py -v
       - name: Check Safari embedded app extension target
         run: PYTHONPATH=. python3 tests/general/safari-extension-target.py -v
+      - name: Audit macOS release entitlement and runtime configuration
+        run: PYTHONPATH=. python3 tests/general/macos-signing.py -v
+
+  macos-release-signing:
+    name: Verify signed Release app and Safari extension
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit least-privilege signing configuration
+        run: PYTHONPATH=. python3 tests/general/macos-signing.py -v
+      - name: Build disposable ad-hoc-signed Release app without credentials
+        run: |
+          set -euo pipefail
+          xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Release -destination 'generic/platform=macOS' -derivedDataPath "$RUNNER_TEMP/PDFMagicSigningDerived" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
+      - name: Verify compiled runtime and exact signed entitlement allowlists
+        run: |
+          python3 scripts/verify_macos_app_signature.py --app "$RUNNER_TEMP/PDFMagicSigningDerived/Build/Products/Release/PDFMagicOpener.app"
