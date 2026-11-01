@@ -202,11 +202,29 @@ def cleanup_abandoned_temporary_pdfs() -> int:
     output is old. Unknown contents, changed identities and permission errors
     are always preserved rather than recursively removed.
     """
+    return _reap_abandoned_temporary_pdfs(_ABANDONED_AFTER_SECONDS)
+
+
+def cleanup_uninstall_temporary_pdfs() -> int:
+    """Explicitly retire orphaned owned PDFs after viewers/scans have stopped.
+
+    This is not a system-temp sweep. A live creator or an active in-process
+    lease is preserved even during an approved uninstall. The caller must
+    separately confirm that all viewers have finished reading their copies.
+    """
+    # No installation means no new on-disk root is needed.
+    if not os.path.lexists(_PRIVATE_ROOT):
+        return 0
+    return _reap_abandoned_temporary_pdfs(0)
+
+
+def _reap_abandoned_temporary_pdfs(minimum_age_seconds: int) -> int:
+    """Reap only exact owned output entries, pinned to the private root."""
     with _LOCK:
         root_fd = _open_private_root()
         removed = 0
         try:
-            cutoff = time.time() - _ABANDONED_AFTER_SECONDS
+            cutoff = time.time() - minimum_age_seconds
             active = {record[0] for record in _LEASES.values()}
             for name in os.listdir(root_fd):
                 match = _ORPHAN_DIRECTORY.fullmatch(name)
