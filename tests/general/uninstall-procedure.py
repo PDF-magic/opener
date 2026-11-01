@@ -211,7 +211,7 @@ class UninstallProcedureTests(unittest.TestCase):
       for bad in ("maybe", EOFError(), KeyboardInterrupt()):
         with self.subTest(bad=str(bad)):
           out, err = StringIO(), StringIO()
-          with patch("builtins.input", side_effect=bad if isinstance(bad, Exception) else None,
+          with patch("builtins.input", side_effect=bad if isinstance(bad, BaseException) else None,
                      return_value=bad if isinstance(bad, str) else None), \
                redirect_stdout(out), redirect_stderr(err):
             self.assertEqual(module.main([]), 1)
@@ -221,7 +221,7 @@ class UninstallProcedureTests(unittest.TestCase):
           self.assertEqual(scanner.read_bytes(), b"selected browser")
       result = subprocess.run(
         [sys.executable, str(helper)],
-        input="no\\n", text=True, capture_output=True, check=False,
+        input="no\n", text=True, capture_output=True, check=False,
         env={**os.environ, "HOME": str(home)},
       )
       self.assertEqual(result.returncode, 0, result.stderr)
