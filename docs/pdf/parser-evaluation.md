@@ -1,8 +1,8 @@
 # PDF parsing foundation: library selection (opener-0406)
 
-**Decision: retain pypdf 6.21.3**, already introduced by [PR #179](https://github.com/PDF-magic/opener/pull/179)
+**Decision: retain pypdf, update reviewed pin to 6.21.4.** The parser was introduced by [PR #179](https://github.com/PDF-magic/opener/pull/179)
 for optional, strict Enhanced PDF structure inspection. The dependency is
-**exactly pinned** as `pypdf==6.21.3` in `requirements-enhanced-pdf.txt`.
+**exactly pinned** as `pypdf==6.21.4` in `requirements-enhanced-pdf.txt`.
 This decision confirms that selection; it neither adds a competing parser
 nor enables the planned Enhanced profile.
 
@@ -15,7 +15,7 @@ malware verdict.
 
 | Maintained library | PDF version / feature coverage | Malformed-document behavior | Large-document memory tradeoff | License and package impact |
 | --- | --- | --- | --- | --- |
-| **pypdf 6.21.3 (selected)** | Reads traditional PDF 1.x structures and many PDF 2.0 constructs; PDF 2.0 feature coverage is incomplete. Supports object streams; not every optional-content or incremental-update feature is fully handled. The application's *current* header validator admits only PDF 1.0–1.7 and 2.0. | `PdfReader(..., strict=True)` raises on many syntax violations; permissive `strict=False` can recover with warnings, but is **not used** for the security-relevant structure stage. Strict mode is not proof that every inconsistency is detected. | Pure Python: Python object graphs and input `BytesIO` can increase peak RSS with object/page count. Input size is limited to 16 MiB and page count to 1,024, but these **do not bound adversarial heap or CPU consumption**. | BSD-3-Clause; pure-Python distribution, no extra required binary PDF runtime for current parsing. Optional extras are not installed by the pin. |
+| **pypdf 6.21.4 (selected)** | Reads traditional PDF 1.x structures and many PDF 2.0 constructs; PDF 2.0 feature coverage is incomplete. Supports object streams; not every optional-content or incremental-update feature is fully handled. The application's *current* header validator admits only PDF 1.0–1.7 and 2.0. | `PdfReader(..., strict=True)` raises on many syntax violations; permissive `strict=False` can recover with warnings, but is **not used** for the security-relevant structure stage. Strict mode is not proof that every inconsistency is detected. | Pure Python: Python object graphs and input `BytesIO` can increase peak RSS with object/page count. Input size is limited to 16 MiB and page count to 1,024, but these **do not bound adversarial heap or CPU consumption**. | BSD-3-Clause; pure-Python distribution, no extra required binary PDF runtime for current parsing. Optional extras are not installed by the pin. |
 | **pikepdf (QPDF)** | QPDF-based PDF 1.x and 2.0 structural processing; feature-specific verification still necessary. Strong low-level object and stream manipulation. | Automatically repairs many kinds of PDF damage on open, which can conceal original anomalies unless the workflow separately detects and rejects repair. | Native QPDF allocations reduce Python object overhead in some workflows but retain native buffers and can allocate heavily during repair or decoding. Do not infer a universal RSS advantage. | MPL-2.0 for pikepdf plus Apache-2.0 QPDF and other bundled binary dependencies, varying by wheel/platform; license notices and native packaging required. |
 | **PyMuPDF (MuPDF)** | Handles PDF 1.x and 2.0 documents along with other formats; rendering capabilities exceed this metadata-only stage, and feature-specific compatibility still needs tests. | MuPDF can repair invalid cross-reference data; `Document.is_repaired` identifies some repaired files. This recovery requires explicit rejection if used for an admission check. | Native engine plus optional rendering/decompression caches; can be efficient for targeted page reads but rendering/extraction can consume far more RAM. No rendering is needed for the selected stage. | AGPL-3.0 or paid commercial license, with bundled native engine and extra compatibility review; this AGPL project's license alone is not a substitute for review of combined distribution obligations. |
 
@@ -66,10 +66,11 @@ rely on benchmarks or byte-count limits alone.
 
 pypdf is the smallest change for the existing pure-Python structural
 inspection, offers strictness controls, and minimizes binary packaging and
-additional license surface. Its 6.21.3 release (2026-10-27) includes
-cross-reference entry limits and other security robustness fixes:
-[release notes](https://pypdf.readthedocs.io/en/6.21.3/meta/CHANGELOG.html),
-[PyPI release with provenance](https://pypi.org/project/pypdf/6.21.3/).
+additional license surface. Its 6.21.4 release (2026-10-28) fixes three reported denial-of-service
+advisories (CVE-2026-119203, CVE-2026-119204, CVE-2026-119205),
+and retains earlier cross-reference entry limits:
+[release notes](https://pypdf.readthedocs.io/en/6.21.4/meta/CHANGELOG.html),
+[PyPI release with provenance](https://pypi.org/project/pypdf/6.21.4/).
 Earlier pypdf releases have documented memory-exhaustion advisories, including
 [CVE-2026-31826](https://github.com/py-pdf/pypdf/security/advisories/GHSA-hqmh-ppp3-xvm7)
 (fixed in 6.8.0); selecting a newer pin does **not** eliminate the need
