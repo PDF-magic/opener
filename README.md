@@ -4,6 +4,19 @@ Safe & reliable document launcher for macOS.
 
 Scan PDFs locally with ClamAV before opening them in a configurable application (Brave by default), with a Twilight Sparkle reading animation while the check runs. The included Finder action also scans other file types before opening them in their assigned app.
 
+## Supported macOS versions
+
+PDF Magic Opener supports **macOS 13 (Ventura) or later**. macOS 13.0 is
+the minimum deployment target for the SwiftUI application and the minimum
+accepted by the installer preflight. macOS 12 (Monterey) and earlier are
+not supported. See [installation prerequisites](docs/installation-prerequisites.md)
+for the required Apple command-line tooling and ClamAV setup.
+
+The Xcode project targets macOS 13.0 and later, but CI builds and tests
+on GitHub's current macOS runners rather than every eligible OS release.
+Compatibility with each individual macOS version is not independently
+verified by that CI coverage.
+
 For technical reference material, see the [organized documentation index](docs/README.md).
 
 Python regression tests are grouped by topic in [`tests/`](tests/README.md). Run one using
