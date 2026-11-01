@@ -105,3 +105,20 @@ serialization must reflect the renamed location. Temporarily removing the
 A browser-like filename with an unrelated bundle identifier remains excluded.
 No real installation, Launch Services registration, user preference, scan,
 PDF handler, or application executable is changed or invoked.
+
+## Newly installed browser while preferences are open (opener-1056)
+
+The macOS CI test `test-newly-installed-browser.swift` starts with a disposable
+Brave bundle and an explicitly saved Brave preference. While the same browser
+preferences view remains open, it copies a synthetic Edge bundle into a user
+Applications directory. A mismatched browser name and a partially installed,
+nonexecutable Edge bundle must not appear. Once the executable is ready, the
+next live discovery tick must add Edge with its verified bundle identifier,
+location, name and version; the next poll and a fresh preferences view must
+retain both browsers without duplicates.
+
+This is a deterministic **installation/discovery regression**, not a claim to
+install or render PDFs in real Edge. PDF opening still requires independent
+bundle and PDF-handler verification; discovering the new browser cannot switch
+the saved PDF destination, run either executable, change macOS associations,
+or bypass scanning and quarantine checks.
