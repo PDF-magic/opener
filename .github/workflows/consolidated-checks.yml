@@ -33,6 +33,8 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+      - name: Verify actionable failure-report formatting and metadata handling
+        run: PYTHONPATH=. python3 tests/general/ci-failure-report.py -v
       - name: Verify dependency-map behavior
         run: PYTHONPATH=. python3 tests/general/ci-test-scope.py -v
 
@@ -451,3 +453,34 @@ jobs:
       - name: Confirm all applicable suites passed
         if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
         run: echo "All applicable consolidated security checks passed."
+
+
+  publish-test-failures:
+    name: Publish actionable CI test-failure details
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    needs:
+      - detect-scope
+      - pdf-structure-tests
+      - protection-policy-tests
+      - maximum-portable-tests
+      - macos-native-tests
+      - consolidated-checks-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize failed jobs and their failing steps
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_failure_report.py
+      - name: Publish downloadable failure summary
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-failures
+          path: ${{ runner.temp }}/ci-test-failures.md
+          if-no-files-found: warn
+          retention-days: 7
