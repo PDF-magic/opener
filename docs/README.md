@@ -11,9 +11,13 @@ The reference pages are grouped by feature rather than keeping every page in one
 | [Protection](protection/) | Protection policies, choices, and exceptions |
 | [Scanner](scanner/) | Scanner arguments, safety, and failure handling |
 
+For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/checks.md), including which safeguards are currently enforced and which inspections are unavailable.
+
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
 - [macOS security controls](macos-security-controls.md) — what the scan gate does and does not do alongside Quarantine, Gatekeeper, notarization, XProtect, Launch Services, TCC, and SIP.\n- [Known unsupported PDF routes](browser-unsupported-routes.md) — the audited nine-browser, 27-route register of inactive or unverified automatic scan-before-render entry paths, with evidence and fail-closed next steps.
+
+- [Antivirus signature limitations](scanner/signature-limitations.md) — why a clean ClamAV result does not guarantee safety, including freshness and cache limitations.
 
 - [PDF structural analysis limitations](pdf/analysis-limitations.md) — what structural parsing can and cannot establish, supported limits, and the active protection boundary.
 
