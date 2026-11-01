@@ -7,6 +7,12 @@ security advisories. This is separate from the offline dependency **licensing**
 gate (`scripts/check_dependency_licenses.py`): an acceptable license says
 nothing about vulnerability status.
 
+The first live audit identified CVE-2026-119203, CVE-2026-119204, and
+CVE-2026-119205 in the previously reviewed `pypdf==6.21.3` current pin.
+All three are fixed by upstream in `pypdf==6.21.4`, so this same scoped
+security change updates that pin and its offline license-review evidence.
+The historical test-only pins are unchanged.
+
 The workflow derives **every explicitly reviewed Python version** from the
 license gate's checked CI requirements and workflow installs, then writes two
 scoped temporary manifests (never committed):

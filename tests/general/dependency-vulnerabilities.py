@@ -23,25 +23,25 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     temp = tempfile.TemporaryDirectory(prefix="opener-vulnerabilities-")
     self.addCleanup(temp.cleanup)
     self.root = Path(temp.name)
-    self.expected = {("pypdf", "6.21.3")}
+    self.expected = {("pypdf", "6.21.4")}
     self.report = self.root / "report.json"
 
   def write_report(self, dependencies):
     self.report.write_text(json.dumps({"dependencies": dependencies}), encoding="utf-8")
 
-  def package(self, name="pypdf", version="6.21.3", vulns=None):
+  def package(self, name="pypdf", version="6.21.4", vulns=None):
     return {"name": name, "version": version, "vulns": vulns or []}
 
   def test_current_and_legacy_pins_come_from_license_review(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.3\n")
-    versions = {("pypdf", "6.21.3"), ("pypdf", "5.9.0"),
+    (self.root / "requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.4\n")
+    versions = {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
                 ("Pillow", "11.3.0"), ("cryptography", "46.0.4")}
     with mock.patch.object(audit.licenses, "check", return_value=versions):
       current, legacy = audit.create_manifests(self.root / "manifests", self.root)
-    self.assertEqual(current, {("pypdf", "6.21.3")})
+    self.assertEqual(current, {("pypdf", "6.21.4")})
     self.assertEqual(legacy, {("pypdf", "5.9.0"), ("pillow", "11.3.0"),
                               ("cryptography", "46.0.4")})
-    self.assertEqual((self.root / "manifests/current.txt").read_text(), "pypdf==6.21.3\n")
+    self.assertEqual((self.root / "manifests/current.txt").read_text(), "pypdf==6.21.4\n")
     self.assertIn("cryptography==46.0.4", (self.root / "manifests/legacy.txt").read_text())
 
   def test_clean_scan_passes(self):
@@ -58,7 +58,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     self.assertEqual(audit.verify_report(self.report, self.expected, 1, False), 1)
 
   def test_missing_package_wrong_version_and_duplicate_fail(self):
-    for entries in ([], [self.package(version="6.21.4")],
+    for entries in ([], [self.package(version="6.21.5")],
                     [self.package(), self.package()]):
       with self.subTest(entries=entries):
         self.write_report(entries)
