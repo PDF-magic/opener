@@ -97,7 +97,7 @@ test("opener-1051 opens a synthetic file:// PDF in real Brave CI without changin
   assert.match(workflow, /Install official Brave stable browser/);
   assert.match(docs, /opener-1051/);
   assert.match(docs, /file:\/\//);
-  assert.match(docs, /not.*ClamAV/i);
+  assert.match(docs, /a clean ClamAV scan/);
   assert.doesNotMatch(scenario, /sendNativeMessage|connectNative|permissions\.request|downloads\.open/);
 });
 
