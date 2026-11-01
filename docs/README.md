@@ -21,6 +21,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Antivirus signature limitations](scanner/signature-limitations.md) — why a clean ClamAV result does not guarantee safety, including freshness and cache limitations.
 
+- [Signature update process](scanner/signature-update-process.md) — how FreshClam checks, safely verifies, publishes, and reports signature updates.
+
 - [Browser download monitoring support](browser-download-monitoring-support.md) — which browsers expose relevant download events, what still needs verification, and why monitoring is inactive.
 
 - [PDF structural analysis limitations](pdf/analysis-limitations.md) — what structural parsing can and cannot establish, supported limits, and the active protection boundary.

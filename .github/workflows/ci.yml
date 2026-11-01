@@ -227,6 +227,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/sanitization-documentation.py -v
       - name: Verify documented limitations of antivirus signatures
         run: PYTHONPATH=. python3 tests/general/antivirus-signature-documentation.py -v
+      - name: Verify documented signature update process
+        run: PYTHONPATH=. python3 tests/general/signature-update-documentation.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Verify actionable failure-report formatting and metadata handling
