@@ -82,3 +82,36 @@ INCORRECTLY_NAMED_FILES = (
         "embedded-pdf-header.pdf", b"Harmless non-PDF prefix\n%PDF-1.4\n", False
     ),
 )
+
+
+@dataclass(frozen=True)
+class InvalidPDFHeader:
+    """A harmless header-corrupted PDF with an expected identification status."""
+
+    identifier: str
+    content: bytes
+    expected_header_status: str
+
+
+# Only the first nine bytes of the valid baseline are replaced. The entire
+# PDF object, xref, trailer and EOF region is shared with the valid corpus;
+# none of these samples contains an active payload or downloaded content.
+# Keep this collection separate from REFERENCE_PDFS: that existing collection
+# must remain exclusively valid and unchanged for profile admission tests.
+_INVALID_HEADER_CASES = (
+    ("missing-magic", b"NOTPD-1.4", "notPdf"),
+    ("wrong-magic", b"%PDX-1.4\n", "notPdf"),
+    ("leading-bom", b"\xef\xbb\xbfPDF1.4", "notPdf"),
+    ("unsupported-minor-version", b"%PDF-1.8\n", "undetermined"),
+    ("unsupported-major-version", b"%PDF-2.1\n", "undetermined"),
+    ("nonnumeric-version", b"%PDF-1.x\n", "undetermined"),
+    ("nonascii-version", b"%PDF-\xff.4\n", "undetermined"),
+    ("space-instead-of-newline", b"%PDF-1.4 ", "undetermined"),
+    ("nul-instead-of-newline", b"%PDF-1.4\x00", "undetermined"),
+)
+
+INVALID_PDF_HEADERS = tuple(
+    InvalidPDFHeader(identifier, corrupted_header + REFERENCE_PDFS[0].content[9:],
+                     expected_status)
+    for identifier, corrupted_header, expected_status in _INVALID_HEADER_CASES
+)
