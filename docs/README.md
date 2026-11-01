@@ -15,6 +15,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [macOS security controls](macos-security-controls.md) — what the scan gate does and does not do alongside Quarantine, Gatekeeper, notarization, XProtect, Launch Services, TCC, and SIP.\n- [Known unsupported PDF routes](browser-unsupported-routes.md) — the audited nine-browser, 27-route register of inactive or unverified automatic scan-before-render entry paths, with evidence and fail-closed next steps.
 
+- [Browser download monitoring support](browser-download-monitoring-support.md) — which browsers expose relevant download events, what still needs verification, and why monitoring is inactive.
+
 ## Filename conventions
 
 - Use lowercase **kebab-case** for documentation, scripts, and non-importable assets.
