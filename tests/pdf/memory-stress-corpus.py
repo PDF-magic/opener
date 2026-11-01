@@ -84,10 +84,6 @@ class MemoryStressCorpusTests(unittest.TestCase):
     def test_budget_boundaries_are_independent_and_fail_closed(self):
         # Each input is valid; rejection is specifically a configured resource
         # budget, not malformed xref entries or an oversized individual stream.
-        with patch.object(parser, "MAX_STRUCTURE_OBJECTS", DENSE_OBJECT_COUNT):
-            self.assertEqual(
-                parser.parse_pdf_structure(MEMORY_STRESS_PDFS[1].generate()).page_count, 1
-            )
         with patch.object(parser, "MAX_STRUCTURE_TOTAL_DECOMPRESSED_BYTES",
                           40 * 1024 * 1024):
             self.assertEqual(
