@@ -83,6 +83,16 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     with self.assertRaises(audit.VulnerabilityAuditError):
       audit.verify_report(self.report, self.expected, 0, False)
 
+  def test_security_pin_upgrade_keeps_paired_benchmark_environment_equal(self):
+    workflow = (ROOT / ".github/workflows/performance-regression-thresholds.yml").read_text()
+    self.assertIn("cmp -s baseline/medium_pdf_benchmark.py candidate/medium_pdf_benchmark.py",
+                  workflow)
+    self.assertIn("cmp -s baseline/pdf_parser_memory_benchmark.py candidate/pdf_parser_memory_benchmark.py",
+                  workflow)
+    self.assertNotIn("cmp -s baseline/requirements-enhanced-pdf.txt", workflow)
+    self.assertIn("working-directory: candidate", workflow)
+    self.assertIn("Run alternating, independent 5-sample comparisons", workflow)
+
   def test_unreviewed_active_pin_is_rejected(self):
     (self.root / "requirements-enhanced-pdf.txt").write_text("other==9.9\n")
     with mock.patch.object(audit.licenses, "check", return_value=self.expected):
