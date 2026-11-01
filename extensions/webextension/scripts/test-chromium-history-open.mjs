@@ -85,9 +85,23 @@ try {
   const history = await context.newPage();
   await history.goto("chrome://downloads/", { waitUntil: "domcontentloaded" });
   assert.equal(history.url(), "chrome://downloads/");
-  const row = history.locator("downloads-item").filter({ hasText: item.name });
-  await until(async () => (await row.count()) === 1,
-    "completed PDF appearing in native download history");
+  // This is a fresh disposable profile containing exactly one download.
+  // Do not filter Polymer shadow-DOM text: its filename is not guaranteed to
+  // be exposed through Playwright's hasText filter on every Chromium version.
+  const row = history.locator("downloads-item");
+  try {
+    await until(async () => (await row.count()) === 1,
+      "completed PDF appearing in native download history");
+  } catch (error) {
+    const diagnostics = await history.evaluate(() => ({
+      url: location.href,
+      page: document.body?.innerText?.slice(0, 400) ?? "",
+      manager: Boolean(document.querySelector("downloads-manager")),
+      items: document.querySelector("downloads-manager")?.shadowRoot
+        ?.querySelectorAll("downloads-item").length ?? 0
+    }));
+    throw new Error(error.message + " (" + JSON.stringify(diagnostics) + ")");
+  }
   assert.equal(await row.locator("#file-link").count(), 1,
     "History must expose its own browser-controlled Open link");
   const before = await row.evaluate(element => ({
