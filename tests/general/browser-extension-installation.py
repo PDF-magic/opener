@@ -92,7 +92,10 @@ class BrowserExtensionInstallationDocumentationTests(unittest.TestCase):
   def test_required_scanner_ci_runs_installation_docs_test(self):
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     self.assertIn("scanner-tests:", workflow)
-    section = workflow.split("  scanner-tests:", 1)[1].split("\n  ", 1)[0]
+    section = workflow.split("  scanner-tests:", 1)[1]
+    next_job = __import__("re").search(r"(?m)^  [a-z][a-z0-9-]*:", section)
+    if next_job:
+      section = section[:next_job.start()]
     self.assertIn(
       "PYTHONPATH=. python3 tests/general/browser-extension-installation.py -v",
       section,
