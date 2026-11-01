@@ -309,6 +309,15 @@ Install local malware scanning for the existing **Allow and Open** Finder action
 bash install-allow-and-open.sh
 ```
 
+Brave is the default PDF destination, **not an installation prerequisite**.
+The installer does not install Brave or require Brave to set up scanning. If
+Brave is unavailable, select a different installed, verified PDF-capable
+application using **General → Default PDF browser** or the existing
+`target-app.txt` preference described under
+[PDF target application](#pdf-target-application) before opening PDFs.
+An unavailable destination blocks opening without bypassing the scan gate or
+silently overwriting a saved application choice.
+
 To **Repair Installation** from the same complete, trusted source checkout,
 double-click `Repair Installation.command` in Finder or run
 `./Repair\ Installation.command` in Terminal. This explicit, confirmed
@@ -328,7 +337,7 @@ to you (for example, run `brew install clamav` yourself and retry). The
 installer never automatically elevates itself, installs Homebrew, or updates
 existing scanner packages. See [installation privilege and consent](docs/clamav-install-consent.md).
 
-Double-click PDFs to scan them locally with ClamAV and open them in the selected application (Brave by default).
+Double-click PDFs to scan them locally with ClamAV and open them in the selected, verified PDF-capable application. Without a saved choice, Brave remains the default destination; an unavailable destination cannot authorize PDF opening.
 For the Finder double-click verification procedure and its automated Launch Services
 regression test, see [Finder double-click testing](docs/finder-double-click-test.md). For drag-and-drop onto the application icon, see [PDF drag-and-drop testing](docs/pdf/drag-drop-test.md). A small Twilight Sparkle reading loop appears immediately while the scan runs, with the document name and an animated progress bar. Repeated clicks on the same document during a scan open only one copy; the window closes when the check finishes. The default PDF application becomes `~/Applications/PDF Magic Opener.app`, which runs the scan before handing the file to the selected application. The installer now checks that macOS actually registered PDF Magic Opener after requesting the default-handler change; a mismatch or unreadable association fails installation rather than reporting success. Both **Allow and Open** Finder entry points use the same scan gate; other selected file types use their assigned application after scanning.
 
@@ -442,7 +451,7 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
 
-The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. To update manually:
+The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. See the [signature update process](docs/scanner/signature-update-process.md) for scheduling, verified publication, failure handling, and recovery. To update manually:
 
 The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
 
@@ -1010,7 +1019,7 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 | `tests/scan/concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |
 | `tests/general/brave-pdf-opener.py` | Verify native progress visibility and duplicate-open handling |
 
-The installer requires an existing **Allow and Open** Quick Action at `~/Library/Services/Allow and Open.workflow`; Brave Browser is needed when using the default target. Run the commands above from this repository's root.
+The installer requires an existing **Allow and Open** Quick Action at `~/Library/Services/Allow and Open.workflow`; it does not require an installed Brave browser. To open a PDF, the selected application must be installed and pass PDF-capability verification. Run the commands above from this repository's root.
 
 For compatibility with existing installations, runtime scripts and signatures remain in `~/Library/Application Support/Studio/allow-and-open`, logs remain in `~/Library/Logs/Studio`, and the app and LaunchAgent keep their `local.studio` identifiers. The installer safely relocates a verified legacy `Open PDFs in Brave.app` bundle to `PDF Magic Opener.app` when upgrading. The configurable PDF handoff preserves the established application identity and scan controls.
 
