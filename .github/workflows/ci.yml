@@ -392,7 +392,10 @@ jobs:
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
       - name: Verify planned Maximum rejects malformed PDFs and blocks sanitization
-        run: PYTHONPATH=. python3 tests/protection/maximum-malformed-pdf.py -v
+        run: |
+          # The Maximum sanitizer imports Pillow even on an early input rejection.
+          python3 -m pip install --disable-pip-version-check "Pillow==12.0.0"
+          PYTHONPATH=. python3 tests/protection/maximum-malformed-pdf.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
