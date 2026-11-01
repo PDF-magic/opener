@@ -1,0 +1,97 @@
+name: Sign staged macOS Developer ID distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      team_id:
+        description: Ten-character Apple Developer team ID
+        type: string
+        required: true
+      identity:
+        description: Developer ID Application identity name or certificate SHA-1
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: developer-id-distribution
+  cancel-in-progress: false
+
+jobs:
+  sign-staged-app:
+    # Only trusted main-branch dispatches can use the protected signing environment.
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    environment: developer-id-release
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate signing policy without credentials
+        run: PYTHONPATH=. python3 tests/general/developer-id-signing.py -v
+      - name: Build unsigned native Release app in a disposable directory
+        run: |
+          xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/PDFMagicOpenerDerived" CODE_SIGNING_ALLOWED=NO build
+      - name: Stage reviewed native helper binaries without installation
+        run: |
+          python3 scripts/package_application_helpers.py \
+            --app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Release/PDFMagicOpener.app" \
+            --output-dir "$RUNNER_TEMP/PDFMagicDeveloperID"
+          python3 scripts/package_application_helpers.py \
+            --verify "$RUNNER_TEMP/PDFMagicDeveloperID/PDFMagicOpener.app"
+      - name: Sign nested executables and verify Developer ID signatures
+        shell: bash
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          SIGN_TEAM_ID: ${{ inputs.team_id }}
+          SIGN_IDENTITY: ${{ inputs.identity }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$APPLE_CERTIFICATE_BASE64" || -z "$APPLE_CERTIFICATE_PASSWORD" ]]; then
+            echo "Protected Developer ID signing environment has missing certificate secrets." >&2
+            exit 1
+          fi
+          signing_dir="$(mktemp -d "$RUNNER_TEMP/pdfmagic-signing.XXXXXXXX")"
+          chmod 700 "$signing_dir"
+          keychain="$signing_dir/signing.keychain-db"
+          certificate="$signing_dir/identity.p12"
+          keychain_password="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+          cleanup() {
+            security delete-keychain "$keychain" >/dev/null 2>&1 || true
+            rm -rf "$signing_dir"
+          }
+          trap cleanup EXIT
+          umask 077
+          printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 -D > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security import "$certificate" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm -f "$certificate"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          app="$RUNNER_TEMP/PDFMagicDeveloperID/PDFMagicOpener.app"
+          python3 scripts/sign_developer_id.py --app "$app" \
+            --team-id "$SIGN_TEAM_ID" --sign "$SIGN_IDENTITY"
+          python3 scripts/sign_developer_id.py --app "$app" \
+            --team-id "$SIGN_TEAM_ID" --verify-only
+          ditto -c -k --sequesterRsrc --keepParent "$app" \
+            "$RUNNER_TEMP/pdf-magic-opener-developer-id-signed.zip"
+          mkdir -p "$RUNNER_TEMP/signed-roundtrip"
+          ditto -x -k "$RUNNER_TEMP/pdf-magic-opener-developer-id-signed.zip" "$RUNNER_TEMP/signed-roundtrip"
+          python3 scripts/sign_developer_id.py \
+            --app "$RUNNER_TEMP/signed-roundtrip/PDFMagicOpener.app" \
+            --team-id "$SIGN_TEAM_ID" --verify-only
+      - name: Upload verified signed bundle for restricted release review
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-magic-opener-developer-id-signed
+          path: ${{ runner.temp }}/pdf-magic-opener-developer-id-signed.zip
+          if-no-files-found: error
+          retention-days: 7
