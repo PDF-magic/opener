@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 
 // Read-only metadata for an already-discovered browser bundle. Browser identity,
@@ -22,6 +23,29 @@ private func browserMetadataString(_ value: Any?) -> String? {
     return trimmed
 }
 
+// Bundle caches Info.plist by URL. A browser upgraded at the same .app path
+// may otherwise keep displaying its old version until the process restarts.
+// Read only bounded, regular, non-symlinked metadata on each discovery pass.
+private func currentBrowserInfo(at app: URL) -> [String: Any]? {
+    let path = app.appendingPathComponent("Contents/Info.plist").path
+    let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+    guard descriptor >= 0 else { return nil }
+    defer { close(descriptor) }
+
+    var metadata = stat()
+    let limit = 1024 * 1024
+    guard fstat(descriptor, &metadata) == 0,
+          (metadata.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),
+          metadata.st_size > 0, metadata.st_size <= limit else { return nil }
+    let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: false)
+    guard let bytes = try? handle.read(upToCount: limit + 1),
+          !bytes.isEmpty, bytes.count <= limit,
+          let value = try? PropertyListSerialization.propertyList(
+              from: bytes, options: [], format: nil),
+          let info = value as? [String: Any] else { return nil }
+    return info
+}
+
 func browserApplicationMetadata(
     at applicationURL: URL,
     iconLookup: (URL) -> NSImage? = { NSWorkspace.shared.icon(forFile: $0.path) }
@@ -34,7 +58,9 @@ func browserApplicationMetadata(
     guard FileManager.default.fileExists(atPath: appURL.path, isDirectory: &directory),
           directory.boolValue,
           let bundle = Bundle(url: appURL),
-          let identifier = browserMetadataString(bundle.bundleIdentifier),
+          let info = currentBrowserInfo(at: appURL),
+          let identifier = browserMetadataString(info["CFBundleIdentifier"]),
+          identifier == bundle.bundleIdentifier,
           let executable = bundle.executableURL?.standardizedFileURL.resolvingSymlinksInPath(),
           FileManager.default.isExecutableFile(atPath: executable.path) else { return nil }
 
@@ -43,11 +69,16 @@ func browserApplicationMetadata(
         .standardizedFileURL.resolvingSymlinksInPath()
     guard executable.deletingLastPathComponent() == executableDirectory else { return nil }
 
-    let name = browserMetadataString(bundle.object(forInfoDictionaryKey: "CFBundleDisplayName"))
-        ?? browserMetadataString(bundle.object(forInfoDictionaryKey: "CFBundleName"))
+    // Keep localized app names where available, but do not let Bundle's
+    // cached Info.plist override the newly installed version or raw name.
+    let localized = bundle.localizedInfoDictionary
+    let name = browserMetadataString(localized?["CFBundleDisplayName"])
+        ?? browserMetadataString(info["CFBundleDisplayName"])
+        ?? browserMetadataString(localized?["CFBundleName"])
+        ?? browserMetadataString(info["CFBundleName"])
         ?? appURL.deletingPathExtension().lastPathComponent
-    let version = browserMetadataString(bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString"))
-        ?? browserMetadataString(bundle.object(forInfoDictionaryKey: "CFBundleVersion"))
+    let version = browserMetadataString(info["CFBundleShortVersionString"])
+        ?? browserMetadataString(info["CFBundleVersion"])
 
     return BrowserApplicationMetadata(
         bundleIdentifier: identifier,
