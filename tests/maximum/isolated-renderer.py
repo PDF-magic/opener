@@ -319,6 +319,68 @@ class MaximumRendererTests(unittest.TestCase):
             renderer.render_isolated_pdf_page(locked, 0)
         self.assertEqual(str(e.exception), renderer.BLOCK_MESSAGE)
 
+    def test_rendering_engine_failure_never_returns_a_page_or_open_verdict(self):
+        # Simulate engine errors after rasterization, including a worker that
+        # has already emitted an apparently valid frame. A process failure
+        # must always override any PNG data or otherwise successful page.
+        document = pymupdf.open(stream=self.pdf, filetype="pdf")
+        try:
+            png = document[0].get_pixmap(
+                colorspace=pymupdf.csRGB, alpha=False, annots=False,
+            ).tobytes("png")
+        finally:
+            document.close()
+        valid = frame(png)
+        failures = (
+            ("engine_exception", subprocess.CompletedProcess([], 2, b"")),
+            ("engine_crash_with_png", subprocess.CompletedProcess([], -signal.SIGABRT, valid)),
+            ("engine_error_with_png", subprocess.CompletedProcess([], 1, valid)),
+            ("no_image", subprocess.CompletedProcess([], 0, b"")),
+            ("incomplete_image", subprocess.CompletedProcess([], 0, valid[:-1])),
+        )
+        for reason, outcome in failures:
+            with self.subTest(reason=reason), (
+                patch.object(renderer, "_renderer_command", return_value=("trusted-worker",)),
+                patch.object(renderer.subprocess, "run", return_value=outcome) as run,
+                self.assertRaises(renderer.MaximumPDFRenderError) as failure,
+            ):
+                renderer.render_isolated_pdf_page(self.pdf, 0)
+            self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
+            self.assertEqual(run.call_count, 1)
+            self.assertIs(run.call_args.kwargs["input"], self.pdf)
+            self.assertEqual(run.call_args.kwargs["stderr"], subprocess.DEVNULL)
+            self.assertTrue(run.call_args.kwargs["close_fds"])
+            self.assertTrue(run.call_args.kwargs["start_new_session"])
+
+    def test_rendering_engine_failure_invalidates_entire_multipage_batch(self):
+        # Page 0 may render successfully, but a later engine failure must not
+        # return a partial batch or fall back to the original PDF.
+        document = pymupdf.open(stream=self.pdf, filetype="pdf")
+        try:
+            png = document[0].get_pixmap(
+                colorspace=pymupdf.csRGB, alpha=False, annots=False,
+            ).tobytes("png")
+        finally:
+            document.close()
+        responses = (
+            subprocess.CompletedProcess([], 0, frame(png)),
+            subprocess.CompletedProcess([], 3, frame(png, pageIndex=1)),
+        )
+        with (
+            patch.object(renderer, "_renderer_command",
+                         side_effect=lambda _worker, index: ("trusted-worker", str(index))),
+            patch.object(renderer.subprocess, "run", side_effect=responses) as run,
+            self.assertRaises(renderer.MaximumPDFRenderError) as failure,
+        ):
+            renderer.render_isolated_pdf_pages(self.pdf, (0, 1))
+        self.assertEqual(str(failure.exception), renderer.BLOCK_MESSAGE)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual([call.args[0][-1] for call in run.call_args_list], ["0", "1"])
+        self.assertTrue(all(call.kwargs["input"] is self.pdf for call in run.call_args_list))
+        # A failed optional renderer is not an alternate admission authority.
+        from protection_profiles import protection_profile_definition, ProtectionProfileID
+        self.assertFalse(protection_profile_definition(ProtectionProfileID.MAXIMUM).selectable)
+
     def test_timeout_crash_and_missing_worker_fail_closed_without_details(self):
         for error in (subprocess.TimeoutExpired("private", 1),
                       OSError("/private/filename.pdf"), RuntimeError("secret")):
