@@ -171,7 +171,7 @@ class UninstallProcedureTests(unittest.TestCase):
                     guide.index("## 2. Restore"))
     for requirement in (
       "default when pressing Enter",
-      "No answer is not blanket authorization",
+      "**No** answer is not blanket authorization",
       "not an automated preference-deletion step",
       "local.studio.pdf-magic-opener.plist",
     ):
