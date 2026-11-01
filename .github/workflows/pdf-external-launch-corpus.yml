@@ -1,0 +1,41 @@
+name: External launch-action PDF security corpus
+
+on:
+  pull_request:
+    paths:
+      - external_launch_action_corpus.py
+      - tests/pdf/external-launch-action-corpus.py
+      - pdf_external_launch_actions.py
+      - pdf_automatic_actions.py
+      - .github/workflows/pdf-external-launch-corpus.yml
+  push:
+    branches: [main]
+    paths:
+      - external_launch_action_corpus.py
+      - tests/pdf/external-launch-action-corpus.py
+      - pdf_external_launch_actions.py
+      - pdf_automatic_actions.py
+      - .github/workflows/pdf-external-launch-corpus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  external-launch-action-corpus:
+    name: Validate inert external-launch PDF corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Validate real external /Launch PDFs without executing actions
+        run: PYTHONPATH=. python3 tests/pdf/external-launch-action-corpus.py -v
+      - name: Preserve passive external and automatic-action inspection regressions
+        run: |
+          PYTHONPATH=. python3 tests/pdf/external-launch-actions.py -v
+          PYTHONPATH=. python3 tests/pdf/automatic-actions.py -v
