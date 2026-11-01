@@ -148,6 +148,78 @@ class LegacyBehaviorRegressions(unittest.TestCase):
         self.launch.assert_called_once_with(document, target_app=None)
         self.assertEqual(self.preference.read_text(encoding="ascii"), "org.mozilla.firefox\n")
 
+    def test_general_text_and_image_scans_open_only_after_clean_or_cached_results(self):
+        # The native Finder scan path accepts ordinary non-PDF local files.
+        # A configured PDF browser must never override their system-default handler.
+        self.preference.write_text("org.mozilla.firefox\n", encoding="ascii")
+        for extension in (".txt", ".png"):
+            with self.subTest(extension=extension):
+                document = self.root / ("general file" + extension)
+                original = ("synthetic general-file scan " + extension).encode("ascii")
+                document.write_bytes(original)
+                self.launch.reset_mock()
+                self.quarantine.reset_mock()
+                clean = subprocess.CompletedProcess([], 0, str(document) + ": OK\n", "")
+                with patch.object(gate, "run_scan_command", return_value=clean) as scanner:
+                    first = gate.scan_and_open(document, "/scanner")
+                    second = gate.scan_and_open(document, "/scanner")
+                self.assertEqual((first.status, first.from_cache), ("clean", False))
+                self.assertEqual((second.status, second.from_cache), ("clean", True))
+                scanner.assert_called_once()
+                command = scanner.call_args.args[0]
+                self.assertEqual(command[0], "/scanner")
+                self.assertEqual(command[-2:], ["--", str(document)])
+                self.assertIn("--max-filesize=512M", command)
+                self.assertIn("--max-scansize=1024M", command)
+                self.assertIn("--alert-exceeds-max=yes", command)
+                self.assertIn("--alert-encrypted=yes", command)
+                self.assertEqual(scanner.call_args.kwargs["timeout"],
+                                 gate.DEFAULT_SCAN_POLICY.other_timeout_seconds)
+                self.assertEqual(
+                    [(item.args, item.kwargs) for item in self.launch.call_args_list],
+                    [((document,), {"target_app": None})] * 2,
+                )
+                self.assertEqual(self.quarantine.call_count, 2)
+                self.assertEqual(document.read_bytes(), original)
+        self.assertEqual(self.preference.read_text(encoding="ascii"),
+                         "org.mozilla.firefox\n")
+
+    def test_general_file_scans_fail_closed_for_malware_incomplete_and_changes(self):
+        document = self.root / "untrusted general file.txt"
+        self.preference.write_text("org.mozilla.firefox\n", encoding="ascii")
+        outcomes = (
+            (1, "file: Malware FOUND", "", "Malware"),
+            (2, "", "scanner failed", "could not finish"),
+            (0, "", "", "did not confirm"),
+        )
+        for index, (returncode, stdout, stderr, reason) in enumerate(outcomes):
+            with self.subTest(outcome=index):
+                original = ("untrusted content " + str(index)).encode("ascii")
+                document.write_bytes(original)
+                result = subprocess.CompletedProcess([], returncode, stdout, stderr)
+                with patch.object(gate, "run_scan_command", return_value=result) as scanner:
+                    with self.assertRaisesRegex(RuntimeError, reason):
+                        gate.scan_and_open(document, "/scanner")
+                scanner.assert_called_once()
+                self.launch.assert_not_called()
+                self.quarantine.assert_not_called()
+                self.assertEqual(document.read_bytes(), original)
+
+        original = b"original general-file bytes"
+        document.write_bytes(original)
+
+        def change_during_scan(command, timeout):
+            document.write_bytes(original + b" modified")
+            return subprocess.CompletedProcess([], 0, str(document) + ": OK\n", "")
+
+        with patch.object(gate, "run_scan_command", side_effect=change_during_scan):
+            with self.assertRaisesRegex(RuntimeError, "file changed"):
+                gate.scan_and_open(document, "/scanner")
+        self.launch.assert_not_called()
+        self.quarantine.assert_not_called()
+        self.assertEqual(self.preference.read_text(encoding="ascii"),
+                         "org.mozilla.firefox\n")
+
     def test_ci_keeps_independent_legacy_regressions_mandatory(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         for suite in (
@@ -156,7 +228,7 @@ class LegacyBehaviorRegressions(unittest.TestCase):
             "tests/scan/and-open.py",
             "tests/general/fallback-app.py",
             "tests/scan/file-unavailable-midscan.py",
-            "tests/general/brave-pdf-opener.py",
+            "tests/general/native-pdf-opener.py",
         ):
             with self.subTest(suite=suite):
                 self.assertIn("PYTHONPATH=. python3 " + suite, workflow)
