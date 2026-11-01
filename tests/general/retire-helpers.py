@@ -78,11 +78,11 @@ class NativeHelperUninstallTests(unittest.TestCase):
   def test_unsafe_symlink_hardlink_directory_and_substituted_record_refused(self):
     for issue in ("symlink", "hardlink", "folder", "manifest-symlink", "manifest-mode"):
       with self.subTest(issue=issue):
-        self.record()
         path = self.install / mod.HELPERS[0]
         path.unlink(missing_ok=True)
         path.write_bytes(self.data + mod.HELPERS[0].encode())
         path.chmod(0o755)
+        self.record()
         alias = self.install / "alias"
         alias.unlink(missing_ok=True)
         marker = self.install / mod.RECORD
