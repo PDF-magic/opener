@@ -130,6 +130,9 @@ jobs:
       - name: policy / enhanced-new-install-default / Guard against unsupported default recommendations and preference changes
         run: PYTHONPATH=. python3 tests/enhanced/new-install-default.py -v
 
+      - name: policy / enhanced-documented-checks / Keep Enhanced descriptions aligned with the policy contract
+        run: PYTHONPATH=. python3 tests/enhanced/documented-checks.py -v
+
       - name: policy / finding-object-references / Verify generation-aware PDF object references on findings
         run: PYTHONPATH=. python3 tests/enhanced/finding-object-references.py -v
       - name: policy / protection-exception-opening-paths / Verify exception claims never bypass scan and opening gates
