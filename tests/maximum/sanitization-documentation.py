@@ -12,6 +12,18 @@ INDEX = ROOT / "docs/README.md"
 SOURCE = ROOT / "maximum_sanitized_copy.py"
 
 
+def constant_integer(expression):
+  """Evaluate only integer literals and multiplication from a Python AST."""
+  if isinstance(expression, ast.Constant) and type(expression.value) is int:
+    return expression.value
+  if isinstance(expression, ast.BinOp) and isinstance(expression.op, ast.Mult):
+    left = constant_integer(expression.left)
+    right = constant_integer(expression.right)
+    if left is not None and right is not None:
+      return left * right
+  return None
+
+
 def integer_constants(source):
   """Read numeric source bounds without importing optional PDF dependencies."""
   values = {}
@@ -21,18 +33,9 @@ def integer_constants(source):
     target = node.targets[0]
     if not isinstance(target, ast.Name) or not target.id.startswith("MAX_"):
       continue
-    expression = node.value
-    if isinstance(expression, ast.Constant) and type(expression.value) is int:
-      values[target.id] = expression.value
-    elif (isinstance(expression, ast.BinOp) and
-          isinstance(expression.op, ast.Mult) and
-          isinstance(expression.left, ast.Constant) and
-          isinstance(expression.right, ast.BinOp) and
-          isinstance(expression.right.op, ast.Mult)):
-      factors = (expression.left, expression.right.left, expression.right.right)
-      if all(isinstance(part, ast.Constant) and type(part.value) is int
-             for part in factors):
-        values[target.id] = factors[0].value * factors[1].value * factors[2].value
+    value = constant_integer(node.value)
+    if value is not None:
+      values[target.id] = value
   return values
 
 
