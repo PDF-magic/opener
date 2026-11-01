@@ -1,0 +1,4 @@
+# Retain the adversarial PDF corpus for repository tests and CI only.
+# Source-release archives must not distribute these potentially hostile samples.
+tests/fixtures/pdf-security-corpus/ export-ignore
+tests/fixtures/pdf-security-corpus/** export-ignore

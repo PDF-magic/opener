@@ -4,7 +4,9 @@ import importlib.util
 import os
 from pathlib import Path
 import plistlib
+import shutil
 import stat
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -112,6 +114,56 @@ class PackagedHelperTests(unittest.TestCase):
     with self.assertRaises(ValueError):
       module.stage(self.app, output)
     self.assertTrue(staged.exists())
+
+  def test_rejects_security_fixtures_and_key_material_from_staged_app(self):
+    self.add_fake_helpers()
+    for path in (
+      "Contents/Resources/tests/sample.bin",
+      "Contents/Resources/Fixtures/sample.bin",
+      "Contents/Resources/pdf-security-corpus/active.bin",
+      "Contents/Resources/manual.PDF",
+      "Contents/Resources/private.KEY",
+      "Contents/Resources/secret.pem",
+      "Contents/Resources/signing.p12",
+      "Contents/Resources/signing.pfx",
+    ):
+      with self.subTest(path=path):
+        target = self.app / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"synthetic test marker only")
+        with self.assertRaisesRegex(ValueError, "Non-distributable"):
+          module.validate_helpers(self.app)
+        with self.assertRaisesRegex(ValueError, "Non-distributable"):
+          module.stage(self.app, self.root / "dist", swiftc="/usr/bin/xcrun")
+        shutil.rmtree(self.app / "Contents" / "Resources")
+    # The guard must not prohibit ordinary custom app resources.
+    resource = self.app / "Contents" / "Resources" / "theme.json"
+    resource.parent.mkdir(parents=True, exist_ok=True)
+    resource.write_text('{"theme": "original"}', encoding="utf-8")
+    self.assertEqual(len(module.validate_helpers(self.app)), len(module.HELPER_NAMES))
+
+  def test_source_release_excludes_security_corpus_without_excluding_normal_files(self):
+    paths = (
+      "tests/fixtures/pdf-security-corpus/truncated/truncated-eof.pdf",
+      "tests/fixtures/pdf-security-corpus/future/embedded-file.pdf",
+      "tests/fixtures/empty.pdf",
+      "README.md",
+    )
+    result = subprocess.run(
+      ["git", "check-attr", "export-ignore", "--", *paths],
+      cwd=ROOT, check=True, capture_output=True, text=True, timeout=15)
+    values = dict(line.split(": export-ignore: ", 1)
+                  for line in result.stdout.splitlines())
+    self.assertEqual(set(values), set(paths))
+    for path in paths[:2]:
+      self.assertEqual(values[path], "set")
+    for path in paths[2:]:
+      self.assertEqual(values[path], "unspecified")
+
+  def test_distribution_ci_runs_fixture_isolation_audit(self):
+    readiness = (ROOT / ".github/workflows/distribution-readiness.yml").read_text(
+      encoding="utf-8")
+    self.assertIn("tests/general/application-helper-packaging.py -v", readiness)
 
   @staticmethod
   def fake_compile(arguments, **kwargs):
