@@ -256,6 +256,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/revision-active-content.py -v
       - name: Detect XFA form entries without decoding XML
         run: PYTHONPATH=. python3 tests/pdf/xfa-forms.py -v
+      - name: Verify legitimate AcroForms under planned Enhanced inspection
+        run: PYTHONPATH=. python3 tests/enhanced/legitimate-forms.py -v
       - name: Extract declared PDF document metadata without executing contents
         run: PYTHONPATH=. python3 tests/pdf/declared-metadata.py -v
       - name: Inspect PDF document permissions without decryption

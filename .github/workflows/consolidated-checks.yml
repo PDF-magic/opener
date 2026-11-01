@@ -60,6 +60,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/automatic-external-requests.py -v
       - name: pdf / pdf-automatic-external-requests / Preserve form action inspection regressions
         run: PYTHONPATH=. python3 tests/pdf/form-actions.py -v
+      - name: pdf / enhanced-legitimate-forms / Verify ordinary AcroForm handling without activating Enhanced
+        run: PYTHONPATH=. python3 tests/enhanced/legitimate-forms.py -v
 
       - name: pdf / pdf-document-permissions / Install pinned optional PDF parser
         run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
