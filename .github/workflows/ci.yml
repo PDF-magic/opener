@@ -512,7 +512,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/message-framing.py -v
       - name: Verify Chrome native host manifest, origins and registration safety
         run: PYTHONPATH=. python3 tests/general/chrome-native-host-registration.py -v
-      - name: Verify uninstall cleanup removes only matching native host registrations
+      - name: Verify Chromium-family and Firefox native host uninstall safety
         run: PYTHONPATH=. python3 tests/native/host-uninstall.py -v
       - name: Verify safe per-browser Chromium native host registration
         run: PYTHONPATH=. python3 tests/native/chromium-registration.py -v

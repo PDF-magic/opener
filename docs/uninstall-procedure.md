@@ -144,9 +144,12 @@ python3 native-messaging/unregister-hosts.py \
   --browser firefox --development
 ```
 
-If you explicitly registered Chrome, use `--browser chrome --extension-id`
-with each **originally approved 32-character ID**, in its original order;
-do not invent or substitute an ID. See
+If you explicitly registered Chrome or another supported Chromium-family
+browser, use its `--browser` name (`chrome`, `chromium`,
+`chrome-for-testing`, `brave`, `edge`, `vivaldi`, `arc` or `opera`)
+and `--extension-id` with each **originally approved 32-character ID**
+in its original order; do not invent or substitute an ID. Opera shares
+Chrome's registration file, so either or both names remove that file once. See
 [`native-messaging/uninstall-registration.md`](../native-messaging/uninstall-registration.md)
 for the exact Chrome invocation and supported platforms. The cleanup requires
 a byte-for-byte known manifest and rejects symlinks, modified registrations,

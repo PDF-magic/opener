@@ -17,6 +17,18 @@ ROOT = Path(__file__).resolve().parent
 HOST_NAME = json.loads((ROOT / "host-identity.json").read_text(encoding="utf-8"))["name"]
 MANIFEST_NAME = HOST_NAME + ".json"
 CHROME_DIRECTORY = Path("Library/Application Support/Google/Chrome/NativeMessagingHosts")
+# Explicit, reviewed macOS locations from register-chromium-hosts.py.
+# Opera and Chrome share the same manifest. Do not remove it twice.
+CHROMIUM_DIRECTORIES = {
+  "chrome": CHROME_DIRECTORY,
+  "chromium": Path("Library/Application Support/Chromium/NativeMessagingHosts"),
+  "chrome-for-testing": Path("Library/Application Support/Google/ChromeForTesting/NativeMessagingHosts"),
+  "brave": Path("Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts"),
+  "edge": Path("Library/Application Support/Microsoft Edge/NativeMessagingHosts"),
+  "vivaldi": Path("Library/Application Support/Vivaldi/NativeMessagingHosts"),
+  "opera": CHROME_DIRECTORY,
+  "arc": Path("Library/Application Support/Arc/User Data/NativeMessagingHosts"),
+}
 FIREFOX_MAC_DIRECTORY = Path("Library/Application Support/Mozilla/NativeMessagingHosts")
 FIREFOX_LINUX_DIRECTORY = Path(".mozilla/native-messaging-hosts")
 CHROME_ID = re.compile(r"[a-p]{32}\Z", re.ASCII)
@@ -49,7 +61,7 @@ def validate_original_host_path(value):
 def _expected_manifest(browser, host_path, extension_ids, development):
   if HOST_NAME != "org.pdfmagic.opener":
     raise ValueError("Unreviewed native host identity")
-  if browser == "chrome":
+  if browser in CHROMIUM_DIRECTORIES:
     ids = list(extension_ids)
     if not ids or any(type(item) is not str or not CHROME_ID.fullmatch(item)
                       for item in ids):
@@ -111,27 +123,32 @@ def unregister(host_path, *, browsers, home=None, platform=None,
   if (not host.is_absolute() or host.is_symlink() or
       not home.is_absolute() or not requested or
       len(set(requested)) != len(requested) or
-      any(browser not in ("chrome", "firefox") for browser in requested)):
+      any(browser not in (*CHROMIUM_DIRECTORIES, "firefox") for browser in requested)):
     raise ValueError("Absolute host and home paths and distinct supported browsers required")
-  if ("chrome" in requested and platform != "darwin") or (
+  chromium_selected = any(browser in CHROMIUM_DIRECTORIES for browser in requested)
+  if (chromium_selected and platform != "darwin") or (
       "firefox" in requested and platform not in ("darwin", "linux")):
     raise ValueError("Uninstall cleanup is not supported for this browser/platform")
-  if (extension_ids and "chrome" not in requested) or (development and "firefox" not in requested):
+  if (extension_ids and not chromium_selected) or (development and "firefox" not in requested):
     raise ValueError("Cleanup identity options do not match the selected browser")
 
-  expected = {}
-  destinations = {}
+  # Preflight each physical target once. Chrome and Opera share one directory.
+  targets = {}
   for browser in requested:
     manifest = _expected_manifest(browser, host, extension_ids, development)
-    expected[browser] = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
-    relative = (CHROME_DIRECTORY if browser == "chrome" else
+    expected_bytes = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
+    relative = (CHROMIUM_DIRECTORIES[browser] if browser in CHROMIUM_DIRECTORIES else
                 FIREFOX_MAC_DIRECTORY if platform == "darwin" else FIREFOX_LINUX_DIRECTORY)
-    destinations[browser] = relative
+    if relative in targets:
+      if targets[relative] != expected_bytes:
+        raise ValueError("Conflicting identities for shared registration location")
+      continue
+    targets[relative] = expected_bytes
 
   checked = []
   with ExitStack() as stack:
-    for browser in requested:
-      directory = _open_registration_directory(home, destinations[browser], stack)
+    for relative, expected_bytes in targets.items():
+      directory = _open_registration_directory(home, relative, stack)
       if directory is None:
         continue
       try:
@@ -148,10 +165,10 @@ def unregister(host_path, *, browsers, home=None, platform=None,
         raise ValueError("Refusing non-regular native host registration")
       # Read one extra byte, so oversized and user-customized files both fail
       # without loading arbitrary data or deleting an unrelated registration.
-      content = os.read(descriptor, len(expected[browser]) + 1)
-      if content != expected[browser]:
+      content = os.read(descriptor, len(expected_bytes) + 1)
+      if content != expected_bytes:
         raise ValueError("Refusing to remove modified native host registration")
-      checked.append((directory, original, home / destinations[browser] / MANIFEST_NAME))
+      checked.append((directory, original, home / relative / MANIFEST_NAME))
 
     # Check every target before deleting anything (including other browsers).
     for directory, original, _ in checked:
@@ -173,9 +190,10 @@ def main(argv=None):
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("--host-path", required=True, type=Path,
                       help="exact absolute executable path recorded during installation, even if removed")
-  parser.add_argument("--browser", action="append", required=True, choices=("chrome", "firefox"))
+  parser.add_argument("--browser", action="append", required=True,
+                      choices=(*CHROMIUM_DIRECTORIES, "firefox"))
   parser.add_argument("--extension-id", action="append", default=[],
-                      help="exact originally approved Chrome ID; preserve original order")
+                      help="exact originally approved Chromium-family extension ID; preserve original order")
   parser.add_argument("--development", action="store_true",
                       help="explicitly select the existing Firefox development add-on ID")
   args = parser.parse_args(argv)

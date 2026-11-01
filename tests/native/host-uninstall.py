@@ -33,7 +33,7 @@ class NativeHostUninstallTests(unittest.TestCase):
   def manifest(self, browser, platform="darwin", host=None, ids=(CHROME_ID,)):
     host = self.host if host is None else host
     definition = cleanup._expected_manifest(browser, host, ids, browser == "firefox")
-    directory = (cleanup.CHROME_DIRECTORY if browser == "chrome" else
+    directory = (cleanup.CHROMIUM_DIRECTORIES[browser] if browser in cleanup.CHROMIUM_DIRECTORIES else
                  cleanup.FIREFOX_MAC_DIRECTORY if platform == "darwin" else
                  cleanup.FIREFOX_LINUX_DIRECTORY)
     target = self.home / directory / cleanup.MANIFEST_NAME
@@ -45,7 +45,7 @@ class NativeHostUninstallTests(unittest.TestCase):
   def remove(self, *browsers, platform="darwin", host=None, ids=(CHROME_ID,), development=True):
     return cleanup.unregister(self.host if host is None else host,
                               browsers=browsers, home=self.home, platform=platform,
-                              extension_ids=ids if "chrome" in browsers else (),
+                              extension_ids=ids if any(b in cleanup.CHROMIUM_DIRECTORIES for b in browsers) else (),
                               development=development if "firefox" in browsers else False)
 
   def test_removes_exact_chrome_and_firefox_registrations_without_other_files(self):
@@ -183,6 +183,83 @@ class NativeHostUninstallTests(unittest.TestCase):
       self.assertEqual(done.returncode, 0, done.stderr)
       self.assertFalse(target.exists())
     self.assertEqual(self.host.read_bytes(), before)
+
+
+  def test_all_supported_chromium_locations_match_the_real_registrar(self):
+    source = ROOT / "native-messaging/register-chromium-hosts.py"
+    registrar_spec = importlib.util.spec_from_file_location("chromium_uninstall_fixture", source)
+    registrar = importlib.util.module_from_spec(registrar_spec)
+    registrar_spec.loader.exec_module(registrar)
+    self.assertEqual(set(cleanup.CHROMIUM_DIRECTORIES), set(registrar.BROWSER_LOCATIONS))
+    for browser, location in registrar.BROWSER_LOCATIONS.items():
+      self.assertEqual(cleanup.CHROMIUM_DIRECTORIES[browser],
+                       Path("Library/Application Support") / location / "NativeMessagingHosts")
+    chrome = self.manifest("chrome")
+    firefox = self.manifest("firefox")
+    paths = registrar.register_chromium_hosts(self.home)
+    self.assertEqual(len(set(paths.values())), 7)
+    unrelated = paths["brave"].parent / "unrelated.host.json"
+    unrelated.write_text("keep this", encoding="utf-8")
+    selected = ("chrome", "chromium", "chrome-for-testing", "brave", "edge",
+                "vivaldi", "opera", "arc", "firefox")
+    removed = self.remove(*selected)
+    self.assertEqual(set(removed), set(paths.values()) | {firefox})
+    self.assertEqual(len(removed), 8)
+    self.assertFalse(any(path.exists() for path in removed))
+    self.assertEqual(unrelated.read_text(), "keep this")
+    self.assertTrue(self.host.exists())
+    self.assertEqual(self.remove(*selected), [])
+
+  def test_chromium_selective_cleanup_preserves_other_browsers(self):
+    chrome = self.manifest("chrome")
+    arc = self.manifest("arc")
+    brave = self.manifest("brave")
+    self.assertEqual(self.remove("arc", "brave"), [arc, brave])
+    self.assertTrue(chrome.exists())
+    self.assertEqual(self.remove("chrome"), [chrome])
+    self.assertFalse(arc.exists())
+    self.assertFalse(brave.exists())
+
+  def test_chromium_changed_manifest_prevents_partial_cleanup(self):
+    chrome = self.manifest("chrome")
+    edge = self.manifest("edge")
+    edge.write_text('{"user":"customized"}', encoding="utf-8")
+    with self.assertRaisesRegex(ValueError, "modified"):
+      self.remove("chrome", "edge")
+    self.assertTrue(chrome.exists())
+    self.assertEqual(edge.read_text(), '{"user":"customized"}')
+
+  def test_chrome_and_opera_shared_location_removed_only_once(self):
+    target = self.manifest("chrome")
+    self.assertEqual(self.remove("opera", "chrome"), [target])
+    self.assertEqual(self.remove("chrome", "opera"), [])
+
+  def test_symlinked_chromium_registration_preserved_without_partial_cleanup(self):
+    chrome = self.manifest("chrome")
+    arc = self.manifest("arc")
+    external = self.root / "external.json"
+    external.write_bytes(arc.read_bytes())
+    arc.unlink()
+    arc.symlink_to(external)
+    with self.assertRaises(ValueError):
+      self.remove("chrome", "arc")
+    self.assertTrue(chrome.exists())
+    self.assertEqual(external.read_bytes(), (json.dumps(
+      cleanup._expected_manifest("arc", self.host, (CHROME_ID,), False),
+      indent=2) + "\n").encode())
+
+  def test_chromium_rejects_missing_identity_and_unsupported_platform(self):
+    for opts in (
+      dict(browsers=["brave"], platform="darwin"),
+      dict(browsers=["edge"], platform="linux", extension_ids=[CHROME_ID]),
+      dict(browsers=["arc"], platform="win32", extension_ids=[CHROME_ID]),
+      dict(browsers=["chrome-for-testing"], platform="darwin", extension_ids=["*"]),
+      dict(browsers=["chrome", "other"], platform="darwin", extension_ids=[CHROME_ID]),
+    ):
+      with self.subTest(opts=opts):
+        with self.assertRaises(ValueError):
+          cleanup.unregister(self.host, home=self.home, **opts)
+    self.assertEqual(list(self.home.iterdir()), [])
 
 
 if __name__ == "__main__":
