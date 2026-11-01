@@ -471,6 +471,8 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check 'Pillow==11.3.0'
           PYTHONPATH=. python3 tests/maximum/output-validation-failure.py -v
+      - name: Regression-test Maximum sanitizer active-content and verified-copy boundary
+        run: PYTHONPATH=. python3 tests/maximum/sanitizer-regressions.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
       - name: Verify invalid PDF header security corpus fails closed
