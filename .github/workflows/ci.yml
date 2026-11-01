@@ -517,6 +517,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/dock-behavior.py -v
       - name: Verify selected destination browser display never changes scanner policy
         run: PYTHONPATH=. python3 tests/general/selected-destination-browser.py -v
+      - name: Verify browser selection guide matches the verified Settings workflow
+        run: PYTHONPATH=. python3 tests/general/browser-selection-docs.py -v
       - name: Verify native window title and bundled application icon
         run: PYTHONPATH=. python3 tests/native/window-branding.py -v
       - name: Verify independent SwiftUI application target

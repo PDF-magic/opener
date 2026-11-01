@@ -57,6 +57,9 @@ choose **Open With → PDF Magic Opener** in Finder; the **Allow and Open**
 Finder action uses the same scan gate. A browser download must be available
 as a local file before this native workflow can scan and open it.
 
+To change which browser receives a PDF **after** a clean scan, follow the
+[step-by-step browser selection guide](docs/select-browser.md).
+
 Only after a clean scan and file-integrity checks does PDF Magic Opener
 hand the PDF to the **separately selected PDF-capable application** (Brave by
 default). Selecting the native PDF handler does not change the macOS default
