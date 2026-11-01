@@ -254,6 +254,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/digital-signatures.py -v
       - name: maximum / maximum-sanitized-copy / Reject unsupported sanitization and unsafe fallback on Linux
         run: PYTHONPATH=. python3 tests/maximum/sanitization-blocking.py -v
+      - name: maximum / simple-pdf / Verify simple PDF's safe raster-only copy contract
+        run: PYTHONPATH=. python3 tests/maximum/simple-pdf.py -v
 
       - name: maximum / maximum-sanitized-structure / Install pinned strict PDF parser
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
