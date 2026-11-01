@@ -83,56 +83,35 @@ INCORRECTLY_NAMED_FILES = (
     ),
 )
 
-DEEP_OBJECT_REFERENCE_DEPTH = 96
+
+@dataclass(frozen=True)
+class InvalidPDFHeader:
+    """A harmless header-corrupted PDF with an expected identification status."""
+
+    identifier: str
+    content: bytes
+    expected_header_status: str
 
 
-def _deeply_nested_object_references_pdf():
-    """Build a valid one-page PDF with a 96-hop, acyclic indirect-object chain.
+# Only the first nine bytes of the valid baseline are replaced. The entire
+# PDF object, xref, trailer and EOF region is shared with the valid corpus;
+# none of these samples contains an active payload or downloaded content.
+# Keep this collection separate from REFERENCE_PDFS: that existing collection
+# must remain exclusively valid and unchanged for profile admission tests.
+_INVALID_HEADER_CASES = (
+    ("missing-magic", b"NOTPD-1.4", "notPdf"),
+    ("wrong-magic", b"%PDX-1.4\n", "notPdf"),
+    ("leading-bom", b"\xef\xbb\xbfPDF1.4", "notPdf"),
+    ("unsupported-minor-version", b"%PDF-1.8\n", "undetermined"),
+    ("unsupported-major-version", b"%PDF-2.1\n", "undetermined"),
+    ("nonnumeric-version", b"%PDF-1.x\n", "undetermined"),
+    ("nonascii-version", b"%PDF-\xff.4\n", "undetermined"),
+    ("space-instead-of-newline", b"%PDF-1.4 ", "undetermined"),
+    ("nul-instead-of-newline", b"%PDF-1.4\x00", "undetermined"),
+)
 
-    The chain is linked from a nonstandard, inert catalog key; it does not
-    alter the page tree or carry actions, scripts, attachments, or executables.
-    Each object has its own cross-reference entry and a deterministic index.
-    """
-    stream = b"BT /F1 12 Tf 72 720 Td (Nested references fixture) Tj ET\n"
-    objects = {
-        1: b"<< /Type /Catalog /Pages 2 0 R /DeepReference 6 0 R >>",
-        2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        3: (b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>"),
-        4: (b"<< /Length " + str(len(stream)).encode("ascii")
-            + b" >>\nstream\n" + stream + b"endstream"),
-        5: b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    }
-    for index in range(DEEP_OBJECT_REFERENCE_DEPTH):
-        number = index + 6
-        following = (f"{number + 1} 0 R" if index + 1 < DEEP_OBJECT_REFERENCE_DEPTH
-                     else "null")
-        objects[number] = (
-            f"<< /Index {index} /Next {following} >>".encode("ascii")
-        )
-
-    document = bytearray(b"%PDF-1.4\n")
-    offsets = {}
-    for number, value in sorted(objects.items()):
-        offsets[number] = len(document)
-        document.extend(f"{number} 0 obj\n".encode("ascii") + value + b"\nendobj\n")
-    xref = len(document)
-    document.extend(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode("ascii"))
-    for number in range(1, len(objects) + 1):
-        document.extend(f"{offsets[number]:010d} 00000 n \n".encode("ascii"))
-    document.extend(
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-        f"startxref\n{xref}\n%%EOF\n".encode("ascii")
-    )
-    return bytes(document)
-
-
-# Keep the six shared profile-baseline samples unchanged. Security corpus
-# cases are separate because they exercise specialized parser boundaries.
-SECURITY_REFERENCE_PDFS = (
-    ReferencePDF(
-        "deeply-nested-object-references",
-        _deeply_nested_object_references_pdf(),
-        "clean",
-    ),
+INVALID_PDF_HEADERS = tuple(
+    InvalidPDFHeader(identifier, corrupted_header + REFERENCE_PDFS[0].content[9:],
+                     expected_status)
+    for identifier, corrupted_header, expected_status in _INVALID_HEADER_CASES
 )

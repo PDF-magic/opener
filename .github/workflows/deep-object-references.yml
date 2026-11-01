@@ -1,0 +1,20 @@
+name: Deeply nested PDF object reference corpus
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  deep-object-reference-corpus:
+    name: Verify deeply nested indirect PDF references
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install reviewed PDF parser
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+      - name: Validate deep object reference corpus
+        run: PYTHONPATH=. python3 tests/pdf/deep-object-references.py -v

@@ -251,6 +251,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
       - name: Verify traditional xref tables, xref streams and object streams
         run: PYTHONPATH=. python3 tests/pdf/cross-reference-parsing.py -v
+      - name: Reject malformed classic cross-reference table corpus
+        run: PYTHONPATH=. python3 tests/pdf/malformed-xref-corpus.py -v
       - name: Verify encrypted and password-protected PDFs remain blocked by policy
         run: PYTHONPATH=. python3 tests/pdf/encryption-policy.py -v
       - name: Verify reusable encrypted PDF security corpus and fail-closed inspection
@@ -269,8 +271,6 @@ jobs:
         run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Inspect indirect PDF object links and page-tree consistency
         run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
-      - name: Validate deeply nested indirect-object PDF security corpus
-        run: PYTHONPATH=. python3 tests/pdf/deep-object-references.py -v
       - name: Detect suspiciously repeated PDF object structures
         run: PYTHONPATH=. python3 tests/pdf/repeated-structures.py -v
       - name: Inspect automatic PDF action hooks without executing them
@@ -420,6 +420,8 @@ jobs:
           PYTHONPATH=. python3 tests/maximum/output-validation-failure.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
+      - name: Verify invalid PDF header security corpus fails closed
+        run: PYTHONPATH=. python3 tests/pdf/invalid-headers-corpus.py -v
       - name: Verify incorrectly named PDFs and extension-spoofing corpus
         run: PYTHONPATH=. python3 tests/pdf/incorrectly-named-files.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks

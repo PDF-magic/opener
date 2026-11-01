@@ -15,8 +15,9 @@ from pdf_object_relationships import (
 from pdf_structure_parser import (
     MAX_STRUCTURE_RECURSION_DEPTH, PDFStructure, parse_pdf_structure,
 )
-from reference_pdf_collection import (
-    DEEP_OBJECT_REFERENCE_DEPTH, REFERENCE_PDFS, SECURITY_REFERENCE_PDFS,
+from reference_pdf_collection import REFERENCE_PDFS
+from deep_object_reference_corpus import (
+    DEEP_OBJECT_REFERENCE_DEPTH, SECURITY_REFERENCE_PDFS,
     _deeply_nested_object_references_pdf,
 )
 
@@ -80,7 +81,7 @@ class DeepObjectReferenceCorpusTests(unittest.TestCase):
                        b"/EmbeddedFiles", b"/AA "):
             with self.subTest(active=active):
                 self.assertNotIn(active, content)
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/deep-object-references.yml").read_text(encoding="utf-8")
         self.assertIn("PYTHONPATH=. python3 tests/pdf/deep-object-references.py -v",
                       workflow)
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
