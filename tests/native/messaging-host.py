@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the actual compiled, unregistered native messaging host process."""
+import io
 import json
 import os
 import select
@@ -374,6 +375,31 @@ class NativeMessagingHostTests(unittest.TestCase):
       "requestId": "test_1", "payload": {
         "scanAvailable": False, "status": "transport-only"}
     }])
+
+  def test_python_protocol_codec_and_frames_interoperate_with_compiled_host(self):
+    # End-to-end protocol fixture: independent Python codecs speak to the
+    # compiled Swift host using native browser framing. No scanner privileges.
+    from native_message_format import encode_native_message, decode_native_message
+    from native_message_framing import write_native_frame, read_native_frame
+
+    input_stream = io.BytesIO()
+    write_native_frame(input_stream, encode_native_message(handshake()))
+    write_native_frame(input_stream, encode_native_message(ping("codec_ping")))
+    result = self.run_host(input_stream.getvalue())
+    self.assertEqual(result.returncode, 0)
+    self.assert_diagnostics(result)
+
+    output_stream = io.BytesIO(result.stdout)
+    first = decode_native_message(read_native_frame(output_stream))
+    second = decode_native_message(read_native_frame(output_stream))
+    self.assertIsNone(read_native_frame(output_stream))
+    self.assertEqual(first, handshake_response())
+    self.assertEqual(second, {
+      "version": 1, "kind": "response", "topic": "host.ping",
+      "requestId": "codec_ping", "payload": {
+        "status": "transport-only", "scanAvailable": False,
+      },
+    })
 
   def test_persistent_connection_handles_multiple_frames(self):
     result = self.run_host(frame(ping("first")) + frame(ping("second")))
