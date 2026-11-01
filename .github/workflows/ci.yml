@@ -215,6 +215,8 @@ jobs:
           python-version: "3.11"
       - name: Check documentation naming and links
         run: python3 scripts/check-docs-layout.py
+      - name: Keep scanner installation instructions browser-neutral
+        run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Check Python test organization
