@@ -46,12 +46,31 @@ MACHO_MAGIC = frozenset((b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf",
                          b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca",
                          b"\xca\xfe\xba\xbf", b"\xbf\xba\xfe\xca"))
 MAX_HELPER_BYTES = 64 * 1024 * 1024
+# Test-only PDF samples and signing/key material do not belong in a user app.
+NON_DISTRIBUTABLE_PARTS = frozenset((
+  "fixtures", "test-fixtures", "tests", "pdf-security-corpus",
+))
+NON_DISTRIBUTABLE_SUFFIXES = frozenset((
+  ".pdf", ".key", ".pem", ".p12", ".pfx",
+))
+
+
+def reject_non_distributable_resources(app):
+  """Check names only: never read or evaluate PDF fixtures or key material."""
+  for entry in app.rglob("*"):
+    relative = entry.relative_to(app)
+    if (any(part.casefold() in NON_DISTRIBUTABLE_PARTS
+            for part in relative.parts)
+        or entry.suffix.casefold() in NON_DISTRIBUTABLE_SUFFIXES):
+      raise ValueError("Non-distributable test or sensitive fixture in app bundle")
+
 
 
 def inspect_app(app):
   """Require the exact preferences app identity, not the PDF scanner bundle."""
   if app.is_symlink() or not app.is_dir() or app.name != APP_NAME:
     raise ValueError("Expected a real Xcode-built PDFMagicOpener.app")
+  reject_non_distributable_resources(app)
   info = app / "Contents/Info.plist"
   if info.is_symlink() or not info.is_file():
     raise ValueError("Missing safe application Info.plist")
