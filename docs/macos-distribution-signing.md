@@ -17,7 +17,7 @@ gate, its executable helpers, signing identities, or existing user preferences.
   extension manifest and the user's consent.
 - Both Xcode **Release** targets set `ENABLE_HARDENED_RUNTIME = YES`;
   Debug signing behavior remains unchanged. The embedded extension retains
-  `CodeSignOnCopy`. No broad hardened-runtime exceptions are introduced.
+  `CodeSignOnCopy`. Both Release targets explicitly disable Xcode's\n  injection of base entitlements, preventing ad-hoc signing from silently\n  adding the debugger's `com.apple.security.get-task-allow` right.\n  No broad hardened-runtime exceptions are introduced.
 
 The distribution audit runs portable source checks and, on macOS, makes a
 **temporary ad-hoc-signed Release build** with no developer certificates or

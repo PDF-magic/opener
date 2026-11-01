@@ -55,7 +55,9 @@ class MacOSSigningTests(unittest.TestCase):
         self.assertEqual(settings.count("CODE_SIGN_ENTITLEMENTS ="), 1)
         if name == "Release":
           self.assertIn("ENABLE_HARDENED_RUNTIME = YES;", settings)
+          self.assertIn("CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;", settings)
     self.assertEqual(project.count("ENABLE_HARDENED_RUNTIME = YES;"), 2)
+    self.assertEqual(project.count("CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;"), 2)
 
   def test_codesign_verifier_rejects_missing_runtime_and_extra_entitlements(self):
     verifier.verify_runtime_flags("CodeDirectory flags=0x10000(runtime)")

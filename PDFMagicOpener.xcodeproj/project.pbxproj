@@ -415,6 +415,7 @@
         CLANG_ENABLE_MODULES = YES;
         CODE_SIGN_STYLE = Automatic;
         ENABLE_HARDENED_RUNTIME = YES;
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
         CODE_SIGN_ENTITLEMENTS = PDFMagicOpenerApp/PDFMagicOpener.entitlements;
         COPY_PHASE_STRIP = YES;
         DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -624,6 +625,7 @@
         CODE_SIGN_ENTITLEMENTS = extensions/safari/SafariExtension.entitlements;
         CODE_SIGN_STYLE = Automatic;
         ENABLE_HARDENED_RUNTIME = YES;
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
         CURRENT_PROJECT_VERSION = 1;
         GENERATE_INFOPLIST_FILE = NO;
         INFOPLIST_FILE = extensions/safari/Info.plist;
