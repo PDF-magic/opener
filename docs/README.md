@@ -9,6 +9,7 @@ The reference pages are grouped by feature rather than keeping every page in one
 | [PDF](pdf/) | PDF structures, metadata, embedded content, and parsing |
 | [Protection](protection/) | Protection policies, choices, and exceptions |
 | [Scanner](scanner/) | Scanner arguments, safety, and failure handling |
+| [Performance](performance/observed-results.md) | Reproducible CI benchmark observations and limitations |
 
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
