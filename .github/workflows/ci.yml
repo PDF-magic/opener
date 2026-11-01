@@ -358,6 +358,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/inherits-enhanced.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
+      - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
+        run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
       - name: Identify PDF format and declared version from file bytes
         run: PYTHONPATH=. python3 tests/pdf/format-identification.py -v
       - name: Resolve the effective protection policy without weakening mandatory checks
