@@ -256,6 +256,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/revision-active-content.py -v
       - name: Detect XFA form entries without decoding XML
         run: PYTHONPATH=. python3 tests/pdf/xfa-forms.py -v
+      - name: Verify legitimate AcroForms under planned Enhanced inspection
+        run: PYTHONPATH=. python3 tests/enhanced/legitimate-forms.py -v
       - name: Extract declared PDF document metadata without executing contents
         run: PYTHONPATH=. python3 tests/pdf/declared-metadata.py -v
       - name: Inspect PDF document permissions without decryption
@@ -358,6 +360,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/maximum/inherits-enhanced.py -v
       - name: Test every planned profile admission against one reference PDF collection
         run: PYTHONPATH=. python3 tests/general/reference-pdf-profiles.py -v
+      - name: Test Standard baseline with a structurally valid clean PDF
+        run: PYTHONPATH=. python3 tests/protection/standard-valid-pdf.py -v
       - name: Verify unavailable Standard refuses malformed PDFs without scanner bypass
         run: PYTHONPATH=. python3 tests/protection/standard-malformed-pdf.py -v
       - name: Identify PDF format and declared version from file bytes
