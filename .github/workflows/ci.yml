@@ -396,6 +396,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/uninstall-app-ownership.py -v
       - name: Verify guided uninstall scan-history retention choice
         run: PYTHONPATH=. python3 tests/general/uninstall-history-choice.py -v
+      - name: Verify opt-in ownership-safe uninstall temporary PDF cleanup
+        run: PYTHONPATH=. python3 tests/general/uninstall-temporary-pdfs.py -v
       - name: Verify first-run welcome, protection profile and opt-in PDF default setup
         run: PYTHONPATH=. python3 tests/general/first-run-welcome.py -v
       - name: Verify read-only first-run ClamAV installation check

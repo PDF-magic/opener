@@ -253,6 +253,30 @@ logs and any customized scripts unless you separately authorize their
 removal. Never recursively erase the shared Studio or support directory.
 Never run a script in that directory simply to identify it.
 
+After retiring the verified application and disconnecting the integrations,
+**close any PDF viewer still reading a staged PDF**, stop any remaining PDF
+Magic scanners or application-owned processes, and explicitly remove only
+abandoned **application-owned temporary copies** from the trusted checkout:
+
+```sh
+python3 uninstall_temporary_pdfs.py --remove
+```
+
+This opt-in command requires an interactive `REMOVE` confirmation. It operates
+only inside the fixed, user-owned `0700` PDF Magic private temporary namespace;
+it never sweeps the system temporary directory, follows symlinks, accepts
+paths from the user, or removes ordinary PDF downloads. It verifies the
+generated PDF's name, permissions, ownership, link count, and unchanged
+identity, as well as the private directory's identity. It refuses active
+in-process leases, live creating processes, unrecognized directories, mixed
+or customized entries, and unsafe replacements. The command does **not**
+remove browser downloads, scanner signatures, logs, user preferences,
+saved documents, or the shared support directory. If an unknown entry remains,
+review it manually; never force a recursive deletion. Old temporary directories
+outside the verified private namespace are deliberately preserved because
+ownership cannot be proved. The standard seven-day abandoned-copy recovery
+policy remains unchanged for normal application operation.
+
 ## 7. Verify and retain a recovery path
 
 1. Confirm macOS opens PDFs with your **chosen other** application, not the
