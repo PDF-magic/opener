@@ -47,5 +47,10 @@ A security report does not authorize weakening or bypassing the installed
 ClamAV scan gate, file-integrity checks, quarantine, or users' selected PDF
 opening preferences. A clean scan is not a guarantee that a PDF is safe.
 
+If a **published build or source archive may be compromised**, maintainers
+should follow the [compromised release revocation runbook](docs/release-revocation.md)
+to stop distribution, withdraw downloads, notify users, and verify recovery.
+This does not relax private reporting or coordinated disclosure requirements.
+
 For ordinary bugs or non-sensitive feature requests, use the
 [public issue tracker](https://github.com/PDF-magic/opener/issues).
