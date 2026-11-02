@@ -253,6 +253,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/security-reporting-documentation.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
+      - name: Guard Firefox API compatibility watch and reviewed upstream inventory
+        run: PYTHONPATH=. python3 tests/general/firefox-api-watch.py -v
       - name: Verify actionable failure-report formatting and metadata handling
         run: PYTHONPATH=. python3 tests/general/ci-failure-report.py -v
       - name: Check Python test organization

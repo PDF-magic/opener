@@ -68,6 +68,8 @@ The CI documentation check verifies that pages in these feature folders retain k
 
 For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
 
+- [Firefox WebExtension API watch](firefox-api-watch.md) — review upstream Firefox API and manifest compatibility changes without mutating the inactive extension.
+
 - [PDF parser security advisory watch](pdf/parser-security-advisories.md) — scheduled advisory monitoring and triage for reviewed parser versions.
 
 - [Safari extension API change watch](safari-extension-api-watch.md) — read-only weekly WebKit release monitoring, offline CI checks, and manual Safari compatibility review.
