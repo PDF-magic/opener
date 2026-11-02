@@ -31,14 +31,14 @@ class SourceMaintenancePolicyTests(unittest.TestCase):
     )["version"]
     self.assertEqual(mac_versions, {browser_version})
     self.assertEqual(browser_version, package_version)
-    self.assertRegex(browser_version, r"^\\d+\\.\\d+\\.\\d+$")
+    self.assertRegex(browser_version, r"^\d+\.\d+\.\d+$")
     self.assertIn("Required build metadata", self.metadata)
     self.assertIn("not announcements or promises", self.metadata)
 
   def test_support_is_commit_based_without_numbered_release_commitments(self):
     for statement in (
       "## Source maintenance and security support",
-      "source code on \`main\`",
+      "source code on `main`",
       "Git commit",
       "Older commits and locally built development",
       "do **not** receive guaranteed maintenance",
@@ -48,7 +48,7 @@ class SourceMaintenancePolicyTests(unittest.TestCase):
       "not a release schedule or support promise",
     ):
       with self.subTest(statement=statement):
-        self.assertIn(statement.replace("\\`", "`"), self.policy)
+        self.assertIn(statement, self.policy)
     self.assertIn("does **not** use a public Semantic Versioning policy", self.metadata)
     self.assertIn("no need to create `vX.Y.Z` tags", self.metadata)
     self.assertNotIn("only the newest published stable application version", self.policy)
@@ -72,7 +72,7 @@ class SourceMaintenancePolicyTests(unittest.TestCase):
       "(../SECURITY.md#source-maintenance-and-security-support)", idx)
     self.assertIn("tests/general/supported-application-versions.py -v",
                   CI.read_text(encoding="utf-8"))
-    for match in re.findall(r"(?<!!)\\[[^\\]]+\\]\\(([^)]+)\\)", self.policy):
+    for match in re.findall(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", self.policy):
       parsed = urlsplit(match)
       if not parsed.scheme and not parsed.netloc and parsed.path:
         self.assertTrue((ROOT / parsed.path).is_file(), match)
