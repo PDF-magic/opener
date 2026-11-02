@@ -1,0 +1,43 @@
+name: Safari extension API watch
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 9 * * 3"
+  workflow_dispatch:
+
+# Public WebKit release notes only; no tokens, PDF data, or browser settings.
+permissions:
+  contents: read
+
+jobs:
+  safari-api-contract:
+    name: Validate Safari API-change tracking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify feed validation, review alerts and safe monitoring scope
+        run: PYTHONPATH=. python3 tests/general/safari-api-watch.py -v
+
+  safari-api-live:
+    # Upstream availability and release churn never make PR CI flaky.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: safari-api-contract
+    name: Review official Safari extension API updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check WebKit release feed for new Safari extension API changes
+        run: python3 scripts/safari_api_watch.py
