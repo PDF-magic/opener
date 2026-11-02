@@ -59,3 +59,5 @@ The CI documentation check verifies that pages in these feature folders retain k
 - [Development release notes](release-notes.md) — public notes about the current unreleased source tree, including security protections and distribution limits.
 
 For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
+
+- [PDF parser security advisory watch](pdf/parser-security-advisories.md) — scheduled advisory monitoring and triage for reviewed parser versions.
