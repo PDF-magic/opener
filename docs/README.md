@@ -52,6 +52,7 @@ General installation, application, browser, and operational guides remain in thi
 - [Browser extension installation](browser-extension-installation.md) — local development loading for Chromium-family browsers, Firefox, and Safari; release and scanner-safety limits.
 
 
+- [Compromised release revocation](release-revocation.md) — withdraw suspect releases, stop distribution, warn users, and verify safe recovery.
 - [Security reporting process](../SECURITY.md) — how to privately disclose suspected vulnerabilities without posting exploit details publicly.
 
 ## Filename conventions
