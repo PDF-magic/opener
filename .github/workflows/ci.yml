@@ -251,6 +251,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/scanner/error-documentation.py -v
       - name: Verify the security reporting process
         run: PYTHONPATH=. python3 tests/general/security-reporting-documentation.py -v
+      - name: Verify supported application version policy
+        run: PYTHONPATH=. python3 tests/general/supported-application-versions.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
       - name: Verify actionable failure-report formatting and metadata handling
