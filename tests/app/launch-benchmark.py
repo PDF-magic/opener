@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import plistlib
 import tempfile
+from unittest import mock
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,6 +42,19 @@ class AppLaunchBenchmarkTests(unittest.TestCase):
     duration = benchmark.launch_once(self.executable, home, temp, timeout=2)
     self.assertGreater(duration, 0)
     self.assertLess(duration, 2)
+
+  def test_group_signal_permission_error_falls_back_to_child_cleanup(self):
+    # Some macOS runners deny killpg even though the benchmark child is alive.
+    # This must not turn a successful timing into a failed CI check or leak it.
+    home = Path(self.tmp.name) / "home"
+    temp = Path(self.tmp.name) / "tmp"
+    home.mkdir()
+    temp.mkdir()
+    with mock.patch.object(benchmark.os, "killpg",
+                           side_effect=PermissionError("group signal denied")) as group:
+      duration = benchmark.launch_once(self.executable, home, temp, timeout=2)
+    self.assertGreater(duration, 0)
+    self.assertTrue(group.called)
 
   def test_incorrect_marker_fails_without_result(self):
     self.executable.write_text("#!/usr/bin/env python3\nimport os\n"
