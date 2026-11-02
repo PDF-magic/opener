@@ -244,6 +244,57 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
     self.assertEqual(backup.read_bytes(), before)
     self.assertEqual(self.snapshot(), snapshot)
 
+  def test_modern_app_upgrades_keep_custom_preferences_and_previous_version(self):
+    # Begin with the existing legacy migration, then replace a modern app
+    # twice. All runs use actual installer snippets in a disposable HOME.
+    self.fixture(browser="org.mozilla.firefox")
+    self.upgrade()
+    saved_defaults = self.home / "Library/Preferences/local.studio.pdf-magic-opener.plist"
+    saved_defaults.parent.mkdir(parents=True)
+    saved_defaults.write_bytes(plistlib.dumps({
+      "schemaVersion": 1,
+      "selectedProtectionProfile": "built-in",
+      "preferredProtectionLevel": "enhanced",
+      "showScanProgress": False,
+      "showSuccessfulScanNotifications": True,
+      "customPreference": {"layout": "compact"},
+    }))
+    fallback = self.install / "fallback-app.txt"
+    fallback.write_bytes(b"com.apple.Preview\\n")
+    custom_file = self.install / "user-custom.json"
+    custom_file.write_bytes(b'{"keep": true}\\n')
+    old_version = self.installed / "Contents/Resources/version-marker.txt"
+    old_version.write_text("previous installed version\\n")
+
+    protected = [
+      saved_defaults, fallback, custom_file, self.workflow,
+      self.agents / AGENT_NAME,
+      *[self.home / relative for relative in self.snapshot()],
+    ]
+    baseline = {
+      str(path): (path.read_bytes(), path.stat().st_ino, path.stat().st_mtime_ns)
+      for path in protected
+    }
+    for iteration in range(2):
+      previous = self.upgrade()
+      if iteration == 0:
+        self.assertEqual(
+          (previous / "Contents/Resources/version-marker.txt").read_text(),
+          "previous installed version\\n",
+        )
+      self.assertTrue(self.installed.is_dir())
+      self.assertFalse(self.legacy.exists())
+      for path in protected:
+        self.assertEqual(
+          (path.read_bytes(), path.stat().st_ino, path.stat().st_mtime_ns),
+          baseline[str(path)], str(path),
+        )
+    self.assertIn(
+      "test-application-upgrade-preferences.swift",
+      (ROOT / ".github/workflows/ci.yml").read_text(),
+    )
+
+
   def test_installer_stages_and_verifies_before_installing_or_registering(self):
     verify = 'python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'
     self.assertIn(verify, INSTALLER)

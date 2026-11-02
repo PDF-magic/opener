@@ -1352,6 +1352,10 @@ jobs:
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
           "$RUNNER_TEMP/TestConfigurationMigration"
+      - name: Verify application upgrade retains shared preferences across launches
+        run: |
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-application-upgrade-preferences.swift -o "$RUNNER_TEMP/TestApplicationUpgradePreferences"
+          "$RUNNER_TEMP/TestApplicationUpgradePreferences"
       - name: Verify additive policy settings upgrade preserves saved preferences
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-policy-settings-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
