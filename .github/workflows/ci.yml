@@ -278,6 +278,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Enforce documented dependency update ownership and review process
         run: PYTHONPATH=. python3 tests/general/dependency-updates.py -v
+      - name: Exercise dependency update fail-closed and audit regressions
+        run: PYTHONPATH=. python3 tests/dependencies/update-regressions.py -v
       - name: Check declared dependency license obligations before optional installs
         run: python3 scripts/check_dependency_licenses.py
       - name: Verify license checker rejects unreviewed dependencies and missing notices
