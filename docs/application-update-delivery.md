@@ -14,8 +14,8 @@ versions. ClamAV engine and signature updates are independent of app updates.
 
 1. Obtain a **complete trusted checkout** from the official
    [PDF-magic/opener repository](https://github.com/PDF-magic/opener).
-   Select and review the intended commit/version and its release notes or
-   change history. Do not execute isolated installer scripts, untrusted forks,
+   Select and review the intended Git commit and its change
+   history. Do not execute isolated installer scripts, untrusted forks,
    binary downloads, unsigned CI archives, or files supplied by random mirrors.
 2. On macOS 13 or later, check [prerequisites](installation-prerequisites.md),
    preserve a backup of customized settings, and finish any active scans.
@@ -59,11 +59,10 @@ limitation. Signing and notarization would require a separate decision and
 security review before public binary distribution; they are not prerequisites
 being implemented by this PR.
 
-The existing [source-release gate](release-gate.md) and
-[versioning policy](release-versioning.md) are separate repository mechanisms,
-not the application installation or update channel. Their presence does not
-mean a binary is published or an automatic updater exists. No change to that
-workflow is requested here, and the distribution audit remains
+Git commit SHAs identify source checkouts; the
+[build metadata requirements](release-versioning.md) do not define public
+releases or an update schedule. The existing source-only release gate is
+not the installation or update channel, and the distribution audit remains
 **NOT RELEASE READY**. An alternative future delivery mechanism would require
 separate approval, threat review, user-consent design, and regression tests.
 
