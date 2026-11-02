@@ -11,7 +11,7 @@ publish an unsigned artifact.
 ## Current developer installations
 
 - **Chrome, Chromium, Brave, Arc, Vivaldi, Edge and Opera:** rebuild from a
-  complete, trusted checkout with \`cd extensions/webextension && npm run build\`,
+  complete, trusted checkout with `cd extensions/webextension && npm run build`,
   then use each browser's extension management page to reload the *same*
   unpacked directory in a disposable profile. Rebuilding source does not
   silently deliver updates to another browser or an installed store extension.
@@ -20,15 +20,15 @@ publish an unsigned artifact.
   If the browser assigns a different ID, treat it as a distinct extension and
   stop rather than assuming its saved state migrated.
 - **Firefox:** rebuild the separate Firefox output with
-  \`npm run package:firefox\`, then reload the temporary add-on from
-  \`extensions/webextension/dist/firefox/manifest.json\` using
-  \`about:debugging#/runtime/this-firefox\`. Temporary add-ons do not persist
-  across restarts. The unsigned ZIP and \`example.invalid\` Gecko ID are not
+  `npm run package:firefox`, then reload the temporary add-on from
+  `extensions/webextension/dist/firefox/manifest.json` using
+  `about:debugging#/runtime/this-firefox`. Temporary add-ons do not persist
+  across restarts. The unsigned ZIP and `example.invalid` Gecko ID are not
   a production XPI or a persistent automatic update channel.
-- **Safari:** the extension is embedded in \`PDFMagicOpener.app\`. Rebuilding
+- **Safari:** the extension is embedded in `PDFMagicOpener.app`. Rebuilding
   shared WebExtension assets does not update an installed Safari extension.
   A new trusted, correctly signed host-app installation must contain the
-  reviewed embedded \`PDFMagicOpenerSafari.appex\`; Safari users independently
+  reviewed embedded `PDFMagicOpenerSafari.appex`; Safari users independently
   control enabling the extension under Safari Settings. Never turn it on
   silently or replace the host app with an unsigned CI artifact.
 
@@ -61,7 +61,7 @@ which remains **NOT RELEASE READY**.
 ## Version, identity, security and recovery requirements
 
 1. Before publishing, follow the [release version scheme](release-versioning.md):
-   advance the product \`X.Y.Z\` in the shared WebExtension manifest, package
+   advance the product `X.Y.Z` in the shared WebExtension manifest, package
    metadata and macOS marketing version as applicable. Maintain the appropriate
    stable store extension/Gecko ID, Safari containing-app identity, and
    version/build-number rules. Publish release notes and review permission,
@@ -73,8 +73,8 @@ which remains **NOT RELEASE READY**.
    before a production native bridge is permitted; no new origins or grants
    are introduced by an update.
 3. Existing update observation in
-   [\`src/extension-updates.js\`](../extensions/webextension/src/extension-updates.md)
-   only normalizes explicit \`runtime.onInstalled\` update events when a future
+   [`src/extension-updates.js`](../extensions/webextension/src/extension-updates.md)
+   only normalizes explicit `runtime.onInstalled` update events when a future
    integration subscribes. It is **not a delivery mechanism**, is not active
    in the packaged inert background, and does not request permissions,
    clear storage, migrate settings or authorize a PDF open.
