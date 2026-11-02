@@ -225,6 +225,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
       - name: Verify browser extension installation documentation
         run: PYTHONPATH=. python3 tests/general/browser-extension-installation.py -v
+      - name: Verify browser extension update delivery policy
+        run: PYTHONPATH=. python3 tests/general/extension-update-delivery.py -v
       - name: Verify the three documented protection levels
         run: PYTHONPATH=. python3 tests/general/protection-level-documentation.py -v
       - name: Verify documented structural analysis limitations
