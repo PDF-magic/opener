@@ -15,6 +15,8 @@ For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/ch
 
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
+- [Install PDF Magic Opener from source](installation-path.md) — supported per-user installation steps, prerequisites, post-install verification, and public-release limitations.
+
 - [Clean macOS installation verification](clean-macos-install.md) — guarded notarized first-install verification on a fresh runner, plus real clean-Mac acceptance steps.
 
 - [Developer ID signing](developer-id-signing.md) — sign and verify staged macOS distribution binaries and helper applications without modifying the installed scan gate.
@@ -53,5 +55,7 @@ General installation, application, browser, and operational guides remain in thi
 - GitHub Actions workflow files remain directly in `.github/workflows/`, as GitHub requires.
 
 The CI documentation check verifies that pages in these feature folders retain kebab-case names, avoid duplicate directory prefixes, and point to existing local Markdown destinations.
+
+- [Development release notes](release-notes.md) — public notes about the current unreleased source tree, including security protections and distribution limits.
 
 For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.

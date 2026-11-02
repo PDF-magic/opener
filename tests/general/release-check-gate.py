@@ -2,6 +2,7 @@
 """Fail-closed release-gate regressions; no real network or release operations."""
 
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -129,6 +130,27 @@ class ReleaseGateTests(unittest.TestCase):
              patch.object(gate, "get_check_runs", return_value=runs):
           with self.assertRaises(gate.GateError):
             gate.verify_release(gate.REPOSITORY, "refs/heads/main", SHA, TAG, READY, "token")
+
+  def test_development_release_notes_are_discoverable_and_not_a_release(self):
+    notes = (ROOT / "docs/release-notes.md").read_text(encoding="utf-8")
+    index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    version = json.loads(
+      (ROOT / "extensions/webextension/manifest.json").read_text(encoding="utf-8")
+    )["version"]
+
+    self.assertIn("(docs/release-notes.md)", readme)
+    self.assertIn("(release-notes.md)", index)
+    self.assertIn(f"## Development snapshot — {version} (unreleased)", notes)
+    for warning in ("UNRELEASED", "NOT RELEASE READY", "source-only",
+                    "fail-closed", "ClamAV", "preview-only", "not active"):
+      with self.subTest(warning=warning):
+        self.assertIn(warning.lower(), notes.lower())
+    self.assertIn("needs: critical-release-gate", workflow)
+    self.assertIn("gh release create", workflow)
+    self.assertIn("--generate-notes", workflow)
+    self.assertNotIn("release: published", workflow)
 
   def test_release_workflow_cannot_publish_before_gate(self):
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
