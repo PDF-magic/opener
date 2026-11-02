@@ -31,3 +31,26 @@ publish a release directly, or from moving a tag. Configure and enforce
 repository rules for release tags and publisher permissions outside this
 source-only task. Do not claim that a successful check by itself establishes
 production distribution readiness.
+
+## Checksums for downloadable source assets (opener-1156)
+
+Once all distribution prerequisites are explicitly cleared, the manual release
+workflow stages two source-only Git archives at the verified, immutable tag:
+`pdf-magic-opener-vX.Y.Z-source.tar.gz` and
+`pdf-magic-opener-vX.Y.Z-source.zip`. It creates a sorted,
+SHA-256 `SHA256SUMS` manifest from those **exact bytes**, verifies it
+locally, then attaches all three files to a **draft** GitHub Release. The
+workflow checks GitHub's uploaded asset sizes and reported SHA-256 digests
+against the local files before making the release public. A failed upload or
+digest verification leaves the release in draft; never treat it as a
+successfully published release.
+
+Download the two **attached, versioned source assets** and `SHA256SUMS` from the
+same release into one directory, then run
+`shasum -a 256 -c SHA256SUMS` on macOS (or `sha256sum -c SHA256SUMS`
+on Linux). Both entries must report `OK`. GitHub's separately
+auto-generated "Source code" links are not these attached files and are
+**not** covered by this manifest. Unsigned CI artifacts, browser store packages,
+and macOS application binaries remain excluded from public release until
+their separate distribution checks are authorized. This change does not
+override the current **NOT RELEASE READY** gate.
