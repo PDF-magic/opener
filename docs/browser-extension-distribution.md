@@ -129,3 +129,10 @@ allowlists have been checked.
 - [Firefox add-on ID requirements](https://extensionworkshop.com/documentation/develop/extensions-and-the-add-on-id/)
 - [Safari app, extension signing and notarized distribution](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension)
 - [Vivaldi's Chrome Web Store compatibility](https://help.vivaldi.com/desktop/appearance-customization/extensions/)
+
+## Draft browser extension privacy disclosures (opener-1152)
+
+[Review the current extension privacy policy and store submission copy](browser-extension-privacy-disclosures.md)
+before publishing any Chrome, Edge, Opera, Firefox, or Safari extension.
+The privacy draft does not certify a store listing or supersede the native
+scanner's separate data-processing and safety controls.

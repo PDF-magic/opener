@@ -32,6 +32,8 @@ jobs:
         run: node --test extensions/webextension/tests/published-extension-ids.test.mjs
       - name: Audit channel packages and signing blockers
         run: PYTHONPATH=. python3 tests/general/extension-distribution.py -v
+      - name: Verify channel privacy disclosure and current permission claims
+        run: PYTHONPATH=. python3 tests/general/extension-privacy-disclosures.py -v
       - name: Check Safari embedded app extension target
         run: PYTHONPATH=. python3 tests/general/safari-extension-target.py -v
       - name: Audit macOS release entitlement and runtime configuration
