@@ -78,10 +78,13 @@ class ParserAdvisoryTests(unittest.TestCase):
     inventory = [("pypdf", "5.9.0", False), ("pypdf", "6.21.4", True)]
     def query(name, version):
       return ["GHSA-aaaa-bbbb-cccc"] if version == "5.9.0" else []
-    with redirect_stdout(io.StringIO()) as output:
-      watch.check(inventory, query=query)
-    self.assertIn("legacy CI-only parser", output.getvalue())
-    self.assertIn("GHSA-aaaa-bbbb-cccc", output.getvalue())
+    with tempfile.TemporaryDirectory() as directory:
+      summary = Path(directory) / "summary.md"
+      with mock.patch.dict("os.environ", {"GITHUB_STEP_SUMMARY": str(summary)}):
+        with redirect_stdout(io.StringIO()) as output:
+          watch.check(inventory, query=query)
+      self.assertIn("legacy CI-only parser", summary.read_text())
+      self.assertIn("GHSA-aaaa-bbbb-cccc", output.getvalue())
     with self.assertRaises(watch.AdvisoryWatchError):
       watch.check(inventory, query=lambda *_: ["CVE-2026-1234"])
 
