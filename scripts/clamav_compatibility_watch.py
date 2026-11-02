@@ -11,7 +11,9 @@ import urllib.request
 RELEASES_URL = "https://api.github.com/repos/Cisco-Talos/clamav/releases?per_page=100"
 REVIEWED_RELEASES = {"1.4": "clamav-1.4.6", "1.5": "clamav-1.5.4"}
 TAG = re.compile(r"clamav-([0-9]+)\.([0-9]+)\.([0-9]+)\Z")
-MAX_RESPONSE_BYTES = 256 * 1024
+# ClamAV's public releases API includes large changelogs and asset lists.
+# Bound the read while accommodating the current ~1.6 MiB release inventory.
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 
 
 class CompatibilityWatchError(Exception):
