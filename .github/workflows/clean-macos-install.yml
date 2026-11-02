@@ -1,0 +1,75 @@
+name: Clean macOS installation verification
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      notarized_run_id:
+        description: "Successful main-branch notarization workflow run ID"
+        required: true
+        type: string
+      team_id:
+        description: "Expected ten-character Developer ID team ID (not a secret)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  clean-install-regressions:
+    name: Verify clean macOS installation safety contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run credential-free installation regression tests
+        run: PYTHONPATH=. python3 tests/general/clean-macos-install.py -v
+
+  verify-notarized-install:
+    # A PR must never install an untrusted artifact or receive release credentials.
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'PDF-magic/opener' && github.ref == 'refs/heads/main'
+    name: Install and launch notarized app on a fresh hosted Mac
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify current main and successful trusted notarization source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTARIZED_RUN_ID: ${{ inputs.notarized_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$NOTARIZED_RUN_ID" =~ ^[1-9][0-9]*$ ]] || exit 1
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          test "$current_main" = "$GITHUB_SHA"
+          expected=$'completed\tsuccess\tmain\t'"$GITHUB_SHA"$'\tPDF-magic/opener\t.github/workflows/notarize-macos.yml'
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$NOTARIZED_RUN_ID" \
+            --jq '[.status, .conclusion, .head_branch, .head_sha, .repository.full_name, .path] | @tsv')"
+          test "$actual" = "$expected"
+      - name: Download only the independently notarized application
+        uses: actions/download-artifact@v4
+        with:
+          name: notarized-macos-app
+          run-id: ${{ inputs.notarized_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/notarized-input
+      - name: Verify genuine first-time installation and launch
+        shell: bash
+        env:
+          EXPECTED_TEAM_ID: ${{ inputs.team_id }}
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_clean_mac_install.py \
+            --archive "$RUNNER_TEMP/notarized-input/PDFMagicOpener-notarized.zip" \
+            --team-id "$EXPECTED_TEAM_ID"

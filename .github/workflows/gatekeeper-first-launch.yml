@@ -1,0 +1,82 @@
+name: Gatekeeper first launch of notarized macOS app
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      notarization_run_id:
+        description: Successful current-main notarization run with notarized-macos-app
+        type: string
+        required: true
+      team_id:
+        description: Expected ten-character Developer ID team identifier
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  first-launch-contract:
+    name: Gatekeeper first-launch fail-closed regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Gatekeeper assessment and Launch Services contracts
+        run: python3 tests/general/gatekeeper-first-launch.py -v
+
+  first-launch-real-macos:
+    name: Gatekeeper-enabled first launch of notarized release
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'PDF-magic/opener' && github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require successful notarization artifact at this main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTARY_RUN: ${{ inputs.notarization_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$NOTARY_RUN" =~ ^[1-9][0-9]*$ ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$NOTARY_RUN" \
+            --jq '(.status=="completed") and (.conclusion=="success") and (.head_branch=="main") and (.head_sha==env.GITHUB_SHA) and (.path==".github/workflows/notarize-macos.yml")' \
+            | grep -Fx true
+      - uses: actions/download-artifact@v4
+        with:
+          name: notarized-macos-app
+          run-id: ${{ inputs.notarization_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/notarized-input
+      - name: Extract notarized release to a disposable clean location
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e /Applications/PDFMagicOpener.app
+          test ! -e "$HOME/Applications/PDFMagicOpener.app"
+          archive="$RUNNER_TEMP/notarized-input/PDFMagicOpener-notarized.zip"
+          test -f "$archive"
+          mkdir -m 700 "$RUNNER_TEMP/gatekeeper-first-launch"
+          ditto -x -k "$archive" "$RUNNER_TEMP/gatekeeper-first-launch"
+          test -d "$RUNNER_TEMP/gatekeeper-first-launch/PDFMagicOpener.app"
+          test ! -L "$RUNNER_TEMP/gatekeeper-first-launch/PDFMagicOpener.app"
+      - name: Verify enabled Gatekeeper, quarantine and actual first launch
+        env:
+          EXPECTED_TEAM_ID: ${{ inputs.team_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_gatekeeper_first_launch.py \
+            --app "$RUNNER_TEMP/gatekeeper-first-launch/PDFMagicOpener.app" \
+            --team-id "$EXPECTED_TEAM_ID"

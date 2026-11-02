@@ -19,6 +19,10 @@ verified by that CI coverage.
 
 For technical reference material, see the [organized documentation index](docs/README.md).
 
+For the current, **unreleased** development summary, see the
+[release notes](docs/release-notes.md). These notes are not an announcement
+of a signed, notarized, or store-approved distribution.
+
 ## Protection levels
 
 **Currently enforced: Built-in.** The installed PDF-opening handler requires
@@ -302,6 +306,9 @@ change the installed PDF handler or scanner.
 `twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
 
 ## Installation and usage
+
+For the current supported source-checkout route, prerequisites, safe verification,
+and public-release limitations, see the [source installation instructions](docs/installation-path.md).
 
 Install local malware scanning for the existing **Allow and Open** Finder action and native PDF opening (requires Apple command line tools; Homebrew is used to provision ClamAV only when a supported installed scanner is not found). See the [ClamAV Homebrew dependency decision](docs/clamav-homebrew-decision.md) for the packaging rationale and supported non-Homebrew installations:
 

@@ -28,8 +28,12 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/application-helper-packaging.py -v
       - name: Verify release ZIP path safety, contents and non-overwrite rules
         run: PYTHONPATH=. python3 tests/general/release-archive.py -v
+      - name: Reject mismatched published extension identities and native allowlists
+        run: node --test extensions/webextension/tests/published-extension-ids.test.mjs
       - name: Audit channel packages and signing blockers
         run: PYTHONPATH=. python3 tests/general/extension-distribution.py -v
+      - name: Verify channel privacy disclosure and current permission claims
+        run: PYTHONPATH=. python3 tests/general/extension-privacy-disclosures.py -v
       - name: Validate truthful extension store listing drafts
         run: PYTHONPATH=. python3 tests/general/extension-store-descriptions.py -v
       - name: Check Safari embedded app extension target
