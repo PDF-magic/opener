@@ -51,7 +51,8 @@ has been published or independently validated on every supported macOS version.
 Development changes are recorded in the Git history, with their exact commit
 SHAs identifying source checkouts. This project does not plan numbered public
 releases, signed application downloads, automatic updates, or GitHub Releases
-distribution. The checked-in `0.1.0` is only required build metadata.
+distribution. Any legacy source-only release workflow remains unused and
+fail-closed. The checked-in `0.1.0` is only required build metadata.
 
 Before updating, review the commits and relevant security or migration
 notes, then use a [trusted complete checkout](application-update-delivery.md).
