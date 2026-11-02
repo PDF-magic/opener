@@ -17,6 +17,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Install PDF Magic Opener from source](installation-path.md) — supported per-user installation steps, prerequisites, post-install verification, and public-release limitations.
 
+- [Clean macOS installation verification](clean-macos-install.md) — guarded notarized first-install verification on a fresh runner, plus real clean-Mac acceptance steps.
+
 - [Developer ID signing](developer-id-signing.md) — sign and verify staged macOS distribution binaries and helper applications without modifying the installed scan gate.
 
 - [Troubleshooting](troubleshooting.md) — diagnose safe installation, scan, signature, PDF handler, and browser-handoff failures without bypassing protections.
