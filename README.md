@@ -19,6 +19,10 @@ verified by that CI coverage.
 
 For technical reference material, see the [organized documentation index](docs/README.md).
 
+For the current, **unreleased** development summary, see the
+[release notes](docs/release-notes.md). These notes are not an announcement
+of a signed, notarized, or store-approved distribution.
+
 ## Protection levels
 
 **Currently enforced: Built-in.** The installed PDF-opening handler requires
