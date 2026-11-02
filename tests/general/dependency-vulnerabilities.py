@@ -35,13 +35,17 @@ class DependencyVulnerabilityTests(unittest.TestCase):
   def test_current_and_legacy_pins_come_from_license_review(self):
     (self.root / "requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.4\n")
     versions = {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
-                ("Pillow", "11.3.0"), ("cryptography", "46.0.4")}
+                ("Pillow", "11.3.0"), ("cryptography", "46.0.4"),
+                ("PyMuPDF", "2.0")}
     with mock.patch.object(audit.licenses, "check", return_value=versions):
-      current, legacy = audit.create_manifests(self.root / "manifests", self.root)
+      current, renderer, legacy = audit.create_manifests(self.root / "manifests", self.root)
     self.assertEqual(current, {("pypdf", "6.21.4")})
+    self.assertEqual(renderer, {("pymupdf", "2.0")})
     self.assertEqual(legacy, {("pypdf", "5.9.0"), ("pillow", "11.3.0"),
                               ("cryptography", "46.0.4")})
     self.assertEqual((self.root / "manifests/current.txt").read_text(), "pypdf==6.21.4\n")
+    self.assertEqual((self.root / "manifests/renderer.txt").read_text(), "pymupdf==2.0\n")
+    self.assertNotIn("pymupdf", (self.root / "manifests/legacy.txt").read_text())
     self.assertIn("cryptography==46.0.4", (self.root / "manifests/legacy.txt").read_text())
 
   def test_clean_scan_passes(self):
@@ -52,6 +56,44 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     self.write_report([self.package(vulns=[{"id": "GHSA-aaaa-bbbb-cccc"}])])
     with self.assertRaises(audit.VulnerabilityAuditError):
       audit.verify_report(self.report, self.expected, 1, True)
+
+  def test_renderer_advisory_is_blocking_and_clean_report_passes(self):
+    expected = {("pymupdf", "2.0")}
+    self.write_report([self.package("PyMuPDF", "2.0")])
+    self.assertEqual(audit.verify_report(self.report, expected, 0, True,
+                                         "selected renderer dependency"), 0)
+    self.write_report([self.package("PyMuPDF", "2.0",
+                                    [{"id": "GHSA-renderer-test"}])])
+    with self.assertRaisesRegex(audit.VulnerabilityAuditError, "selected renderer"):
+      audit.verify_report(self.report, expected, 1, True,
+                          "selected renderer dependency")
+    # A clean parser cannot substitute for a missing renderer scan.
+    self.write_report([self.package()])
+    with self.assertRaises(audit.VulnerabilityAuditError):
+      audit.verify_report(self.report, expected, 0, True)
+
+  def test_missing_or_ambiguous_renderer_pin_is_rejected(self):
+    (self.root / "requirements-enhanced-pdf.txt").write_text("pypdf==6.21.4\n")
+    for versions in (
+        {("pypdf", "6.21.4"), ("pypdf", "5.9.0")},
+        {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
+         ("pymupdf", "2.0"), ("pymupdf", "1.28.2")},
+    ):
+      with self.subTest(versions=versions):
+        with mock.patch.object(audit.licenses, "check", return_value=versions):
+          with self.assertRaises(audit.VulnerabilityAuditError):
+            audit.pins(self.root)
+
+  def test_renderer_workflow_contract_and_native_advisory_boundary(self):
+    workflow = (ROOT / ".github/workflows/dependency-vulnerabilities.yml").read_text()
+    doc = (ROOT / "docs/maximum/renderer-security-advisories.md").read_text()
+    self.assertIn("--kind renderer", workflow)
+    self.assertIn("renderer.txt", workflow)
+    self.assertIn("--no-deps --disable-pip", workflow)
+    self.assertIn("CVE-2026-112036", doc)
+    self.assertIn("MuPDF 1.28.5", doc)
+    self.assertIn("does not cover embedded native MuPDF advisories", doc)
+    self.assertIn("https://security-tracker.debian.org/tracker/source-package/mupdf", doc)
 
   def test_legacy_known_advisory_is_reported_not_silenced(self):
     self.write_report([self.package(vulns=[{"id": "CVE-2026-0001"}])])
@@ -95,7 +137,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
 
   def test_unreviewed_active_pin_is_rejected(self):
     (self.root / "requirements-enhanced-pdf.txt").write_text("other==9.9\n")
-    with mock.patch.object(audit.licenses, "check", return_value=self.expected):
+    with mock.patch.object(audit.licenses, "check", return_value=self.expected | {("pymupdf", "2.0"), ("pypdf", "5.9.0")}):
       with self.assertRaises(audit.VulnerabilityAuditError):
         audit.pins(self.root)
 

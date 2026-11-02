@@ -41,6 +41,19 @@ jobs:
           set -e
           python3 scripts/dependency_vulnerability_audit.py verify \
             --kind current --report "$RUNNER_TEMP/dependency-audit/current.json" --status "$status"
+      - name: Block on known vulnerabilities in the pinned PyMuPDF renderer
+        shell: bash
+        run: |
+          set +e
+          # The Maximum renderer installs only this exact wheel with --no-deps.
+          # This audits the Python distribution, NOT bundled native MuPDF CVEs.
+          pipx run --spec pip-audit==2.10.1 pip-audit --strict --no-deps --disable-pip \
+            --requirement "$RUNNER_TEMP/dependency-audit/renderer.txt" \
+            --format json --output "$RUNNER_TEMP/dependency-audit/renderer.json"
+          status=$?
+          set -e
+          python3 scripts/dependency_vulnerability_audit.py verify \
+            --kind renderer --report "$RUNNER_TEMP/dependency-audit/renderer.json" --status "$status"
       - name: Report pre-existing vulnerabilities in legacy CI-only test pins
         shell: bash
         run: |

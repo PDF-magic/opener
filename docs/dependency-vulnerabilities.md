@@ -22,7 +22,16 @@ scoped temporary manifests (never committed):
   Any published vulnerability, malformed/incomplete scan, scanner failure or
   unreachable advisory service fails CI. This parser is not part of the
   installed Built-in scanner, but needs a secure reviewed pin before use.
-- **Legacy CI-only test pins** (the other explicitly reviewed versions):
+- **Pinned Maximum renderer** (`pymupdf==2.0`): a separate **blocking**
+  PyMuPDF distribution audit using the exact reviewed installed pin. A missing
+  renderer, wrong version, malformed response, vulnerability or unavailable
+  advisory service fails the check. Because the real renderer is installed with
+  `--no-deps`, this audit uses `--no-deps --disable-pip`; it checks the
+  installed Python distribution rather than resolving unused optional extras.
+  It **does not** scan the native MuPDF engine embedded in the wheel. See
+  [the independent native-engine advisory log](maximum/renderer-security-advisories.md)
+  for the existing MuPDF 1.28.5 advisory and the human review procedure.
+- **Legacy CI-only test pins** (the remaining explicitly reviewed versions):
   a **reporting** audit, including transitive dependencies, with vulnerability
   IDs printed to the CI log. Existing known advisories in historical test pins
   are **not** silently discarded or represented as safe. An unavailable,
@@ -33,7 +42,8 @@ scoped temporary manifests (never committed):
 
 The audit parser independently rejects omitted or wrong-version reviewed
 packages, invalid JSON, malformed vulnerability records and unexpected scanner
-status. The regression suite exercises both blocking and reporting paths.
+status. The regression suite exercises both blocking and reporting paths,
+including a missing renderer and the renderer's advisory failure.
 The WebExtension currently declares **no npm dependencies**, so there is no
 third-party npm graph to audit. ClamAV and FreshClam are external, user-managed
 native binaries installed from approved paths; Python package auditing cannot
@@ -50,6 +60,9 @@ PYTHONPATH=. python3 tests/general/dependency-vulnerabilities.py -v
 ```
 
 To review current vulnerability status, inspect the `Audit pinned Python
-dependencies` job. Resolve detected vulnerabilities by a separate, tested
+dependencies` job on every PR, main push, weekly schedule or manual dispatch.
+For native MuPDF, separately review upstream MuPDF release/security notes and
+the distribution-independent advisory sources linked in the native-engine log;
+package-only audit success is not a clean bill of health. Resolve detected vulnerabilities by a separate, tested
 version-pin change; do not weaken the scanner, ignore known critical findings
 without review, or auto-upgrade test or runtime dependencies in CI.
