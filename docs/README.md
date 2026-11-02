@@ -54,6 +54,7 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Compromised release revocation](release-revocation.md) — withdraw suspect releases, stop distribution, warn users, and verify safe recovery.
 - [Security reporting process](../SECURITY.md) — how to privately disclose suspected vulnerabilities without posting exploit details publicly.
+- [Security fix prioritization](security-fix-prioritization.md) — severity and exposure-based security fix work order, escalation, safe verification, and disclosure.
 
 ## Filename conventions
 
