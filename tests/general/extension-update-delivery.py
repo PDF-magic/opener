@@ -15,7 +15,7 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.doc = DOC_PATH.read_text(encoding="utf-8")
-    cls.normalized_doc = re.sub(r"\\s+", " ", cls.doc.replace("**", "")).lower()
+    cls.normalized_doc = re.sub(r"\s+", " ", cls.doc.replace("**", "")).lower()
     cls.manifest = json.loads((WEB / "manifest.json").read_text(encoding="utf-8"))
     cls.package = json.loads((WEB / "package.json").read_text(encoding="utf-8"))
     cls.gecko = json.loads((WEB / "firefox" / "gecko.json").read_text(encoding="utf-8"))
