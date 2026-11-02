@@ -2,7 +2,10 @@
 """Portable benchmark contract and scanner-safety regressions."""
 import importlib.util
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("ui_response", ROOT / "ui_responsiveness_benchmark.py")
@@ -56,6 +59,14 @@ class UIResponsivenessContracts(unittest.TestCase):
     self.assertIn("ScanProgressPreference.isEnabled()", original)
     self.assertIn("process.terminate()", original)
     self.assertEqual(original, (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8"))
+
+  def test_swift_compilation_failure_reports_errors_without_a_result(self):
+    with tempfile.TemporaryDirectory() as folder:
+      failure = subprocess.CalledProcessError(
+        1, ["swiftc"], stderr=b"harness.swift:4: error: missing native symbol\n")
+      with mock.patch.object(benchmark.subprocess, "run", side_effect=failure):
+        with self.assertRaisesRegex(ValueError, "missing native symbol"):
+          benchmark.run_once(Path(folder), 0)
 
   def test_no_production_scan_bypass_or_preference_writes(self):
     source = (ROOT / "ui_responsiveness_benchmark.py").read_text(encoding="utf-8")
