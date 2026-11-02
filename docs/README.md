@@ -13,6 +13,8 @@ The reference pages are grouped by feature rather than keeping every page in one
 
 For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/checks.md), including which safeguards are currently enforced and which inspections are unavailable.
 
+For manual source-based application updates, see [Application update delivery](application-update-delivery.md). There is no planned binary update, signing, or automatic-update channel.
+
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
 - [Developer ID signing](developer-id-signing.md) — sign and verify staged macOS distribution binaries and helper applications without modifying the installed scan gate.
@@ -20,8 +22,6 @@ General installation, application, browser, and operational guides remain in thi
 - [Troubleshooting](troubleshooting.md) — diagnose safe installation, scan, signature, PDF handler, and browser-handoff failures without bypassing protections.
 
 - [Handling quarantined files](quarantined-files.md) — what macOS File Quarantine means for clean, blocked, and unscannable managed opens, plus safe troubleshooting.
-
-- [Application update delivery](application-update-delivery.md) — manual trusted-source application updates, no planned binary update or signing channel, and unchanged scanner-safety requirements.
 
 - [Upgrade PDF Magic Opener](upgrade-process.md) — safely reinstall a trusted newer version, verify migration, and recover from a failed upgrade without resetting preferences.
 
