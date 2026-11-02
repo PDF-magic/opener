@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard the documented, development-only extension delivery policy (opener-1159)."""
+"""Guard the manual, development-only extension update policy (opener-1159)."""
 
 import json
 from pathlib import Path
@@ -23,7 +23,7 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
     for phrase in (
       "development-only", "no production browser extension is published",
       "no active extension auto-updater", "Not active", "Scan PDF",
-      "NOT RELEASE READY", "manual", "disposable profile",
+      "NOT RELEASE READY", "manual", "disposable browser profile",
       "unsigned ZIP", "temporary add-ons",
     ):
       with self.subTest(phrase=phrase):
@@ -32,18 +32,28 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
     self.assertNotIn("update_url", self.gecko.get("gecko", {}))
     self.assertIn("example.invalid", self.gecko["gecko"]["id"])
 
-  def test_each_publisher_and_browser_family_has_a_separate_update_route(self):
-    for name in (
-      "Chrome Web Store", "Brave", "Arc", "Vivaldi",
-      "Microsoft Edge Add-ons", "Opera Add-ons", "Firefox AMO (listed)",
-      "Firefox AMO (unlisted)", "Safari Mac App Store", "Safari Developer ID",
+  def test_manual_installations_are_documented_for_each_browser_family(self):
+    for phrase in (
+      "Chrome", "Chromium", "Brave", "Arc", "Vivaldi", "Edge", "Opera",
+      "npm run build", "unpacked", "manifest.json", "ZIP",
+      "Firefox", "npm run package:firefox",
+      "about:debugging#/runtime/this-firefox", "temporary",
+      "Safari", "PDFMagicOpener.app", "PDFMagicOpenerSafari.appex",
+      "Safari Settings", "notarization",
     ):
-      with self.subTest(channel=name):
-        self.assertIn(name, self.doc)
-    for action in ("npm run build", "npm run package:firefox",
-                   "about:debugging#/runtime/this-firefox",
-                   "PDFMagicOpenerSafari.appex", "Safari Settings"):
-      self.assertIn(action, self.doc)
+      with self.subTest(route=phrase):
+        self.assertIn(phrase.lower(), self.doc.lower())
+
+  def test_store_specific_and_automatic_update_routes_are_not_prescribed(self):
+    for phrase in (
+      "Chrome Web Store", "Microsoft Edge Add-ons", "Opera Add-ons",
+      "Firefox AMO", "Mac App Store", "publisher account",
+      "store submission", "store listing", "self-update endpoint",
+    ):
+      with self.subTest(removed=phrase):
+        self.assertNotIn(phrase.lower(), self.doc.lower())
+    self.assertIn("not a delivery mechanism", self.doc.lower())
+    self.assertIn("no production extension release or automatic update", self.doc.lower())
 
   def test_versions_and_security_gates_are_preserved(self):
     self.assertEqual(self.manifest["version"], self.package["version"])
@@ -52,12 +62,11 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
     self.assertEqual(self.manifest["optional_permissions"], ["downloads"])
     self.assertEqual(self.manifest["incognito"], "not_allowed")
     for phrase in (
-      "release version scheme", "stable store extension/Gecko ID",
-      "publisher-confirmed identities", "native allowlists",
+      "release version scheme", "extension identity", "native-messaging",
       "browser storage", "optional permission", "private-browsing",
-      "selected PDF destination", "signature freshness",
-      "file-integrity", "quarantine", "scan-before-open",
-      "no new origins", "not a delivery mechanism", "rolled-back",
+      "selected PDF destination", "signature freshness", "file-integrity",
+      "quarantine", "scan-before-open", "no browser extension update",
+      "failed or interrupted manual update",
     ):
       with self.subTest(gate=phrase):
         self.assertIn(phrase.lower(), self.doc.lower())
