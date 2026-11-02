@@ -98,7 +98,7 @@ class ExtensionStoreDescriptionsTests(unittest.TestCase):
     self.assertIn("nativeMessaging", self.stores["Safari App Store"]["Full description"])
     self.assertIn("no verified scan-before-render", self.stores["Safari App Store"]["Full description"])
     for channel in EXPECTED[:-1]:
-      self.assertIn("No required", self.stores[channel]["Full description"])
+      self.assertIn("no required", self.stores[channel]["Full description"].lower())
     for required in (
       "NOT RELEASE READY", "not submitted", "not approved", "not published",
       "opener-1152", "Gecko", "Mozilla signing", "publisher review",
