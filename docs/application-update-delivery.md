@@ -42,8 +42,8 @@ does **not** by itself establish scanner health or authorize a PDF to open.
 ## Future public delivery decision (not implemented)
 
 The intended public **native macOS application** delivery channel is a
-**versioned, signed and notarized application archive linked from official
-GitHub Releases**, downloaded and installed only after a user chooses to
+**versioned, signed and notarized application archive** linked from
+**official GitHub Releases**, downloaded and installed only after a user chooses to
 update. A release must have a reviewed stable `vX.Y.Z` identifier, release notes,
 checksums, independently verified Developer ID signatures and Apple
 notarization, and installation/upgrade verification before it can be offered
