@@ -88,9 +88,18 @@ the impact, and coordinate a fix and any public advisory with the reporter.
 Please avoid public disclosure of actionable details while a report is being
 investigated and coordinate any publication with the maintainers.
 
+Maintainers use [security fix prioritization](docs/security-fix-prioritization.md)
+to assess urgency and schedule safe remediation. These internal priorities are
+not response-time or public disclosure promises.
+
 A security report does not authorize weakening or bypassing the installed
 ClamAV scan gate, file-integrity checks, quarantine, or users' selected PDF
 opening preferences. A clean scan is not a guarantee that a PDF is safe.
+
+If a **published build or source archive may be compromised**, maintainers
+should follow the [compromised release revocation runbook](docs/release-revocation.md)
+to stop distribution, withdraw downloads, notify users, and verify recovery.
+This does not relax private reporting or coordinated disclosure requirements.
 
 For ordinary bugs or non-sensitive feature requests, use the
 [public issue tracker](https://github.com/PDF-magic/opener/issues).

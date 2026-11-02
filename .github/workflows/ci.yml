@@ -253,8 +253,12 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/security-reporting-documentation.py -v
       - name: Verify supported application version policy
         run: PYTHONPATH=. python3 tests/general/supported-application-versions.py -v
+      - name: Verify documented security fix prioritization
+        run: PYTHONPATH=. python3 tests/general/security-fix-prioritization.py -v
       - name: Require authenticated geckodriver installation in every workflow
         run: PYTHONPATH=. python3 tests/general/geckodriver-auth.py -v
+      - name: Guard Firefox API compatibility watch and reviewed upstream inventory
+        run: PYTHONPATH=. python3 tests/general/firefox-api-watch.py -v
       - name: Verify actionable failure-report formatting and metadata handling
         run: PYTHONPATH=. python3 tests/general/ci-failure-report.py -v
       - name: Check Python test organization
@@ -280,6 +284,8 @@ jobs:
         run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
       - name: Enforce documented dependency update ownership and review process
         run: PYTHONPATH=. python3 tests/general/dependency-updates.py -v
+      - name: Exercise dependency update fail-closed and audit regressions
+        run: PYTHONPATH=. python3 tests/dependencies/update-regressions.py -v
       - name: Check declared dependency license obligations before optional installs
         run: python3 scripts/check_dependency_licenses.py
       - name: Verify license checker rejects unreviewed dependencies and missing notices

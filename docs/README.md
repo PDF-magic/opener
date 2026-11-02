@@ -54,7 +54,9 @@ General installation, application, browser, and operational guides remain in thi
 - [Browser extension installation](browser-extension-installation.md) — local development loading for Chromium-family browsers, Firefox, and Safari; release and scanner-safety limits.
 
 
+- [Compromised release revocation](release-revocation.md) — withdraw suspect releases, stop distribution, warn users, and verify safe recovery.
 - [Security reporting process](../SECURITY.md) — how to privately disclose suspected vulnerabilities without posting exploit details publicly.
+- [Security fix prioritization](security-fix-prioritization.md) — severity and exposure-based security fix work order, escalation, safe verification, and disclosure.
 
 ## Filename conventions
 
@@ -69,4 +71,8 @@ The CI documentation check verifies that pages in these feature folders retain k
 
 For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
 
+- [Firefox WebExtension API watch](firefox-api-watch.md) — review upstream Firefox API and manifest compatibility changes without mutating the inactive extension.
+
 - [PDF parser security advisory watch](pdf/parser-security-advisories.md) — scheduled advisory monitoring and triage for reviewed parser versions.
+
+- [Safari extension API change watch](safari-extension-api-watch.md) — read-only weekly WebKit release monitoring, offline CI checks, and manual Safari compatibility review.
