@@ -1,0 +1,42 @@
+name: Chromium extension API watch
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 9 * * 3"
+  workflow_dispatch:
+
+# Read only official public notices; no extension, scanner or user data access.
+permissions:
+  contents: read
+
+jobs:
+  chromium-api-watch-contract:
+    name: Validate Chromium extension API watch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify notice parsing and offline fail-closed cases
+        run: python3 tests/general/chromium-extension-api-watch.py -v
+
+  chromium-api-watch-live:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: chromium-api-watch-contract
+    name: Review current official Chromium extension notices
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check for unreviewed Chrome Extensions platform changes
+        run: python3 scripts/chromium_extension_api_watch.py
