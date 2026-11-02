@@ -70,3 +70,8 @@ checks the installed distribution version, the documented security and licensing
 review, and that the worker applies resource limits before importing the native
 renderer. The existing real-rendering suite continues to exercise the actual worker
 API, bounds, and fail-closed behavior on both platforms.
+
+Ongoing PyMuPDF **and embedded native MuPDF** security-advisory tracking,
+including the current native-engine limitation, is maintained in
+[renderer security advisories](renderer-security-advisories.md). The separate
+weekly PyMuPDF CI audit does not inspect native MuPDF CVEs.
