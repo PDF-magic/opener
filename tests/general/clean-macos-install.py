@@ -97,13 +97,19 @@ class CleanMacInstallTests(unittest.TestCase):
 
   def test_failed_trust_or_install_does_not_launch(self):
     for failure in ("trust", "copy"):
+      def fake_command(args, *, timeout=120):
+        if args[:3] == ["ditto", "-x", "-k"]:
+          (Path(args[-1]) / install.APP_NAME).mkdir()
+        if failure == "copy" and args[:2] == ["sudo", "/usr/bin/ditto"]:
+          raise install.CleanInstallError("copy failed")
       with self.subTest(failure=failure), \
            patch.object(install, "validate_zip"), \
-           patch.object(install, "verify_signed_app", side_effect=install.NotarizationError("bad") if failure == "trust" else None), \
-           patch.object(install, "run_command", side_effect=install.CleanInstallError("copy failed") if failure == "copy" else None), \
-           patch.object(install, "launch_installed_app") as launch, \
-           self.assertRaises(install.CleanInstallError):
-        install.verify_clean_install(self.archive, self.team, self.root, target=self.target)
+           patch.object(install, "verify_signed_app",
+                        side_effect=install.NotarizationError("bad") if failure == "trust" else None), \
+           patch.object(install, "run_command", side_effect=fake_command), \
+           patch.object(install, "launch_installed_app") as launch:
+        with self.assertRaises(install.CleanInstallError):
+          install.verify_clean_install(self.archive, self.team, self.root, target=self.target)
         launch.assert_not_called()
 
   def test_workflow_requires_trusted_artifact_and_never_uses_pr_secrets(self):

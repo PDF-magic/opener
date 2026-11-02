@@ -15,7 +15,9 @@ For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/ch
 
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
-- [Clean macOS installation verification](clean-macos-install.md) — guarded notarized first-install verification on a fresh runner, plus real clean-Mac acceptance steps.\n\n- [Developer ID signing](developer-id-signing.md) — sign and verify staged macOS distribution binaries and helper applications without modifying the installed scan gate.
+- [Clean macOS installation verification](clean-macos-install.md) — guarded notarized first-install verification on a fresh runner, plus real clean-Mac acceptance steps.
+
+- [Developer ID signing](developer-id-signing.md) — sign and verify staged macOS distribution binaries and helper applications without modifying the installed scan gate.
 
 - [Troubleshooting](troubleshooting.md) — diagnose safe installation, scan, signature, PDF handler, and browser-handoff failures without bypassing protections.
 
