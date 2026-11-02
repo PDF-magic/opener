@@ -46,17 +46,14 @@ has been published or independently validated on every supported macOS version.
   and safe opening installation path. Preserve local preferences and
   security checks when following the [upgrade guide](upgrade-process.md).
 
-## How actual GitHub Release notes will be published
+## Source changes, not versioned releases
 
-After separate approval of the distribution prerequisites, maintainers must
-follow the [release versioning](release-versioning.md) and
-[fail-closed release gate](release-gate.md) procedures. The existing,
-manually dispatched **Guarded GitHub release** workflow verifies an existing
-stable tag on the exact current `main` commit, matching component versions,
-distribution readiness, and required CI checks. Only then does it create a
-**source-only** GitHub Release with generated release notes. It never
-publishes unsigned browser packages or macOS application artifacts.
+Development changes are recorded in the Git history, with their exact commit
+SHAs identifying source checkouts. This project does not plan numbered public
+releases, signed application downloads, automatic updates, or GitHub Releases
+distribution. The checked-in `0.1.0` is only required build metadata.
 
-Review the generated release notes and any migration or security advisories
-before announcing a release. This document is a public development snapshot,
-not an authorization to bypass the gate or declare a release complete.
+Before updating, review the commits and relevant security or migration
+notes, then use a [trusted complete checkout](application-update-delivery.md).
+The [manual upgrade procedure](upgrade-process.md) must preserve user
+preferences, the native scan gate, quarantine, and scan verification.
