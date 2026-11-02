@@ -32,11 +32,12 @@ class SupportedApplicationVersionsTests(unittest.TestCase):
     self.assertEqual(mac_versions, {browser_version})
     self.assertEqual(browser_version, package_version)
     self.assertEqual(browser_version, "0.1.0")
-    self.assertIn(f"\`{browser_version}\`", self.policy)
+    self.assertIn(f"`{browser_version}`", self.policy)
     self.assertIn(f"Development snapshot — {browser_version} (unreleased)", self.notes)
 
   def test_current_release_state_and_older_versions_are_unambiguous(self):
     self.assertIn("## Supported Versions", self.policy)
+    normalized = " ".join(self.policy.split())
     for statement in (
       "No public installable application release has",
       "unreleased development",
@@ -44,18 +45,18 @@ class SupportedApplicationVersionsTests(unittest.TestCase):
       "**Unsupported**",
       "**None published; none currently supported.**",
       "**not a supported production build**",
-      "only\n the newest published stable application version",
-      "ends support for all\nolder stable application versions immediately",
+      "**only the newest published stable application version**",
+      "ends support for all older stable application versions immediately",
       "no overlapping,",
       "backport window",
       "source-only GitHub Release",
       "Private vulnerability reports are welcome for any version",
     ):
       with self.subTest(statement=statement):
-        self.assertIn(statement, self.policy)
+        self.assertIn(statement, normalized)
     self.assertIn("**Publication state: UNRELEASED.**", self.notes)
     self.assertIn("**NOT RELEASE READY**", self.notes)
-    self.assertIn("The current checked-in product version is \`0.1.0\`",
+    self.assertIn("The current checked-in product version is `0.1.0`",
                   RELEASE_VERSIONING.read_text(encoding="utf-8"))
 
   def test_upgrade_is_not_a_scanner_bypass_or_preference_reset(self):
