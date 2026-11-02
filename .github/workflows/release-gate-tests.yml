@@ -21,3 +21,5 @@ jobs:
           persist-credentials: false
       - name: Verify release gate rejects missing checks and unsafe publication
         run: PYTHONPATH=. python3 tests/general/release-check-gate.py -v
+      - name: Verify source archive checksums and guarded publication
+        run: PYTHONPATH=. python3 tests/general/release-checksums.py -v

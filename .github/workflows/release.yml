@@ -8,7 +8,8 @@ on:
         required: true
         type: string
 
-# No tag creation, signing, store publication, or artifact upload is performed.
+# Source archives and SHA256SUMS are the only assets; no signing, store publication,
+# unsigned installable builds, or tag creation is performed.
 # GitHub Releases created outside this workflow require repository-admin
 # governance; repository YAML cannot prohibit direct UI/API publication.
 permissions:
@@ -48,13 +49,36 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Reverify the exact main commit immediately before publication
+      - name: Build only tagged, immutable source archives
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          stage="$RUNNER_TEMP/pdf-magic-source-release"
+          base="pdf-magic-opener-$RELEASE_TAG"
+          mkdir -m 700 "$stage"
+          git archive --format=tar --prefix="$base/" "$GITHUB_SHA" | gzip -n > "$stage/$base-source.tar.gz"
+          git archive --format=zip --prefix="$base/" "$GITHUB_SHA" > "$stage/$base-source.zip"
+          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG"
+          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify
+      - name: Reverify exact main and tag before drafting the source-only release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/require_release_checks.py --tag "$RELEASE_TAG"
-      - name: Publish source-only release (no unsigned browser packages)
+      - name: Create draft, upload verified sources and checksums, then publish
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
-        run: gh release create "$RELEASE_TAG" --verify-tag --target "$GITHUB_SHA" --title "$RELEASE_TAG" --generate-notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/pdf-magic-source-release"
+          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify
+          gh release create "$RELEASE_TAG" --verify-tag --target "$GITHUB_SHA" --title "$RELEASE_TAG" --generate-notes --draft
+          gh release upload "$RELEASE_TAG" "$stage"/*
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/source-release-metadata.json"
+          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify --release-json "$RUNNER_TEMP/source-release-metadata.json"
+          gh release edit "$RELEASE_TAG" --draft=false
