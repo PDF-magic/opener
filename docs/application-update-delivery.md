@@ -1,83 +1,87 @@
 # Application update delivery policy (opener-1158)
 
-PDF Magic Opener uses a **user-initiated, whole-application update** for its
-native macOS app and installed scan-gated PDF handler. **There is no background
-application updater, automatic download, in-app install action, or production
-application-update feed.** The Updates settings pane displays installed app
-version information; its manual buttons concern **ClamAV definitions**, not a
-new application version. Do not confuse the two update streams.
+PDF Magic Opener currently uses **user-initiated, source-based updates** for
+the native macOS app and scan-gated PDF handler. There is **no background
+application updater, automatic download, in-app install action, binary update
+feed, or planned signed release channel**. Updates are performed manually from
+a complete trusted source checkout; there is no published binary update channel.
 
-## Current delivery: trusted source and explicit reinstallation
+The Updates settings pane displays installed application version information.
+Its manual update actions concern **ClamAV definitions**, not application
+versions. ClamAV engine and signature updates are independent of app updates.
 
-Until a signed release channel has passed its separate distribution gates,
-new application code is available only through a **complete trusted checkout**
-of the official [PDF-magic/opener repository](https://github.com/PDF-magic/opener).
-Select and review the specific desired commit/version; do not treat a CI
-artifact, an unsigned archive, a random mirror, or a copied installer script
-as an installable public update. There is no published binary update channel.
+## Manual source updates only
 
-Delivery and installation are distinct: acquiring a newer trusted checkout
-does not change a user's installed application. On macOS 13 or later, after
-reviewing changes and prerequisites, finish any active scans and run the
-existing installer **as the normal user**, from the root of that checkout:
+1. Obtain a **complete trusted checkout** from the official
+   [PDF-magic/opener repository](https://github.com/PDF-magic/opener).
+   Select and review the intended commit/version and its release notes or
+   change history. Do not execute isolated installer scripts, untrusted forks,
+   binary downloads, unsigned CI archives, or files supplied by random mirrors.
+2. On macOS 13 or later, check [prerequisites](installation-prerequisites.md),
+   preserve a backup of customized settings, and finish any active scans.
+   Use the normal user account, **never sudo or root**. From the checked-out
+   repository root run:
 
-```sh
-bash install-allow-and-open.sh
-```
+   ```sh
+   bash install-allow-and-open.sh
+   ```
 
-The user chooses when to run this action; nothing polls, downloads, launches,
-or silently installs an application update. Follow the
-[upgrade procedure](upgrade-process.md) for checks before the upgrade,
-post-install verification, migration status, and failed-upgrade rollback.
-Running the installer must not reset selected PDF destinations, hijack the
-current macOS default PDF application, overwrite unrelated Finder actions,
-replace a compatible ClamAV installation, or discard signatures or other
-saved preferences. The existing explicit-consent and rollback controls apply.
+3. Follow the [upgrade procedure](upgrade-process.md) for installer results,
+   post-install verification, migration state, safe retry, and rollback. A
+   fetched newer checkout alone does not change the installed application.
+   Nothing polls, downloads, launches, or silently installs application code.
 
-The installed PDF handler remains responsible for mandatory current
-ClamAV signatures, complete clean scanning, file-integrity verification,
-quarantine preservation, and verified destination handoff. Updating the app
-does **not** by itself establish scanner health or authorize a PDF to open.
+The installer must preserve saved preferences, the selected PDF destination,
+ClamAV configuration and definitions, compatible Finder Quick Actions,
+quarantine state, and user decisions about the macOS default PDF handler.
+It must not silently replace a compatible ClamAV installation or change
+default-app associations without explicit consent.
 
-## Future public delivery decision (not implemented)
+The scan-before-open gate remains authoritative: require current ClamAV
+signatures, a complete clean scan, file-integrity checks, preserved quarantine,
+and verified handoff to the chosen opener. A successful application
+reinstallation does **not** itself demonstrate scanner health or authorize
+opening an unscanned PDF.
 
-The intended public **native macOS application** delivery channel is a
-**versioned, signed and notarized application archive** linked from
-**official GitHub Releases**, downloaded and installed only after a user chooses to
-update. A release must have a reviewed stable `vX.Y.Z` identifier, release notes,
-checksums, independently verified Developer ID signatures and Apple
-notarization, and installation/upgrade verification before it can be offered
-as a trusted binary. An independently approved release workflow and download
-verification procedure are prerequisites; this document does **not** publish
-an artifact, configure signing, implement a feed, or authorize an auto-updater.
+## No prebuilt release or signing plan
 
-The existing [guarded GitHub release](release-gate.md) is **source-only**,
-and the [distribution audit](browser-extension-distribution.md) currently
-reports **NOT RELEASE READY**. Its gate refuses publication until
-prerequisites are resolved. Successful CI, an unsigned ZIP, a GitHub source
-archive, or a tag alone is not a signed/notarized app update. The
-[versioning policy](release-versioning.md) sets product version identity, not
-installation authorization. Future changes to the delivery mechanism
-(including a background updater or new publisher) require separate approval,
-a threat review, consent design, and regression testing.
+This task does **not** establish GitHub Releases distribution, a downloadable
+prebuilt application, Developer ID code signing, notarization, or any automatic
+updater. No signing or notarization pipeline is planned here. The source-based
+installation procedure is development-only and must not be presented as a
+verified production application release.
 
-## Different update channels
+Unsigned or unnotarized macOS applications can be restricted by **Gatekeeper**
+and other platform controls. Do **not** bypass Gatekeeper, disable browser or
+system security checks, strip quarantine, or recommend an untrusted binary to
+make installation succeed. If installation is blocked, stop and record the
+limitation. Signing and notarization would require a separate decision and
+security review before public binary distribution; they are not prerequisites
+being implemented by this PR.
 
-- **ClamAV signature definitions** use the existing FreshClam update
-  agent/manual actions and retain the 48-hour freshness gate; they are
-  independent of application version delivery. ClamAV engine management is
-  likewise separate. See [signature updates](scanner/signature-update-process.md).
-- **Browser extensions** have their own Chrome/Edge/Opera/Firefox/Safari
-  store/signing and browser-managed update requirements. Current unsigned
-  development packages are inactive and not installable public updates.
-  See [browser distribution](browser-extension-distribution.md) and
-  [developer installation](browser-extension-installation.md).
-- An application update must not silently opt users into browser extension
-  installation, change extension permissions, or rewrite native messaging
-  allowlists. Existing user customizations remain authoritative.
+The existing [source-release gate](release-gate.md) and
+[versioning policy](release-versioning.md) are separate repository mechanisms,
+not the application installation or update channel. Their presence does not
+mean a binary is published or an automatic updater exists. No change to that
+workflow is requested here, and the distribution audit remains
+**NOT RELEASE READY**. An alternative future delivery mechanism would require
+separate approval, threat review, user-consent design, and regression tests.
 
-**Failure behavior:** A missing, untrusted, unsigned, or unavailable release
-is **not** an instruction to bypass Gatekeeper or use an unsigned CI artifact.
-Keep the existing installation and its protections; if an explicit
-reinstallation fails, follow the documented migration/rollback process and
-reverify the scanner before opening PDFs.
+## Keep independent update streams separate
+
+- **ClamAV signatures** are maintained by FreshClam and manual definition
+  update actions, subject to the existing 48-hour freshness gate. ClamAV engine
+  management is also separate. See [signature updates](scanner/signature-update-process.md).
+- **Browser extensions** are independent. Current Chromium-family builds use
+  manual unpacked reloads; Firefox uses temporary developer loading; Safari's
+  extension is embedded in the native app. Current extension packages remain
+  inactive and do not scan browser PDFs. See [browser extension
+  installation](browser-extension-installation.md). An application update
+  must not enable extensions, alter native messaging allowlists, grant
+  permissions, or reset browser preferences.
+
+**Failure behavior:** Keep the previous installation and its protections if
+the source, installer, or migration is untrusted, blocked, interrupted, or
+incomplete. Inspect the migration status and follow the rollback or repair
+procedure instead of bypassing security controls. Verify ClamAV and the native
+scan gate again before opening PDFs.
