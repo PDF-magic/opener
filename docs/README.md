@@ -21,6 +21,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Handling quarantined files](quarantined-files.md) — what macOS File Quarantine means for clean, blocked, and unscannable managed opens, plus safe troubleshooting.
 
+- [Application update delivery](application-update-delivery.md) — current manual source-checkout updates and prerequisites for a future signed release channel.
+
 - [Upgrade PDF Magic Opener](upgrade-process.md) — safely reinstall a trusted newer version, verify migration, and recover from a failed upgrade without resetting preferences.
 
 - [Choose a PDF browser](select-browser.md) — select a verified post-scan browser in Settings or use the installed custom-application chooser.
