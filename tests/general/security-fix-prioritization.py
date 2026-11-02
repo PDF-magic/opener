@@ -15,10 +15,10 @@ class SecurityFixPrioritizationTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.guide = POLICY.read_text(encoding="utf-8")
-    cls.lower = cls.guide.lower()
+    cls.lower = re.sub(r"[*_]", "", cls.guide.lower())
 
   def test_four_ordered_levels_and_concrete_decisions(self):
-    rows = re.findall(r"^\\| \\*\\*(P[0-3]) — [^|]+\\*\\* \\| ([^|]+) \\| ([^|]+) \\|$",
+    rows = re.findall(r"^\| \*\*(P[0-3]) — [^|]+\*\* \| ([^|]+) \| ([^|]+) \|$",
                       self.guide, re.MULTILINE)
     self.assertEqual([row[0] for row in rows], ["P0", "P1", "P2", "P3"])
     for index, phrase in enumerate(("active exploitation", "high-impact",
@@ -62,7 +62,7 @@ class SecurityFixPrioritizationTests(unittest.TestCase):
     self.assertIn("[Security fix prioritization](security-fix-prioritization.md)", index)
     self.assertIn("[security fix prioritization](docs/security-fix-prioritization.md)", security)
     self.assertIn("PYTHONPATH=. python3 tests/general/security-fix-prioritization.py -v", ci)
-    for target in re.findall(r"(?<!!)\\[[^\\]]+\\]\\(([^)]+)\\)", self.guide):
+    for target in re.findall(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", self.guide):
       url = urlsplit(target)
       if not url.scheme and not url.netloc and url.path:
         with self.subTest(target=target):
