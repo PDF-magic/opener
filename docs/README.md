@@ -37,6 +37,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Signature update process](scanner/signature-update-process.md) — how FreshClam checks, safely verifies, publishes, and reports signature updates.
 
+- [ClamAV compatibility watch](scanner/compatibility-watch.md) — track upstream stable engine releases and require deliberate compatibility review without changing scanner safety.
+
 - [Scanner errors and recovery](scanner/errors.md) — distinguish failed and incomplete scans from malware findings and safely recover without bypassing protection.
 
 - [Browser download monitoring support](browser-download-monitoring-support.md) — which browsers expose relevant download events, what still needs verification, and why monitoring is inactive.
