@@ -1,0 +1,44 @@
+name: Firefox WebExtension API watch
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "19 9 * * 3"
+  workflow_dispatch:
+
+# Read-only upstream metadata; no browser profiles, PDFs, or scanner changes.
+permissions:
+  contents: read
+
+jobs:
+  firefox-api-contract:
+    name: Validate Firefox API watch contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify API inventory and fail-closed offline tests
+        run: PYTHONPATH=. python3 tests/general/firefox-api-watch.py -v
+
+  firefox-api-live:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: firefox-api-contract
+    name: Check upstream Firefox WebExtension API revisions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check reviewed MDN browser compatibility revisions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/firefox_api_watch.py
