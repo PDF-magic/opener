@@ -13,6 +13,8 @@ The reference pages are grouped by feature rather than keeping every page in one
 
 For a user-facing summary of the planned tier, see [Enhanced checks](enhanced/checks.md), including which safeguards are currently enforced and which inspections are unavailable.
 
+For manual source-based application updates, see [Application update delivery](application-update-delivery.md). There is no planned binary update, signing, or automatic-update channel.
+
 General installation, application, browser, and operational guides remain in this `docs/` directory.
 
 - [Install PDF Magic Opener from source](installation-path.md) — supported per-user installation steps, prerequisites, post-install verification, and public-release limitations.

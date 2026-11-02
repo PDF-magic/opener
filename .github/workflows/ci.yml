@@ -221,6 +221,8 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/developer-id-signing.py -v
       - name: Verify documented application upgrade process
         run: PYTHONPATH=. python3 tests/general/upgrade-documentation.py -v
+      - name: Verify application update delivery policy and release boundaries
+        run: PYTHONPATH=. python3 tests/general/application-update-delivery.py -v
       - name: Keep scanner installation instructions browser-neutral
         run: PYTHONPATH=. python3 tests/general/installation-docs.py -v
       - name: Verify browser extension installation documentation
