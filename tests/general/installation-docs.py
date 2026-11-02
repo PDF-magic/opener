@@ -22,6 +22,27 @@ class InstallationDocsTests(unittest.TestCase):
     self.assertIn("bash install-allow-and-open.sh", self.installation)
     self.assertIn("**Allow and Open**", self.installation)
 
+  def test_discoverable_installation_path_matches_real_installer(self):
+    guide_path = ROOT / "docs/installation-path.md"
+    self.assertTrue(guide_path.is_file())
+    guide = guide_path.read_text(encoding="utf-8")
+    index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+    installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    self.assertIn("[source installation instructions](docs/installation-path.md)", self.installation)
+    self.assertIn("[Install PDF Magic Opener from source](installation-path.md)", index)
+    self.assertIn("bash install-allow-and-open.sh", guide)
+    self.assertIn("Do not treat CI-built unsigned ZIPs as", guide)
+    self.assertIn("not a self-contained clean-Mac installer", guide)
+    self.assertIn("Do not disable Gatekeeper", guide)
+    self.assertIn("Open With → PDF Magic Opener", guide)
+    self.assertIn("scripts/migration_state.py status", guide)
+    self.assertIn("~/Applications/PDF Magic Opener.app", guide)
+    self.assertIn("browser inline/embedded PDF viewers", guide)
+    self.assertIn('if [ "$EUID" -eq 0 ]; then', installer)
+    self.assertIn('if [ ! -f "$workflow" ]; then', installer)
+    self.assertIn('python3 "$script_dir/scripts/report_install_prerequisites.py"', installer)
+    self.assertIn('install_dir="$HOME/Library/Application Support/Studio/allow-and-open"', installer)
+
   def test_brave_is_optional_for_installation(self):
     self.assertIn("**not an installation prerequisite**", self.installation)
     self.assertIn("does not install Brave or require Brave", self.installation)
