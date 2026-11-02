@@ -1,0 +1,54 @@
+name: macOS file-handler API watch
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+# Read-only SDK verification: no user files, handler registration or secrets.
+permissions:
+  contents: read
+
+jobs:
+  file-handler-inventory:
+    name: Validate native file-handler API inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Guard active file-handler call sites and SDK probe coverage
+        run: PYTHONPATH=. python3 tests/general/macos-file-handler-api-watch.py -v
+
+  file-handler-sdk:
+    name: Check macOS file-handler SDK APIs
+    needs: file-handler-inventory
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record current host and compiler SDK for compatibility review
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "macOS: $(sw_vers -productVersion)"
+          xcodebuild -version
+          sdk="$(xcrun --sdk macosx --show-sdk-version)"
+          echo "macOS SDK: $sdk"
+          {
+            echo "## macOS file-handler API watch"
+            echo
+            echo "- Runner macOS: $(sw_vers -productVersion)"
+            echo "- SDK: $sdk"
+            echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+            echo "- Source: compile-only, no default-handler changes"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Reject missing or deprecated native file-handler API signatures
+        run: xcrun swiftc -typecheck -warnings-as-errors scripts/macos-file-handler-api-probe.swift
