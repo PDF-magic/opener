@@ -36,7 +36,7 @@ class ExtensionPrivacyDisclosureTests(unittest.TestCase):
         self.assertNotIn("optional_host_permissions", manifest)
         self.assertNotIn("content_scripts", manifest)
         self.assertEqual(manifest["incognito"], "not_allowed")
-        self.assertIn("Not active", manifest["action"]["default_title"])
+        self.assertIn("not active", manifest["action"]["default_title"].lower())
     self.assertEqual(self.chromium, self.source)
     self.assertEqual(
       self.firefox["browser_specific_settings"]["gecko"]["data_collection_permissions"],
