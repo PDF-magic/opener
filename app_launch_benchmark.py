@@ -41,6 +41,37 @@ def validate_app(app):
   return executable
 
 
+def stop_launch_process(process):
+  """Reap a benchmark child even when macOS denies a process-group signal."""
+  if process.poll() is not None:
+    process.wait()
+    return
+  try:
+    # Only the dedicated process group created by start_new_session is targeted.
+    os.killpg(process.pid, signal.SIGTERM)
+  except (PermissionError, ProcessLookupError):
+    # A group can disappear or reject a signal while its direct child is
+    # still alive. Terminate that child without expanding the kill scope.
+    if process.poll() is None:
+      try:
+        process.terminate()
+      except ProcessLookupError:
+        pass
+  try:
+    process.wait(timeout=5)
+  except subprocess.TimeoutExpired:
+    if process.poll() is None:
+      try:
+        os.killpg(process.pid, signal.SIGKILL)
+      except (PermissionError, ProcessLookupError):
+        if process.poll() is None:
+          try:
+            process.kill()
+          except ProcessLookupError:
+            pass
+    process.wait(timeout=5)
+
+
 def launch_once(executable, home, temp, *, timeout=TIMEOUT_SECONDS):
   """Time process creation through the Debug-only first-view-ready pipe marker."""
   read_fd, write_fd = os.pipe()
@@ -85,17 +116,7 @@ def launch_once(executable, home, temp, *, timeout=TIMEOUT_SECONDS):
     if write_fd >= 0:
       os.close(write_fd)
     if process is not None:
-      # Only the process group created for this attempt can be terminated.
-      if process.poll() is None:
-        try:
-          os.killpg(process.pid, signal.SIGTERM)
-          process.wait(timeout=5)
-        except (OSError, subprocess.TimeoutExpired):
-          if process.poll() is None:
-            os.killpg(process.pid, signal.SIGKILL)
-            process.wait(timeout=5)
-      else:
-        process.wait()
+      stop_launch_process(process)
 
 
 def measure(app, samples=3, *, platform=sys.platform, run_attempt=launch_once):
