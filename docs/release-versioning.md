@@ -27,8 +27,9 @@ them solely to imply public product progress.
 There is no requirement to classify commits as MAJOR, MINOR, or PATCH, and
 no need to create `vX.Y.Z` tags for ordinary source changes. Any legacy
 source-only release gate is separate from the source-checkout installation
-process and **is not a planned distribution channel**. It must remain
-fail-closed rather than publish unapproved binaries.
+process and **is not a planned distribution channel**. It is **NOT RELEASE READY**
+and must remain fail-closed rather than publish unapproved binaries. No
+stable or prerelease tags are needed for routine source updates.
 
 ## Safe source updates
 
