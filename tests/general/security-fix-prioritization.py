@@ -15,7 +15,7 @@ class SecurityFixPrioritizationTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.guide = POLICY.read_text(encoding="utf-8")
-    cls.lower = re.sub(r"[*_]", "", cls.guide.lower())
+    cls.lower = re.sub(r"\s+", " ", re.sub(r"[*_]", "", cls.guide.lower()))
 
   def test_four_ordered_levels_and_concrete_decisions(self):
     rows = re.findall(r"^\| \*\*(P[0-3]) — [^|]+\*\* \| ([^|]+) \| ([^|]+) \|$",
