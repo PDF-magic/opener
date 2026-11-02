@@ -77,7 +77,7 @@ class FileHandlerAPIWatchTests(unittest.TestCase):
             with self.subTest(symbol=symbol):
                 self.assertIn(symbol, probe)
         self.assertIn("func verifyFileHandlerSDK(", probe)
-        self.assertNotIn("verifyFileHandlerSDK(document:", probe)
+        self.assertEqual(probe.count("verifyFileHandlerSDK("), 1)
         self.assertNotIn("CommandLine.arguments", probe)
         self.assertNotIn("ProcessInfo.processInfo.arguments", probe)
 
