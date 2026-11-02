@@ -151,19 +151,33 @@ def run_once(root, index):
   )
   swift, binary = case / "harness.swift", case / "harness"
   swift.write_text(driver_source(gate, document, started), encoding="utf-8")
-  subprocess.run(["/usr/bin/xcrun", "swiftc", str(swift), "-o", str(binary)],
-                 check=True, stdout=subprocess.DEVNULL,
-                 stderr=subprocess.PIPE, timeout=90)
+  try:
+    subprocess.run(["/usr/bin/xcrun", "swiftc", str(swift), "-o", str(binary)],
+                   check=True, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.PIPE, timeout=90)
+  except subprocess.CalledProcessError as exc:
+    # No PDF is compiled or opened: surface compiler errors from the throwaway
+    # native test harness, but never turn a failed run into a measurement.
+    diagnostic = (exc.stderr or b"").decode("utf-8", errors="replace")
+    errors = [line.strip() for line in diagnostic.splitlines()
+              if "error:" in line.lower()]
+    details = " | ".join(errors[-3:])[:600]
+    raise ValueError("Native Swift harness compilation failed"
+                     + (": " + details if details else "")) from exc
   process = subprocess.Popen([str(binary)], stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, text=True, start_new_session=True)
   try:
-    stdout, _ = process.communicate(timeout=25)
+    stdout, stderr = process.communicate(timeout=25)
   except subprocess.TimeoutExpired:
     os.killpg(process.pid, signal.SIGKILL)
     process.communicate()
     raise ValueError("Native UI failed to terminate after Cancel")
   if process.returncode != 0:
-    raise ValueError("Native UI harness failed")
+    errors = [line.strip() for line in stderr.splitlines()
+              if "fatal error:" in line.lower() or "error:" in line.lower()]
+    details = " | ".join(errors[-3:])[:600]
+    raise ValueError("Native UI harness exited unsuccessfully"
+                     + (": " + details if details else ""))
   reports = [line[len(RESULT_PREFIX):] for line in stdout.splitlines()
              if line.startswith(RESULT_PREFIX)]
   if len(reports) != 1 or not started.is_file():
@@ -195,8 +209,11 @@ def main(argv=None):
       samples = [run_once(root, i + 1) for i in range(args.samples)]
       print(json.dumps(aggregate(samples), sort_keys=True))
       return 0
-  except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError):
-    print("UI responsiveness benchmark failed; no partial measurements.", file=sys.stderr)
+  except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+    # Report the controlled harness failure category, not any partial timings.
+    detail = " " + str(exc) if isinstance(exc, ValueError) else ""
+    print("UI responsiveness benchmark failed; no partial measurements." + detail,
+          file=sys.stderr)
     return 1
 
 
