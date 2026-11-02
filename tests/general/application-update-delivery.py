@@ -36,7 +36,7 @@ class ApplicationUpdateDeliveryTests(unittest.TestCase):
       "does not establish GitHub Releases distribution",
       "no signing or notarization pipeline is planned",
       "source-based installation procedure is development-only",
-      "not the application installation or update channel",
+      "not the installation or update channel",
       "NOT RELEASE READY", "separate approval", "Gatekeeper",
       "do not bypass Gatekeeper",
     ):
