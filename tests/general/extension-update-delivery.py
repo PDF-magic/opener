@@ -15,6 +15,7 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.doc = DOC_PATH.read_text(encoding="utf-8")
+    cls.normalized_doc = re.sub(r"\\s+", " ", cls.doc.replace("**", "")).lower()
     cls.manifest = json.loads((WEB / "manifest.json").read_text(encoding="utf-8"))
     cls.package = json.loads((WEB / "package.json").read_text(encoding="utf-8"))
     cls.gecko = json.loads((WEB / "firefox" / "gecko.json").read_text(encoding="utf-8"))
@@ -27,7 +28,7 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
       "unsigned ZIP", "temporary add-ons",
     ):
       with self.subTest(phrase=phrase):
-        self.assertIn(phrase.lower(), self.doc.lower())
+        self.assertIn(phrase.lower(), self.normalized_doc)
     self.assertNotIn("update_url", self.manifest)
     self.assertNotIn("update_url", self.gecko.get("gecko", {}))
     self.assertIn("example.invalid", self.gecko["gecko"]["id"])
@@ -42,7 +43,7 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
       "Safari Settings", "notarization",
     ):
       with self.subTest(route=phrase):
-        self.assertIn(phrase.lower(), self.doc.lower())
+        self.assertIn(phrase.lower(), self.normalized_doc)
 
   def test_store_specific_and_automatic_update_routes_are_not_prescribed(self):
     for phrase in (
@@ -51,9 +52,9 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
       "store submission", "store listing", "self-update endpoint",
     ):
       with self.subTest(removed=phrase):
-        self.assertNotIn(phrase.lower(), self.doc.lower())
-    self.assertIn("not a delivery mechanism", self.doc.lower())
-    self.assertIn("no production extension release or automatic update", self.doc.lower())
+        self.assertNotIn(phrase.lower(), self.normalized_doc)
+    self.assertIn("not a delivery mechanism", self.normalized_doc)
+    self.assertIn("no production extension release or automatic update", self.normalized_doc)
 
   def test_versions_and_security_gates_are_preserved(self):
     self.assertEqual(self.manifest["version"], self.package["version"])
@@ -69,7 +70,7 @@ class ExtensionUpdateDeliveryTests(unittest.TestCase):
       "failed or interrupted manual update",
     ):
       with self.subTest(gate=phrase):
-        self.assertIn(phrase.lower(), self.doc.lower())
+        self.assertIn(phrase.lower(), self.normalized_doc)
 
   def test_every_local_markdown_link_is_real(self):
     for target in re.findall(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", self.doc):
