@@ -52,4 +52,6 @@ General installation, application, browser, and operational guides remain in thi
 
 The CI documentation check verifies that pages in these feature folders retain kebab-case names, avoid duplicate directory prefixes, and point to existing local Markdown destinations.
 
+- [Development release notes](release-notes.md) — public notes about the current unreleased source tree, including security protections and distribution limits.
+
 For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
