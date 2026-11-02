@@ -25,6 +25,8 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Handling quarantined files](quarantined-files.md) — what macOS File Quarantine means for clean, blocked, and unscannable managed opens, plus safe troubleshooting.
 
+- [Dependency update policy](dependency-update-policy.md) — review cadence, approved update channels, verification, and safe rollback for ClamAV, definitions, Python, helpers, CI tools, and extensions.
+
 - [Upgrade PDF Magic Opener](upgrade-process.md) — safely reinstall a trusted newer version, verify migration, and recover from a failed upgrade without resetting preferences.
 
 - [Choose a PDF browser](select-browser.md) — select a verified post-scan browser in Settings or use the installed custom-application chooser.
