@@ -92,7 +92,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     self.assertIn("--no-deps --disable-pip", workflow)
     self.assertIn("CVE-2026-112036", doc)
     self.assertIn("MuPDF 1.28.5", doc)
-    self.assertIn("does not cover embedded native MuPDF advisories", doc)
+    self.assertIn("does not cover embedded native MuPDF advisories", " ".join(doc.split()))
     self.assertIn("https://security-tracker.debian.org/tracker/source-package/mupdf", doc)
 
   def test_legacy_known_advisory_is_reported_not_silenced(self):
