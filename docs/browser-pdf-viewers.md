@@ -143,8 +143,14 @@ generated, harmless, single-page PDF; each renders a large, different
 colored rectangle.
 
 The test requires a real Safari WebDriver session, a successful local
-PDF request, the PDF's navigation URL, and a browser-viewport screenshot
-showing a substantial region of the PDF's **actual rendered color**.
+PDF request, the PDF's navigation URL, and a screenshot showing a substantial
+region of the PDF's **actual rendered color**. SafariDriver's viewport
+screenshot is preferred. On disposable GitHub-hosted macOS runners only,
+the test can also capture the single visible Safari automation window when
+native PDF compositing is absent from the WebDriver screenshot. Both capture
+paths require a changed image with the expected color absent from the blank
+baseline. Missing screen-capture access does not count as a pass, and no
+desktop-wide capture, screenshot upload or permission changes are performed.
 It does not equate a network request, content type or URL alone with
 successful viewing. An unavailable Safari automation session, blank viewer,
 download-only outcome, navigation error or missing color makes CI **fail**;
