@@ -270,7 +270,9 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          tests = list(Path("tests").glob("*/*.py"))
+          # Python package markers are not regression suites or ordinary filenames.
+          tests = [path for path in Path("tests").glob("*/*.py")
+                   if path.name != "__init__.py"]
           assert len(tests) >= 250, "Regression suites are missing"
           for path in tests:
               topic = path.parent.name
