@@ -58,7 +58,7 @@ class BrowserMonitoringStatusTests(unittest.TestCase):
   def test_ci_exercises_both_portable_and_compiled_model(self):
     ci = CI.read_text()
     self.assertIn("tests/general/browser-monitoring-status.py -v", ci)
-    self.assertIn("test-browser-monitoring-status.swift -o", ci)
+    self.assertIn("tests/browser/monitoring-status.swift -o", ci)
     self.assertIn('"$RUNNER_TEMP/TestBrowserMonitoringStatus"', ci)
 
 if __name__ == "__main__":

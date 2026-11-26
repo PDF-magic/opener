@@ -38,7 +38,7 @@ existing PDF verification requirements, and be selected using the existing
 ## Brave-only discovery regression (opener-0153)
 
 The macOS CI suite compiles `discover-installed-browsers.swift` alongside
-`test-brave-only-discovery.swift` to exercise discovery with **Brave as the only
+`tests/browser/brave-only-discovery.swift` to exercise discovery with **Brave as the only
 browser**. An isolated, disposable `Brave Browser.app` fixture uses the exact
 `com.brave.Browser` bundle identifier and an executable. The test confirms
 that the resulting inventory contains exactly that browser, remains valid JSON,
@@ -52,12 +52,12 @@ are not changed.
 
 ## Safari-only discovery regression (opener-0154)
 
-The macOS CI suite runs `test-safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of a non-executable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
+The macOS CI suite runs `tests/browser/safari-only-discovery.swift` against the existing read-only browser discovery function. In a disposable application directory, only a synthetic `Safari.app` with bundle ID `com.apple.Safari` qualifies as a browser; non-browser apps and an unrelated app using a Safari-like name are excluded. The test checks stable, single-entry discovery, JSON inventory compatibility, rejection of a non-executable or removed Safari bundle, and that discovery never runs an app executable. It supplies no registered applications and does not alter actual macOS browser installations, default handlers, or user preferences. This tests discovery rather than Safari PDF rendering or signing.
 
 ## Firefox and Chromium installed together (opener-0156)
 
 The macOS CI job compiles `discover-installed-browsers.swift` with
-`test-firefox-chromium-discovery.swift` and constructs **Firefox.app**
+`tests/browser/firefox-chromium-discovery.swift` and constructs **Firefox.app**
 (`org.mozilla.firefox`) and **Chromium.app** (`org.chromium.Chromium`)
 in separate disposable system-style and user-style Applications folders.
 The test verifies that both are discovered at once under distinct identifiers
@@ -78,7 +78,7 @@ CI exercises a **previously selected** Brave bundle disappearing while Safari re
 ## No third-party browsers installed (opener-0161)
 
 The macOS CI job compiles the real discovery, browser metadata, and preferences
-list components with `test-no-third-party-browsers.swift`. Isolated application
+list components with `tests/browser/no-third-party.swift`. Isolated application
 fixtures contain a usable **Safari.app** (`com.apple.Safari`), an unrelated
 Chrome-named application, an unusable Firefox bundle, and a stale Chrome
 registration. The test confirms that only Safari is discovered and displayed,
@@ -93,7 +93,7 @@ preferences, scanners, or quarantine rules; it does not test PDF rendering.
 
 ## Renamed browser discovery regression (opener-0160)
 
-The macOS CI suite builds and runs `test-renamed-browser-discovery.swift` against
+The macOS CI suite builds and runs `tests/browser/renamed-discovery.swift` against
 the production `discoverInstalledBrowsers` function. A disposable Brave
 application bundle is discovered, renamed from `Brave Browser.app` to an
 unrelated `.app` filename containing spaces and Unicode, and rediscovered under
@@ -108,7 +108,7 @@ PDF handler, or application executable is changed or invoked.
 
 ## Newly installed browser while preferences are open (opener-1056)
 
-The macOS CI test `test-newly-installed-browser.swift` starts with a disposable
+The macOS CI test `tests/browser/newly-installed.swift` starts with a disposable
 Brave bundle and an explicitly saved Brave preference. While the same browser
 preferences view remains open, it copies a synthetic Edge bundle into a user
 Applications directory. A mismatched browser name and a partially installed,

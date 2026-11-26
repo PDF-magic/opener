@@ -55,7 +55,7 @@ class BrowserIntegrationTestActionTests(unittest.TestCase):
   def test_ci_runs_portable_and_compiled_preflight_regressions(self):
     ci = CI.read_text()
     self.assertIn("tests/general/browser-integration-test.py -v", ci)
-    self.assertIn("test-browser-integration.swift -o", ci)
+    self.assertIn("tests/browser/integration.swift -o", ci)
     self.assertIn('"$RUNNER_TEMP/TestBrowserIntegration"', ci)
     # Existing safety and unrelated notification / monitoring tests remain.
     self.assertIn("tests/general/browser-monitoring-status.py -v", ci)
