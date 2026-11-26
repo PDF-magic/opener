@@ -102,7 +102,7 @@ class ExistingSignatureDatabaseTests(unittest.TestCase):
         self.assertIn('bash "$install_dir/update-malware-signatures.sh"', installer)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/migration/existing-signature-database.py -v", ci)
-        self.assertIn("bash -n install-allow-and-open.sh", ci)
+        self.assertIn("bash -n scripts/installation/install-allow-and-open.sh", ci)
 
 
 if __name__ == "__main__":
