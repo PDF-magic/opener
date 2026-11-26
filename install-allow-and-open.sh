@@ -145,7 +145,7 @@ cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/f
 # Deploy the read-only status display beside its Launch Services lookup.
 cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
-/usr/bin/xcrun swiftc -O "$script_dir/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
+/usr/bin/xcrun swiftc -O "$script_dir/src/native/launch/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/launch-scanned-file"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/browser/resolve-default-browser.swift" -o "$install_dir/resolve-default-browser"
 chmod 755 "$install_dir/resolve-default-browser"
@@ -154,18 +154,18 @@ chmod 755 "$install_dir/discover-installed-browsers"
 # Read-only installed application discovery uses the macOS Spotlight index.
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/installed-applications.swift" -o "$install_dir/installed-applications"
 chmod 755 "$install_dir/installed-applications"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/handler/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
 chmod 755 "$install_dir/identify-pdf-handler"
 # Read-only detector reuses the same Launch Services lookup; it never resets associations.
-/usr/bin/xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING -O "$script_dir/identify-pdf-handler.swift" "$script_dir/detect-pdf-handler-change.swift" -o "$install_dir/detect-pdf-handler-change"
+/usr/bin/xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING -O "$script_dir/src/native/handler/identify-pdf-handler.swift" "$script_dir/src/native/handler/detect-pdf-handler-change.swift" -o "$install_dir/detect-pdf-handler-change"
 chmod 755 "$install_dir/detect-pdf-handler-change"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/handler/pdf-handler-history.swift" -o "$install_dir/pdf-handler-history"
 chmod 755 "$install_dir/pdf-handler-history"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/launch/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 # User-invoked custom .app chooser reuses the existing PDF verification logic.
 cp "$script_dir/select-custom-pdf-application.py" "$install_dir/select-custom-pdf-application.py"
 /usr/bin/xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING -O \
-    "$script_dir/verify-pdf-target.swift" "$script_dir/select-custom-pdf-application.swift" \
+    "$script_dir/src/native/launch/verify-pdf-target.swift" "$script_dir/src/native/launch/select-custom-pdf-application.swift" \
     -o "$install_dir/select-custom-pdf-application"
 chmod 755 "$install_dir/select-custom-pdf-application" "$install_dir/select-custom-pdf-application.py"
 # Optional read-only browser-list display; no changes to scanner or target-app.txt.
@@ -204,12 +204,12 @@ mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs/S
 bundle_stage_dir="$(mktemp -d "$HOME/Applications/.pdf-magic-opener-build.XXXXXXXX")"
 app="$bundle_stage_dir/$app_name.app"
 mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS"
-cp "$script_dir/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/brave-pdf-opener.swift" \
-    "$script_dir/scan-progress-view.swift" \
+cp "$script_dir/src/scan/twilight-reading.png" "$app/Contents/Resources/twilight-reading.png"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/launch/brave-pdf-opener.swift" \
+    "$script_dir/src/scan/scan-progress-view.swift" \
     "$script_dir/PDFMagicOpenerApp/ScanProgressPreference.swift" \
     -o "$app/Contents/MacOS/PDFOpener"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/handler/make-pdf-magic-default.swift" -o "$app/Contents/MacOS/MakePDFMagicDefault"
 python3 - "$app" "$install_dir" "$app_name" <<'CONFIG'
 import os
 import plistlib
@@ -422,7 +422,7 @@ PY
 # Only after explicit consent, preserve the user's previous PDF handler before
 # running the verified setter; refusal never changes the association.
 python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py" \
-    "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app" \
+    "$install_dir/identify-pdf-handler" "$script_dir/src/native/handler/set-pdf-default-handler.swift" "$app" \
     "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
 # Display the effective association whether restoration was accepted or not.
 python3 "$install_dir/pdf-handler-status.py"

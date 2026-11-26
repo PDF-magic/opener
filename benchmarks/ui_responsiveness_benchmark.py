@@ -125,13 +125,13 @@ app.run()
 
 def driver_source(gate, document, started):
   """Change only the scan helper path in a throwaway copy of the native handler."""
-  source = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+  source = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
   if source.count(ENTRY_MARKER) != 1 or source.count(GATE_REFERENCE) != 1:
     raise ValueError("Native handler injection contract changed")
   source = source.split(ENTRY_MARKER, 1)[0]
   source = source.replace(GATE_REFERENCE,
                           "URL(fileURLWithPath: " + json.dumps(str(gate)) + ")", 1)
-  source += "\n" + (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
+  source += "\n" + (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
   source += "\n" + (ROOT / "PDFMagicOpenerApp" /
                     "ScanProgressPreference.swift").read_text(encoding="utf-8")
   return (source + "\n" + SWIFT_DRIVER.replace("__DOCUMENT__", json.dumps(str(document)))

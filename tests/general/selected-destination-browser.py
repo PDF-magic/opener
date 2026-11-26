@@ -4,8 +4,8 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-PANEL = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
-OPENER = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+PANEL = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
+OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
 PREFERENCES = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text(encoding="utf-8")
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 

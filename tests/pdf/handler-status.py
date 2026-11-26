@@ -82,7 +82,7 @@ class PDFHandlerStatusTests(unittest.TestCase):
         offer = installer.index('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"')
         reporter = installer.index('python3 "$install_dir/pdf-handler-status.py"')
         self.assertGreater(reporter, offer)
-        self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)
+        self.assertNotIn('/usr/bin/swift "$script_dir/src/native/handler/set-pdf-default-handler.swift" "$app"', installer)
 
     def test_documentation_and_ci_explain_read_only_status(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

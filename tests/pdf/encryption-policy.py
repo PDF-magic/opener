@@ -128,7 +128,7 @@ class PDFEncryptionPolicyTests(unittest.TestCase):
     def test_no_scanner_profile_file_io_or_password_prompt_integration(self):
         source = (ROOT / "src/pdf/pdf_encryption_policy.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        native = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+        native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         for forbidden in (".decrypt(", "password=", "input(", "getpass", "subprocess", "os.environ",
                           "open(", "write_text(", "launch_clean_file", "remove_quarantine"):

@@ -10,7 +10,7 @@ substitute for the literal manual double-click check.
 ## Manual verification on an installed macOS system
 
 1. Note the current default PDF handler with
-   \`swift identify-pdf-handler.swift\`, and note the default web browser in
+   \`swift src/native/handler/identify-pdf-handler.swift\`, and note the default web browser in
    System Settings. Do not change either setting just to run the automated test.
 2. If PDF Magic Opener is not already the default PDF handler, explicitly
    configure it through Finder **Get Info → Open with → PDF Magic Opener →

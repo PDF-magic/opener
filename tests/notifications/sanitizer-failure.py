@@ -4,8 +4,8 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-PANEL = (ROOT / "scan-progress-view.swift").read_text()
-OPENER = (ROOT / "brave-pdf-opener.swift").read_text()
+PANEL = (ROOT / "src/scan/scan-progress-view.swift").read_text()
+OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
 PREFERENCES = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
 SWIFT_HARNESS = (ROOT / "tests/scan/progress-component.py").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()

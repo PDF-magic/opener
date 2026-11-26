@@ -296,7 +296,7 @@ jobs:
           python-version: "3.11"
       - name: mac / blocking-severity-native / Compile native PDF opener with the shared scan progress component
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
 
 

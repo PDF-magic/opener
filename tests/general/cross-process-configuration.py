@@ -28,7 +28,7 @@ class CrossProcessConfigurationTests(unittest.TestCase):
     self.assertIn("guard !savingBrowser else { return }", source)
 
   def test_native_handler_and_chooser_remain_authoritative(self):
-    source = (ROOT / "brave-pdf-opener.swift").read_text()
+    source = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
     chooser = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text()
     self.assertIn("ScanProgressPreference.isEnabled()", source)
     self.assertIn("SuccessfulScanNotificationPreference.shouldNotify(", source)

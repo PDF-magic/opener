@@ -84,7 +84,7 @@ app.run()
             )
             executable.chmod(0o755)
 
-            source = (ROOT / "launch-scanned-file.swift").read_text()
+            source = (ROOT / "src/native/launch/launch-scanned-file.swift").read_text()
             prelude, marker, _ = source.partition(
                 "guard launch(Array(CommandLine.arguments.dropFirst())) else {"
             )

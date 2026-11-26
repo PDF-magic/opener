@@ -121,7 +121,7 @@ class ProfileCheckAssignmentsTests(unittest.TestCase):
         self.assertNotIn("def apply_policy", policy_source)
         self.assertNotIn("def select_profile", policy_source)
         self.assertIn('static let name = "Built-in"',
-                      (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8"))
+                      (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8"))
         self.assertIn("python3 tests/general/required-optional-profile-checks.py -v",
                       (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
 

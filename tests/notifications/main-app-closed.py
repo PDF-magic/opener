@@ -13,7 +13,7 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-OPENER = ROOT / "brave-pdf-opener.swift"
+OPENER = ROOT / "src/native/launch/brave-pdf-opener.swift"
 PREFERENCES = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
@@ -81,7 +81,7 @@ class NotificationsWhileMainAppClosedTests(unittest.TestCase):
       executable = isolated / "NotificationLifecycleTests"
       subprocess.run([
         "xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors",
-        str(native), str(ROOT / "scan-progress-view.swift"),
+        str(native), str(ROOT / "src/scan/scan-progress-view.swift"),
         str(ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift"),
         str(ROOT / "tests/notifications/main-app-closed.swift"),
         "-o", str(executable),

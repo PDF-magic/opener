@@ -113,7 +113,7 @@ class ScanRequestApplicationTests(unittest.TestCase):
                                         env=variables, capture_output=True, text=True, check=True)
                 self.assertEqual(result.stdout.splitlines(),
                                  [expected_app, "/document with spaces.pdf"])
-        native = (ROOT / "brave-pdf-opener.swift").read_text()
+        native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
         self.assertIn('process.arguments = [script.path, path]', native)
         self.assertIn('environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"', native)
 

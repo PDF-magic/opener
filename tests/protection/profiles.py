@@ -66,7 +66,7 @@ class ProtectionProfileDefinitionTests(unittest.TestCase):
 
     def test_definitions_do_not_activate_unimplemented_policy_or_change_settings(self):
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        panel = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
+        panel = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
         settings = (ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift").read_text(
             encoding="utf-8"
         )

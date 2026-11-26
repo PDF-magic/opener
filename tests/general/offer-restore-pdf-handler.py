@@ -99,9 +99,9 @@ class PDFDefaultRestorationTests(unittest.TestCase):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
         self.assertIn('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
-        self.assertIn('"$script_dir/set-pdf-default-handler.swift" "$app"', installer)
+        self.assertIn('"$script_dir/src/native/handler/set-pdf-default-handler.swift" "$app"', installer)
         self.assertIn('"$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"', installer)
-        self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)
+        self.assertNotIn('/usr/bin/swift "$script_dir/src/native/handler/set-pdf-default-handler.swift" "$app"', installer)
         self.assertLess(installer.index('scripts/reconcile_pdf_handler_registration.py'),
                         installer.index('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"'))
         helper = (ROOT / "scripts/installation/offer-restore-pdf-handler.py").read_text()

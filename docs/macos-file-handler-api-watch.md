@@ -10,10 +10,10 @@ handler migration.
 
 | Surface | Production examples | Compatibility risk |
 | --- | --- | --- |
-| `NSWorkspace` application discovery | `verify-pdf-target.swift`, `launch-scanned-file.swift` | Installed destination lookup or registered PDF-capability results change |
-| `NSWorkspace.OpenConfiguration`, `open(_:withApplicationAt:configuration:completionHandler:)`, `openApplication(at:configuration:completionHandler:)` and `open(_:)` | `launch-scanned-file.swift` | Completion, launch and fail-closed semantics drift |
-| `NSWorkspace.setDefaultApplication(at:toOpen:completion:)` | `make-pdf-magic-default.swift`, `set-pdf-default-handler.swift`, `pdf-handler-history.swift` | User consent, callback or default-handler registration behavior changes |
-| `UTType.pdf` and `LSCopyDefaultRoleHandlerForContentType` | `identify-pdf-handler.swift`, `pdf-handler-history.swift`, `set-pdf-default-handler.swift` | PDF UTI identity, Launch Services readback or API deprecation changes |
+| `NSWorkspace` application discovery | `src/native/launch/verify-pdf-target.swift`, `src/native/launch/launch-scanned-file.swift` | Installed destination lookup or registered PDF-capability results change |
+| `NSWorkspace.OpenConfiguration`, `open(_:withApplicationAt:configuration:completionHandler:)`, `openApplication(at:configuration:completionHandler:)` and `open(_:)` | `src/native/launch/launch-scanned-file.swift` | Completion, launch and fail-closed semantics drift |
+| `NSWorkspace.setDefaultApplication(at:toOpen:completion:)` | `src/native/handler/make-pdf-magic-default.swift`, `src/native/handler/set-pdf-default-handler.swift`, `src/native/handler/pdf-handler-history.swift` | User consent, callback or default-handler registration behavior changes |
+| `UTType.pdf` and `LSCopyDefaultRoleHandlerForContentType` | `src/native/handler/identify-pdf-handler.swift`, `src/native/handler/pdf-handler-history.swift`, `src/native/handler/set-pdf-default-handler.swift` | PDF UTI identity, Launch Services readback or API deprecation changes |
 
 The [inventory regression](../tests/general/macos-file-handler-api-watch.py)
 ensures monitored call sites remain recognizable and the

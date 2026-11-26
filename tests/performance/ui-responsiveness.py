@@ -47,7 +47,7 @@ class UIResponsivenessContracts(unittest.TestCase):
       benchmark.aggregate([])
 
   def test_isolated_native_handler_and_real_cancel_control(self):
-    original = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+    original = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
     driver = benchmark.driver_source(Path("/tmp/gate.py"),
                                      Path("/tmp/inert.pdf"), Path("/tmp/started"))
     self.assertIn('URL(fileURLWithPath: "/tmp/gate.py")', driver)
@@ -58,7 +58,7 @@ class UIResponsivenessContracts(unittest.TestCase):
     self.assertIn(benchmark.GATE_REFERENCE, original)
     self.assertIn("ScanProgressPreference.isEnabled()", original)
     self.assertIn("process.terminate()", original)
-    self.assertEqual(original, (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8"))
+    self.assertEqual(original, (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8"))
 
   def test_swift_compilation_failure_reports_errors_without_a_result(self):
     with tempfile.TemporaryDirectory() as folder:

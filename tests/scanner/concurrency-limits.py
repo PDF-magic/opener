@@ -73,7 +73,7 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
 
     def test_no_user_editable_setting_or_existing_two_slot_policy_change(self):
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        native = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+        native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
         prefs = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(encoding="utf-8")
         validator = (ROOT / "src/configuration/configuration_validation.py").read_text(encoding="utf-8")
         self.assertIn("MAX_CONCURRENT_SCANS = 2", gate)

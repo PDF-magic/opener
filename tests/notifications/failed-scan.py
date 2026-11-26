@@ -5,7 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 PREF = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
-OPENER = (ROOT / "brave-pdf-opener.swift").read_text()
+OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
 SCANNER = (ROOT / "scan-and-open.py").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
 
@@ -47,7 +47,7 @@ class FailedScanNotificationTests(unittest.TestCase):
   def test_native_and_portable_ci_are_required(self):
     self.assertIn("tests/notifications/failed-scan.py -v", CI)
     self.assertIn("tests/notifications/failed-scan.swift", CI)
-    self.assertIn("brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", CI)
+    self.assertIn("src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", CI)
 
 if __name__ == "__main__":
   unittest.main()

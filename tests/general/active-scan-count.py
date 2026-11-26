@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class ActiveScanCountTests(unittest.TestCase):
   def test_count_uses_confirmed_native_launches_not_pending_or_queued_requests(self):
-    opener = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+    opener = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
     presentation = opener.split("private func showProgress() {", 1)[1].split(
       "private func startQueuedScans()", 1
     )[0]
@@ -24,7 +24,7 @@ class ActiveScanCountTests(unittest.TestCase):
     self.assertIn("panel?.orderOut(nil)", presentation)
 
   def test_accessible_label_is_presentation_only(self):
-    panel = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
+    panel = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
     self.assertIn('activeScansLabel = NSTextField(labelWithString: "Active scans: 0")', panel)
     self.assertIn('activeScansLabel.setAccessibilityIdentifier("activeScanCount")', panel)
     self.assertIn('activeScansLabel.setAccessibilityLabel(activeScansLabel.stringValue)', panel)

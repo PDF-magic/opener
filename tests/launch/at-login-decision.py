@@ -11,7 +11,7 @@ ENTRY = APP / "PDFMagicOpenerApp.swift"
 GENERAL = APP / "GeneralSettingsView.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 INSTALLER = ROOT / "install-allow-and-open.sh"
-SCANNER = ROOT / "brave-pdf-opener.swift"
+SCANNER = ROOT / "src/native/launch/brave-pdf-opener.swift"
 DOC = ROOT / "docs" / "launch-at-login-decision.md"
 
 

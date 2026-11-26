@@ -116,7 +116,7 @@ class StructuredProtectionPolicyTests(unittest.TestCase):
                           "def select_profile", "os.environ", "write_text(", "open("):
             self.assertNotIn(forbidden, source)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        view = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
+        view = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
         self.assertIn('static let name = "Built-in"', view)
 
     def test_required_ci_step(self):

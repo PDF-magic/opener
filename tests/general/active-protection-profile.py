@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class ActiveProtectionProfileTests(unittest.TestCase):
   def test_progress_panel_displays_the_actual_mandatory_policy(self):
-    view = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
+    view = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
     self.assertIn('static let name = "Built-in"', view)
     self.assertIn('static let details = "ClamAV malware scanning · fail-closed"', view)
     self.assertIn('labelWithString: "Active protection profile: " + BuiltInProtectionProfile.name', view)
@@ -25,7 +25,7 @@ class ActiveProtectionProfileTests(unittest.TestCase):
     self.assertIn("'ClamAV is unavailable.", engine)
     self.assertIn("'--alert-exceeds-max=yes', '--alert-encrypted=yes'", engine)
     self.assertIn("if not cached_clean(cache_id):", engine)
-    native = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+    native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
     self.assertIn("guard ScanProgressPreference.isEnabled() else {", native)
     self.assertIn("panel = ScanProgressPanel(", native)
     self.assertIn("process.arguments = [script.path, path]", native)

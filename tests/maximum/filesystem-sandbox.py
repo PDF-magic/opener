@@ -80,7 +80,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
     def test_active_scanner_remains_unaffected(self):
         root = Path(__file__).resolve().parents[2]
         scan_gate = (root / "scan-and-open.py").read_text()
-        native = (root / "brave-pdf-opener.swift").read_text()
+        native = (root / "src/native/launch/brave-pdf-opener.swift").read_text()
         self.assertNotIn("maximum_filesystem_sandbox", scan_gate)
         self.assertNotIn("maximum_filesystem_sandbox", native)
         self.assertIn("if not cached_clean(cache_id):", scan_gate)

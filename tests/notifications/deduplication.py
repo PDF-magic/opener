@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-OPENER = (ROOT / "brave-pdf-opener.swift").read_text()
+OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
 PREF = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
 

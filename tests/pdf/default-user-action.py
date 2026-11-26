@@ -18,12 +18,12 @@ class PDFDefaultUserActionTests(unittest.TestCase):
         self.assertIn('if [ ! -x "$helper" ]; then', source)
         self.assertIn('exec "$helper"', source)
         self.assertNotIn("target-app.txt", source)
-        self.assertNotIn("set-pdf-default-handler.swift", source)
+        self.assertNotIn("src/native/handler/set-pdf-default-handler.swift", source)
         subprocess.run(["bash", "-n", str(script)], check=True)
 
     def test_installer_exposes_action_without_overwriting_existing_user_action(self):
         script = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn('swiftc -parse-as-library -O "$script_dir/make-pdf-magic-default.swift"', script)
+        self.assertIn('swiftc -parse-as-library -O "$script_dir/src/native/handler/make-pdf-magic-default.swift"', script)
         self.assertIn('"$app/Contents/MacOS/MakePDFMagicDefault"', script)
         self.assertIn('action="$HOME/Applications/Make PDF Magic Opener Default.command"', script)
         self.assertIn('if [ ! -e "$action" ] && [ ! -L "$action" ]; then', script)
@@ -32,7 +32,7 @@ class PDFDefaultUserActionTests(unittest.TestCase):
         self.assertLess(script.index('MakePDFMagicDefault"'), script.index('/usr/bin/codesign --force --sign - "$app"'))
 
     def test_native_action_never_changes_target_app_or_scanner(self):
-        source = (ROOT / "make-pdf-magic-default.swift").read_text()
+        source = (ROOT / "src/native/handler/make-pdf-magic-default.swift").read_text()
         self.assertIn('let openerIdentifier = "local.studio.brave-pdf-opener"', source)
         self.assertIn('guard verifiedPDFMagicOpener(at: application)', source)
         self.assertIn('NSWorkspace.shared.setDefaultApplication(', source)

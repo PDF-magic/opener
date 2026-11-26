@@ -6,7 +6,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-NEW_NAME = "set-pdf-default-handler.swift"
+NEW_NAME = "src/native/handler/set-pdf-default-handler.swift"
 OLD_NAME = "set-brave-pdf-default.swift"
 
 

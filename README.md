@@ -303,7 +303,7 @@ change the installed PDF handler or scanner.
 
 ## Art
 
-`twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
+`src/scan/twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
 
 ## Installation and usage
 
@@ -388,7 +388,7 @@ scanner remains unchanged.
 
 **ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `benchmarks/scanner_startup_benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regressions plus a real, disposable Linux ClamAV startup baseline with a tiny test-only database; neither is a representative production benchmark.
 
-The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
+The native app uses a shared `ScanProgressPanel` from `src/scan/scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
@@ -476,7 +476,7 @@ While FreshClam runs, Preferences → Updates shows **Signature update in progre
 bash update-malware-signatures.sh
 ```
 
-The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 scripts/installation/restore_finder_quick_action.py` or `python3 scripts/installation/restore_finder_quick_action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
+The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 scripts/installation/restore_finder_quick_action.py` or `python3 scripts/installation/restore_finder_quick_action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift src/native/handler/set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
 
@@ -1015,12 +1015,12 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 | File | Purpose |
 | --- | --- |
 | `install-allow-and-open.sh` | Install the scan gate, native app, Finder action integration, and signature update agent |
-| `brave-pdf-opener.swift` | Native PDF open handler with scan progress and duplicate-open prevention |
+| `src/native/launch/brave-pdf-opener.swift` | Native PDF open handler with scan progress and duplicate-open prevention |
 | `allow-and-open.sh` | Shared shell entry point for the scan gate |
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |
 | `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
-| `set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
+| `src/native/handler/set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `tests/scan/and-open.py` | Verify scan-gate behavior with a substitute scanner |
 | `tests/target/app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
 | `tests/scan/concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |

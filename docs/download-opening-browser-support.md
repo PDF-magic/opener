@@ -32,8 +32,8 @@ installed, authorized, tested **PDF Magic Opener controlled-opening flow**.
    macOS [scan gate](../scan-and-open.py) separately enforces an actual
    complete clean ClamAV result, fresh signatures, current file identity,
    content integrity, quarantine retention and the user's selected
-   [verified PDF target](../verify-pdf-target.swift). The
-   [native launcher](../launch-scanned-file.swift) then performs the
+   [verified PDF target](../src/native/launch/verify-pdf-target.swift). The
+   [native launcher](../src/native/launch/launch-scanned-file.swift) then performs the
    application handoff. This is a capability of the *native application*,
    not proof that a browser allows an extension to prevent **other** opening
    paths. The native destination can be one of the registered browser bundle

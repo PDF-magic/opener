@@ -14,7 +14,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SWIFT = ROOT / "brave-pdf-opener.swift"
+SWIFT = ROOT / "src/native/launch/brave-pdf-opener.swift"
 BEGIN = "// BEGIN NATIVE DIRECT PROCESS GATE"
 END = "// END NATIVE DIRECT PROCESS GATE"
 

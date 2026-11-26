@@ -1411,15 +1411,15 @@ jobs:
           PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" PYTHONPATH=. python3 tests/preferences/during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
       - name: Verify staged native PDF handler before installation
         run: |
           app="$RUNNER_TEMP/preinstall/PDF Magic Opener.app"
           mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
           cp "$RUNNER_TEMP/PDFOpener" "$app/Contents/MacOS/PDFOpener"
-          xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$app/Contents/MacOS/MakePDFMagicDefault"
-          cp twilight-reading.png "$app/Contents/Resources/twilight-reading.png"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/handler/make-pdf-magic-default.swift -o "$app/Contents/MacOS/MakePDFMagicDefault"
+          cp src/scan/twilight-reading.png "$app/Contents/Resources/twilight-reading.png"
           python3 - "$app" <<'BUNDLE_PLIST'
           import plistlib
           import sys
@@ -1465,36 +1465,36 @@ jobs:
           "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING make-pdf-magic-default.swift tests/default/make-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/handler/make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING src/native/handler/make-pdf-magic-default.swift tests/default/make-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
           "$RUNNER_TEMP/TestMakePDFMagicDefault"
           if "$RUNNER_TEMP/MakePDFMagicDefault" unexpected-argument; then exit 1; fi
       - name: Compile PDF handler utility
-        run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
+        run: xcrun swiftc src/native/handler/set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
       - name: Verify that PDF default-handler updates take effect
         run: PYTHONPATH=. python3 tests/pdf/default-handler.py -v
       - name: Verify previous PDF-handler backup and safe restoration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING pdf-handler-history.swift tests/pdf/handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/handler/pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING src/native/handler/pdf-handler-history.swift tests/pdf/handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
           "$RUNNER_TEMP/TestPDFHandlerHistory"
           if "$RUNNER_TEMP/PDFHandlerHistory" >/dev/null 2>&1; then exit 1; fi
       - name: Identify the current macOS PDF handler without modifying it
         run: |
-          xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
-          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift tests/pdf/handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
+          xcrun swiftc -parse-as-library src/native/handler/identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
+          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING src/native/handler/identify-pdf-handler.swift tests/pdf/handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
           "$RUNNER_TEMP/TestPDFHandler"
           if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Detect when another application becomes the PDF default
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift tests/pdf/detect-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING src/native/handler/identify-pdf-handler.swift src/native/handler/detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING src/native/handler/identify-pdf-handler.swift src/native/handler/detect-pdf-handler-change.swift tests/pdf/detect-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
           "$RUNNER_TEMP/TestDetectPDFHandler"
           if "$RUNNER_TEMP/DetectPDFHandlerChange" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Verify discovered app availability, PDF handlers and signed browser exceptions
         run: |
-          xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
-          xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift tests/target/verify.swift -o "$RUNNER_TEMP/TestPDFTarget"
+          xcrun swiftc -parse-as-library src/native/launch/verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
+          xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING src/native/launch/verify-pdf-target.swift tests/target/verify.swift -o "$RUNNER_TEMP/TestPDFTarget"
           "$RUNNER_TEMP/TestPDFTarget"
           if "$RUNNER_TEMP/VerifyPDFTarget" >/dev/null 2>&1; then exit 1; fi
           if [ -d /Applications/Safari.app ]; then
@@ -1505,7 +1505,7 @@ jobs:
           fi
       - name: Compile and smoke-test NSWorkspace launcher
         run: |
-          xcrun swiftc -warnings-as-errors launch-scanned-file.swift -o "$RUNNER_TEMP/LaunchScannedFile"
+          xcrun swiftc -warnings-as-errors src/native/launch/launch-scanned-file.swift -o "$RUNNER_TEMP/LaunchScannedFile"
           if "$RUNNER_TEMP/LaunchScannedFile"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.brave.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
@@ -1556,25 +1556,25 @@ jobs:
       - name: Verify newly installed browser detection without changing PDF selection
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/newly-installed.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/native/launch/verify-pdf-target.swift tests/browser/newly-installed.swift \
             -o "$RUNNER_TEMP/TestNewlyInstalledBrowser"
           "$RUNNER_TEMP/TestNewlyInstalledBrowser"
       - name: Test multiple installed browsers and verified PDF target isolation
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D PDF_TARGET_TESTING \
-            src/browser/discover-installed-browsers.swift verify-pdf-target.swift tests/browser/multiple-installations.swift \
+            src/browser/discover-installed-browsers.swift src/native/launch/verify-pdf-target.swift tests/browser/multiple-installations.swift \
             -o "$RUNNER_TEMP/TestMultipleBrowserInstallations"
           "$RUNNER_TEMP/TestMultipleBrowserInstallations"
       - name: Verify removal of the selected installed browser
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/selected-removed.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/native/launch/verify-pdf-target.swift tests/browser/selected-removed.swift \
             -o "$RUNNER_TEMP/TestSelectedBrowserRemoved"
           "$RUNNER_TEMP/TestSelectedBrowserRemoved"
       - name: Test in-place browser upgrades and fail-closed PDF-target recovery
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/upgrades.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/native/launch/verify-pdf-target.swift tests/browser/upgrades.swift \
             -o "$RUNNER_TEMP/TestBrowserUpgrades"
           "$RUNNER_TEMP/TestBrowserUpgrades"
 
@@ -1601,11 +1601,11 @@ jobs:
       - name: Validate manually chosen application bundles against PDF launch targets
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
-            verify-pdf-target.swift select-custom-pdf-application.swift \
+            src/native/launch/verify-pdf-target.swift src/native/launch/select-custom-pdf-application.swift \
             -o "$RUNNER_TEMP/SelectCustomPDFApplication"
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
-            -D CUSTOM_APP_SELECTION_TESTING verify-pdf-target.swift \
-            select-custom-pdf-application.swift tests/target/select-custom-application.swift \
+            -D CUSTOM_APP_SELECTION_TESTING src/native/launch/verify-pdf-target.swift \
+            src/native/launch/select-custom-pdf-application.swift tests/target/select-custom-application.swift \
             -o "$RUNNER_TEMP/TestSelectCustomPDFApplication"
           "$RUNNER_TEMP/TestSelectCustomPDFApplication"
           if "$RUNNER_TEMP/SelectCustomPDFApplication" --application relative.app; then exit 1; fi

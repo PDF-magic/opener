@@ -1,7 +1,7 @@
 import Foundation
 
 // Compare Launch Services' current PDF association with the installed scan gate.
-// The lookup is shared with identify-pdf-handler.swift; neither function changes
+// The lookup is shared with src/native/handler/identify-pdf-handler.swift; neither function changes
 // a file association or a user's chosen post-scan browser.
 enum PDFHandlerChange: Equatable {
     case unchanged

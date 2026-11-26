@@ -111,7 +111,7 @@ with mod.scan_slot():
         self.assertEqual(stdout.strip(), 'acquired')
 
     def test_native_and_python_limits_agree(self):
-        swift = (Path(__file__).resolve().parents[2] / 'brave-pdf-opener.swift').read_text()
+        swift = (Path(__file__).resolve().parents[2] / 'src/native/launch/brave-pdf-opener.swift').read_text()
         self.assertIn(f'private let maxConcurrentScans = {opener.MAX_CONCURRENT_SCANS}', swift)
 
 

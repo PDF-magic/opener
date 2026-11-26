@@ -20,17 +20,17 @@ HELPER_FOLDER = Path("Contents/Helpers")
 # Match the existing installer compilation inputs and conditional entry points.
 # The separately installed PDFOpener scan gate is intentionally NOT embedded.
 HELPERS = (
-  ("launch-scanned-file", (), ("launch-scanned-file.swift",)),
+  ("launch-scanned-file", (), ("src/native/launch/launch-scanned-file.swift",)),
   ("resolve-default-browser", (), ("src/browser/resolve-default-browser.swift",)),
   ("discover-installed-browsers", (), ("src/browser/discover-installed-browsers.swift",)),
   ("installed-applications", (), ("src/native/installed-applications.swift",)),
-  ("identify-pdf-handler", (), ("identify-pdf-handler.swift",)),
+  ("identify-pdf-handler", (), ("src/native/handler/identify-pdf-handler.swift",)),
   ("detect-pdf-handler-change", ("-D", "PDF_HANDLER_TESTING"),
-   ("identify-pdf-handler.swift", "detect-pdf-handler-change.swift")),
-  ("pdf-handler-history", (), ("pdf-handler-history.swift",)),
-  ("verify-pdf-target", (), ("verify-pdf-target.swift",)),
+   ("src/native/handler/identify-pdf-handler.swift", "src/native/handler/detect-pdf-handler-change.swift")),
+  ("pdf-handler-history", (), ("src/native/handler/pdf-handler-history.swift",)),
+  ("verify-pdf-target", (), ("src/native/launch/verify-pdf-target.swift",)),
   ("select-custom-pdf-application", ("-D", "PDF_TARGET_TESTING"),
-   ("verify-pdf-target.swift", "select-custom-pdf-application.swift")),
+   ("src/native/launch/verify-pdf-target.swift", "src/native/launch/select-custom-pdf-application.swift")),
   ("browser-preference-list",
    ("-D", "BROWSER_DISCOVERY_TESTING", "-D", "BROWSER_METADATA_TESTING"),
    ("src/browser/browser-preference-list.swift", "src/browser/browser-preference-live-refresh.swift",
