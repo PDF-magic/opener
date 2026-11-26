@@ -106,7 +106,8 @@ class PDFFilenameTests(unittest.TestCase):
         source = (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8")
         original = 'exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"'
         self.assertEqual(source.count(original), 1)
-        gate = self.root / "src/scan/allow-and-open.sh"
+        # The deployed gate and its companion scripts share a flat directory.
+        gate = self.root / "allow-and-open.sh"
         gate.write_text(
             source.replace(original, 'exec /bin/bash "$script_dir/capture.sh" "$@"'),
             encoding="utf-8",
