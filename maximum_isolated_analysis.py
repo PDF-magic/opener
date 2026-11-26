@@ -23,15 +23,15 @@ BLOCK_MESSAGE = "Isolated PDF analysis could not complete; opening was stopped."
 # separate reviewed change, not inferred from arbitrary caller-provided strings.
 _INSPECTORS = MappingProxyType({
     "structureAmbiguity": (
-        "pdf_structure_ambiguity", "inspect_pdf_structure_ambiguity",
+        "src.pdf.pdf_structure_ambiguity", "inspect_pdf_structure_ambiguity",
         ("inspected_objects",),
     ),
     "malformedStructures": (
-        "pdf_malformed_structures", "inspect_pdf_malformed_structures",
+        "src.pdf.pdf_malformed_structures", "inspect_pdf_malformed_structures",
         ("object_count", "page_count"),
     ),
     "decompressionRequirements": (
-        "pdf_decompression_requirements", "inspect_pdf_decompression_requirements",
+        "src.pdf.pdf_decompression_requirements", "inspect_pdf_decompression_requirements",
         ("stream_count", "flate_stream_count", "decoded_bytes",
          "maximum_expansion_ratio"),
     ),
