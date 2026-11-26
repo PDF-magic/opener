@@ -5,6 +5,8 @@ on:
     branches: [shoeshine]
     paths:
       - benchmarks/**
+      - tests/performance/**
+      - tests/general/dependency-vulnerabilities.py
       - scripts/compare_benchmark_layout.py
       - .github/workflows/prepare-benchmark-layout.yml
 
