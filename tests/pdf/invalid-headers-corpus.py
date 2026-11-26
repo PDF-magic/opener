@@ -18,7 +18,7 @@ from pdf_format_identification import (
 from pdf_structure_parser import (
     PDFStructureFailureCode, PDFStructureParseFailure, parse_pdf_structure_result,
 )
-from reference_pdf_collection import INVALID_PDF_HEADERS, REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import INVALID_PDF_HEADERS, REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

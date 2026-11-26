@@ -8,7 +8,7 @@ import sys
 import unittest
 
 from pdf_structure_parser import PDFStructure
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 import benchmarks.small_text_pdf_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]

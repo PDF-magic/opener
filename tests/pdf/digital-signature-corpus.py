@@ -11,10 +11,10 @@ import unittest
 from cryptography.hazmat.primitives.serialization import pkcs7
 from pypdf import PdfReader
 
-from digital_signature_corpus import signed_pdf_corpus
+from tests.fixtures.pdf.digital_signature_corpus import signed_pdf_corpus
 from pdf_document_permissions import inspect_pdf_document_permissions
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 

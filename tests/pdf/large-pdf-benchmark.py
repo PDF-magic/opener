@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import benchmarks.large_pdf_benchmark as benchmark
-from large_valid_pdf_corpus import LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES
+from tests.fixtures.pdf.large_valid_pdf_corpus import LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES
 
 
 ROOT = Path(__file__).resolve().parents[2]

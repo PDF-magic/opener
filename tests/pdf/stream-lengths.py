@@ -10,7 +10,7 @@ import unittest
 from pypdf import PdfReader
 from pdf_stream_lengths import PDFStreamLengthError, validate_pdf_stream_lengths
 from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

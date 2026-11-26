@@ -9,7 +9,7 @@ import unittest
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
-from malformed_object_stream_corpus import (
+from tests.fixtures.pdf.malformed_object_stream_corpus import (
     MALFORMED_OBJECT_STREAM_PDFS,
     VALID_OBJECT_STREAM_PDFS,
 )
@@ -22,7 +22,7 @@ from pdf_structure_parser import (
     parse_pdf_structure_result,
 )
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

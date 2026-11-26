@@ -19,7 +19,7 @@ import subprocess
 import sys
 from time import perf_counter
 
-from large_valid_pdf_corpus import LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES, build_large_valid_pdf
+from tests.fixtures.pdf.large_valid_pdf_corpus import LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES, build_large_valid_pdf
 
 
 MAX_RUNS = 5

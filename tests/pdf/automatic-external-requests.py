@@ -19,7 +19,7 @@ from pdf_automatic_external_requests import (
     MAX_ACTIONS, PDFAutomaticExternalRequestError,
     PDFAutomaticExternalRequests, inspect_pdf_automatic_external_requests,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

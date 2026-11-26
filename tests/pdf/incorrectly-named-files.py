@@ -8,7 +8,7 @@ import unittest
 
 from pdf_format_identification import PDFFormatStatus, identify_pdf_format
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
-from reference_pdf_collection import INCORRECTLY_NAMED_FILES, REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import INCORRECTLY_NAMED_FILES, REFERENCE_PDFS
 
 
 class IncorrectlyNamedFileCorpusTests(unittest.TestCase):

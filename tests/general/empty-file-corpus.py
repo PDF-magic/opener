@@ -19,7 +19,7 @@ from pdf_structure_parser import (
     PDFStructureParseFailure,
     parse_pdf_structure_result,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -12,10 +12,10 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import StreamObject
 
-from embedded_file_corpus import EMBEDDED_FILE_PDFS, _document_with_embedded_files
+from tests.fixtures.pdf.embedded_file_corpus import EMBEDDED_FILE_PDFS, _document_with_embedded_files
 import enhanced_embedded_files as inspector
 from pdf_embedded_file_types import inspect_pdf_embedded_file_types
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

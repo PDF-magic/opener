@@ -485,7 +485,7 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
 
     def test_structural_success_cannot_override_clamav_detection(self):
         from pdf_structure_parser import parse_pdf_structure
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
         # A genuine successful structure parse is evidence only, never a clean
         # ClamAV verdict or permission to open the document.

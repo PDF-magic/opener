@@ -1,7 +1,7 @@
 # Truncated PDF security-corpus fixtures (opener-1030)
 
 These three tracked, inert PDFs are **literal byte prefixes** of the
-deterministic `clean-basic` PDF in `reference_pdf_collection.py`. No
+deterministic `clean-basic` PDF in `tests/fixtures/pdf/reference_pdf_collection.py`. No
 external files, personal documents, embedded executables or malware are used.
 
 | File | Truncation | Expected outcome |

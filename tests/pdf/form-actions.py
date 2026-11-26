@@ -48,7 +48,7 @@ def pdf_with_action(*actions, placement="open", orphan=False):
 
 class PDFFormActionTests(unittest.TestCase):
     def test_reference_collection_has_no_form_actions(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(pdf=sample.identifier):
                 report = inspect_pdf_form_actions(sample.content)

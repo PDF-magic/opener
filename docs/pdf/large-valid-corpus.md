@@ -1,7 +1,7 @@
 # Large valid PDF security corpus (opener-1041)
 
 The security corpus includes two deterministic **valid PDF 1.4** documents,
-generated on demand by [`large_valid_pdf_corpus.py`](../../large_valid_pdf_corpus.py)
+generated on demand by [`tests/fixtures/pdf/large_valid_pdf_corpus.py`](../../tests/fixtures/pdf/large_valid_pdf_corpus.py)
 and materialized only in a disposable directory by the
 [`large-valid-corpus.py` tests](../../tests/pdf/large-valid-corpus.py):
 

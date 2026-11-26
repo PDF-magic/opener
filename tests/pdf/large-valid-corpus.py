@@ -9,14 +9,14 @@ import unittest
 
 from pypdf import PdfReader
 
-from large_valid_pdf_corpus import (
+from tests.fixtures.pdf.large_valid_pdf_corpus import (
     LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES, build_large_valid_pdf,
 )
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES, PDFStructureFailureCode,
     PDFStructureParseFailure, parse_pdf_structure_result,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

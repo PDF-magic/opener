@@ -1,17 +1,17 @@
-name: Prepare PDF fixture layout
+name: Validate PDF fixture relocation
 
 on:
   push:
     branches: [shoeshine]
     paths:
-      - scripts/prepare-fixture-layout.py
+      - tests/fixtures/**
       - .github/workflows/prepare-fixture-layout.yml
 
 permissions:
   contents: read
 
 jobs:
-  prepare:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -22,4 +22,70 @@ jobs:
         with:
           python-version: "3.11"
       - run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt 'Pillow==11.3.0' 'cryptography==46.0.4'
-      - run: python3 scripts/prepare-fixture-layout.py
+      - name: Run affected fixture and security regression tests
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q tests/fixtures/pdf
+          python3 tests/enhanced/javascript-action-profile.py -v
+          python3 tests/general/empty-file-corpus.py -v
+          python3 tests/general/reference-pdf-profiles.py -v
+          python3 tests/general/timed-pdf-structure-analysis.py -v
+          python3 tests/maximum/sanitization-benchmark.py -v
+          python3 tests/maximum/simple-pdf.py -v
+          python3 tests/pdf/action-chains.py -v
+          python3 tests/pdf/annotations.py -v
+          python3 tests/pdf/automatic-actions.py -v
+          python3 tests/pdf/automatic-external-requests.py -v
+          python3 tests/pdf/behavior-classification.py -v
+          python3 tests/pdf/cross-reference-parsing.py -v
+          python3 tests/pdf/declared-metadata.py -v
+          python3 tests/pdf/deep-object-references.py -v
+          python3 tests/pdf/digital-signature-corpus.py -v
+          python3 tests/pdf/document-permissions.py -v
+          python3 tests/pdf/embedded-file-corpus.py -v
+          python3 tests/pdf/embedded-file-types.py -v
+          python3 tests/pdf/embedded-filenames.py -v
+          python3 tests/pdf/embedded-object-sizes.py -v
+          python3 tests/pdf/encrypted-documents.py -v
+          python3 tests/pdf/encryption-policy.py -v
+          python3 tests/pdf/expected-fixture-results.py -v
+          python3 tests/pdf/external-launch-action-corpus.py -v
+          python3 tests/pdf/external-launch-actions.py -v
+          python3 tests/pdf/form-actions.py -v
+          python3 tests/pdf/format-identification.py -v
+          python3 tests/pdf/incorrectly-named-files.py -v
+          python3 tests/pdf/incremental-corpus.py -v
+          python3 tests/pdf/incremental-revisions.py -v
+          python3 tests/pdf/interactive-form-corpus.py -v
+          python3 tests/pdf/invalid-headers-corpus.py -v
+          python3 tests/pdf/javascript-action-corpus.py -v
+          python3 tests/pdf/javascript-actions.py -v
+          python3 tests/pdf/large-pdf-benchmark.py -v
+          python3 tests/pdf/large-valid-corpus.py -v
+          python3 tests/pdf/malformed-object-stream-corpus.py -v
+          python3 tests/pdf/malformed-structures.py -v
+          python3 tests/pdf/malformed-xref-corpus.py -v
+          python3 tests/pdf/memory-stress-corpus.py -v
+          python3 tests/pdf/object-relationships.py -v
+          python3 tests/pdf/oversized-stream-corpus.py -v
+          python3 tests/pdf/parser-failure-result.py -v
+          python3 tests/pdf/parser-regressions.py -v
+          python3 tests/pdf/repeated-structures.py -v
+          python3 tests/pdf/revision-active-content.py -v
+          python3 tests/pdf/rich-media.py -v
+          python3 tests/pdf/small-text-benchmark.py -v
+          python3 tests/pdf/stream-lengths.py -v
+          python3 tests/pdf/structure-parser.py -v
+          python3 tests/pdf/suspicious-urls.py -v
+          python3 tests/pdf/unicode-metadata-corpus.py -v
+          python3 tests/pdf/unusual-object-counts.py -v
+          python3 tests/pdf/xfa-forms.py -v
+          python3 tests/protection/consecutive-profile-switches.py -v
+          python3 tests/protection/maximum-malformed-pdf.py -v
+          python3 tests/protection/security-corpus-matrix.py -v
+          python3 tests/protection/standard-malformed-pdf.py -v
+          python3 tests/protection/standard-valid-pdf.py -v
+          python3 tests/scan/and-open.py -v
+          python3 tests/security/truncated-pdfs.py -v

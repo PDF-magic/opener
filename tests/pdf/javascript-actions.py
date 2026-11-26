@@ -18,7 +18,7 @@ from pdf_javascript_actions import (
     MAX_SCRIPT_BYTES, MAX_JAVASCRIPT_ACTIONS, PDFJavaScriptInspection,
     PDFJavaScriptInspectionError, _decode_script, inspect_pdf_javascript_actions,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

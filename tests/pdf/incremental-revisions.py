@@ -10,7 +10,7 @@ from pdf_incremental_revisions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 def append_revision(original, number=6, payload=b"<< /Marker (inert) >>"):

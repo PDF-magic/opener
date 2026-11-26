@@ -31,7 +31,7 @@ from protection_policy_definitions import (
     PROTECTION_POLICIES,
 )
 from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

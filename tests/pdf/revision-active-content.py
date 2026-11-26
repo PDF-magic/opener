@@ -12,7 +12,7 @@ from pdf_revision_active_content import (
     BLOCK_MESSAGE, PDFHistoricalActiveContent,
     PDFHistoricalActiveContentError, inspect_pdf_revision_active_content,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

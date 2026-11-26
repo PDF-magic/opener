@@ -4,7 +4,7 @@ This is separate from the six shared profile-baseline reference documents.
 No scanner or policy decision depends on these synthetic bytes.
 """
 
-from reference_pdf_collection import ReferencePDF
+from tests.fixtures.pdf.reference_pdf_collection import ReferencePDF
 
 
 DEEP_OBJECT_REFERENCE_DEPTH = 96

@@ -18,7 +18,7 @@ from pdf_embedded_object_sizes import (
     BLOCK_MESSAGE, PDFEmbeddedObjectSizeError, PDFEmbeddedObjectSizes,
     inspect_pdf_embedded_object_sizes,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

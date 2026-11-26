@@ -19,7 +19,7 @@ from pdf_declared_metadata import (
     MAX_METADATA_TEXT, MAX_XMP_BYTES, PDFDeclaredMetadata,
     PDFDeclaredMetadataError, extract_pdf_declared_metadata,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

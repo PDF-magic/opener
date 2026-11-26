@@ -1,0 +1,1 @@
+"""Synthetic PDF fixture generators."""

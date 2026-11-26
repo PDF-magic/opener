@@ -51,7 +51,7 @@ def action(kind, **fields):
 
 class PDFExternalLaunchTests(unittest.TestCase):
     def test_reference_pdf_collection_has_no_external_actions(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(pdf=sample.identifier):
                 result = inspect_pdf_external_launch_actions(sample.content)

@@ -15,8 +15,8 @@ from pdf_object_relationships import (
 from pdf_structure_parser import (
     MAX_STRUCTURE_RECURSION_DEPTH, PDFStructure, parse_pdf_structure,
 )
-from reference_pdf_collection import REFERENCE_PDFS
-from deep_object_reference_corpus import (
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.deep_object_reference_corpus import (
     DEEP_OBJECT_REFERENCE_DEPTH, SECURITY_REFERENCE_PDFS,
     _deeply_nested_object_references_pdf,
 )

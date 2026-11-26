@@ -12,11 +12,11 @@ from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
 import pdf_structure_parser as parser
-from memory_stress_pdf_corpus import (
+from tests.fixtures.pdf.memory_stress_pdf_corpus import (
     AGGREGATE_STREAM_COUNT, DECODED_BYTES_PER_STREAM, DENSE_OBJECT_COUNT,
     MEMORY_STRESS_PDFS, REFERENCE_FANOUT,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

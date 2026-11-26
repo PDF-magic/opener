@@ -12,8 +12,8 @@ from pypdf import PdfReader
 
 from pdf_declared_metadata import extract_pdf_declared_metadata
 from pdf_structure_parser import parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
-from unicode_metadata_corpus import UNICODE_METADATA_PDFS, _pdf_with_metadata
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.unicode_metadata_corpus import UNICODE_METADATA_PDFS, _pdf_with_metadata
 
 
 ROOT = Path(__file__).resolve().parents[2]

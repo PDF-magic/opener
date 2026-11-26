@@ -10,12 +10,12 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import DictionaryObject
 
-from javascript_action_corpus import (
+from tests.fixtures.pdf.javascript_action_corpus import (
     JAVASCRIPT_ACTION_PDFS, _document_with_action,
 )
 from pdf_automatic_actions import inspect_pdf_automatic_actions
 from pdf_javascript_actions import inspect_pdf_javascript_actions
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

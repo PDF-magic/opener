@@ -18,7 +18,7 @@ from pdf_action_chains import (
     MAX_CHAIN_WIDTH, PDFActionChainInspection, PDFActionChainInspectionError,
     inspect_pdf_action_chains,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

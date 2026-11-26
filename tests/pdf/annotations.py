@@ -47,7 +47,7 @@ def pdf_with(*annotations, direct=False):
 
 class PDFAnnotationTests(unittest.TestCase):
     def test_clean_reference_collection_is_inert_evidence_only(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for pdf in REFERENCE_PDFS:
             with self.subTest(pdf=pdf.identifier):
                 result = inspect_pdf_annotations(pdf.content)

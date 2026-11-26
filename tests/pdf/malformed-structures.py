@@ -44,7 +44,7 @@ class MalformedStructureTests(unittest.TestCase):
             PDFMalformedStructureInspection(1, 1, permits_open=True)
 
     def test_reference_pdf_collection(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(sample=sample.identifier):
                 before = sample.content

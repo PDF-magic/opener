@@ -14,10 +14,10 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import DictionaryObject
 
-from external_launch_action_corpus import EXTERNAL_LAUNCH_PDFS, _document_with_launch
+from tests.fixtures.pdf.external_launch_action_corpus import EXTERNAL_LAUNCH_PDFS, _document_with_launch
 from pdf_automatic_actions import inspect_pdf_automatic_actions
 from pdf_external_launch_actions import inspect_pdf_external_launch_actions
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 

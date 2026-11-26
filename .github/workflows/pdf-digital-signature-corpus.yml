@@ -3,14 +3,14 @@ name: Signed PDF security corpus
 on:
   pull_request:
     paths:
-      - digital_signature_corpus.py
+      - tests/fixtures/pdf/digital_signature_corpus.py
       - tests/pdf/digital-signature-corpus.py
       - docs/pdf/digital-signature-corpus.md
       - .github/workflows/pdf-digital-signature-corpus.yml
   push:
     branches: [main]
     paths:
-      - digital_signature_corpus.py
+      - tests/fixtures/pdf/digital_signature_corpus.py
       - tests/pdf/digital-signature-corpus.py
       - docs/pdf/digital-signature-corpus.md
       - .github/workflows/pdf-digital-signature-corpus.yml

@@ -23,7 +23,7 @@ from maximum_sanitized_copy import (
     SanitizerAttempt,
     attempt_sanitized_pdf_copy,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 MIN_SAMPLES = 3
 MAX_SAMPLES = 10

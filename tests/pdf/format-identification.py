@@ -12,7 +12,7 @@ from pdf_format_identification import (
     NOT_PDF, UNDETERMINED, PDFFormatStatus, identify_pdf_format,
     identify_pdf_header,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 

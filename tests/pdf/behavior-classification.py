@@ -152,7 +152,7 @@ class PDFBehaviorClassificationTests(unittest.TestCase):
         self.assertFalse(analysis.permits_open)
 
     def test_reference_pdfs_are_unassessed_not_certified_clean(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(sample=sample.identifier):
                 analysis = classify_external_action_inspection(

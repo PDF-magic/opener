@@ -18,7 +18,7 @@ from pdf_encryption_policy import (
     inspect_pdf_encryption,
 )
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 from scan_results import ScanResultStatus
 from unsupported_pdf_features import (
     ENCRYPTED_RESPONSE,

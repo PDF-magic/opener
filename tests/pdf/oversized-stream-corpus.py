@@ -13,7 +13,7 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject, StreamObject
 
-from oversized_stream_corpus import (
+from tests.fixtures.pdf.oversized_stream_corpus import (
     OVERSIZED_STREAM_PDFS, STREAM_LIMIT, _embedded_pdf,
 )
 from pdf_embedded_object_sizes import (
@@ -21,7 +21,7 @@ from pdf_embedded_object_sizes import (
     inspect_pdf_embedded_object_sizes,
 )
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -6,13 +6,13 @@ from pathlib import Path
 import re
 import unittest
 
-from malformed_xref_pdf_collection import MALFORMED_XREF_PDFS
+from tests.fixtures.pdf.malformed_xref_pdf_collection import MALFORMED_XREF_PDFS
 from pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

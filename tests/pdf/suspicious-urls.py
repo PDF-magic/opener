@@ -59,7 +59,7 @@ def fixture(*urls, location="action"):
 
 class PDFSuspiciousURLTests(unittest.TestCase):
     def test_reference_pdfs_have_no_urls_and_no_open_authorization(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(name=sample.identifier):
                 result = inspect_pdf_suspicious_urls(sample.content)

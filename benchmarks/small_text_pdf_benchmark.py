@@ -18,7 +18,7 @@ import math
 import statistics
 import time
 
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 from timed_pdf_structure_analysis import parse_pdf_structure_timed
 
 MIN_SAMPLES = 5

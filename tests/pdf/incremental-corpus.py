@@ -14,7 +14,7 @@ from pdf_incremental_revisions import (
     PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )
-from reference_pdf_collection import (
+from tests.fixtures.pdf.reference_pdf_collection import (
     INCREMENTAL_REFERENCE_PDFS,
     REFERENCE_PDFS,
 )

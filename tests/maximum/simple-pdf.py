@@ -27,7 +27,7 @@ from protection_policy_definitions import (
     protection_policy_definition,
 )
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 import maximum_sanitized_copy as copies
 
 

@@ -7,7 +7,7 @@ antivirus detections or permission to open a PDF.
 
 from dataclasses import dataclass
 
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 @dataclass(frozen=True)

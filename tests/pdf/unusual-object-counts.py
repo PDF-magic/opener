@@ -15,7 +15,7 @@ from pdf_unusual_object_counts import (
     HIGH_OBJECT_COUNT, HIGH_OBJECTS_PER_PAGE, PDFUnusualObjectCountError,
     PDFUnusualObjectCounts, inspect_pdf_unusual_object_counts,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

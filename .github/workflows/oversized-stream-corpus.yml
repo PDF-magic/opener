@@ -3,13 +3,13 @@ name: Oversized embedded PDF stream corpus
 on:
   pull_request:
     paths:
-      - oversized_stream_corpus.py
+      - tests/fixtures/pdf/oversized_stream_corpus.py
       - tests/pdf/oversized-stream-corpus.py
       - .github/workflows/oversized-stream-corpus.yml
   push:
     branches: [main]
     paths:
-      - oversized_stream_corpus.py
+      - tests/fixtures/pdf/oversized_stream_corpus.py
       - tests/pdf/oversized-stream-corpus.py
       - .github/workflows/oversized-stream-corpus.yml
   workflow_dispatch:

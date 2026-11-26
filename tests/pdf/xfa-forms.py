@@ -19,7 +19,7 @@ from pdf_xfa_forms import (
     MAX_XFA_PACKETS, PDFXFAInspection, PDFXFAInspectionError,
     inspect_pdf_xfa_forms,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -18,7 +18,7 @@ from pdf_repeated_structures import (
     DOMINANT_REPEATED_GROUP, MIN_REPEATED_GROUP, PDFRepeatedStructures,
     PDFRepeatedStructuresError, inspect_pdf_repeated_structures,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 _ERROR = "PDF repeated structures could not be verified; opening was stopped."

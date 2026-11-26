@@ -18,7 +18,7 @@ from pdf_rich_media import (
   BLOCK_MESSAGE, MAX_PDF_BYTES, MAX_MEDIA_ENTRIES, PDFRichMediaInspectionError,
   inspect_pdf_rich_media,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -19,7 +19,7 @@ from pdf_embedded_filenames import (
     BLOCK_MESSAGE, MAX_FILENAME_CHARACTERS, EmbeddedFilenameInspection,
     EmbeddedFilenameInspectionError, inspect_embedded_filenames,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import benchmarks.maximum_sanitization_benchmark as bench
 import maximum_sanitized_copy as copies
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 

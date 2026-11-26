@@ -18,7 +18,7 @@ from pdf_document_permissions import (
     BLOCK_MESSAGE, PDFDocumentPermissions, PDFDocumentPermissionsError,
     _operations, inspect_pdf_document_permissions,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 

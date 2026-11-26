@@ -24,7 +24,7 @@ from effective_protection_policy import (
 )
 from protection_policy_definitions import BASELINE_CONTROLS, FailureDisposition
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

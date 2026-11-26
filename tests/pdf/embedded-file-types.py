@@ -14,7 +14,7 @@ from pdf_embedded_file_types import (
     MAX_ATTACHMENT_BYTES, PDFEmbeddedFileTypeError, PDFEmbeddedFileTypes,
     inspect_pdf_embedded_file_types,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]

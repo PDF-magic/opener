@@ -16,7 +16,7 @@ from pdf_automatic_actions import (
     MAX_ACTIONS, PDFAutomaticActionError, PDFAutomaticActionInspection,
     inspect_pdf_automatic_actions,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
