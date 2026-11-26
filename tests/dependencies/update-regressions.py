@@ -28,7 +28,7 @@ class DependencyUpdateRegressionTests(unittest.TestCase):
     self.addCleanup(temporary.cleanup)
     self.root = Path(temporary.name)
     for path in (licenses.INVENTORY, licenses.REQUIREMENTS,
-                 licenses.BROWSER_PACKAGE, "LICENSE", "install-allow-and-open.sh"):
+                 licenses.BROWSER_PACKAGE, "LICENSE", "scripts/installation/install-allow-and-open.sh"):
       destination = self.root / path
       destination.parent.mkdir(parents=True, exist_ok=True)
       shutil.copyfile(ROOT / path, destination)

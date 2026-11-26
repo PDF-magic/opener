@@ -21,7 +21,7 @@ class DependencyLicensingTests(unittest.TestCase):
     self.addCleanup(temp.cleanup)
     self.root = Path(temp.name)
     for path in (checker.INVENTORY, checker.REQUIREMENTS,
-                 checker.BROWSER_PACKAGE, "LICENSE", "install-allow-and-open.sh"):
+                 checker.BROWSER_PACKAGE, "LICENSE", "scripts/installation/install-allow-and-open.sh"):
       destination = self.root / path
       destination.parent.mkdir(parents=True, exist_ok=True)
       shutil.copyfile(ROOT / path, destination)
@@ -101,22 +101,22 @@ class DependencyLicensingTests(unittest.TestCase):
 
   def test_rejects_install_route_or_project_license_changes(self):
     approved = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
-    self.edit("install-allow-and-open.sh", approved,
+    self.edit("scripts/installation/install-allow-and-open.sh", approved,
               'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated')
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh",
+    self.edit("scripts/installation/install-allow-and-open.sh",
               'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated', approved)
-    self.edit("install-allow-and-open.sh", "scripts/detect-homebrew.py", "scripts/untrusted_brew.py")
+    self.edit("scripts/installation/install-allow-and-open.sh", "scripts/detect-homebrew.py", "scripts/untrusted_brew.py")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh", "scripts/untrusted_brew.py", "scripts/detect-homebrew.py")
-    self.edit("install-allow-and-open.sh",
+    self.edit("scripts/installation/install-allow-and-open.sh", "scripts/untrusted_brew.py", "scripts/detect-homebrew.py")
+    self.edit("scripts/installation/install-allow-and-open.sh",
               'python3 "$script_dir/scripts/confirm-clamav-install.py"',
               'echo "No consent requested"')
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh",
+    self.edit("scripts/installation/install-allow-and-open.sh",
               'echo "No consent requested"',
               'python3 "$script_dir/scripts/confirm-clamav-install.py"')
     self.edit("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE", "INCOMPATIBLE LICENSE")
