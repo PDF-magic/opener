@@ -161,7 +161,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assertIn("check_database()", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/general/preserve-signature-database.py -v", ci)
-        self.assertIn("bash -n install-allow-and-open.sh", ci)
+        self.assertIn("bash -n scripts/installation/install-allow-and-open.sh", ci)
 
 
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ classes = classes.replace(
 
 with tempfile.TemporaryDirectory(prefix="opener-failure-presentation-") as directory:
     work = Path(directory)
-    (work / "twilight-reading.png").write_bytes((ROOT / "twilight-reading.png").read_bytes())
+    (work / "twilight-reading.png").write_bytes((ROOT / "src/scan/twilight-reading.png").read_bytes())
     gate = work / "gate.py"
     gate.write_text(
         "import os, sys\n"

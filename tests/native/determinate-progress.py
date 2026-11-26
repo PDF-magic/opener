@@ -22,7 +22,7 @@ class NativeDeterminateProgressTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="opener-determinate-") as directory:
             root = Path(directory)
             (root / "twilight-reading.png").write_bytes(
-                (ROOT / "twilight-reading.png").read_bytes())
+                (ROOT / "src/scan/twilight-reading.png").read_bytes())
             first = root / "first.pdf"
             second = root / "second.pdf"
             first.write_bytes(b"%PDF-1.4\n")

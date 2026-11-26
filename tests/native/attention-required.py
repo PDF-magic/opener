@@ -37,7 +37,7 @@ class AttentionRequiredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="opener-attention-") as folder:
             root = Path(folder)
             (root / "twilight-reading.png").write_bytes(
-                (ROOT / "twilight-reading.png").read_bytes())
+                (ROOT / "src/scan/twilight-reading.png").read_bytes())
             gate = root / "gate.py"
             gate.write_text(
                 "import sys\n"

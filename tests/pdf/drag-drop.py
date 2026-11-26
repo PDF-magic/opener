@@ -73,7 +73,7 @@ def test_drop_handoff():
         executable.parent.mkdir(parents=True)
         resources.mkdir()
         (resources / "twilight-reading.png").write_bytes(
-            (ROOT / "twilight-reading.png").read_bytes()
+            (ROOT / "src/scan/twilight-reading.png").read_bytes()
         )
 
         receipt = root / "scan-receipt.txt"
