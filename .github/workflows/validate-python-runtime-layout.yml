@@ -16,9 +16,47 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Verify every relocated file against the prepared candidate
+        shell: bash
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/expected-layout" 7bf74220f8fb652321fcd75c1ddf623ee7cdf7d4
+          python3 "$RUNNER_TEMP/expected-layout/scripts/prepare-python-runtime-layout.py" > "$RUNNER_TEMP/expected-layout.log"
+          python3 - <<'PY'
+          import base64, hashlib, os, pathlib, subprocess
+          expected = pathlib.Path(os.environ["RUNNER_TEMP"]) / "expected-layout"
+          ignored = {
+            ".github/workflows/validate-python-runtime-layout.yml",
+            ".github/workflows/test-layout.yml",
+            "tests/general/python-source-layout.py",
+          }
+          files = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          mismatches = []
+          for filename in filter(None, files):
+              if filename in ignored:
+                  continue
+              current = pathlib.Path(filename)
+              target = expected / filename
+              if not target.is_file() or not current.is_file():
+                  raise RuntimeError("Unexpected tracked path " + filename)
+              intended = target.read_bytes()
+              if filename == "tests/maximum/isolated-renderer.py":
+                  intended = intended.replace(b'source_root / "src/protection/', b'source_root / "')
+              if current.read_bytes() != intended:
+                  mismatches.append(filename)
+                  print("REPAIR_BEGIN " + filename)
+                  print("REPAIR_SHA256 " + hashlib.sha256(intended).hexdigest())
+                  encoded = base64.b64encode(intended).decode()
+                  for start in range(0, len(encoded), 2000):
+                      print("REPAIR_DATA " + encoded[start:start+2000])
+                  print("REPAIR_END")
+          print("REPAIR_COUNT " + str(len(mismatches)))
+          if mismatches:
+              raise SystemExit(1)
+          PY
       - run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt 'Pillow==11.3.0'
       - name: Verify committed source and installed paths
         env:
