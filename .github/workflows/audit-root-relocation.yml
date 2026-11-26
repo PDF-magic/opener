@@ -1,0 +1,47 @@
+name: Audit root source relocation
+
+on:
+  push:
+    branches: [shoeshine]
+    paths:
+      - .github/workflows/audit-root-relocation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventory root references
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import collections
+          import pathlib
+          import subprocess
+          files = [pathlib.Path(p.decode()) for p in subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0") if p]
+          roots = [p.name for p in files if len(p.parts) == 1 and p.suffix in (".swift", ".py", ".sh", ".png", ".command", ".txt")]
+          matches = collections.defaultdict(list)
+          for path in files:
+            data = path.read_bytes()
+            if b"\0" in data:
+              continue
+            try:
+              source = data.decode("utf-8")
+            except UnicodeDecodeError:
+              continue
+            for number, line in enumerate(source.splitlines(), 1):
+              for name in roots:
+                if name in line:
+                  matches[name].append((str(path), number, line.strip()))
+          for name in roots:
+            print(f"ROOT {name}: {len(matches[name])} references")
+            if name.endswith((".swift", ".png", ".command")):
+              for path, number, line in matches[name]:
+                print(f"{path}:{number}: {line}")
+          PY
