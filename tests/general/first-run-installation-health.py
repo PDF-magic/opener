@@ -7,7 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp/FirstRunWelcomeView.swift"
 MODEL = ROOT / "PDFMagicOpenerApp/FirstRunInstallationHealth.swift"
-NATIVE = ROOT / "test-first-run-installation-health.swift"
+NATIVE = ROOT / "tests/first-run/installation-health.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj"
 CI = ROOT / ".github/workflows/ci.yml"
 
@@ -62,7 +62,7 @@ class FirstRunInstallationHealthTests(unittest.TestCase):
     self.assertIn("B98200000000000000000002,", project)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-installation-health.py -v", ci)
-    self.assertIn("test-first-run-installation-health.swift", ci)
+    self.assertIn("tests/first-run/installation-health.swift", ci)
     self.assertIn("TestFirstRunInstallationHealth", ci)
     docs = (ROOT / "docs/first-run-welcome.md").read_text(encoding="utf-8")
     self.assertIn("Basic installation health check (opener-0982)", docs)

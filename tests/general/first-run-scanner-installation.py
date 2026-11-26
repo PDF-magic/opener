@@ -75,7 +75,7 @@ class FirstRunScannerInstallationTests(unittest.TestCase):
     self.assertIn("B97500000000000000000002,", project)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-scanner-installation.py -v", ci)
-    self.assertIn("test-first-run-scanner-installation.swift", ci)
+    self.assertIn("tests/first-run/scanner-installation.swift", ci)
     self.assertIn("TestFirstRunScannerInstallation", ci)
 
 

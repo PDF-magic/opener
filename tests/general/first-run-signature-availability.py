@@ -7,7 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WELCOME = ROOT / "PDFMagicOpenerApp/FirstRunWelcomeView.swift"
 STATUS = ROOT / "PDFMagicOpenerApp/SignatureUpdateStatus.swift"
-TEST = ROOT / "test-first-run-signature-availability.swift"
+TEST = ROOT / "tests/first-run/signature-availability.swift"
 CI = ROOT / ".github/workflows/ci.yml"
 
 
@@ -46,7 +46,7 @@ class FirstRunSignatureAvailabilityTests(unittest.TestCase):
       self.assertIn(status, fixture)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-signature-availability.py -v", ci)
-    self.assertIn("test-first-run-signature-availability.swift", ci)
+    self.assertIn("tests/first-run/signature-availability.swift", ci)
     self.assertIn('"$RUNNER_TEMP/TestFirstRunSignatureAvailability"', ci)
 
 

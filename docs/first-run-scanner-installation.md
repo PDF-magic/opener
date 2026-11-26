@@ -17,7 +17,7 @@ before opening any PDF. No file is scanned or opened, no executable is run, no
 installation or network action occurs, and no browser, Finder action, PDF
 association, or selected protection profile is modified.
 
-`test-first-run-scanner-installation.swift` covers absent, non-executable,
+`tests/first-run/scanner-installation.swift` covers absent, non-executable,
 partial, mismatched-prefix, symlink, and directory installations using only
 temporary fixtures. The portable first-run regression checks UI wiring and
 safety boundaries. Both are required CI checks.
