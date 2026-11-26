@@ -212,7 +212,7 @@ class TimedPDFStructureTests(unittest.TestCase):
   def test_ci_includes_timeout_tests_but_scanner_is_unmodified(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-    source = (ROOT / "timed-pdf-structure-analysis.py").read_text(
+    source = (ROOT / "src/pdf/timed-pdf-structure-analysis.py").read_text(
       encoding="utf-8"
     )
     self.assertIn("python3 tests/general/timed-pdf-structure-analysis.py -v", ci)

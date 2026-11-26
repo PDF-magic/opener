@@ -153,7 +153,7 @@ class EffectivePolicyScanResultsTests(unittest.TestCase):
         scan.assert_not_called()
 
     def test_metadata_is_not_a_policy_switch_or_private_audit_record(self):
-        policy = (ROOT / "protection-policy-definitions.py").read_text(encoding="utf-8")
+        policy = (ROOT / "src/protection/protection-policy-definitions.py").read_text(encoding="utf-8")
         source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("not an executable scan policy", policy.lower())
         self.assertNotIn("from protection_policy_definitions import", source)

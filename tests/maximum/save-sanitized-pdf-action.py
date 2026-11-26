@@ -138,7 +138,7 @@ class SaveSanitizedPDFInterfaceTests(unittest.TestCase):
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         root = Path(__file__).resolve().parents[2]
-        source = (root / "maximum-save-sanitized-pdf-action.py").read_text()
+        source = (root / "src/sanitization/maximum-save-sanitized-pdf-action.py").read_text()
         self.assertIn("return save_sanitized_copy(offer, destination, user_confirmed=True)", source)
         self.assertNotIn("launch_clean_file", source)
         self.assertNotIn("open_required_maximum_safe_copy", source)

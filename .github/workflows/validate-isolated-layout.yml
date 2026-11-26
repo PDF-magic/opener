@@ -4,7 +4,7 @@ on:
   push:
     branches: [shoeshine]
     paths:
-      - maximum-isolated-analysis.py
+      - src/protection/maximum-isolated-analysis.py
       - .github/workflows/validate-isolated-layout.yml
 
 permissions:

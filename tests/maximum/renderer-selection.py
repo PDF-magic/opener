@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
 DECISION = (ROOT / "docs/maximum/renderer-selection.md").read_text(encoding="utf-8")
-WORKER = (ROOT / "maximum-render-worker.py").read_text(encoding="utf-8")
+WORKER = (ROOT / "src/protection/maximum-render-worker.py").read_text(encoding="utf-8")
 LICENSE = (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 

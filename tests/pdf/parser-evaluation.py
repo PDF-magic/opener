@@ -55,7 +55,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
   def test_selection_research_and_ci_use_only_this_pin(self):
     policy = (ROOT / "docs/pdf/parser-evaluation.md").read_text()
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    parser = (ROOT / "pdf-structure-parser.py").read_text()
+    parser = (ROOT / "src/pdf/pdf-structure-parser.py").read_text()
     scanner = (ROOT / "scan-and-open.py").read_text()
     for item in ("pypdf", "pikepdf", "PyMuPDF", "PDF 2.0",
                  "Malformed", "memory", "MPL-2.0", "BSD-3-Clause",

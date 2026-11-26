@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - benchmarks/temporary-disk-benchmark.py
-      - maximum-temporary-output.py
+      - src/sanitization/maximum-temporary-output.py
       - benchmarks/pdf-parser-memory-benchmark.py
       - tests/maximum/temporary-disk-benchmark.py
       - .github/workflows/temporary-disk-benchmark.yml
@@ -12,7 +12,7 @@ on:
     branches: [main]
     paths:
       - benchmarks/temporary-disk-benchmark.py
-      - maximum-temporary-output.py
+      - src/sanitization/maximum-temporary-output.py
       - benchmarks/pdf-parser-memory-benchmark.py
       - tests/maximum/temporary-disk-benchmark.py
       - .github/workflows/temporary-disk-benchmark.yml

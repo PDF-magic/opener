@@ -138,7 +138,7 @@ class AmbiguityTests(unittest.TestCase):
     def test_not_wired_into_deployed_gate_or_preferences(self):
         root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
-        profiles = (root / "protection-profiles.py").read_text()
+        profiles = (root / "src/protection/protection-profiles.py").read_text()
         self.assertNotIn("pdf_structure_ambiguity", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

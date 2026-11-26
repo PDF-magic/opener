@@ -39,7 +39,7 @@ def main():
         return 2
     # -I drops the script directory from sys.path. Restore only this
     # trusted repository directory, never the untrusted process cwd.
-    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
     _apply_limits()
 
     from importlib import import_module

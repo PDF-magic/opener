@@ -142,7 +142,7 @@ class ProtectionStageBudgetTests(unittest.TestCase):
         document = original.as_document()
         document["memory_mib"]["maximum"] = 1
         self.assertEqual(original.memory_mib.maximum, 256)
-        src = (ROOT / "protection-stage-resource-budgets.py").read_text(encoding="utf-8")
+        src = (ROOT / "src/protection/protection-stage-resource-budgets.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_stage_resource_budgets", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)

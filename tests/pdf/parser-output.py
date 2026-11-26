@@ -82,7 +82,7 @@ class PDFParserOutputTests(unittest.TestCase):
         self.assertNotIn("authorizesOpen", str(caught.exception))
 
     def test_contract_is_optional_and_ci_runs_the_regression(self):
-        source = (ROOT / "pdf-structure-parser.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/structure-parser.md").read_text(encoding="utf-8")

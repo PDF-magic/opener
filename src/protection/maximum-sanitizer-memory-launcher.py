@@ -41,7 +41,7 @@ def main() -> int:
 
     # Python -I deliberately omits the script directory; add only this trusted
     # source directory so the immutable memory budget comes from the same module.
-    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
     try:
         __import__('module-loader')
         from maximum_sanitizer_process import MAX_SANITIZER_MEMORY_BYTES

@@ -80,27 +80,27 @@ _FILES = {
     'malformed_object_stream_corpus': 'tests/fixtures/pdf/malformed-object-stream-corpus.py',
     'malformed_xref_pdf_collection': 'tests/fixtures/pdf/malformed-xref-pdf-collection.py',
     'many_embedded_objects_benchmark': 'benchmarks/many-embedded-objects-benchmark.py',
-    'maximum_active_content_removal': 'maximum-active-content-removal.py',
-    'maximum_filesystem_sandbox': 'maximum-filesystem-sandbox.py',
-    'maximum_generated_rescan': 'maximum-generated-rescan.py',
-    'maximum_isolated_analysis': 'maximum-isolated-analysis.py',
-    'maximum_isolated_renderer': 'maximum-isolated-renderer.py',
-    'maximum_isolated_worker': 'maximum-isolated-worker.py',
-    'maximum_memory_limits': 'maximum-memory-limits.py',
-    'maximum_overwrite_warning': 'maximum-overwrite-warning.py',
-    'maximum_process_termination': 'maximum-process-termination.py',
-    'maximum_render_filesystem_probe': 'maximum-render-filesystem-probe.py',
-    'maximum_render_worker': 'maximum-render-worker.py',
-    'maximum_safe_copy_handoff': 'maximum-safe-copy-handoff.py',
+    'maximum_active_content_removal': 'src/sanitization/maximum-active-content-removal.py',
+    'maximum_filesystem_sandbox': 'src/protection/maximum-filesystem-sandbox.py',
+    'maximum_generated_rescan': 'src/sanitization/maximum-generated-rescan.py',
+    'maximum_isolated_analysis': 'src/protection/maximum-isolated-analysis.py',
+    'maximum_isolated_renderer': 'src/protection/maximum-isolated-renderer.py',
+    'maximum_isolated_worker': 'src/protection/maximum-isolated-worker.py',
+    'maximum_memory_limits': 'src/protection/maximum-memory-limits.py',
+    'maximum_overwrite_warning': 'src/sanitization/maximum-overwrite-warning.py',
+    'maximum_process_termination': 'src/protection/maximum-process-termination.py',
+    'maximum_render_filesystem_probe': 'src/protection/maximum-render-filesystem-probe.py',
+    'maximum_render_worker': 'src/protection/maximum-render-worker.py',
+    'maximum_safe_copy_handoff': 'src/sanitization/maximum-safe-copy-handoff.py',
     'maximum_sanitization_benchmark': 'benchmarks/maximum-sanitization-benchmark.py',
-    'maximum_sanitized_copy': 'maximum-sanitized-copy.py',
-    'maximum_sanitized_structure': 'maximum-sanitized-structure.py',
-    'maximum_sanitizer_memory_launcher': 'maximum-sanitizer-memory-launcher.py',
-    'maximum_sanitizer_process': 'maximum-sanitizer-process.py',
-    'maximum_save_sanitized_copy': 'maximum-save-sanitized-copy.py',
-    'maximum_save_sanitized_pdf_action': 'maximum-save-sanitized-pdf-action.py',
-    'maximum_temporary_output': 'maximum-temporary-output.py',
-    'maximum_view_sanitized_pdf': 'maximum-view-sanitized-pdf.py',
+    'maximum_sanitized_copy': 'src/sanitization/maximum-sanitized-copy.py',
+    'maximum_sanitized_structure': 'src/sanitization/maximum-sanitized-structure.py',
+    'maximum_sanitizer_memory_launcher': 'src/protection/maximum-sanitizer-memory-launcher.py',
+    'maximum_sanitizer_process': 'src/protection/maximum-sanitizer-process.py',
+    'maximum_save_sanitized_copy': 'src/sanitization/maximum-save-sanitized-copy.py',
+    'maximum_save_sanitized_pdf_action': 'src/sanitization/maximum-save-sanitized-pdf-action.py',
+    'maximum_temporary_output': 'src/sanitization/maximum-temporary-output.py',
+    'maximum_view_sanitized_pdf': 'src/sanitization/maximum-view-sanitized-pdf.py',
     'medium_pdf_benchmark': 'benchmarks/medium-pdf-benchmark.py',
     'memory_stress_pdf_corpus': 'tests/fixtures/pdf/memory-stress-pdf-corpus.py',
     'migrate_signature_files': 'scripts/migrate-signature-files.py',
@@ -113,7 +113,7 @@ _FILES = {
     'oversized_stream_corpus': 'tests/fixtures/pdf/oversized-stream-corpus.py',
     'package_application_helpers': 'scripts/package-application-helpers.py',
     'package_safari_extension': 'scripts/package-safari-extension.py',
-    'parser_filesystem_confinement': 'parser-filesystem-confinement.py',
+    'parser_filesystem_confinement': 'src/pdf/parser-filesystem-confinement.py',
     'pdf_action_chains': 'src/pdf/pdf-action-chains.py',
     'pdf_annotations': 'src/pdf/pdf-annotations.py',
     'pdf_automatic_actions': 'src/pdf/pdf-automatic-actions.py',
@@ -139,9 +139,9 @@ _FILES = {
     'pdf_repeated_structures': 'src/pdf/pdf-repeated-structures.py',
     'pdf_revision_active_content': 'src/pdf/pdf-revision-active-content.py',
     'pdf_rich_media': 'src/pdf/pdf-rich-media.py',
-    'pdf_stream_lengths': 'pdf-stream-lengths.py',
+    'pdf_stream_lengths': 'src/pdf/pdf-stream-lengths.py',
     'pdf_structure_ambiguity': 'src/pdf/pdf-structure-ambiguity.py',
-    'pdf_structure_parser': 'pdf-structure-parser.py',
+    'pdf_structure_parser': 'src/pdf/pdf-structure-parser.py',
     'pdf_suspicious_urls': 'src/pdf/pdf-suspicious-urls.py',
     'pdf_unsupported_feature_inspection': 'src/pdf/pdf-unsupported-feature-inspection.py',
     'pdf_unusual_object_counts': 'src/pdf/pdf-unusual-object-counts.py',
@@ -152,9 +152,9 @@ _FILES = {
     'protection_exception_policy': 'src/protection/protection-exception-policy.py',
     'protection_failure_exception_boundary': 'src/protection/protection-failure-exception-boundary.py',
     'protection_performance_evidence': 'src/protection/protection-performance-evidence.py',
-    'protection_policy_definitions': 'protection-policy-definitions.py',
-    'protection_profiles': 'protection-profiles.py',
-    'protection_stage_resource_budgets': 'protection-stage-resource-budgets.py',
+    'protection_policy_definitions': 'src/protection/protection-policy-definitions.py',
+    'protection_profiles': 'src/protection/protection-profiles.py',
+    'protection_stage_resource_budgets': 'src/protection/protection-stage-resource-budgets.py',
     'protection_stage_time_limits': 'src/protection/protection-stage-time-limits.py',
     'reconcile_pdf_handler_registration': 'scripts/reconcile-pdf-handler-registration.py',
     'reconcile_update_agent': 'scripts/reconcile-update-agent.py',
@@ -296,8 +296,8 @@ _FILES = {
     'tests.fixtures.pdf.oversized_stream_corpus': 'tests/fixtures/pdf/oversized-stream-corpus.py',
     'tests.fixtures.pdf.reference_pdf_collection': 'tests/fixtures/pdf/reference-pdf-collection.py',
     'tests.fixtures.pdf.unicode_metadata_corpus': 'tests/fixtures/pdf/unicode-metadata-corpus.py',
-    'timed_pdf_structure_analysis': 'timed-pdf-structure-analysis.py',
-    'timed_pdf_structure_worker': 'timed-pdf-structure-worker.py',
+    'timed_pdf_structure_analysis': 'src/pdf/timed-pdf-structure-analysis.py',
+    'timed_pdf_structure_worker': 'src/pdf/timed-pdf-structure-worker.py',
     'tools.audit_quarantine_removal': 'tools/audit-quarantine-removal.py',
     'ui_responsiveness_benchmark': 'benchmarks/ui-responsiveness-benchmark.py',
     'unicode_metadata_corpus': 'tests/fixtures/pdf/unicode-metadata-corpus.py',
@@ -313,6 +313,10 @@ _FILES = {
 }
 
 
+_ROOT_ALIASES = frozenset(['maximum_active_content_removal', 'maximum_filesystem_sandbox', 'maximum_generated_rescan', 'maximum_isolated_analysis', 'maximum_isolated_renderer', 'maximum_isolated_worker', 'maximum_memory_limits', 'maximum_network_isolation', 'maximum_overwrite_warning', 'maximum_process_termination', 'maximum_render_filesystem_probe', 'maximum_render_worker', 'maximum_safe_copy_handoff', 'maximum_sanitized_copy', 'maximum_sanitized_structure', 'maximum_sanitizer_memory_launcher', 'maximum_sanitizer_process', 'maximum_save_sanitized_copy', 'maximum_save_sanitized_pdf_action', 'maximum_temporary_output', 'maximum_view_sanitized_pdf', 'parser_filesystem_confinement', 'pdf_stream_lengths', 'pdf_structure_parser', 'protection_policy_definitions', 'protection_profiles', 'protection_stage_resource_budgets', 'timed_pdf_structure_analysis', 'timed_pdf_structure_worker', 'maximum-network-isolation'])
+_FILES['maximum-network-isolation'] = 'src/protection/maximum-network-isolation.py'
+
+
 class _FilenameFinder:
     """Resolve only known project modules in their original search directory."""
 
@@ -323,7 +327,8 @@ class _FilenameFinder:
         source = _ROOT / relative
         for entry in sys.path if path is None else path:
             try:
-                matches = Path(entry).resolve() == source.parent
+                directory = Path(entry).resolve()
+                matches = directory == source.parent or (fullname in _ROOT_ALIASES and directory == _ROOT)
             except (OSError, TypeError, ValueError):
                 continue
             if matches:

@@ -34,7 +34,7 @@ def _scan_staged_without_open(path, offer):
     global _SCAN_GATE
     with _SCAN_LOCK:
         if _SCAN_GATE is None:
-            gate = Path(__file__).resolve().with_name("scan-and-open.py")
+            gate = Path(__file__).resolve().parents[2] / "scan-and-open.py"
             spec = importlib.util.spec_from_file_location(
                 "_maximum_save_only_scan_gate", gate
             )

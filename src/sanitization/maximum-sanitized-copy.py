@@ -452,7 +452,7 @@ def _unsupported_source_features(original) -> bool:
 def _trusted_converter() -> Path | None:
     if sys.platform != "darwin":
         return None
-    binary = Path(__file__).resolve().with_name("maximum-sanitized-copy")
+    binary = Path(__file__).resolve().parents[2] / "maximum-sanitized-copy"
     try:
         if binary.is_symlink() or not binary.is_file():
             return None

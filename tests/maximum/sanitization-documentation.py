@@ -10,7 +10,7 @@ from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 ROOT = Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "docs/maximum/limitations.md"
 INDEX = ROOT / "docs/README.md"
-SOURCE = ROOT / "maximum-sanitized-copy.py"
+SOURCE = ROOT / "src/sanitization/maximum-sanitized-copy.py"
 
 
 def constant_integer(expression):

@@ -9,7 +9,7 @@ def main() -> int:
         return 2
     # Python -I omits the script directory. Restore only this trusted module
     # path, not the process cwd or user PYTHONPATH.
-    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
     __import__('module-loader')
     import maximum_isolated_renderer as renderer
     context = renderer._renderer_sandbox_context(Path(__file__).resolve())

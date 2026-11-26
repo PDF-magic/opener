@@ -88,7 +88,7 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
                 limits._tighten_limit(resource.RLIMIT_AS, invalid)
 
     def test_worker_applies_guard_before_parser_import_and_never_changes_gate(self):
-        worker = (ROOT / "maximum-isolated-worker.py").read_text()
+        worker = (ROOT / "src/protection/maximum-isolated-worker.py").read_text()
         self.assertIn("impose_maximum_worker_memory_limit()", worker)
         self.assertLess(worker.index("impose_maximum_worker_memory_limit()"),
                         worker.index("from importlib import import_module"))
@@ -148,7 +148,7 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
 
     def test_real_worker_disarms_macos_watchdog_on_shutdown(self):
         # A successful worker disarms the real-time watchdog before teardown.
-        worker = (ROOT / "maximum-isolated-worker.py").read_text()
+        worker = (ROOT / "src/protection/maximum-isolated-worker.py").read_text()
         self.assertIn("signal.setitimer(signal.ITIMER_REAL, 0)", worker)
         self.assertLess(
             worker.index("code = main()"),

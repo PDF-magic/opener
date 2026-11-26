@@ -12,6 +12,7 @@ from unittest.mock import patch
 __import__('module-loader')
 import maximum_isolated_renderer as renderer
 from importlib import import_module
+__import__('module-loader')
 isolation = import_module("maximum-network-isolation")
 
 
@@ -137,10 +138,10 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
     def test_macos_renderer_command_uses_combined_restriction_profile(self):
         context = {
             "python": str(Path(sys.executable).resolve()),
-            "worker": str((ROOT / "maximum-render-worker.py").resolve()),
-            "worker_support": str((ROOT / "maximum-isolated-worker.py").resolve()),
-            "network_support": str((ROOT / "maximum-network-isolation.py").resolve()),
-            "renderer_support": str((ROOT / "maximum-isolated-renderer.py").resolve()),
+            "worker": str((ROOT / "src/protection/maximum-render-worker.py").resolve()),
+            "worker_support": str((ROOT / "src/protection/maximum-isolated-worker.py").resolve()),
+            "network_support": str((ROOT / "src/protection/maximum-network-isolation.py").resolve()),
+            "renderer_support": str((ROOT / "src/protection/maximum-isolated-renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
@@ -153,7 +154,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
             patch.object(renderer, "_renderer_sandbox_context", return_value=context),
         ):
             command = renderer._renderer_command(
-                ROOT / "maximum-render-worker.py", 0,
+                ROOT / "src/protection/maximum-render-worker.py", 0,
             )
         self.assertEqual(command, (
             context["python"], "-I", "-B", context["worker"], "0",
@@ -166,7 +167,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertNotIn("(allow file-write", profile)
         for _key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
             self.assertIn('(literal (param "' + parameter + '"))', profile)
-        worker_source = (ROOT / "maximum-render-worker.py").read_text(encoding="utf-8")
+        worker_source = (ROOT / "src/protection/maximum-render-worker.py").read_text(encoding="utf-8")
         self.assertLess(worker_source.index("apply_renderer_sandbox(context)"),
                         worker_source.index("document_bytes = sys.stdin.buffer.read"))
 
@@ -210,7 +211,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertEqual(str(error.exception), isolation.CHILD_PROCESS_BLOCK_MESSAGE)
 
     def test_restriction_is_installed_before_pdf_read_and_renderer_import(self):
-        source = (ROOT / "maximum-render-worker.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/protection/maximum-render-worker.py").read_text(encoding="utf-8")
         for restriction in ("apply_linux_child_process_denial()", "apply_renderer_sandbox(context)"):
             with self.subTest(restriction=restriction):
                 position = source.index(restriction)

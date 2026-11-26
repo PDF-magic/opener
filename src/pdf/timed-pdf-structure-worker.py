@@ -15,7 +15,7 @@ def main():
     return 2
   # Python -I removes the script folder from sys.path; restore only this
   # trusted repository folder, never the caller's cwd or an input PDF path.
-  sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+  sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
   # Install OS-enforced read-only access before any untrusted PDF parsing.
   # Refuse the request when confinement cannot be established.

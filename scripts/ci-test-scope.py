@@ -104,7 +104,7 @@ def select_groups(paths):
             or path.startswith("scripts/")
             or name.startswith("requirements")
             or path in CONFIG_FILES
-            or path in SHARED_SECURITY_FILES
+            or name in SHARED_SECURITY_FILES
         ):
             return ALL_GROUPS
 

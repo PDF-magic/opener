@@ -122,8 +122,8 @@ class ProtectionCardsTests(unittest.TestCase):
 
   def test_origin_comparison_does_not_replace_verified_generated_copy_identity(self):
     root = Path(__file__).resolve().parents[2]
-    offer = (root / "maximum-sanitized-copy.py").read_text(encoding="utf-8")
-    route = (root / "maximum-safe-copy-handoff.py").read_text(encoding="utf-8")
+    offer = (root / "src/sanitization/maximum-sanitized-copy.py").read_text(encoding="utf-8")
+    route = (root / "src/sanitization/maximum-safe-copy-handoff.py").read_text(encoding="utf-8")
     for source in (offer, route):
       self.assertIn('"contentOrigin": GENERATED_CONTENT_ORIGIN', source)
       self.assertIn('"isUntouchedOriginal": False', source)

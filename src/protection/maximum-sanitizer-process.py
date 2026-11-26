@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 
+__import__('module-loader')
 _network_isolation = import_module("maximum-network-isolation")
 NETWORK_DENY_PROFILE = _network_isolation.NETWORK_DENY_PROFILE
 SANDBOX_EXEC = _network_isolation.SANDBOX_EXEC

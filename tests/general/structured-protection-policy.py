@@ -111,7 +111,7 @@ class StructuredProtectionPolicyTests(unittest.TestCase):
         document = standard.as_document()
         document["requirements"].clear()
         self.assertEqual(len(standard.requirements), len(BASELINE_CONTROLS))
-        source = (ROOT / "protection-policy-definitions.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/protection/protection-policy-definitions.py").read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_policy_definitions", scanner)
         for forbidden in ("UserDefaults", "subprocess.run", "scan_and_open(", "def apply_policy",

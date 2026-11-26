@@ -134,7 +134,7 @@ class UnsupportedPDFFeaturePolicyTests(unittest.TestCase):
         self.assertIn("if not decision.allowed:", gate_source)
         self.assertIn("remove_quarantine(path)", gate_source)
         self.assertIn("if not cached_clean(cache_id):", gate_source)
-        profiles = (ROOT / "protection-profiles.py").read_text(encoding="utf-8")
+        profiles = (ROOT / "src/protection/protection-profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", profiles)
 
 

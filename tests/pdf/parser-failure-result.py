@@ -120,7 +120,7 @@ class PDFStructuredFailureTests(unittest.TestCase):
             parse_pdf_structure(b"%PDF-1.4\nBAD\n%%EOF\n")
         self.assertIn("opening was stopped.", str(raised.exception))
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        parser = (ROOT / "pdf-structure-parser.py").read_text(encoding="utf-8")
+        parser = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         doc = (ROOT / "docs/pdf/structure-parser.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)

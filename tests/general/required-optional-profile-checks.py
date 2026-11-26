@@ -115,7 +115,7 @@ class ProfileCheckAssignmentsTests(unittest.TestCase):
 
     def test_definition_is_non_executable_and_preserves_scanner_policy(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        policy_source = (ROOT / "protection-policy-definitions.py").read_text(encoding="utf-8")
+        policy_source = (ROOT / "src/protection/protection-policy-definitions.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_policy_definitions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("UserDefaults", policy_source)

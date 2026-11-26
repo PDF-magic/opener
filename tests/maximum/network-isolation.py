@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch, Mock
 
 from importlib import import_module
+__import__('module-loader')
 isolation = import_module("maximum-network-isolation")
 
 

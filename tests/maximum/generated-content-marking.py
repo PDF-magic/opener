@@ -105,9 +105,9 @@ class GeneratedCopyOriginTests(unittest.TestCase):
     def test_provenance_does_not_change_installed_scan_or_pdf_metadata(self):
         root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
-        source = (root / "maximum-sanitized-copy.py").read_text(encoding="utf-8")
-        rescan = (root / "maximum-generated-rescan.py").read_text(encoding="utf-8")
-        route = (root / "maximum-safe-copy-handoff.py").read_text(encoding="utf-8")
+        source = (root / "src/sanitization/maximum-sanitized-copy.py").read_text(encoding="utf-8")
+        rescan = (root / "src/sanitization/maximum-generated-rescan.py").read_text(encoding="utf-8")
+        route = (root / "src/sanitization/maximum-safe-copy-handoff.py").read_text(encoding="utf-8")
         workflow = (root / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertNotIn("maximum_generated_content_marking", scanner)
         self.assertIn("force_rescan=True", scanner)

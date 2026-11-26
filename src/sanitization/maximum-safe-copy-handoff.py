@@ -219,7 +219,7 @@ def _scan_staged_copy(path, offer):
     global _SCAN_GATE
     with _SCAN_GATE_LOCK:
         if _SCAN_GATE is None:
-            gate = Path(__file__).resolve().with_name("scan-and-open.py")
+            gate = Path(__file__).resolve().parents[2] / "scan-and-open.py"
             spec = importlib.util.spec_from_file_location(
                 "_maximum_safe_copy_scan_gate", gate)
             if spec is None or spec.loader is None:

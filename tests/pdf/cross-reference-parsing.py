@@ -125,7 +125,7 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
   def test_parser_is_passive_and_ci_executes_real_fixture_tests(self):
     scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    module = (ROOT / "pdf-structure-parser.py").read_text(encoding="utf-8")
+    module = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
     relationships = (ROOT / "src/pdf/pdf-object-relationships.py").read_text(
       encoding="utf-8"
     )

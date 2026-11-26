@@ -316,7 +316,7 @@ jobs:
           __import__('module-loader'); import maximum_isolated_renderer as renderer
 
           root = Path(renderer.__file__).resolve().parent
-          worker = root / "maximum-render-worker.py"
+          worker = root / "src/protection/maximum-render-worker.py"
           checks = {
               "python": renderer._trusted_regular_file(
                   str(Path(renderer._sandbox_python_executable()).resolve()),

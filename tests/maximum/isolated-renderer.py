@@ -86,7 +86,7 @@ class MaximumRendererTests(unittest.TestCase):
         except renderer.MaximumPDFRenderError:
             # CI-only diagnosis with a synthetic PDF: never print worker output,
             # raw stderr, sandbox paths, or any document-controlled payload.
-            worker = ROOT / "maximum-render-worker.py"
+            worker = ROOT / "src/protection/maximum-render-worker.py"
             probe = subprocess.run(
                 renderer._renderer_command(worker, 0), input=self.pdf,
                 stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
@@ -178,10 +178,10 @@ class MaximumRendererTests(unittest.TestCase):
             document.close()
         context = {
             "python": str(Path(sys.executable).resolve()),
-            "worker": str((ROOT / "maximum-render-worker.py").resolve()),
-            "worker_support": str((ROOT / "maximum-isolated-worker.py").resolve()),
-            "network_support": str((ROOT / "maximum-network-isolation.py").resolve()),
-            "renderer_support": str((ROOT / "maximum-isolated-renderer.py").resolve()),
+            "worker": str((ROOT / "src/protection/maximum-render-worker.py").resolve()),
+            "worker_support": str((ROOT / "src/protection/maximum-isolated-worker.py").resolve()),
+            "network_support": str((ROOT / "src/protection/maximum-network-isolation.py").resolve()),
+            "renderer_support": str((ROOT / "src/protection/maximum-isolated-renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
@@ -205,7 +205,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn('(literal (param "WORKER_SUPPORT"))', renderer.RENDERER_FILESYSTEM_PROFILE)
         self.assertNotIn('(subpath (param "WORKER_DIR"))', renderer.RENDERER_FILESYSTEM_PROFILE)
         self.assertNotIn("(allow file-write", renderer.RENDERER_FILESYSTEM_PROFILE)
-        worker_source = (ROOT / "maximum-render-worker.py").read_text()
+        worker_source = (ROOT / "src/protection/maximum-render-worker.py").read_text()
         self.assertLess(worker_source.index("_apply_limits()"),
                         worker_source.index("apply_renderer_sandbox(context)"))
         self.assertLess(worker_source.index("apply_renderer_sandbox(context)"),
@@ -458,7 +458,7 @@ class MaximumRendererTests(unittest.TestCase):
             )
 
     def test_direct_worker_rejects_bad_commands_without_output(self):
-        worker = ROOT / "maximum-render-worker.py"
+        worker = ROOT / "src/protection/maximum-render-worker.py"
         for index, contents in (("false", self.pdf), ("-1", self.pdf),
                                 ("0", b"garbage"), ("3", self.pdf)):
             with self.subTest(index=index):
@@ -471,7 +471,7 @@ class MaximumRendererTests(unittest.TestCase):
                 self.assertEqual(finished.stdout, b"")
 
     def test_worker_applies_limits_before_raster_import_and_deployed_gate_untouched(self):
-        worker = (ROOT / "maximum-render-worker.py").read_text()
+        worker = (ROOT / "src/protection/maximum-render-worker.py").read_text()
         self.assertLess(worker.index("_apply_limits()"), worker.index("import pymupdf"))
         self.assertLess(worker.index("apply_linux_network_denial()"),
                         worker.index("import pymupdf"))
@@ -535,7 +535,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("tests/maximum/isolated-renderer.py -v", native)
         self.assertIn("pymupdf==2.0", portable)
         self.assertIn("pymupdf==2.0", native)
-        self.assertTrue((ROOT / "maximum-render-filesystem-probe.py").is_file())
+        self.assertTrue((ROOT / "src/protection/maximum-render-filesystem-probe.py").is_file())
 
     def test_framework_python_launcher_uses_real_trusted_interpreter(self):
         version = f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -593,12 +593,12 @@ class MaximumRendererTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_renderer_sandbox_context_trusts_only_valid_runtime_paths(self):
-        source_root = Path(__file__).resolve().parents[2]
-        worker = source_root / "maximum-render-worker.py"
+        source_root = Path(renderer.__file__).resolve().parent
+        worker = source_root / "src/protection/maximum-render-worker.py"
         support_files = (
-            source_root / "maximum-isolated-worker.py",
-            source_root / "maximum-network-isolation.py",
-            source_root / "maximum-isolated-renderer.py",
+            source_root / "src/protection/maximum-isolated-worker.py",
+            source_root / "src/protection/maximum-network-isolation.py",
+            source_root / "src/protection/maximum-isolated-renderer.py",
             *(source_root / filename
               for _key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT),
         )
@@ -671,7 +671,7 @@ class MaximumRendererTests(unittest.TestCase):
             private = private_root / "private.pdf"
             private.write_bytes(b"private marker")
             write_target = private_root / "should-not-exist"
-            probe = ROOT / "maximum-render-filesystem-probe.py"
+            probe = ROOT / "src/protection/maximum-render-filesystem-probe.py"
             command = filesystem_sandbox_command(probe, str(private), str(write_target))
             outcome = subprocess.run(
                 command, stdin=subprocess.DEVNULL,
