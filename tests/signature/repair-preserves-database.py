@@ -88,13 +88,14 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
         self.signatures = self.install / "signatures"
         self.signatures.mkdir(parents=True)
         self.checkout = self.root / "trusted-checkout"
-        self.checkout.mkdir()
-        repair = self.checkout / REPAIR.name
+        installation = self.checkout / "scripts/installation"
+        installation.mkdir(parents=True)
+        repair = installation / REPAIR.name
         shutil.copyfile(REPAIR, repair)
         repair.chmod(0o755)
         self.repair = repair
         scripts = self.checkout / "scripts"
-        scripts.mkdir()
+        scripts.mkdir(exist_ok=True)
         for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# inert repair test fixture\n", encoding="utf-8")
 
@@ -129,20 +130,22 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
         updater = self.updaterSource.replace(
             FRESHCLAM_CANDIDATES, str(self.fakeFreshclam)
         ).replace(CLAMSCAN_CANDIDATES, str(self.fakeClamscan))
-        (self.checkout / UPDATER.name).write_text(updater, encoding="utf-8")
+        updaterPath = self.checkout / "src/scanner" / UPDATER.name
+        updaterPath.parent.mkdir(parents=True)
+        updaterPath.write_text(updater, encoding="utf-8")
 
         # A synthetic installer reproduces the actual installer ordering:
         # create signatures if absent, deploy updater, invoke updater.
         # Never execute the real installer on the CI host.
         fixture = (
             '#!/bin/bash\nset -euo pipefail\n'
-            'script_dir="$(cd "$(dirname "$0")" && pwd)"\n'
+            'script_dir="$(cd "$(dirname "$0")/../.." && pwd)"\n'
             'install_dir="$HOME/Library/Application Support/Studio/allow-and-open"\n'
             'mkdir -p "$install_dir/signatures"\n'
             'cp "$script_dir/src/scanner/update-malware-signatures.sh" "$install_dir/"\n'
             'bash "$install_dir/update-malware-signatures.sh"\n'
         )
-        (self.checkout / INSTALLER.name).write_text(fixture, encoding="utf-8")
+        (installation / INSTALLER.name).write_text(fixture, encoding="utf-8")
 
     def snapshot(self):
         return {
@@ -184,7 +187,8 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
                 pid, status = os.waitpid(child, os.WNOHANG)
                 if pid:
                     finished = True
-                    self.assertTrue(answered, "Missing explicit repair confirmation")
+                    self.assertTrue(answered, "Missing explicit repair confirmation: "
+                                    + received[-1200:].decode("utf-8", errors="replace"))
                     return os.waitstatus_to_exitcode(status), received.decode(
                         "utf-8", errors="replace"
                     )
