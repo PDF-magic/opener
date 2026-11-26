@@ -89,7 +89,7 @@ class RestorePreviousDefaultTests(unittest.TestCase):
 
   def test_regression_suite_exercises_restore_with_no_system_mutations(self):
     self.assertIn(f"{Path(__file__).resolve().relative_to(ROOT).as_posix()} -v", CI)
-    self.assertIn("test-general-restore-previous-default.swift", CI)
+    self.assertIn("tests/default/restore-previous.swift", CI)
     self.assertIn("PDF_DEFAULT_ACTION_TESTING", CI)
     self.assertIn('Button("Set as Default PDF App")', ACTION)
 

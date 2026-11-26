@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 APP_ID = "local.studio.brave-pdf-opener"
-SCRIPT = ROOT / "test-finder-open.applescript"
+SCRIPT = ROOT / "tests/general/finder-open.applescript"
 RUNTIME = (Path.home() / "Library/Application Support/Studio/allow-and-open")
 IDENTIFY = RUNTIME / "identify-pdf-handler"
 ORIGINS = RUNTIME / "scan-request-origins.jsonl"

@@ -9,7 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "set-pdf-default-handler.swift"
-SWIFT_TEST = ROOT / "test-pdf-default-handler.swift"
+SWIFT_TEST = ROOT / "tests/pdf/default-handler.swift"
 ENTRY = 'guard let brave = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.brave.Browser") else {'
 
 

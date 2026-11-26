@@ -46,7 +46,7 @@ class PDFDefaultUserActionTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/pdf/default-user-action.py -v", workflow)
         self.assertIn("make-pdf-magic-default.command", workflow)
-        self.assertIn("test-make-pdf-magic-default.swift", workflow)
+        self.assertIn("tests/default/make-default.swift", workflow)
 
 
 if __name__ == "__main__":

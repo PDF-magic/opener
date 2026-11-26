@@ -1254,7 +1254,7 @@ jobs:
             PDFMagicOpenerApp/GeneralSettingsView.swift PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
             PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift \
             PDFMagicOpenerApp/ScanProgressPreference.swift \
-            test-general-pdf-handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
+            tests/pdf/handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
           "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
       - name: Verify built app icon and macOS window branding
         run: |
@@ -1457,16 +1457,16 @@ jobs:
         run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
       - name: Verify General PDF association action with synthetic apps only
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-default-pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift tests/default/pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
           "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
       - name: Verify Restore Previous Default safely with synthetic handler status
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-restore-previous-default.swift -o "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift tests/default/restore-previous.swift -o "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
           "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING make-pdf-magic-default.swift test-make-pdf-magic-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING make-pdf-magic-default.swift tests/default/make-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
           "$RUNNER_TEMP/TestMakePDFMagicDefault"
           if "$RUNNER_TEMP/MakePDFMagicDefault" unexpected-argument; then exit 1; fi
       - name: Compile PDF handler utility
@@ -1476,25 +1476,25 @@ jobs:
       - name: Verify previous PDF-handler backup and safe restoration
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING pdf-handler-history.swift test-pdf-handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING pdf-handler-history.swift tests/pdf/handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
           "$RUNNER_TEMP/TestPDFHandlerHistory"
           if "$RUNNER_TEMP/PDFHandlerHistory" >/dev/null 2>&1; then exit 1; fi
       - name: Identify the current macOS PDF handler without modifying it
         run: |
           xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
-          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
+          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift tests/pdf/handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
           "$RUNNER_TEMP/TestPDFHandler"
           if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Detect when another application becomes the PDF default
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift test-detect-pdf-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift tests/pdf/detect-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
           "$RUNNER_TEMP/TestDetectPDFHandler"
           if "$RUNNER_TEMP/DetectPDFHandlerChange" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Verify discovered app availability, PDF handlers and signed browser exceptions
         run: |
           xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
-          xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
+          xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift tests/target/verify.swift -o "$RUNNER_TEMP/TestPDFTarget"
           "$RUNNER_TEMP/TestPDFTarget"
           if "$RUNNER_TEMP/VerifyPDFTarget" >/dev/null 2>&1; then exit 1; fi
           if [ -d /Applications/Safari.app ]; then
@@ -1592,7 +1592,7 @@ jobs:
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING installed-applications.swift test-installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING installed-applications.swift tests/system/installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
           "$RUNNER_TEMP/TestInstalledApplications"
           if "$RUNNER_TEMP/InstalledApplications" >/dev/null 2>&1; then exit 1; fi
           if "$RUNNER_TEMP/InstalledApplications" " " >/dev/null 2>&1; then exit 1; fi
@@ -1605,7 +1605,7 @@ jobs:
             -o "$RUNNER_TEMP/SelectCustomPDFApplication"
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
             -D CUSTOM_APP_SELECTION_TESTING verify-pdf-target.swift \
-            select-custom-pdf-application.swift test-select-custom-pdf-application.swift \
+            select-custom-pdf-application.swift tests/target/select-custom-application.swift \
             -o "$RUNNER_TEMP/TestSelectCustomPDFApplication"
           "$RUNNER_TEMP/TestSelectCustomPDFApplication"
           if "$RUNNER_TEMP/SelectCustomPDFApplication" --application relative.app; then exit 1; fi
@@ -1675,7 +1675,7 @@ jobs:
       - name: Compile Finder Open AppleScript and test the safe integration harness
         timeout-minutes: 2
         run: |
-          /usr/bin/osacompile -o "$RUNNER_TEMP/FinderOpen.scpt" test-finder-open.applescript
+          /usr/bin/osacompile -o "$RUNNER_TEMP/FinderOpen.scpt" tests/general/finder-open.applescript
           PYTHONPATH=. python3 tests/general/finder-open.py -v
       - name: Verify native open-event origin classification
         run: PYTHONPATH=. python3 tests/native/request-origin.py
