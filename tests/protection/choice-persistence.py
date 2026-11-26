@@ -39,10 +39,10 @@ class ProtectionChoicePersistenceTests(unittest.TestCase):
         self.assertIn("choosing a card does not enable it", VIEW)
 
     def test_real_restart_regression_is_required_in_macos_ci(self):
-        self.assertIn("test-protection-choice-restart.swift", CI)
+        self.assertIn("tests/protection/choice-restart.swift", CI)
         self.assertIn("tests/protection/choice-persistence.py -v", CI)
-        self.assertIn("test-protection-choice-restart.swift", "\n".join(
-            p.name for p in ROOT.glob("test-protection-choice-restart.swift")))
+        self.assertIn("tests/protection/choice-restart.swift", "\n".join(
+            p.relative_to(ROOT).as_posix() for p in ROOT.glob("tests/protection/choice-restart.swift")))
 
 
 if __name__ == "__main__":

@@ -1166,7 +1166,7 @@ jobs:
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
       - name: Verify atomic and cross-process configuration persistence and failure safety
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift test-atomic-configuration-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift tests/configuration/atomic-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
           "$RUNNER_TEMP/TestAtomicConfigurationWriter"
       - name: Verify native signature-update progress metadata safely
         run: |
@@ -1246,7 +1246,7 @@ jobs:
             PDFMagicOpenerApp/ScanHistoryResultDetailView.swift \
             PDFMagicOpenerApp/ClearScanHistory.swift \
             PDFMagicOpenerApp/ScanHistoryRetention.swift \
-            test-preferences-large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
+            tests/preferences/large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
         run: |
@@ -1332,46 +1332,46 @@ jobs:
           "$RUNNER_TEMP/TestNotificationDeduplication"
       - name: Verify confirmed General preference reset preserves customizations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/reset-general.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
           "$RUNNER_TEMP/TestResetGeneralPreferences"
       - name: Verify Restore Recommended Limits preserves scanner safety and customizations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-recommended-scanner-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/scanner/recommended-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
           "$RUNNER_TEMP/TestRecommendedScannerLimits"
       - name: Test versioned configuration serialization and compatibility
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
       - name: Verify active configuration schema version is persisted safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-active-schema-version.swift -o "$RUNNER_TEMP/TestActiveSchemaVersion"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/active-schema-version.swift -o "$RUNNER_TEMP/TestActiveSchemaVersion"
           "$RUNNER_TEMP/TestActiveSchemaVersion"
       - name: Verify safe malformed configuration recovery
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/malformed-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
           "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
       - name: Test legacy configuration schema upgrades without resetting preferences
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
           "$RUNNER_TEMP/TestConfigurationMigration"
       - name: Verify application upgrade retains shared preferences across launches
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-application-upgrade-preferences.swift -o "$RUNNER_TEMP/TestApplicationUpgradePreferences"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/application-upgrade.swift -o "$RUNNER_TEMP/TestApplicationUpgradePreferences"
           "$RUNNER_TEMP/TestApplicationUpgradePreferences"
       - name: Verify additive policy settings upgrade preserves saved preferences
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-policy-settings-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/policy-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
           "$RUNNER_TEMP/TestPolicySettingsUpgrade"
       - name: Verify all processes refresh the same effective configuration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/cross-process-effective.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
           "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
           PYTHONPATH=. python3 tests/general/cross-process-configuration.py -v
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
           "$RUNNER_TEMP/TestShowScanProgress"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-initial-configuration.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/initial.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
           "$RUNNER_TEMP/TestInitialConfiguration"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunWelcomeState.swift tests/first-run/welcome.swift -o "$RUNNER_TEMP/TestFirstRunWelcome"
           "$RUNNER_TEMP/TestFirstRunWelcome"
@@ -1383,31 +1383,31 @@ jobs:
           "$RUNNER_TEMP/TestFirstRunInstallationHealth"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/first-run/signature-availability.swift -o "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/selected-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
           "$RUNNER_TEMP/TestSelectedProtectionProfile"
       - name: Verify existing installations retain Standard without changing active Built-in policy
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"
           "$RUNNER_TEMP/TestLegacyStandardPreference"
       - name: Verify Reset Protection Settings preserves scanner and user customizations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-protection-settings.swift -o "$RUNNER_TEMP/TestProtectionSettingsReset"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/reset-settings.swift -o "$RUNNER_TEMP/TestProtectionSettingsReset"
           "$RUNNER_TEMP/TestProtectionSettingsReset"
       - name: Verify planned protection preview persists across process restarts
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-protection-choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
           "$RUNNER_TEMP/TestProtectionChoiceRestart"
       - name: Verify isolated opt-in download scan scope persistence
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-scan-other-supported-files.swift -o "$RUNNER_TEMP/TestScanOtherSupportedFiles"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/scan/other-supported-files.swift -o "$RUNNER_TEMP/TestScanOtherSupportedFiles"
           "$RUNNER_TEMP/TestScanOtherSupportedFiles"
       - name: Verify settings survive app restart and replacement executable
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/persistent-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
           "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
       - name: Verify editing preferences while the malware scan is running
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-preferences-during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
           PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" PYTHONPATH=. python3 tests/preferences/during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
@@ -1685,7 +1685,7 @@ jobs:
 
       - name: Verify supported setting defaults and existing user overrides
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/supported-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
           "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
 
 

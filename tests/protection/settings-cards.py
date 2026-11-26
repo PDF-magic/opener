@@ -84,7 +84,7 @@ class ProtectionCardsTests(unittest.TestCase):
     scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
     self.assertIn("if not cached_clean(cache_id):", scanner)
     self.assertNotIn("PlannedProtectionTier", scanner)
-    stored = (ROOT / "test-selected-protection-profile.swift").read_text(encoding="utf-8")
+    stored = (ROOT / "tests/protection/selected-profile.swift").read_text(encoding="utf-8")
     self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn", stored)
 
   def test_maximum_preview_distinguishes_original_from_safe_copy_without_activation(self):
