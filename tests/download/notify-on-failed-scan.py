@@ -57,7 +57,7 @@ class FailedScanNotificationTests(unittest.TestCase):
   def test_existing_safety_gates_and_ci_coverage(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("tests/download/notify-on-failed-scan.py -v", ci)
-    self.assertIn("test-notify-on-failed-scan.swift", ci)
+    self.assertIn("tests/download/notify-on-failed-scan.swift", ci)
     background = (ROOT / "extensions/webextension/src/background.js").read_text()
     self.assertTrue(background.strip().endswith("void 0;"))
     src = PREF.read_text()

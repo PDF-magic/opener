@@ -1300,7 +1300,7 @@ jobs:
           "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
       - name: Verify browser failed-scan notification preference in isolated user defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"
           "$RUNNER_TEMP/TestNotifyOnFailedScan"
       - name: Verify browser connection-health snapshots are never scanner authorization
         run: |
@@ -1308,7 +1308,7 @@ jobs:
           "$RUNNER_TEMP/TestDownloadConnectionHealth"
       - name: Verify Show Only Warnings saved preference and fail-open warning visibility
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-only-warnings.swift -o "$RUNNER_TEMP/TestShowOnlyWarnings"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/show-only-warnings.swift -o "$RUNNER_TEMP/TestShowOnlyWarnings"
           "$RUNNER_TEMP/TestShowOnlyWarnings"
       - name: Verify isolated download scan-result display preference
         run: |
@@ -1316,19 +1316,19 @@ jobs:
           "$RUNNER_TEMP/TestDownloadScanResults"
       - name: Verify opt-in successful scan notifications in isolated user defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/successful-scan.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
           "$RUNNER_TEMP/TestSuccessfulScanNotifications"
       - name: Verify failed-scan notices with isolated user settings
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-failed-scan-notifications.swift -o "$RUNNER_TEMP/TestFailedScanNotifications"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/failed-scan.swift -o "$RUNNER_TEMP/TestFailedScanNotifications"
           "$RUNNER_TEMP/TestFailedScanNotifications"
       - name: Verify malware notifications reject unrelated failures and cancellations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malware-detection-notifications.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/malware-detection.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"
           "$RUNNER_TEMP/TestMalwareDetectionNotifications"
       - name: Verify per-document notification deduplication and expiration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notification-deduplication.swift -o "$RUNNER_TEMP/TestNotificationDeduplication"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/deduplication.swift -o "$RUNNER_TEMP/TestNotificationDeduplication"
           "$RUNNER_TEMP/TestNotificationDeduplication"
       - name: Verify confirmed General preference reset preserves customizations
         run: |

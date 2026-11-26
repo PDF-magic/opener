@@ -32,5 +32,5 @@ extension permissions, background activation, scanner executables, the
 Show Scan Results setting, or existing user customizations.
 
 CI runs both `tests/download/show-only-warnings.py` (source and safety
-boundary checks) and `test-show-only-warnings.swift` (compiled preference
+boundary checks) and `tests/download/show-only-warnings.swift` (compiled preference
 persistence and filtering with an isolated disposable UserDefaults suite).

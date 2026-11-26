@@ -49,8 +49,8 @@ class ShowOnlyWarningsTests(unittest.TestCase):
   def test_ci_runs_real_swift_persistence_regression(self):
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("tests/download/show-only-warnings.py -v", workflow)
-    self.assertIn("test-show-only-warnings.swift", workflow)
-    self.assertIn("PDFMagicOpenerApp/ScanProgressPreference.swift test-show-only-warnings.swift", workflow)
+    self.assertIn("tests/download/show-only-warnings.swift", workflow)
+    self.assertIn("PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/show-only-warnings.swift", workflow)
     self.assertIn("xcrun swiftc -parse-as-library -warnings-as-errors", workflow)
 
   def test_existing_webextension_and_safety_gates_stay_inert(self):

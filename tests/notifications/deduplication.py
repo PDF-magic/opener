@@ -58,7 +58,7 @@ class NotificationDeduplicationTests(unittest.TestCase):
 
   def test_both_ci_suites_run_behavioral_regressions(self):
     self.assertIn("tests/notifications/deduplication.py -v", CI)
-    self.assertIn("test-notification-deduplication.swift", CI)
+    self.assertIn("tests/notifications/deduplication.swift", CI)
 
 
 if __name__ == "__main__":

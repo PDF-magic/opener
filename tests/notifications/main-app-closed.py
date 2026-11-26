@@ -44,7 +44,7 @@ class NotificationsWhileMainAppClosedTests(unittest.TestCase):
     workflow = WORKFLOW.read_text()
     self.assertIn("tests/notifications/main-app-closed.py -v", workflow)
     self.assertIn("tests/notifications/main-app-closed.py --live -v", workflow)
-    self.assertTrue((ROOT / "test-notifications-main-app-closed.swift").is_file())
+    self.assertTrue((ROOT / "tests/notifications/main-app-closed.swift").is_file())
     self.assertIn("Build SwiftUI application target without registering PDF handling", workflow)
 
   @unittest.skipUnless(sys.platform == "darwin" and "--live" in sys.argv,
@@ -83,7 +83,7 @@ class NotificationsWhileMainAppClosedTests(unittest.TestCase):
         "xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors",
         str(native), str(ROOT / "scan-progress-view.swift"),
         str(ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift"),
-        str(ROOT / "test-notifications-main-app-closed.swift"),
+        str(ROOT / "tests/notifications/main-app-closed.swift"),
         "-o", str(executable),
       ], cwd=ROOT, check=True, timeout=120)
       subprocess.run([str(executable)], cwd=ROOT, check=True, timeout=30)

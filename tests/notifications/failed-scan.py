@@ -46,7 +46,7 @@ class FailedScanNotificationTests(unittest.TestCase):
 
   def test_native_and_portable_ci_are_required(self):
     self.assertIn("tests/notifications/failed-scan.py -v", CI)
-    self.assertIn("test-failed-scan-notifications.swift", CI)
+    self.assertIn("tests/notifications/failed-scan.swift", CI)
     self.assertIn("brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", CI)
 
 if __name__ == "__main__":
