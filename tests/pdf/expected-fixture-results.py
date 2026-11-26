@@ -10,6 +10,9 @@ import json
 from pathlib import Path
 import unittest
 
+# Register the reviewed hyphenated fixture modules before either test imports them.
+__import__('src.module-loader')
+
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "tests/fixtures/pdf-security-corpus/expected-results.json"
 
@@ -98,7 +101,6 @@ class ExpectedFixtureResultTests(unittest.TestCase):
   def test_expectation_details_agree_with_fixture_metadata(self):
     entries = {(item["collection"], item["id"]): item
                for item in self.records["fixtures"]}
-    __import__('src.module-loader')
     from tests.fixtures.pdf.reference_pdf_collection import (
       REFERENCE_PDFS, INCORRECTLY_NAMED_FILES, INVALID_PDF_HEADERS,
       INCREMENTAL_REFERENCE_PDFS,
