@@ -1,0 +1,25 @@
+name: Native test layout
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-test-layout:
+    name: Audit tracked native test paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Reject obsolete or missing native test references
+        run: python3 scripts/check-test-layout.py
