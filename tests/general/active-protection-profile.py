@@ -20,7 +20,7 @@ class ActiveProtectionProfileTests(unittest.TestCase):
     self.assertNotIn("NSTextField(string:", view)
 
   def test_profile_describes_the_existing_fail_closed_scan_gate(self):
-    engine = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    engine = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     self.assertIn("def scanner_path():", engine)
     self.assertIn("'ClamAV is unavailable.", engine)
     self.assertIn("'--alert-exceeds-max=yes', '--alert-encrypted=yes'", engine)

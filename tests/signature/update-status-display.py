@@ -68,7 +68,7 @@ class SignatureStatusDisplayTests(unittest.TestCase):
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
-        gate = (ROOT / "scan-and-open.py").read_text()
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", gate)
         self.assertNotIn("SignatureUpdateStatus", gate)
         self.assertNotIn("SignatureUpdateStatus", installer)

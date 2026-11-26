@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-__import__('module-loader')
+__import__('src.module-loader')
 import benchmarks.scanned_pdf_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -126,7 +126,7 @@ class ScannedImageBenchmarkTests(unittest.TestCase):
                               clock=iter([2.0, 1.0]).__next__)
 
     def test_separate_from_live_scan_approval_and_wired_into_ci(self):
-        production = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        production = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("scanned_pdf_benchmark", production)
         self.assertIn("verify_file_integrity", production)
         self.assertIn("if not cached_clean(cache_id):", production)

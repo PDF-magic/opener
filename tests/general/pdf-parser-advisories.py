@@ -12,7 +12,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-__import__('module-loader')
+__import__('src.module-loader')
 import pdf_parser_advisory_watch as watch
 
 

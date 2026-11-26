@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from io import BytesIO
 import re
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (MAX_STRUCTURE_INPUT_BYTES, MAX_STRUCTURE_PAGES,
                                   PDFStructureParseError, parse_pdf_structure)
 

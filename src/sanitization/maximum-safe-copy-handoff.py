@@ -18,15 +18,15 @@ import sys
 import tempfile
 import threading
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_copy import (
     CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN, MAX_OUTPUT_BYTES,
     MAX_SOURCE_BYTES, OFFER_LABEL, SanitizedCopyOffer,
     _passive_pages, offer_sanitized_pdf_copy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_temporary_output import (
     MaximumTemporaryOutputError, stage_maximum_temporary_pdf,
 )
@@ -219,7 +219,7 @@ def _scan_staged_copy(path, offer):
     global _SCAN_GATE
     with _SCAN_GATE_LOCK:
         if _SCAN_GATE is None:
-            gate = Path(__file__).resolve().parents[2] / "scan-and-open.py"
+            gate = Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py"
             spec = importlib.util.spec_from_file_location(
                 "_maximum_safe_copy_scan_gate", gate)
             if spec is None or spec.loader is None:

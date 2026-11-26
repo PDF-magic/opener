@@ -10,13 +10,13 @@ import json
 from pathlib import Path
 import sys
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_process_termination import MAX_WALL_SECONDS, run_limited_worker
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import PolicyControl
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
 
 

@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("sign_developer_id", ROOT / "scripts/sign-developer-id.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-__import__('module-loader')
+__import__('src.module-loader')
 from package_application_helpers import HELPER_NAMES
 
 TEAM = "ABCDE12345"

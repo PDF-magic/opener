@@ -156,7 +156,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assert_no_work_dirs()
 
     def test_scan_gate_remains_independent_and_ci_runs_regressions(self):
-        source = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", source)
         self.assertIn("check_database()", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()

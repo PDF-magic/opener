@@ -9,13 +9,13 @@ Resolving a policy never approves a file, starts a scan or changes settings.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     FailureDisposition,
     PolicyControl,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS
 
 

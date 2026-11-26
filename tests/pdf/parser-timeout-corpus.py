@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES,
     MAX_STRUCTURE_OBJECTS,
@@ -20,7 +20,7 @@ from pdf_structure_parser import (
     PDFStructureParseError,
     parse_pdf_structure,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from timed_pdf_structure_analysis import (
     ANALYSIS_TIMEOUT_SECONDS,
     BLOCK_MESSAGE,
@@ -194,7 +194,7 @@ class ParserTimeoutCorpusTests(unittest.TestCase):
 
     def test_corpus_is_ci_registered_without_touching_scanner_or_preferences(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn(
             "PYTHONPATH=. python3 tests/pdf/parser-timeout-corpus.py -v", ci
         )

@@ -11,7 +11,7 @@ from hashlib import sha256
 from io import BytesIO
 import re
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure
 
 MAX_REPEATED_OBJECTS = 4096

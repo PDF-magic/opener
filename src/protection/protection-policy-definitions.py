@@ -11,7 +11,7 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Mapping
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import (
     BASELINE_SAFETY_CHECKS,
     PROTECTION_PROFILES,

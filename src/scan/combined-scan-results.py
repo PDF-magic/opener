@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 import re
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import StructuredAnalysisFindings
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResult, ScanResultStatus
 
 

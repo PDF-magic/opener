@@ -18,29 +18,29 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
     FailureDisposition,
     PROTECTION_POLICIES,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("reference_scan_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("reference_scan_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
@@ -185,7 +185,7 @@ class SameReferencePDFCollectionTests(unittest.TestCase):
     def test_ci_registers_reference_suite_without_claiming_profiles_are_live(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/general/reference-pdf-profiles.py -v", workflow)
-        self.assertNotIn("reference_pdf_collection", (ROOT / "scan-and-open.py").read_text(encoding="utf-8"))
+        self.assertNotIn("reference_pdf_collection", (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8"))
         self.assertIn("not executable", __doc__)
         self.assertEqual(len(tuple(ProtectionProfileID)), 3)
 

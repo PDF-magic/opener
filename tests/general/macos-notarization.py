@@ -14,7 +14,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-__import__('module-loader')
+__import__('src.module-loader')
 import notarize_release as notary  # noqa: E402
 
 TEAM_ID = "A1B2C3D4E5"

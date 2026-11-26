@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 if __name__ == '__main__' and not __package__:
     __import__('sys').path.append(str(__import__('pathlib').Path(__file__).resolve().parents[1]))
-__import__('module-loader')
+__import__('src.module-loader')
 from file_launcher import require_executable_path
 
 SCANNER_CANDIDATES = (

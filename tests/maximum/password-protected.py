@@ -16,7 +16,7 @@ from unittest.mock import patch
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, NameObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 
@@ -133,7 +133,7 @@ class PasswordProtectedDocumentFidelityTests(unittest.TestCase):
         self.assertFalse(attempt.failure.permits_open)
 
     def test_installed_scan_gate_preferences_and_mac_ci_remain_independent(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         profiles = (ROOT / "src/protection/protection-profiles.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"

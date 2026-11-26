@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hermetic tests for strict supported values and missing-key defaults."""
 import unittest
-__import__('module-loader')
+__import__('src.module-loader')
 from src.configuration.configuration_validation import UnsupportedSettingValue, validate_configuration
 
 DEFAULTS = {

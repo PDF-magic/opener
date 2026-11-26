@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import benchmarks.cpu_usage_benchmark as cpu
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -119,7 +119,7 @@ class CpuUsageBenchmarkTests(unittest.TestCase):
         self.assertIn("python3 benchmarks/cpu-usage-benchmark.py", workflow)
         self.assertIn("/usr/bin/clamscan", workflow)
         self.assertIn("benchmark-never-match", workflow)
-        self.assertNotIn("cpu_usage_benchmark", (ROOT / "scan-and-open.py").read_text())
+        self.assertNotIn("cpu_usage_benchmark", (ROOT / "src/scan/scan-and-open.py").read_text())
         self.assertIn("including signature database initialization",
                       (ROOT / "docs/performance/cpu-usage.md").read_text())
 

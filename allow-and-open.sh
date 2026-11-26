@@ -4,5 +4,9 @@
 # Preserve positional arguments: the first argument remains the document path.
 export PDF_MAGIC_REQUESTING_APPLICATION="${PDF_MAGIC_REQUESTING_APPLICATION:-Allow and Open}"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$script_dir/.gitattributes" ]; then
+    /usr/bin/python3 "$script_dir/src/scan/record-scan-origin.py" "$@" >/dev/null 2>&1 || true
+    exec /usr/bin/python3 "$script_dir/src/scan/scan-and-open.py" "$@"
+fi
 /usr/bin/python3 "$script_dir/record-scan-origin.py" "$@" >/dev/null 2>&1 || true
 exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"

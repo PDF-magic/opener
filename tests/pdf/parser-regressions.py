@@ -10,7 +10,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (
     PDFStructure,
     PDFStructureFailureCode,
@@ -19,7 +19,7 @@ from pdf_structure_parser import (
     parse_pdf_structure,
     parse_pdf_structure_result,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -115,7 +115,7 @@ class PDFParserRegressionTests(unittest.TestCase):
 
     def test_ci_runs_regressions_without_wiring_parser_to_scanner(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/parser-regressions.py -v", workflow)
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

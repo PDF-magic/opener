@@ -134,7 +134,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     view = WELCOME.read_text(encoding="utf-8")
     shared = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(
       encoding="utf-8")
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     for expected in (
       "Choose your initial protection preference",
       "Built-in ClamAV scanning and fail-closed opening remain the only active protection.",

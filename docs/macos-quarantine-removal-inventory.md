@@ -10,8 +10,8 @@ third-party applications, compiled external binaries, or untracked local files.
 
 | Location | Call or operation | Effect | Classification |
 | --- | --- | --- | --- |
-| [`scan-and-open.py`, `remove_quarantine(path)`](../scan-and-open.py) | Definition near line 759 | Its only executable statement is `return None`; no subprocess, xattr change, or filesystem mutation | **Inert compatibility hook** |
-| [`scan-and-open.py`, `scan_and_open`](../scan-and-open.py) | `remove_quarantine(path)` call near line 997 | Invokes inert hook after destination verification, before another integrity check and safe launch | **One call to inert hook; not a removal** |
+| [`scan-and-open.py`, `remove_quarantine(path)`](../src/scan/scan-and-open.py) | Definition near line 759 | Its only executable statement is `return None`; no subprocess, xattr change, or filesystem mutation | **Inert compatibility hook** |
+| [`scan-and-open.py`, `scan_and_open`](../src/scan/scan-and-open.py) | `remove_quarantine(path)` call near line 997 | Invokes inert hook after destination verification, before another integrity check and safe launch | **One call to inert hook; not a removal** |
 | [`tests/general/retain-os-quarantine.py`](../tests/general/retain-os-quarantine.py) | Negative assertions against `os.removexattr`/`xattr`; macOS-only `os.setxattr`/`os.getxattr` | Tests that tagged PDFs retain their extended attribute after fresh, cached, and blocked scans | **Test assertions and fixture setup, not production deletion** |
 | [`maximum-sanitized-copy.py`](../src/sanitization/maximum-sanitized-copy.py) | `preserve_quarantine` policy | Declares that future sanitized output must preserve quarantine | **Preservation contract, not a removal** |
 

@@ -379,9 +379,9 @@ class NativeMessagingHostTests(unittest.TestCase):
   def test_python_protocol_codec_and_frames_interoperate_with_compiled_host(self):
     # End-to-end protocol fixture: independent Python codecs speak to the
     # compiled Swift host using native browser framing. No scanner privileges.
-    __import__('module-loader')
+    __import__('src.module-loader')
     from src.native.native_message_format import encode_native_message, decode_native_message
-    __import__('module-loader')
+    __import__('src.module-loader')
     from src.native.native_message_framing import write_native_frame, read_native_frame
 
     input_stream = io.BytesIO()

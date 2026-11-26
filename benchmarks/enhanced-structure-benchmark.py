@@ -17,13 +17,13 @@ import statistics
 import subprocess
 import sys
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure, parse_pdf_structure
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 CASE_PAGES = {"one-page-text": 1, "thirty-two-pages": 32}

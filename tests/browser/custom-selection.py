@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 sys.dont_write_bytecode = True
-__import__('module-loader')
+__import__('src.module-loader')
 import file_launcher as launcher
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -26,8 +26,8 @@ def load(name, path):
     return module
 
 
-chooser = load("custom_browser_chooser_test", "select-custom-pdf-application.py")
-opener = load("custom_browser_scan_test", "scan-and-open.py")
+chooser = load("custom_browser_chooser_test", "src/native/launch/select-custom-pdf-application.py")
+opener = load("custom_browser_scan_test", "src/scan/scan-and-open.py")
 
 
 class CustomBrowserSelectionTests(unittest.TestCase):

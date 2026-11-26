@@ -15,7 +15,7 @@ from pypdf.generic import (
     ArrayObject, DecodedStreamObject, DictionaryObject, NameObject,
     NumberObject, TextStringObject,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -207,7 +207,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
                 self.assertFalse(_visual_evidence(shifted, index))
 
     def test_annotation_policy_and_scanner_remain_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
@@ -217,7 +217,7 @@ class AnnotatedSourceFixtureTests(unittest.TestCase):
         self.assertFalse(copies.SanitizedCopyOffer(_pdf(), 2).permits_open)
         self.assertTrue(copies.SanitizedCopyOffer(_pdf(), 2).needs_separate_scan)
         self.assertIn("other interactive features are not preserved", copies.OFFER_EXPLANATION)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

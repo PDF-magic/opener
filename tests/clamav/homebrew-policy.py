@@ -6,7 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install-allow-and-open.sh"
-SCANNER = ROOT / "scan-and-open.py"
+SCANNER = ROOT / "src/scan/scan-and-open.py"
 DECISION = ROOT / "docs/clamav-homebrew-decision.md"
 README = ROOT / "README.md"
 

@@ -16,9 +16,9 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-__import__('module-loader')
+__import__('src.module-loader')
 import check_dependency_licenses as licenses
-__import__('module-loader')
+__import__('src.module-loader')
 import dependency_vulnerability_audit as audit
 
 

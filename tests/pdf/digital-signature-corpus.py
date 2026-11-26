@@ -11,13 +11,13 @@ import unittest
 from cryptography.hazmat.primitives.serialization import pkcs7
 from pypdf import PdfReader
 
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.digital_signature_corpus import signed_pdf_corpus
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_document_permissions import inspect_pdf_document_permissions
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -111,7 +111,7 @@ class DigitalSignatureCorpusTests(unittest.TestCase):
             {item.identifier for item in self.corpus}
             & {item.identifier for item in REFERENCE_PDFS}
         )
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("digital_signature_corpus", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         workflow = (ROOT / ".github/workflows/pdf-digital-signature-corpus.yml").read_text()

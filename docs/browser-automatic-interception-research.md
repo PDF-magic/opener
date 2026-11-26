@@ -5,7 +5,7 @@ interception feature.** This is the per-browser follow-up to the existing
 [general API research](browser-interception-apis.md) and
 [pre-open download policy research](download-opening-browser-support.md).
 The nine supported macOS browser identifiers are maintained by
-[browser-registry.py](../browser-registry.py). The
+[browser-registry.py](../src/browser/browser-registry.py). The
 [versioned capability matrix](browser-automatic-interception-capabilities.json)
 records research confidence rather than claiming any interception is enabled.
 

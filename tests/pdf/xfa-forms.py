@@ -15,12 +15,12 @@ from pypdf.generic import (
     NumberObject, TextStringObject,
 )
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_xfa_forms import (
     MAX_XFA_PACKETS, PDFXFAInspection, PDFXFAInspectionError,
     inspect_pdf_xfa_forms,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -198,7 +198,7 @@ class PDFXFAFormTests(unittest.TestCase):
 
     def test_new_inspector_does_not_activate_scanner_or_read_xfa_content(self):
         source = (ROOT / "src/pdf/pdf-xfa-forms.py").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/xfa-forms.md").read_text(encoding="utf-8")
         self.assertNotIn("pdf_xfa_forms", scanner)

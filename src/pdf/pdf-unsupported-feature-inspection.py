@@ -9,7 +9,7 @@ from enum import Enum
 from io import BytesIO
 import re
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES, PDFStructureParseError, parse_pdf_structure,
 )

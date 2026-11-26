@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StageAnalysis, StageOutcome, StructuredAnalysisFindings,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_finding_explanations import (
     ExplainedFinding, ExplainableAnalysisFindings, FindingNextAction,
     FindingResult, explain_analysis_findings,
@@ -201,11 +201,11 @@ class FindingExplanationsTests(unittest.TestCase):
         self.assertIn('— \\(resultLabel) · \\(malwareAssessmentLabel)', native)
 
     def test_scanner_and_profile_remain_untouched(self):
-        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("enhanced_finding_explanations", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

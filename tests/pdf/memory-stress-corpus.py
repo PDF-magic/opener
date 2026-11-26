@@ -11,14 +11,14 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 import pdf_structure_parser as parser
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.memory_stress_pdf_corpus import (
     AGGREGATE_STREAM_COUNT, DECODED_BYTES_PER_STREAM, DENSE_OBJECT_COUNT,
     MEMORY_STRESS_PDFS, REFERENCE_FANOUT,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -98,7 +98,7 @@ class MemoryStressCorpusTests(unittest.TestCase):
         self.assertTrue({item.identifier for item in REFERENCE_PDFS}.isdisjoint(
             item.identifier for item in MEMORY_STRESS_PDFS
         ))
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("memory_stress_pdf_corpus", scanner)
         self.assertIn("verify_file_integrity", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

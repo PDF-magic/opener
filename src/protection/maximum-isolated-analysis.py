@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 from types import MappingProxyType
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_process_termination import run_limited_worker
 
 MAX_PDF_BYTES = 16 * 1024 * 1024

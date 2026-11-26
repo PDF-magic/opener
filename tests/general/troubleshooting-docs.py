@@ -15,7 +15,7 @@ class TroubleshootingDocsTests(unittest.TestCase):
     cls.guide = GUIDE.read_text(encoding="utf-8")
     cls.index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
     cls.ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    cls.scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    cls.scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
 
   def test_discoverable_and_registered_in_required_ci(self):
     self.assertIn("(troubleshooting.md)", self.index)

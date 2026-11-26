@@ -14,7 +14,7 @@ from pypdf.generic import (
     NumberObject, StreamObject, TextStringObject,
 )
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as sanitizer
 
 
@@ -302,11 +302,11 @@ class UnsupportedSanitizationTests(unittest.TestCase):
 
     def test_existing_scanner_and_user_options_are_unchanged(self):
         root = Path(__file__).resolve().parents[2]
-        scan = (root / "scan-and-open.py").read_text()
+        scan = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_sanitized_copy", scan)
         self.assertNotIn("assess_sanitized_pdf_copy", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

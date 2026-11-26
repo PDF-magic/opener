@@ -18,9 +18,9 @@ import math
 import statistics
 import time
 
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
-__import__('module-loader')
+__import__('src.module-loader')
 from timed_pdf_structure_analysis import parse_pdf_structure_timed
 
 MIN_SAMPLES = 5

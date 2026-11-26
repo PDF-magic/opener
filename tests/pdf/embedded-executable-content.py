@@ -10,7 +10,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, EncodedStreamObject, NameObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 import src.pdf.pdf_embedded_executable_content as inspector
 
 
@@ -141,14 +141,14 @@ class EmbeddedExecutableInspectionTests(unittest.TestCase):
 
     def test_installed_scanner_and_preferences_remain_separate(self):
         original = Path(__file__).resolve().parents[2]
-        scanner = original / "scan-and-open.py"
+        scanner = original / "src/scan/scan-and-open.py"
         if not scanner.exists():
             self.skipTest("Full repository unavailable in local fixture")
         deployed = scanner.read_text()
         self.assertNotIn("pdf_embedded_executable_content", deployed)
         self.assertIn("check_database()", deployed)
         self.assertIn("if not cached_clean(cache_id):", deployed)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

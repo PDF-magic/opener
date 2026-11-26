@@ -40,7 +40,7 @@ class TerminationTests(unittest.TestCase):
         self.scanner.chmod(0o700)
 
     def launch(self, sleep='30'):
-        scanner_file = str((Path(__file__).resolve().parents[2] / 'scan-and-open.py'))
+        scanner_file = str((Path(__file__).resolve().parents[2] / 'src/scan/scan-and-open.py'))
         harness = (
             'import importlib.util, pathlib, subprocess, sys\n'
             'from contextlib import nullcontext\n'

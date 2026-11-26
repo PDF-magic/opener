@@ -37,7 +37,7 @@ class DependencyUpdatePolicyTests(unittest.TestCase):
         self.assertTrue((POLICY.parent / target).is_file(), target)
 
   def test_policy_matches_external_scanner_and_separate_signature_updates(self):
-    source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     paths = next(node.value for node in tree.body
                  if isinstance(node, ast.Assign)

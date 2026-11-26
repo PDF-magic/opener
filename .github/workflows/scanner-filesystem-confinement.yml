@@ -3,15 +3,15 @@ name: Scanner filesystem confinement
 on:
   pull_request:
     paths:
-      - "scan-and-open.py"
-      - "scanner-filesystem-sandbox.py"
+      - "src/scan/scan-and-open.py"
+      - "src/scanner/scanner-filesystem-sandbox.py"
       - "tests/scanner/filesystem-sandbox.py"
       - ".github/workflows/scanner-filesystem-confinement.yml"
   push:
     branches: [main]
     paths:
-      - "scan-and-open.py"
-      - "scanner-filesystem-sandbox.py"
+      - "src/scan/scan-and-open.py"
+      - "src/scanner/scanner-filesystem-sandbox.py"
       - "tests/scanner/filesystem-sandbox.py"
       - ".github/workflows/scanner-filesystem-confinement.yml"
 

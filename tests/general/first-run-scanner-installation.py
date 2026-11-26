@@ -9,7 +9,7 @@ CHECK = ROOT / "PDFMagicOpenerApp/FirstRunScannerInstallation.swift"
 WELCOME = ROOT / "PDFMagicOpenerApp/FirstRunWelcomeView.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj"
 CI = ROOT / ".github/workflows/ci.yml"
-GATE = ROOT / "scan-and-open.py"
+GATE = ROOT / "src/scan/scan-and-open.py"
 
 
 class FirstRunScannerInstallationTests(unittest.TestCase):

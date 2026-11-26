@@ -7,7 +7,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-__import__('module-loader')
+__import__('src.module-loader')
 from compare_benchmark_layout import compare, legacy_medium, MEDIUM, FIXTURE
 
 

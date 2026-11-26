@@ -3,11 +3,11 @@
 from collections import Counter
 from dataclasses import dataclass
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.combined_scan_results import CombinedScanReport
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import FindingCode, FindingSeverity
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from scanner_argument_validation import (
     InvalidScannerArguments,
     validate_scanner_arguments,
@@ -16,7 +16,7 @@ from scanner_argument_validation import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("arg_validation_gate", ROOT / "scan-and-open.py")
+SPEC = importlib.util.spec_from_file_location("arg_validation_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 UNSET = object()
@@ -201,7 +201,7 @@ class ScannerArgumentTests(unittest.TestCase):
                 launch.assert_called_once()
 
     def test_ci_runs_validation_regression(self):
-        source = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/scan/scan-and-open.py").read_text()
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("validate_scanner_arguments(command,", source)
         self.assertIn("validate_scanner_version_arguments(version_command,", source)

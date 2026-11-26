@@ -10,7 +10,7 @@ and use these findings without bypassing the installed ClamAV scan gate.
 from dataclasses import dataclass, field
 from io import BytesIO
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure, PDFStructureParseError
 
 

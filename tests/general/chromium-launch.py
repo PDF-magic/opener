@@ -10,12 +10,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import file_launcher
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("chromium_scan_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("chromium_scan_gate", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 

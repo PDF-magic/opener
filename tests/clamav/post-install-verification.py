@@ -135,7 +135,7 @@ class PostInstallClamAVTests(unittest.TestCase):
         ))
 
     def test_runtime_scan_gate_and_supported_paths_remain_authoritative(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("require_supported_scanner_version(scanner)", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("remove_quarantine", scanner)

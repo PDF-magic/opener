@@ -82,7 +82,7 @@ class UpdateFailureTests(unittest.TestCase):
     self.assertNotIn("last-failed-update.new", original)
     self.assertIn('failure_reason="freshclam-error"', original)
     self.assertIn('failure_reason="updater-unavailable"', original)
-    scanner = (ROOT / "scan-and-open.py").read_text()
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
     self.assertNotIn("last-failed-update", scanner)
     self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
     installer = (ROOT / "install-allow-and-open.sh").read_text()

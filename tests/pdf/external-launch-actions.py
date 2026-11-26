@@ -13,7 +13,7 @@ from pypdf import PdfWriter
 from pypdf.generic import (
     ArrayObject, BooleanObject, DictionaryObject, NameObject, TextStringObject,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_external_launch_actions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFExternalLaunchInspectionError,
     inspect_pdf_external_launch_actions,
@@ -52,7 +52,7 @@ def action(kind, **fields):
 
 class PDFExternalLaunchTests(unittest.TestCase):
     def test_reference_pdf_collection_has_no_external_actions(self):
-        __import__('module-loader')
+        __import__('src.module-loader')
         from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(pdf=sample.identifier):
@@ -167,11 +167,11 @@ class PDFExternalLaunchTests(unittest.TestCase):
 
     def test_no_changes_to_built_in_scanning_or_preferences(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("pdf_external_launch_actions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("remove_quarantine(path)", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

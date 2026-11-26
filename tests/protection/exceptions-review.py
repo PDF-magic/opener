@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ExceptionDisposition,
@@ -66,7 +66,7 @@ class ProtectionExceptionReviewTests(unittest.TestCase):
                     request_protection_exception(attempted)
 
     def test_scan_and_preferences_are_not_connected_to_review_presentation(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("decision = decide_opening(detection)", scanner)
         self.assertIn("verify_file_integrity(path, before, identity)", scanner)

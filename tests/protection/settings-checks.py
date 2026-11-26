@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     ControlAvailability,
     PROTECTION_POLICIES,
@@ -117,7 +117,7 @@ class ProtectionLevelCheckDisplayTests(unittest.TestCase):
         self.assertIn("only the current Built-in safeguards are enforced", self.swift)
 
     def test_previews_do_not_change_policy_or_saved_settings(self):
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES
         self.assertTrue(all(not tier.selectable for tier in PROTECTION_PROFILES.values()))
         self.assertIn("selectedPreview = tier", self.swift)
@@ -148,7 +148,7 @@ class ProtectionLevelCheckDisplayTests(unittest.TestCase):
             "path = ProtectionSettingsView.swift;",
             (ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj").read_text(),
         )
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("ProtectionLevelCheckCatalog", gate)
 
 

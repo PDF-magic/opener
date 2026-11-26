@@ -11,13 +11,13 @@ import stat
 import sys
 import threading
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_generated_rescan import verified_generated_pdf_bytes
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_temporary_output import (
     MaximumTemporaryOutputError, stage_maximum_temporary_pdf,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
 
 SAVE_BLOCKED_MESSAGE = "The sanitized PDF copy could not be saved safely."
@@ -34,7 +34,7 @@ def _scan_staged_without_open(path, offer):
     global _SCAN_GATE
     with _SCAN_LOCK:
         if _SCAN_GATE is None:
-            gate = Path(__file__).resolve().parents[2] / "scan-and-open.py"
+            gate = Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py"
             spec = importlib.util.spec_from_file_location(
                 "_maximum_save_only_scan_gate", gate
             )

@@ -4,7 +4,15 @@ Application selection belongs here, not in the ClamAV scan engine. Retain the
 PDF-to-Brave default while allowing a user-selected PDF bundle ID.
 """
 
-__import__('module-loader')
+# The source checkout and installed flat helper directory have distinct layouts.
+import sys as _bootstrap_sys
+from pathlib import Path as _BootstrapPath
+_bootstrap_file = _BootstrapPath(__file__).resolve()
+if _bootstrap_file.parent.name == 'launch' and _bootstrap_file.parent.parent.name == 'native':
+    _bootstrap_sys.path.insert(0, str(_bootstrap_file.parents[3]))
+    __import__("src.module-loader")
+else:
+    __import__("module-loader")
 from browser_registry import DEFAULT_BROWSER_BUNDLE_ID
 from contextlib import contextmanager
 from contextvars import ContextVar

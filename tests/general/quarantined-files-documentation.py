@@ -8,7 +8,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT = ROOT / "docs/quarantined-files.md"
 INDEX = ROOT / "docs/README.md"
-SCANNER = ROOT / "scan-and-open.py"
+SCANNER = ROOT / "src/scan/scan-and-open.py"
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 

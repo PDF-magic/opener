@@ -11,7 +11,7 @@ import re
 import xml.etree.ElementTree as ET
 import zlib
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
 
 

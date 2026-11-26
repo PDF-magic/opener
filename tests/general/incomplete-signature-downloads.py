@@ -112,7 +112,7 @@ class IncompleteDownloadTests(unittest.TestCase):
         self.assertNotIn("incomplete-download", failure)
 
     def test_installed_scan_gate_and_agent_not_weakened(self):
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertNotIn("check_incomplete_downloads", scanner)
         installer = (ROOT / "install-allow-and-open.sh").read_text()

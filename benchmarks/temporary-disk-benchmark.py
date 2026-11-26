@@ -19,9 +19,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_temporary_output as staging
-__import__('module-loader')
+__import__('src.module-loader')
 from benchmarks.pdf_parser_memory_benchmark import synthetic_pdf
 
 MAX_RUNS = 5

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 import re
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure
 
 MAX_PDF_BYTES = 16 * 1024 * 1024

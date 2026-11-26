@@ -44,7 +44,7 @@ import importlib.util
 import pathlib
 import sys
 sys.path.insert(0, {str(repo_root)!r})
-spec = importlib.util.spec_from_file_location("scan_gate", {str(repo_root / "scan-and-open.py")!r})
+spec = importlib.util.spec_from_file_location("scan_gate", {str(repo_root / "src/scan/scan-and-open.py")!r})
 gate = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = gate
 spec.loader.exec_module(gate)

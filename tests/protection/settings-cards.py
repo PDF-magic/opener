@@ -74,7 +74,7 @@ class ProtectionCardsTests(unittest.TestCase):
         self.assertNotIn(forbidden, self.source)
 
   def test_builtin_scanner_and_planned_profile_catalog_remain_authoritative(self):
-    __import__('module-loader')
+    __import__('src.module-loader')
     from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
     self.assertEqual(set(PROTECTION_PROFILES), {
         ProtectionProfileID.STANDARD,
@@ -82,7 +82,7 @@ class ProtectionCardsTests(unittest.TestCase):
         ProtectionProfileID.MAXIMUM})
     self.assertTrue(all(not definition.selectable
                         for definition in PROTECTION_PROFILES.values()))
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     self.assertIn("if not cached_clean(cache_id):", scanner)
     self.assertNotIn("PlannedProtectionTier", scanner)
     stored = (ROOT / "tests/protection/selected-profile.swift").read_text(encoding="utf-8")

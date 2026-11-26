@@ -23,3 +23,5 @@ jobs:
           python-version: "3.11"
       - name: Reject obsolete or missing native test references
         run: python3 scripts/check-test-layout.py
+      - name: Verify Python source and deployed helper layout
+        run: python3 tests/general/python-source-layout.py -v

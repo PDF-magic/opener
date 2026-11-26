@@ -8,11 +8,11 @@ from runpy import run_path
 import unittest
 
 from pypdf import PdfReader
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_stream_lengths import PDFStreamLengthError, validate_pdf_stream_lengths
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf_structure
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -117,7 +117,7 @@ class PDFStreamLengthTests(unittest.TestCase):
       with self.subTest(kind=type(invalid).__name__):
         with self.assertRaises(PDFStreamLengthError):
           validate_pdf_stream_lengths(invalid, None)
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     module = (ROOT / "src/pdf/pdf-stream-lengths.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertNotIn("pdf_stream_lengths", scanner)

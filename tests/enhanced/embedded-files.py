@@ -12,7 +12,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 import src.enhanced.enhanced_embedded_files as inspector
 
 
@@ -158,7 +158,7 @@ class EmbeddedFileInspectionTests(unittest.TestCase):
             self.inspect(many, max_attachments=1)
 
     def test_no_weakening_or_side_effects_in_installed_scan_gate(self):
-        scan_gate = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        scan_gate = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         preferences = (Path(__file__).resolve().parents[2] / "PDFMagicOpenerApp" /
                        "ScanProgressPreference.swift").read_text()
         self.assertNotIn("enhanced_embedded_files", scan_gate)
@@ -166,7 +166,7 @@ class EmbeddedFileInspectionTests(unittest.TestCase):
         self.assertIn("check_database()", scan_gate)
         self.assertIn("if not cached_clean(cache_id):", scan_gate)
         self.assertIn("remove_quarantine(path)", scan_gate)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import (PROTECTION_POLICIES,
                                                    ProtectionProfileID)
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)

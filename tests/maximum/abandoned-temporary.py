@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_temporary_output as cleanup
 
 
@@ -36,7 +36,7 @@ class AbandonedMaximumTemporaryTests(unittest.TestCase):
 
     def test_real_exited_process_is_reaped_on_next_stage(self):
         script = (
-            "from pathlib import Path; import sys; __import__('module-loader'); import maximum_temporary_output as m; m._PRIVATE_ROOT = Path(sys.argv[1]); print(m.stage_maximum_temporary_pdf(b'%PDF-1.7\\ncopy').path)"
+            "from pathlib import Path; import sys; __import__('src.module-loader'); import maximum_temporary_output as m; m._PRIVATE_ROOT = Path(sys.argv[1]); print(m.stage_maximum_temporary_pdf(b'%PDF-1.7\\ncopy').path)"
 
 
 

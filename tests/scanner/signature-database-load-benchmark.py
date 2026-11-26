@@ -132,7 +132,7 @@ class SignatureLoadBenchmarkTests(unittest.TestCase):
         self.assertEqual(calls, ["init", "new", "load", "compile", "version", "free"])
 
     def test_benchmark_never_participates_in_live_scan_or_settings(self):
-        live = (ROOT / "scan-and-open.py").read_text()
+        live = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("signature_database_load_benchmark", live)
         self.assertNotIn("cl_engine_new", live)
         self.assertNotIn("cl_engine_compile", live)

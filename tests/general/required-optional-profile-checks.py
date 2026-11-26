@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     OPTIONAL_CHECKS_BY_PROFILE,
@@ -114,7 +114,7 @@ class ProfileCheckAssignmentsTests(unittest.TestCase):
             standard.optional_checks[0].availability = ControlAvailability.CURRENT
 
     def test_definition_is_non_executable_and_preserves_scanner_policy(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         policy_source = (ROOT / "src/protection/protection-policy-definitions.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_policy_definitions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

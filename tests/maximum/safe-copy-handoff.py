@@ -11,11 +11,11 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfWriter
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_safe_copy_handoff as route
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_copy import SanitizedCopyOffer
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
 
 
@@ -351,13 +351,13 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
 
     def test_normal_gate_is_the_real_existing_scanner_not_new_launcher(self):
         text = Path(route.__file__).read_text()
-        self.assertIn('with_name("scan-and-open.py")', text)
+        self.assertIn('parents[1] / "scan/scan-and-open.py"', text)
         self.assertIn("module.scan_and_open_generated_copy(str(path), offer)", text)
         self.assertNotIn("launch_clean_file(source_path", text)
-        scanner = (Path(route.__file__).parent / "scan-and-open.py").read_text()
+        scanner = (Path(route.__file__).resolve().parents[1] / "scan/scan-and-open.py").read_text()
         self.assertIn("def scan_and_open_generated_copy(item, offer):", scanner)
         self.assertNotIn("maximum_safe_copy_handoff", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

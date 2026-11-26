@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitizer_process import (
     _darwin_group_has_only_zombies,
     _darwin_verified_zombie_cleanup,

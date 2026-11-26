@@ -6,17 +6,17 @@ scan-and-open gate must complete a fresh scan before launching the viewer.
 """
 from dataclasses import dataclass, field
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_generated_rescan import verified_generated_pdf_bytes
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_safe_copy_handoff import _scan_staged_copy
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_copy import CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_temporary_output import (
     MaximumTemporaryOutput, MaximumTemporaryOutputError, stage_maximum_temporary_pdf,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
 
 

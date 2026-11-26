@@ -147,7 +147,7 @@ class NetworkInterruptionTests(unittest.TestCase):
         self.assertNotIn("curl ", script)
         self.assertNotIn("wget ", script)
         self.assertNotIn("last-successful-update.new", script.split("run_freshclam_with_network_recovery() {")[1].split("for candidate in")[0])
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertNotIn("run_freshclam_with_network_recovery", scanner)
         installer = (ROOT / "install-allow-and-open.sh").read_text()

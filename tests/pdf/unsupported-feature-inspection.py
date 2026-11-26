@@ -13,7 +13,7 @@ from pypdf.generic import (
     TextStringObject,
 )
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_unsupported_feature_inspection import (
     PDFUnsupportedFeatureInspectionError,
     PDFUnsupportedFeatureReport, UnsupportedPDFFeature,
@@ -214,7 +214,7 @@ class UnsupportedPDFFeatureInspectionTests(unittest.TestCase):
             PDFUnsupportedFeatureReport((), 1, True).authorizes_open = True
 
     def test_scanner_gate_is_not_connected_to_optional_inspector(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         source = (ROOT / "src/pdf/pdf-unsupported-feature-inspection.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_unsupported_feature_inspection", scanner)

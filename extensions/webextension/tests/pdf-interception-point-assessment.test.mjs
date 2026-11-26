@@ -17,7 +17,7 @@ const IDS = [
 const read = path => readFile(new URL(path, import.meta.url), "utf8");
 
 test("each registered browser receives one distinct deterministic point assessment", async () => {
-  const registry = await read("../../../browser-registry.py");
+  const registry = await read("../../../src/browser/browser-registry.py");
   const ids = [...registry.matchAll(/^\s*"([a-z]+)": "[A-Za-z0-9.-]+",?\s*$/gm)]
     .map(matches => matches[1]);
   assert.equal(PDF_INTERCEPTION_POINT_ASSESSMENT_VERSION, 1);

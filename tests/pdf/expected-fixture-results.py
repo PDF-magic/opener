@@ -98,7 +98,7 @@ class ExpectedFixtureResultTests(unittest.TestCase):
   def test_expectation_details_agree_with_fixture_metadata(self):
     entries = {(item["collection"], item["id"]): item
                for item in self.records["fixtures"]}
-    __import__('module-loader')
+    __import__('src.module-loader')
     from tests.fixtures.pdf.reference_pdf_collection import (
       REFERENCE_PDFS, INCORRECTLY_NAMED_FILES, INVALID_PDF_HEADERS,
       INCREMENTAL_REFERENCE_PDFS,
@@ -163,7 +163,7 @@ class ExpectedFixtureResultTests(unittest.TestCase):
     for entry in self.records["fixtures"]:
       if "path" in entry["details"]:
         self.assertTrue((ROOT / entry["details"]["path"]).is_file())
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     self.assertNotIn("expected-results.json", scanner)
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertIn("PYTHONPATH=. python3 tests/pdf/expected-fixture-results.py -v", ci)

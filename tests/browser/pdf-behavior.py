@@ -10,18 +10,18 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True
-__import__('module-loader')
+__import__('src.module-loader')
 from browser_registry import SUPPORTED_BROWSERS as BROWSERS
 
 selected = os.environ.get("PDF_MAGIC_TEST_BROWSER")
 if selected not in BROWSERS:
     raise SystemExit("Select one PDF_MAGIC_TEST_BROWSER: " + ", ".join(BROWSERS))
 
-source = (Path(__file__).resolve().parents[2] / "scan-and-open.py")
+source = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py")
 spec = importlib.util.spec_from_file_location("browser_pdf_scan", source)
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)

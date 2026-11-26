@@ -13,7 +13,7 @@ import sys
 
 if __name__ == '__main__' and not __package__:
     __import__('sys').path.append(str(__import__('pathlib').Path(__file__).resolve().parents[1]))
-__import__('module-loader')
+__import__('src.module-loader')
 from detect_homebrew import detect_homebrew
 
 

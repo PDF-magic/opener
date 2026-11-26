@@ -15,7 +15,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "docs/uninstall-procedure.md"
 CI = ROOT / ".github/workflows/ci.yml"
-STATUS_SOURCE = ROOT / "pdf-handler-status.py"
+STATUS_SOURCE = ROOT / "src/native/handler/pdf-handler-status.py"
 STATUS_COMMAND = (
   'python3 "$HOME/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py"'
 )

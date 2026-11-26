@@ -10,9 +10,9 @@ import time
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitizer_memory_launcher as launcher
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitizer_process as sanitizer
 
 

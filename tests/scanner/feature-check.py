@@ -7,7 +7,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import src.scanner.scanner_feature_check as features
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -99,7 +99,7 @@ class ScannerFeatureCheckTests(unittest.TestCase):
             self.assertEqual(features.main(["/mock/clamscan"]), 1)
 
     def test_installed_scan_gate_and_configuration_remain_unchanged(self):
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("from scanner_feature_check import", gate)
         self.assertIn("scanner = scanner_path()", gate)
         self.assertIn("check_database()", gate)

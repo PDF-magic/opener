@@ -6,11 +6,11 @@ from pathlib import Path
 import tempfile
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_format_identification import PDFFormatStatus, identify_pdf_format
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import INCORRECTLY_NAMED_FILES, REFERENCE_PDFS
 
 
@@ -74,7 +74,7 @@ class IncorrectlyNamedFileCorpusTests(unittest.TestCase):
 
     def test_only_test_corpus_changes_not_installed_scanner(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (root / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("INCORRECTLY_NAMED_FILES", scanner)
         self.assertNotIn("pdf_format_identification", scanner)
         ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")

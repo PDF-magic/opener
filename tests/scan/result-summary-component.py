@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -157,7 +157,7 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
     def test_stale_signatures_are_explicit_and_inconsistent_clean_is_not_reassuring(self):
         source = SOURCE.read_text(encoding="utf-8")
         native = SWIFT_TEST.read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertIn("enum ScanResultSummarySignatureFreshness: String, CaseIterable", source)
         for case in ("recentUpdate", "stale", "unverified"):

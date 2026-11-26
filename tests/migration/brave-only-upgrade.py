@@ -303,7 +303,7 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
     self.assertLess(INSTALLER.index('python3 "$script_dir/scripts/migrate-update-agent.py"'),
                     INSTALLER.index('python3 "$script_dir/scripts/reconcile-update-agent.py"'))
     self.assertIn('bash "$install_dir/update-malware-signatures.sh"', INSTALLER)
-    scanner = (ROOT / "scan-and-open.py").read_text()
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
     self.assertIn("check_database()", scanner)
     self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
     self.assertIn("python3 tests/migration/brave-only-upgrade.py -v",

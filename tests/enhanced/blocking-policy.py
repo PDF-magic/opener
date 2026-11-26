@@ -6,16 +6,16 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StageAnalysis, StageOutcome, StructuredAnalysisFindings,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_additional_inspections import plan_additional_inspections
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_inconclusive_results import assess_inconclusive_opening
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_blocking_policy import (
     BlockingDisposition, EnhancedBlockingPolicy, FindingBlockingDecision,
     determine_blocking_findings, disposition_for_finding,
@@ -232,7 +232,7 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
 
     def test_scanner_user_preferences_and_protection_levels_unchanged(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
         policy = (root / "src/enhanced/enhanced-blocking-policy.py").read_text()
         self.assertNotIn("enhanced_blocking_policy", scanner)
         self.assertIn("check_database()", scanner)
@@ -240,7 +240,7 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
         self.assertNotIn("launch_clean_file", policy)
         self.assertNotIn("subprocess", policy)
         self.assertNotIn("urllib", policy)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import (
             PROTECTION_POLICIES, ProtectionProfileID)
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)

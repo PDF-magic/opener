@@ -19,11 +19,11 @@ def main():
 
   # Install OS-enforced read-only access before any untrusted PDF parsing.
   # Refuse the request when confinement cannot be established.
-  __import__('module-loader')
+  __import__('src.module-loader')
   from parser_filesystem_confinement import confine_parser_filesystem
   confine_parser_filesystem()
 
-  __import__('module-loader')
+  __import__('src.module-loader')
   from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, parse_pdf_structure
 
   contents = sys.stdin.buffer.read(MAX_STRUCTURE_INPUT_BYTES + 1)

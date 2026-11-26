@@ -9,7 +9,7 @@ OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
 PREFERENCES = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
 SWIFT_HARNESS = (ROOT / "tests/scan/progress-component.py").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
-SCANNER = (ROOT / "scan-and-open.py").read_text()
+SCANNER = (ROOT / "src/scan/scan-and-open.py").read_text()
 
 
 class SanitizerFailureNotificationTests(unittest.TestCase):

@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_exception_policy import (
     EXCEPTION_REJECTION_REASON,
     EXCEPTION_SUPPORT_DECISION,
@@ -98,7 +98,7 @@ class ExceptionReasonTests(unittest.TestCase):
         self.assertEqual(record.explanation, UNSUPPORTED_EXCEPTION_MESSAGE)
 
     def test_reason_not_a_scanner_policy_preference_or_exception_registry(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         view = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text(
             encoding="utf-8"
         )
@@ -116,7 +116,7 @@ class ExceptionReasonTests(unittest.TestCase):
 
     def test_detected_malware_is_still_blocked_despite_recorded_denial_reason(self):
         spec = importlib.util.spec_from_file_location(
-            "exception_reason_scanner_test", ROOT / "scan-and-open.py"
+            "exception_reason_scanner_test", ROOT / "src/scan/scan-and-open.py"
         )
         scanner = importlib.util.module_from_spec(spec)
         assert spec.loader is not None

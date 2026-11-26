@@ -13,7 +13,7 @@ VIEW = ROOT / "PDFMagicOpenerApp/UpdatesSettingsView.swift"
 class StaleSignatureWarningTests(unittest.TestCase):
     def test_warning_matches_exact_existing_inclusive_48_hour_scan_gate(self):
         model = MODEL.read_text()
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertRegex(model, r"maximumSignatureAge:\s*TimeInterval\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertIn("age > Self.maximumSignatureAge", model)
@@ -54,7 +54,7 @@ class StaleSignatureWarningTests(unittest.TestCase):
         migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
-        gate = (ROOT / "scan-and-open.py").read_text()
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("freshnessWarning", gate)
         updater = (ROOT / "update-malware-signatures.sh").read_text()
         self.assertNotIn("freshnessWarning", updater)

@@ -14,9 +14,9 @@ import unittest
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,7 +69,7 @@ class OCRSeparationContractTests(unittest.TestCase):
         self.assertIn("Visible source text 123", source.pages[0].extract_text())
 
     def test_ocr_does_not_change_active_scanner_or_enable_maximum(self):
-        scan_gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scan_gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scan_gate)
         self.assertNotIn("maximum_ocr_restoration", scan_gate)
         self.assertNotIn("maximum_sanitized_copy", scan_gate)

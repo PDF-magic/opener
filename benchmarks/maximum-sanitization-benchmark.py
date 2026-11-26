@@ -18,13 +18,13 @@ import math
 import statistics
 import time
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_copy import (
     SanitizedCopyOffer,
     SanitizerAttempt,
     attempt_sanitized_pdf_copy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 MIN_SAMPLES = 3

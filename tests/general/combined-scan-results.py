@@ -5,13 +5,13 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.combined_scan_results import (
     MAX_CLAMAV_DETECTION_NAMES,
     CombinedScanReport,
     combine_scan_results,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding,
     AnalysisStage,
@@ -21,7 +21,7 @@ from src.enhanced.enhanced_analysis_findings import (
     StageOutcome,
     StructuredAnalysisFindings,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResult, ScanResultStatus
 
 
@@ -183,12 +183,12 @@ class CombinedScanResultsTests(unittest.TestCase):
                 ScanResultStatus.malwareDetected, ScanResult(names), report_for())
 
     def test_active_scan_gate_and_planned_profile_remain_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("combined_scan_results", scanner)
         self.assertIn("decision = decide_opening(detection)", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
 
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

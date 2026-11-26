@@ -9,7 +9,7 @@ activates the currently non-selectable Enhanced profile (opener-0298).
 from dataclasses import dataclass
 from enum import Enum
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_external_launch_actions import PDFExternalLaunchInspection
 
 

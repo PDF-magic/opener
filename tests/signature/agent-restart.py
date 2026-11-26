@@ -199,7 +199,7 @@ class SignatureAgentRestartTests(unittest.TestCase):
         self.assertIn("previous.st_mtime >= started", script)
         self.assertIn("os.rmdir(lock_dir)", script)
         self.assertIn('trap cleanup EXIT', script)
-        scan = (ROOT / "scan-and-open.py").read_text()
+        scan = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scan)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/signature/agent-restart.py -v", ci)

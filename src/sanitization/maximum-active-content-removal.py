@@ -145,7 +145,7 @@ def remove_active_pdf_functionality(
         if (not 0 < len(rewritten) <= MAX_RASTER_OUTPUT_BYTES or
                 rewritten == raster_pdf):
             return None
-        __import__('module-loader')
+        __import__('src.module-loader')
         from maximum_sanitized_copy import _passive_pages
         if not _passive_pages(rewritten, expected_pages):
             return None

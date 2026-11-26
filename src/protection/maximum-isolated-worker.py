@@ -13,9 +13,9 @@ def _apply_limits():
     # Fail closed on any missing OS resource limit. Apply CPU and no-file
     # limits before bringing in the memory guard and PDF parser modules.
     import resource
-    __import__('module-loader')
+    __import__('src.module-loader')
     from maximum_isolated_analysis import WORKER_CPU_SECONDS
-    __import__('module-loader')
+    __import__('src.module-loader')
     from maximum_memory_limits import impose_maximum_worker_memory_limit
 
     ceilings = (
@@ -43,7 +43,7 @@ def main():
     _apply_limits()
 
     from importlib import import_module
-    __import__('module-loader')
+    __import__('src.module-loader')
     from maximum_isolated_analysis import MAX_PDF_BYTES, _INSPECTORS
 
     inspection = sys.argv[1]

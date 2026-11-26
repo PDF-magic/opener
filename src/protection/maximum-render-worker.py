@@ -21,7 +21,7 @@ def main() -> int:
     # path, not the process cwd or user PYTHONPATH.
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
-    __import__('module-loader')
+    __import__('src.module-loader')
     from maximum_isolated_worker import _apply_limits
     _apply_limits()  # OS CPU/memory/no-file limits BEFORE importing renderer.
 
@@ -39,7 +39,7 @@ def main() -> int:
         return 2
 
     from pathlib import Path
-    __import__('module-loader')
+    __import__('src.module-loader')
     from maximum_isolated_renderer import (
         MAGIC, MAX_DOCUMENT_PAGES, MAX_METADATA_BYTES, MAX_PDF_BYTES,
         MAX_PNG_BYTES, MAX_RENDER_PIXELS, MAX_RENDER_SIDE,

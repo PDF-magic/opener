@@ -16,7 +16,7 @@ import math
 import statistics
 import time
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_embedded_object_sizes import inspect_pdf_embedded_object_sizes
 
 IMAGE_OBJECTS = 256

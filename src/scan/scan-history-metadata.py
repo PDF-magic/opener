@@ -13,7 +13,7 @@ import re
 import sqlite3
 import stat
 
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID, ScanResultStatus
 
 HISTORY_DATABASE = (Path.home() / "Library/Application Support/Studio/allow-and-open"

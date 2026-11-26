@@ -9,18 +9,18 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scanner.scanner_failure_policy import ScannerFailureKind, response_for_scanner_failure
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ProtectionExceptionNotSupported,
     UNSUPPORTED_EXCEPTION_MESSAGE,
     request_protection_exception,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_failure_exception_boundary import (
     EXCEPTION_REJECTION_MESSAGE,
     ProtectionBlockOrigin,
@@ -124,7 +124,7 @@ class ProtectionFailureExceptionBoundaryTests(unittest.TestCase):
 
     def test_real_scanner_failure_still_blocks_despite_exception_claim(self):
         spec = importlib.util.spec_from_file_location(
-            "opener344_scan_gate", ROOT / "scan-and-open.py")
+            "opener344_scan_gate", ROOT / "src/scan/scan-and-open.py")
         gate = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gate)
         with tempfile.TemporaryDirectory(prefix="opener344-") as directory:
@@ -155,13 +155,13 @@ class ProtectionFailureExceptionBoundaryTests(unittest.TestCase):
             launch.assert_not_called()
 
     def test_policy_metadata_and_ci_do_not_enable_exceptions(self):
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES
-        __import__('module-loader')
+        __import__('src.module-loader')
         from src.protection.effective_protection_policy import resolve_effective_policy
         self.assertTrue(all(not p.selectable for p in PROTECTION_PROFILES.values()))
         self.assertEqual(resolve_effective_policy().profile_id, "built-in")
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("report_protection_block(", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

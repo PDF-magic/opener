@@ -14,6 +14,8 @@ import stat
 # Exactly the fixed program paths overwritten by install-allow-and-open.sh.
 PROGRAMS = (
     "allow-and-open.sh", "scan-and-open.py", "file-launcher.py",
+    "module-loader.py", "scanner-argument-validation.py",
+    "scanner-concurrency-validation.py", "scanner-filesystem-sandbox.py",
     "browser-registry.py", "scan-results.py", "record-scan-origin.py",
     "update-malware-signatures.sh", "signature-update-status.py",
     "pdf-handler-status.py", "launch-scanned-file", "resolve-default-browser",

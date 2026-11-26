@@ -16,9 +16,9 @@ from pathlib import Path
 import stat
 import sys
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_active_content_removal import remove_active_pdf_functionality
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitizer_process import (
     SanitizerProcessExecutionError,
     SanitizerProcessMemoryLimitError,
@@ -26,7 +26,7 @@ from maximum_sanitizer_process import (
     SanitizerProcessTimedOut,
     run_limited_converter,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 MAX_SOURCE_BYTES = 16 * 1024 * 1024

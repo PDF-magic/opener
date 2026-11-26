@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
@@ -60,7 +60,7 @@ class PDFFilenameTests(unittest.TestCase):
 
     def test_original_pdf_name_is_preserved_from_scan_through_launch(self):
         """Neither ClamAV nor the approved launcher receives a shell-expanded path."""
-        __import__('module-loader')
+        __import__('src.module-loader')
         from file_launcher import NATIVE_LAUNCHER
         for index, filename in enumerate(FILENAMES):
             with self.subTest(filename=filename):

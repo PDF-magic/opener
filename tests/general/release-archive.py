@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 import sys
 sys.path.insert(0, str(SCRIPTS))
-__import__('module-loader')
+__import__('src.module-loader')
 import package_application_helpers as helpers  # noqa: E402
 
 spec = importlib.util.spec_from_file_location(

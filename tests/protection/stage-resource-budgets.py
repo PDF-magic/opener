@@ -6,15 +6,15 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     ControlAvailability,
     PolicyControl,
     PROTECTION_POLICIES,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_stage_resource_budgets import (
     PROTECTION_STAGE_RESOURCES,
     RESOURCE_BUDGET_SCHEMA_VERSION,
@@ -79,7 +79,7 @@ class ProtectionStageBudgetTests(unittest.TestCase):
                     if dimension.enforcement is ResourceEnforcement.CURRENT:
                         self.assertIs(control, PolicyControl.CLAMAV_SCAN_GATE)
                         self.assertIs(dimension, scanner.concurrent_requests)
-        source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("MAX_CONCURRENT_SCANS = 2", source)
         self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", source)
         self.assertIn("PDF_SCAN_TIMEOUT = 30 * 60", source)
@@ -143,7 +143,7 @@ class ProtectionStageBudgetTests(unittest.TestCase):
         document["memory_mib"]["maximum"] = 1
         self.assertEqual(original.memory_mib.maximum, 256)
         src = (ROOT / "src/protection/protection-stage-resource-budgets.py").read_text(encoding="utf-8")
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_stage_resource_budgets", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)
         self.assertIn("'--alert-encrypted=yes'", gate)

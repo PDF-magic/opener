@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_isolated_analysis as isolated
 
 
@@ -27,7 +27,7 @@ def sample_pdf():
 class MaximumIsolatedAnalysisTests(unittest.TestCase):
     def assert_isolated_worker_succeeds(self, payload, inspection):
         """Show only a fixed, non-document failure category in CI regressions."""
-        __import__('module-loader')
+        __import__('src.module-loader')
         from maximum_process_termination import MaximumProcessTerminationError
         original = isolated.run_limited_worker
         failures = []
@@ -188,12 +188,12 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
 
     def test_installed_gate_and_profile_selection_unchanged(self):
         root = Path(__file__).resolve().parents[2]
-        scan = (root / "scan-and-open.py").read_text()
+        scan = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_isolated_analysis", scan)
         self.assertNotIn("maximum_isolated_worker", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
         self.assertIn("remove_quarantine(path)", scan)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)

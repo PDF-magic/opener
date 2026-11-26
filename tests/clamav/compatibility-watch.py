@@ -88,7 +88,7 @@ class CompatibilityWatchTests(unittest.TestCase):
     guide = (ROOT / "docs/scanner/compatibility-watch.md").read_text()
     index = (ROOT / "docs/README.md").read_text()
     workflow = (ROOT / ".github/workflows/clamav-compatibility-watch.yml").read_text()
-    runtime = (ROOT / "scan-and-open.py").read_text()
+    runtime = (ROOT / "src/scan/scan-and-open.py").read_text()
     installer = (ROOT / "scripts/verify-installed-clamav.py").read_text()
     for marker in ("clamav-1.4.6", "clamav-1.5.4", "48-hour",
                    "EICAR", "fail-closed", "signature", "FreshClam"):

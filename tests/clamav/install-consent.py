@@ -108,7 +108,7 @@ class InstallationConsentTests(unittest.TestCase):
 
     def test_normal_installer_path_and_scan_gates_remain_present(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         for anchor in (
             'migration_attempt="$(python3 "$script_dir/scripts/migration-state.py"',
             'python3 "$script_dir/scripts/installation/existing-signature-database.py"',

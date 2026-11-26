@@ -15,7 +15,7 @@ selector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selector)
 
 picker_spec = importlib.util.spec_from_file_location(
-    "select_custom_pdf_application", ROOT / "select-custom-pdf-application.py")
+    "select_custom_pdf_application", ROOT / "src/native/launch/select-custom-pdf-application.py")
 picker = importlib.util.module_from_spec(picker_spec)
 picker_spec.loader.exec_module(picker)
 
@@ -61,7 +61,7 @@ class BrowserSelectorTests(unittest.TestCase):
                     selector.selector_choices(invalid)
 
     def test_primary_list_requires_exact_supported_registry_membership(self):
-        __import__('module-loader')
+        __import__('src.module-loader')
         from browser_registry import SUPPORTED_BROWSER_BUNDLE_IDS
 
         rows = [{"bundle_id": identifier, "name": identifier, "installed": True}

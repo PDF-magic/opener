@@ -9,7 +9,7 @@ import unittest
 
 from pypdf import PdfWriter
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_PAGES,
     PDFStructure,
@@ -83,7 +83,7 @@ class PDFParserOutputTests(unittest.TestCase):
 
     def test_contract_is_optional_and_ci_runs_the_regression(self):
         source = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/structure-parser.md").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/parser-output.py -v", ci)

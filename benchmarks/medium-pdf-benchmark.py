@@ -17,11 +17,11 @@ import math
 import statistics
 import time
 
-__import__('module-loader')
+__import__('src.module-loader')
 from benchmarks.pdf_parser_memory_benchmark import synthetic_pdf
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure
-__import__('module-loader')
+__import__('src.module-loader')
 from timed_pdf_structure_analysis import parse_pdf_structure_timed
 
 

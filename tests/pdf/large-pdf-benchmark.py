@@ -7,9 +7,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import benchmarks.large_pdf_benchmark as benchmark
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.large_valid_pdf_corpus import LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES
 
 
@@ -80,7 +80,7 @@ class LargePDFBenchmarkTests(unittest.TestCase):
                           subprocess.TimeoutExpired("worker", 90)))
 
   def test_benchmark_remains_separate_from_scan_gate_and_ci_runs_it(self):
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     self.assertNotIn("large_pdf_benchmark", scanner)
     self.assertIn("if not cached_clean(cache_id):", scanner)
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

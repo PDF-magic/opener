@@ -21,9 +21,9 @@ import sys
 import tempfile
 import time
 
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
-__import__('module-loader')
+__import__('src.module-loader')
 from benchmarks.scanner_startup_benchmark import TRUSTED_SCANNERS, command
 
 MIN_SAMPLES = 1

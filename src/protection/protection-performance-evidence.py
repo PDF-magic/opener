@@ -9,9 +9,9 @@ from dataclasses import dataclass
 import json
 import math
 import statistics
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTiming
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID
 
 SCHEMA_VERSION = 1

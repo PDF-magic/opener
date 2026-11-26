@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "pdf_handler_status", ROOT / "pdf-handler-status.py")
+    "pdf_handler_status", ROOT / "src/native/handler/pdf-handler-status.py")
 status = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(status)
 
@@ -77,7 +77,7 @@ class PDFHandlerStatusTests(unittest.TestCase):
 
     def test_installer_displays_status_after_optional_restoration_offer(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        self.assertIn('cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"', installer)
+        self.assertIn('cp "$script_dir/src/native/handler/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
         offer = installer.index('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"')
         reporter = installer.index('python3 "$install_dir/pdf-handler-status.py"')

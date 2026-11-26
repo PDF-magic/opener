@@ -11,7 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-__import__('module-loader')
+__import__('src.module-loader')
 from scripts.installation.restore_finder_quick_action import FIXED_COMMAND, restore_finder_action, RestorationRefused
 
 

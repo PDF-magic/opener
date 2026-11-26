@@ -4,12 +4,12 @@ from pathlib import Path
 import re
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
   ControlAvailability,
   PROTECTION_POLICIES,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -13,7 +13,7 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-__import__('module-loader')
+__import__('src.module-loader')
 import safari_api_watch as watch
 
 NOW = datetime(2026, 11, 10, tzinfo=timezone.utc)

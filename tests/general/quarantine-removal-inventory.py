@@ -44,7 +44,7 @@ class QuarantineRemovalInventoryTests(unittest.TestCase):
                 self.assertEqual(audit.suspect_calls(source), [])
 
     def test_only_tracked_runtime_code_is_in_scope(self):
-        for path in ["scan-and-open.py", "extensions/webextension/src/background.js",
+        for path in ["src/scan/scan-and-open.py", "extensions/webextension/src/background.js",
                      "native-messaging/Host.swift", ".github/workflows/ci.yml"]:
             self.assertTrue(audit.runtime_path(path), path)
         for path in ["tests/general/retain-os-quarantine.py",
@@ -74,7 +74,8 @@ class QuarantineRemovalInventoryTests(unittest.TestCase):
             root = Path(tmp)
             subprocess.run(["git", "init", "-q", str(root)], check=True,
                            stdout=subprocess.DEVNULL)
-            (root / "scan-and-open.py").write_text(
+            (root / "src/scan").mkdir(parents=True)
+            (root / "src/scan/scan-and-open.py").write_text(
                 "def remove_quarantine(path):\n    return None\n\n"
                 "def scan_and_open(path):\n    remove_quarantine(path)\n",
                 encoding="utf-8")
@@ -82,7 +83,7 @@ class QuarantineRemovalInventoryTests(unittest.TestCase):
             worker.write_text("os.getxattr(path, 'com.apple.quarantine')\n",
                               encoding="utf-8")
             subprocess.run(["git", "-C", str(root), "add",
-                            "scan-and-open.py", "native_worker.py"], check=True,
+                            "src/scan/scan-and-open.py", "native_worker.py"], check=True,
                            stdout=subprocess.DEVNULL)
             self.assertEqual(audit.inventory(root)["removal_candidates"], [])
             worker.write_text("os.removexattr(path, 'com.apple.quarantine')\n",
@@ -97,7 +98,7 @@ class QuarantineRemovalInventoryTests(unittest.TestCase):
         self.assertGreater(report["scanned_runtime_files"], 100)
         self.assertEqual(report["removal_candidates"], [],
                          "Review each removal candidate before merging")
-        self.assertEqual(report["legacy_hook"]["path"], "scan-and-open.py")
+        self.assertEqual(report["legacy_hook"]["path"], "src/scan/scan-and-open.py")
         self.assertEqual(report["legacy_hook"]["effect"], "none; returns None")
 
 

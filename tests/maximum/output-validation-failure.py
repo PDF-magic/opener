@@ -14,13 +14,13 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as sanitizer
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_structure import SanitizedPDFStructure
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
@@ -162,7 +162,7 @@ class MaximumInvalidOutputTests(unittest.TestCase):
             resolve_effective_policy(preferences)
         self.assertEqual(preferences, original)
         self.assertEqual(resolve_effective_policy().profile_id, "built-in")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("attempt_sanitized_pdf_copy", scanner)
         self.assertNotIn("assess_sanitized_pdf_copy", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

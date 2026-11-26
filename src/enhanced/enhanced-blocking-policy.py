@@ -10,14 +10,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StructuredAnalysisFindings,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_additional_inspections import plan_additional_inspections
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_inconclusive_results import assess_inconclusive_opening
 
 

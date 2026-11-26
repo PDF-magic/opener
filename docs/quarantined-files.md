@@ -72,7 +72,7 @@ preferences, installed scanner, or macOS security policy to resolve it.
 
 ## Implementation and verification
 
-The [scan-and-open gate](../scan-and-open.py) and the
+The [scan-and-open gate](../src/scan/scan-and-open.py) and the
 [macOS security controls guide](macos-security-controls.md) define the
 actual protection boundary. See the
 [unscannable-file regression](unscannable-quarantine.md),

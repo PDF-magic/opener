@@ -7,9 +7,9 @@ import sys
 import unittest
 from types import SimpleNamespace
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure
-__import__('module-loader')
+__import__('src.module-loader')
 import benchmarks.enhanced_structure_benchmark as bench
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -107,7 +107,7 @@ class EnhancedStructureBenchmarkTests(unittest.TestCase):
         self.assertNotIn(str(ROOT), completed.stdout)
 
     def test_no_production_scanner_or_preferences_changes(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("enhanced_structure_benchmark", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         timing = (ROOT / "src/enhanced/enhanced-analysis-timing.py").read_text(encoding="utf-8")

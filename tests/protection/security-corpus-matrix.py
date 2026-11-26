@@ -14,23 +14,23 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure_result
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
     FailureDisposition,
     PROTECTION_POLICIES,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import (
     BASELINE_SAFETY_CHECKS,
     PROTECTION_PROFILES,
@@ -84,7 +84,7 @@ def corpus_cases():
             yield family, getattr(case, identifier_name), content
 
     # Synthetic, test-only signing keys stay in memory; no private key file is read.
-    __import__('module-loader')
+    __import__('src.module-loader')
     from tests.fixtures.pdf.digital_signature_corpus import signed_pdf_corpus
     for case in signed_pdf_corpus():
         yield "digital-signature", case.identifier, case.content
@@ -180,7 +180,7 @@ class SecurityCorpusProfileMatrixTests(unittest.TestCase):
         self.assertIn(
             "PYTHONPATH=. python3 tests/protection/security-corpus-matrix.py -v", ci
         )
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("security_corpus_matrix", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)

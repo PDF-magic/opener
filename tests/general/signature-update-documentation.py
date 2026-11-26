@@ -8,10 +8,10 @@ DOC = ROOT / "docs/scanner/signature-update-process.md"
 INDEX = ROOT / "docs/README.md"
 README = ROOT / "README.md"
 UPDATER = ROOT / "update-malware-signatures.sh"
-STATUS = ROOT / "signature-update-status.py"
+STATUS = ROOT / "src/scanner/signature-update-status.py"
 AGENT = ROOT / "scripts/installation/signature-update-launchagent.py"
 SETTINGS = ROOT / "PDFMagicOpenerApp/UpdatesSettingsView.swift"
-SCANNER = ROOT / "scan-and-open.py"
+SCANNER = ROOT / "src/scan/scan-and-open.py"
 CI = ROOT / ".github/workflows/ci.yml"
 
 

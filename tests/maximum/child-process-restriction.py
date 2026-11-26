@@ -9,10 +9,10 @@ import sys
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_isolated_renderer as renderer
 from importlib import import_module
-__import__('module-loader')
+__import__('src.module-loader')
 isolation = import_module("maximum-network-isolation")
 
 
@@ -73,7 +73,7 @@ if all((check_fork(), check_popen(), check_posix_spawn(), check_thread())):
 raise SystemExit(41)
 '''
 
-MACOS_PROBE = '\nimport errno, os, subprocess, sys, threading\nfrom pathlib import Path\nsys.path.insert(0, sys.argv[1])\n__import__(\'module-loader\'); __import__(\'module-loader\'); import maximum_isolated_renderer as renderer\ncontext = renderer._renderer_sandbox_context(\n    Path(renderer.__file__).resolve().with_name("maximum-render-worker.py")\n)\nrenderer.apply_renderer_sandbox(context)\n\ndef denied(error):\n    return error.errno in (errno.EPERM, errno.EACCES, errno.ENOSYS)\n\ndef check_fork():\n    try:\n        pid = os.fork()\n    except OSError as error:\n        return denied(error)\n    if pid == 0:\n        os._exit(0)\n    os.waitpid(pid, 0)\n    return False\n\ndef check_popen():\n    try:\n        child = subprocess.Popen(["/usr/bin/true"], close_fds=True)\n    except OSError as error:\n        return denied(error)\n    child.wait(timeout=2)\n    return False\n\ndef check_posix_spawn():\n    try:\n        pid = os.posix_spawn("/usr/bin/true", ["/usr/bin/true"], {})\n    except OSError as error:\n        return denied(error)\n    os.waitpid(pid, 0)\n    return False\n\ndef check_thread():\n    finished = []\n    worker = threading.Thread(target=lambda: finished.append(True))\n    worker.start()\n    worker.join(timeout=2)\n    return finished == [True] and not worker.is_alive()\n\nif all((check_fork(), check_popen(), check_posix_spawn(), check_thread())):\n    raise SystemExit(0)\nraise SystemExit(41)\n'
+MACOS_PROBE = '\nimport errno, os, subprocess, sys, threading\nfrom pathlib import Path\nsys.path.insert(0, sys.argv[1])\n__import__(\'src.module-loader\'); __import__(\'src.module-loader\'); import maximum_isolated_renderer as renderer\ncontext = renderer._renderer_sandbox_context(\n    Path(renderer.__file__).resolve().with_name("maximum-render-worker.py")\n)\nrenderer.apply_renderer_sandbox(context)\n\ndef denied(error):\n    return error.errno in (errno.EPERM, errno.EACCES, errno.ENOSYS)\n\ndef check_fork():\n    try:\n        pid = os.fork()\n    except OSError as error:\n        return denied(error)\n    if pid == 0:\n        os._exit(0)\n    os.waitpid(pid, 0)\n    return False\n\ndef check_popen():\n    try:\n        child = subprocess.Popen(["/usr/bin/true"], close_fds=True)\n    except OSError as error:\n        return denied(error)\n    child.wait(timeout=2)\n    return False\n\ndef check_posix_spawn():\n    try:\n        pid = os.posix_spawn("/usr/bin/true", ["/usr/bin/true"], {})\n    except OSError as error:\n        return denied(error)\n    os.waitpid(pid, 0)\n    return False\n\ndef check_thread():\n    finished = []\n    worker = threading.Thread(target=lambda: finished.append(True))\n    worker.start()\n    worker.join(timeout=2)\n    return finished == [True] and not worker.is_alive()\n\nif all((check_fork(), check_popen(), check_posix_spawn(), check_thread())):\n    raise SystemExit(0)\nraise SystemExit(41)\n'
 
 
 
@@ -219,11 +219,11 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
                 self.assertLess(position, source.index("import pymupdf"))
 
     def test_installed_scanner_and_nonselectable_profile_are_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_network_isolation", scanner)
         self.assertNotIn("maximum-network-isolation", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

@@ -45,7 +45,7 @@ class ScanOtherSupportedFilesTests(unittest.TestCase):
       self.assertNotIn(forbidden, scope)
 
   def test_existing_pdf_only_native_handoff_stays_unmodified(self):
-    native = (ROOT / "scan-and-open.py").read_text()
+    native = (ROOT / "src/scan/scan-and-open.py").read_text()
     handoff = (ROOT / "extensions/webextension/src/download-native-submit.js").read_text()
     defaults = (ROOT / "extensions/webextension/src/configuration-defaults.js").read_text()
     self.assertIn("Only regular files and application bundles can be scanned", native)

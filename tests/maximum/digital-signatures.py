@@ -18,7 +18,7 @@ from pypdf.generic import (
     ArrayObject, ByteStringObject, DecodedStreamObject, DictionaryObject,
     NameObject, NumberObject, TextStringObject,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -206,12 +206,12 @@ class SignedPDFFidelityTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertEqual(workflow.count(
             "python3 tests/maximum/digital-signatures.py -v"), 2)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("tests/maximum/digital-signatures.py", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         offer = copies.SanitizedCopyOffer(b"synthetic-output", 1)

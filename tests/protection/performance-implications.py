@@ -4,13 +4,13 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_performance_evidence import (
     PerformanceSampleGroup, build_report, encode_report,
 )
@@ -98,7 +98,7 @@ class PerformanceImplicationsTests(unittest.TestCase):
 
     def test_scanner_and_persisted_policy_still_unchanged(self):
         self.assertTrue(all(not x.selectable for x in PROTECTION_PROFILES.values()))
-        engine = (ROOT / "scan-and-open.py").read_text()
+        engine = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("protection_performance_evidence", engine)
         self.assertIn("if not cached_clean(cache_id):", engine)
         project = (ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj").read_text()

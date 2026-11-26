@@ -21,7 +21,7 @@ import tempfile
 import time
 import zlib
 
-__import__('module-loader')
+__import__('src.module-loader')
 from benchmarks.scanner_startup_benchmark import (
     DEFAULT_DATABASE, TRUSTED_SCANNERS, command,
 )

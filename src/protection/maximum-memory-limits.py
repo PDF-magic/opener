@@ -9,9 +9,9 @@ import resource
 import signal
 import sys
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import PolicyControl
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_stage_resource_budgets import resource_budget_for_stage
 
 MiB = 1024 * 1024

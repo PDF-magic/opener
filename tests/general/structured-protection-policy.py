@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS, PROTECTION_PROFILES, ProtectionProfileID
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     POLICY_SCHEMA_VERSION,
@@ -112,7 +112,7 @@ class StructuredProtectionPolicyTests(unittest.TestCase):
         document["requirements"].clear()
         self.assertEqual(len(standard.requirements), len(BASELINE_CONTROLS))
         source = (ROOT / "src/protection/protection-policy-definitions.py").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_policy_definitions", scanner)
         for forbidden in ("UserDefaults", "subprocess.run", "scan_and_open(", "def apply_policy",
                           "def select_profile", "os.environ", "write_text(", "open("):

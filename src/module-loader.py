@@ -7,7 +7,8 @@ from importlib.machinery import PathFinder
 from importlib.util import spec_from_file_location
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent
+_DEPLOYED = __name__ == 'module-loader'
+_ROOT = Path(__file__).resolve().parent if _DEPLOYED else Path(__file__).resolve().parents[1]
 _FILES = {
     'app_launch_benchmark': 'benchmarks/app-launch-benchmark.py',
     'ask_scan_history_retention': 'scripts/installation/ask-scan-history-retention.py',
@@ -31,7 +32,7 @@ _FILES = {
     'benchmarks.temporary_disk_benchmark': 'benchmarks/temporary-disk-benchmark.py',
     'benchmarks.ui_responsiveness_benchmark': 'benchmarks/ui-responsiveness-benchmark.py',
     'browser_preference_selector': 'src/browser/browser-preference-selector.py',
-    'browser_registry': 'browser-registry.py',
+    'browser_registry': 'src/browser/browser-registry.py',
     'browser_release': 'src/browser/browser-release.py',
     'build_reproducible_release': 'scripts/build-reproducible-release.py',
     'check_dependency_licenses': 'scripts/check-dependency-licenses.py',
@@ -70,7 +71,7 @@ _FILES = {
     'existing_finder_quick_action': 'scripts/installation/existing-finder-quick-action.py',
     'existing_signature_database': 'scripts/installation/existing-signature-database.py',
     'external_launch_action_corpus': 'tests/fixtures/pdf/external-launch-action-corpus.py',
-    'file_launcher': 'file-launcher.py',
+    'file_launcher': 'src/native/launch/file-launcher.py',
     'file_lifecycle': 'src/scan/file-lifecycle.py',
     'firefox_api_watch': 'scripts/firefox-api-watch.py',
     'interactive_form_corpus': 'tests/fixtures/pdf/interactive-form-corpus.py',
@@ -166,13 +167,13 @@ _FILES = {
     'safari_api_watch': 'scripts/safari-api-watch.py',
     'scan_history_metadata': 'src/scan/scan-history-metadata.py',
     'scan_history_record': 'src/scan/scan-history-record.py',
-    'scan_results': 'scan-results.py',
+    'scan_results': 'src/scan/scan-results.py',
     'scanned_pdf_benchmark': 'benchmarks/scanned-pdf-benchmark.py',
-    'scanner_argument_validation': 'scanner-argument-validation.py',
-    'scanner_concurrency_validation': 'scanner-concurrency-validation.py',
+    'scanner_argument_validation': 'src/scanner/scanner-argument-validation.py',
+    'scanner_concurrency_validation': 'src/scanner/scanner-concurrency-validation.py',
     'scanner_failure_policy': 'src/scanner/scanner-failure-policy.py',
     'scanner_feature_check': 'src/scanner/scanner-feature-check.py',
-    'scanner_filesystem_sandbox': 'scanner-filesystem-sandbox.py',
+    'scanner_filesystem_sandbox': 'src/scanner/scanner-filesystem-sandbox.py',
     'scanner_startup_benchmark': 'benchmarks/scanner-startup-benchmark.py',
     'scripts.build_reproducible_release': 'scripts/build-reproducible-release.py',
     'scripts.check_dependency_licenses': 'scripts/check-dependency-licenses.py',
@@ -222,7 +223,7 @@ _FILES = {
     'sign_developer_id': 'scripts/sign-developer-id.py',
     'signature_database_load_benchmark': 'benchmarks/signature-database-load-benchmark.py',
     'signature_update_launchagent': 'scripts/installation/signature-update-launchagent.py',
-    'signature_update_status': 'signature-update-status.py',
+    'signature_update_status': 'src/scanner/signature-update-status.py',
     'small_text_pdf_benchmark': 'benchmarks/small-text-pdf-benchmark.py',
     'src.browser.browser_preference_selector': 'src/browser/browser-preference-selector.py',
     'src.browser.browser_release': 'src/browser/browser-release.py',
@@ -315,6 +316,12 @@ _FILES = {
 
 _ROOT_ALIASES = frozenset(['maximum_active_content_removal', 'maximum_filesystem_sandbox', 'maximum_generated_rescan', 'maximum_isolated_analysis', 'maximum_isolated_renderer', 'maximum_isolated_worker', 'maximum_memory_limits', 'maximum_network_isolation', 'maximum_overwrite_warning', 'maximum_process_termination', 'maximum_render_filesystem_probe', 'maximum_render_worker', 'maximum_safe_copy_handoff', 'maximum_sanitized_copy', 'maximum_sanitized_structure', 'maximum_sanitizer_memory_launcher', 'maximum_sanitizer_process', 'maximum_save_sanitized_copy', 'maximum_save_sanitized_pdf_action', 'maximum_temporary_output', 'maximum_view_sanitized_pdf', 'parser_filesystem_confinement', 'pdf_stream_lengths', 'pdf_structure_parser', 'protection_policy_definitions', 'protection_profiles', 'protection_stage_resource_budgets', 'timed_pdf_structure_analysis', 'timed_pdf_structure_worker', 'maximum-network-isolation'])
 _FILES['maximum-network-isolation'] = 'src/protection/maximum-network-isolation.py'
+
+
+_ROOT_ALIASES = _ROOT_ALIASES.union(['browser_registry', 'file_launcher', 'scan_results', 'scanner_argument_validation', 'scanner_concurrency_validation', 'scanner_filesystem_sandbox'])
+if _DEPLOYED:
+    _FILES = {name: Path(_FILES[name]).name for name in ['browser_registry', 'file_launcher', 'scan_results', 'scanner_argument_validation', 'scanner_concurrency_validation', 'scanner_filesystem_sandbox']}
+    _ROOT_ALIASES = frozenset()
 
 
 class _FilenameFinder:

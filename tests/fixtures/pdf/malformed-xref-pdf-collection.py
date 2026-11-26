@@ -7,7 +7,7 @@ antivirus detections or permission to open a PDF.
 
 from dataclasses import dataclass
 
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

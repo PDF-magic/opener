@@ -8,12 +8,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, PDFFormatStatus, identify_pdf_format,
     identify_pdf_header,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -121,7 +121,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             result.version = "1.0"
         self.assertFalse(result.permits_open)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_format_identification", scanner)
         policy = (ROOT / "src/protection/protection-profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", policy)

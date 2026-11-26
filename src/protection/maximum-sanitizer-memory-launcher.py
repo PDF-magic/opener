@@ -43,7 +43,7 @@ def main() -> int:
     # source directory so the immutable memory budget comes from the same module.
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
     try:
-        __import__('module-loader')
+        __import__('src.module-loader')
         from maximum_sanitizer_process import MAX_SANITIZER_MEMORY_BYTES
     except BaseException:
         return MEMORY_LIMIT_SETUP_FAILED_EXIT_CODE

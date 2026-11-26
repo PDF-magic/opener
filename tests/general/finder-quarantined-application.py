@@ -24,7 +24,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("finder_app_scan_gate",
-                                               ROOT / "scan-and-open.py")
+                                               ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 
@@ -299,7 +299,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
                 self.assert_quarantine_intact()
 
     def test_native_bundle_launch_does_not_invoke_pdf_browser_preferences(self):
-        __import__('module-loader')
+        __import__('src.module-loader')
         import file_launcher
         with patch.object(file_launcher, "pdf_target_application",
                           side_effect=AssertionError("PDF preferences were read")), \

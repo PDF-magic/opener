@@ -17,7 +17,7 @@ import time
 
 if __name__ == '__main__' and not __package__:
     __import__('sys').path.append(str(__import__('pathlib').Path(__file__).resolve().parents[1]))
-__import__('module-loader')
+__import__('src.module-loader')
 from notarize_release import APP_NAME, NotarizationError, validate_zip, verify_signed_app
 
 INSTALL_TARGET = Path("/Applications") / APP_NAME

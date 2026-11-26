@@ -13,18 +13,18 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject, StreamObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.oversized_stream_corpus import (
     OVERSIZED_STREAM_PDFS, STREAM_LIMIT, _embedded_pdf,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_embedded_object_sizes import (
     LARGE_DECLARED_BYTES, LARGE_DECODED_BYTES, LARGE_ENCODED_BYTES,
     inspect_pdf_embedded_object_sizes,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -105,7 +105,7 @@ class OversizedStreamCorpusTests(unittest.TestCase):
         self.assertEqual(len(REFERENCE_PDFS), 6)
         self.assertTrue({case.identifier for case in OVERSIZED_STREAM_PDFS}
                         .isdisjoint(case.identifier for case in REFERENCE_PDFS))
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
         self.assertNotIn("oversized_stream_corpus", scanner)

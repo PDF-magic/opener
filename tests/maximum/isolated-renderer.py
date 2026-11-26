@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 import pymupdf
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_isolated_renderer as renderer
 
 
@@ -381,7 +381,7 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertEqual([call.args[0][-1] for call in run.call_args_list], ["0", "1"])
         self.assertTrue(all(call.kwargs["input"] is self.pdf for call in run.call_args_list))
         # A failed optional renderer is not an alternate admission authority.
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import protection_profile_definition, ProtectionProfileID
         self.assertFalse(protection_profile_definition(ProtectionProfileID.MAXIMUM).selectable)
 
@@ -486,11 +486,11 @@ class MaximumRendererTests(unittest.TestCase):
         self.assertIn("annots=False", worker)
         self.assertIn("MAX_RENDER_PIXELS", worker)
         self.assertIn("doc.needs_pass", worker)
-        scan = (ROOT / "scan-and-open.py").read_text()
+        scan = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_render_worker", scan)
         self.assertNotIn("maximum_isolated_renderer", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
 
@@ -594,11 +594,11 @@ class MaximumRendererTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "darwin", "Requires macOS filesystem confinement")
     def test_renderer_sandbox_context_trusts_only_valid_runtime_paths(self):
         source_root = Path(renderer.__file__).resolve().parent
-        worker = source_root / "src/protection/maximum-render-worker.py"
+        worker = source_root / "maximum-render-worker.py"
         support_files = (
-            source_root / "src/protection/maximum-isolated-worker.py",
-            source_root / "src/protection/maximum-network-isolation.py",
-            source_root / "src/protection/maximum-isolated-renderer.py",
+            source_root / "maximum-isolated-worker.py",
+            source_root / "maximum-network-isolation.py",
+            source_root / "maximum-isolated-renderer.py",
             *(source_root / filename
               for _key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT),
         )

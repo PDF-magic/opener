@@ -10,12 +10,12 @@ import unittest
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, NameObject, NumberObject, TextStringObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_embedded_file_types import (
     MAX_ATTACHMENT_BYTES, PDFEmbeddedFileTypeError, PDFEmbeddedFileTypes,
     inspect_pdf_embedded_file_types,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -199,7 +199,7 @@ class PDFEmbeddedFileTypeTests(unittest.TestCase):
             PDFEmbeddedFileTypes(0, 0, (), 0, 0, 0, 0, True)
 
     def test_existing_scanner_and_preferences_are_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         source = (ROOT / "src/pdf/pdf-embedded-file-types.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         docs = (ROOT / "docs/pdf/embedded-file-types.md").read_text(encoding="utf-8")

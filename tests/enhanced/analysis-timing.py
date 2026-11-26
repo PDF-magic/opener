@@ -7,9 +7,9 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_analysis_timing import (
     AdditionalAnalysisTimer, AdditionalAnalysisTiming,
     AdditionalAnalysisTimingError, BLOCK_MESSAGE, MAX_ELAPSED_NS, StageTiming,
@@ -158,10 +158,10 @@ class AdditionalAnalysisTimingTests(unittest.TestCase):
 
     def test_installed_scanner_and_profile_configuration_remain_unchanged(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (root / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("enhanced_analysis_timing", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

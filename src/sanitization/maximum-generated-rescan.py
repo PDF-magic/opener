@@ -8,7 +8,7 @@ installed Built-in scan module. Nothing here can grant permission to open.
 def verified_generated_pdf_bytes(offer) -> bytes | None:
     """Return only a strictly validated rasterized offer's immutable bytes."""
     try:
-        __import__('module-loader')
+        __import__('src.module-loader')
         from maximum_sanitized_copy import (
             GENERATED_CONTENT_ORIGIN, SanitizedCopyOffer, _passive_pages,
             MAX_OUTPUT_BYTES,

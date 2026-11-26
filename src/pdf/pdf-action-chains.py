@@ -8,7 +8,7 @@ opening. This is separate from the installed ClamAV scanner.
 from dataclasses import dataclass, field
 from io import BytesIO
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
 
 

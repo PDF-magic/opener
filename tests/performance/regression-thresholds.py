@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from benchmarks.performance_regression_thresholds import (
   MEDIAN_FACTOR, MEDIAN_GRACE_MS, P95_FACTOR, P95_GRACE_MS,
   compare, main, read_measurement,
@@ -125,7 +125,7 @@ class RegressionThresholdTests(unittest.TestCase):
   def test_ci_has_real_comparison_and_does_not_touch_live_opening(self):
     workflow = (ROOT / ".github/workflows/performance-regression-thresholds.yml").read_text()
     docs = (ROOT / "docs/performance/regression-thresholds.md").read_text()
-    live = (ROOT / "scan-and-open.py").read_text()
+    live = (ROOT / "src/scan/scan-and-open.py").read_text()
     self.assertIn("python3 benchmarks/medium-pdf-benchmark.py --runs 5", workflow)
     self.assertIn("benchmarks/performance-regression-thresholds.py", workflow)
     self.assertIn("python3 candidate/scripts/compare-benchmark-layout.py baseline candidate", workflow)

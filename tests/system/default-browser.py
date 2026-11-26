@@ -9,12 +9,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("scanner_for_default_browser", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scanner_for_default_browser", ROOT / "src/scan/scan-and-open.py")
 scanner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(scanner)
 

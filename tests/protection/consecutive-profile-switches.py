@@ -16,25 +16,25 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import BASELINE_CONTROLS, FailureDisposition
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "consecutive_profile_scanner", ROOT / "scan-and-open.py"
+    "consecutive_profile_scanner", ROOT / "src/scan/scan-and-open.py"
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)

@@ -6,11 +6,11 @@ freshly scanned save gate. No file is opened and Maximum is not enabled.
 """
 from pathlib import Path
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_generated_rescan import verified_generated_pdf_bytes
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_copy import CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_save_sanitized_copy import save_sanitized_copy
 
 SAVE_SANITIZED_PDF_LABEL = "Save Sanitized PDF"

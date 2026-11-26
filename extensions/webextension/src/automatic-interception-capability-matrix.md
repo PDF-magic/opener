@@ -6,7 +6,7 @@ intercepted, downloaded or opened safely by an installed extension. No browser
 has a deployed PDF Magic Opener interception route.
 
 The machine-readable `src/automatic-interception-capability-matrix.js` lists
-all nine browser IDs in the canonical [browser registry](../../../browser-registry.py).
+all nine browser IDs in the canonical [browser registry](../../../src/browser/browser-registry.py).
 Unlike the separate static *vendor API research* being prepared in
 [opener-0777](https://github.com/PDF-magic/opener/pull/534), this is the
 **current project's deployment decision** and a passive, tested observation

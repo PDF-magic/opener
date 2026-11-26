@@ -7,7 +7,7 @@ import unittest
 
 from pypdf import PdfWriter
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as sanitizer
 
 

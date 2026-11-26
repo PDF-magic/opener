@@ -8,9 +8,9 @@ import subprocess
 import sys
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from benchmarks.pdf_parser_memory_benchmark import MAX_PAGES, MAX_STREAM_BYTES, synthetic_pdf
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure, PDFStructure
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,7 +56,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
     policy = (ROOT / "docs/pdf/parser-evaluation.md").read_text()
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     parser = (ROOT / "src/pdf/pdf-structure-parser.py").read_text()
-    scanner = (ROOT / "scan-and-open.py").read_text()
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
     for item in ("pypdf", "pikepdf", "PyMuPDF", "PDF 2.0",
                  "Malformed", "memory", "MPL-2.0", "BSD-3-Clause",
                  "AGPL", "When", "6.21.4"):

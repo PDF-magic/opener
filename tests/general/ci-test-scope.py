@@ -5,7 +5,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-__import__('module-loader')
+__import__('src.module-loader')
 from ci_test_scope import ALL_GROUPS, select_groups
 
 

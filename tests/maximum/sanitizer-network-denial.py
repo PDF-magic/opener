@@ -8,11 +8,11 @@ import unittest
 from unittest.mock import patch
 
 from importlib import import_module
-__import__('module-loader')
+__import__('src.module-loader')
 isolation = import_module("maximum-network-isolation")
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitizer_memory_launcher as launcher
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitizer_process as sanitizer
 
 ENV = {
@@ -136,7 +136,7 @@ class SanitizerNetworkTests(unittest.TestCase):
         self.assertIn(cmd, portable)
         self.assertIn("runs-on: macos-latest", native)
         self.assertIn(cmd, native)
-        scanner = (root / "scan-and-open.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_sanitizer_process", scanner)
 
 

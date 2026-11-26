@@ -8,11 +8,11 @@ import sys
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import benchmarks.maximum_sanitization_benchmark as bench
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -113,10 +113,10 @@ class MaximumSanitizationBenchmarkTests(unittest.TestCase):
         self.assertIn("Choose 3 to 10", run.stderr)
 
     def test_live_scanner_and_unavailable_maximum_remain_untouched(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_sanitization_benchmark", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         performance = json.loads(

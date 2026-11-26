@@ -8,11 +8,11 @@ The installed scan gate and scanner_failure_policy are always authoritative.
 from dataclasses import dataclass
 from enum import Enum
 
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_exception_policy import UNSUPPORTED_EXCEPTION_MESSAGE
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scanner.scanner_failure_policy import (
     ScannerFailureKind,
     UNKNOWN_SCANNER_FAILURE_RESPONSE,
@@ -40,7 +40,7 @@ class ProtectionBlockReport:
         if type(self.origin) is not ProtectionBlockOrigin:
             raise ValueError("Known block origin required")
         if self.origin is ProtectionBlockOrigin.SCANNER_FAILURE:
-            __import__('module-loader')
+            __import__('src.module-loader')
             from src.scanner.scanner_failure_policy import SCANNER_FAILURE_RESPONSES
             approved = tuple(x.user_message for x in SCANNER_FAILURE_RESPONSES.values())
             approved += (UNKNOWN_SCANNER_FAILURE_RESPONSE.user_message,)

@@ -13,33 +13,33 @@ import sys
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_sanitized_copy import (
     SanitizationBlockReason,
     assess_sanitized_pdf_copy,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_sanitized_copy as sanitizer
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode,
     PDFStructureParseFailure,
     parse_pdf_structure_result,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
@@ -47,15 +47,15 @@ from protection_policy_definitions import (
     PolicyControl,
     protection_policy_definition,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("maximum_malformed_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("maximum_malformed_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 CLEAN_PDF = next(sample for sample in REFERENCE_PDFS
@@ -140,7 +140,7 @@ class MaximumMalformedPDFTests(unittest.TestCase):
         self.assertEqual(ACTIVE_PROFILE_ID, "built-in")
 
     def test_ci_covers_maximum_malformed_pdf_without_altering_live_gate(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_sanitized_copy", scanner)
         self.assertNotIn("effective_protection_policy", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

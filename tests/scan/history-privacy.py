@@ -7,11 +7,11 @@ import sqlite3
 import tempfile
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.scan_history_metadata import ScanHistoryStorageError, store_scan_metadata
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.scan_history_record import ScanHistoryRecord, ScanHistorySource
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

@@ -5,9 +5,9 @@ from dataclasses import FrozenInstanceError
 import json
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.scan_history_record import HISTORY_SCHEMA_VERSION, ScanHistoryRecord, ScanHistorySource
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

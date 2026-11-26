@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from io import BytesIO
 import zlib
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure
 
 MAX_OBJECTS = 4096
@@ -91,7 +91,7 @@ def inspect_pdf_embedded_object_sizes(contents: bytes) -> PDFEmbeddedObjectSizes
         parse_pdf_structure(contents)
         from pypdf import PdfReader
         from pypdf.generic import DictionaryObject, IndirectObject, StreamObject
-        __import__('module-loader')
+        __import__('src.module-loader')
         from src.enhanced.enhanced_embedded_files import _resolve, _specifications
 
         reader = PdfReader(BytesIO(contents), strict=True)

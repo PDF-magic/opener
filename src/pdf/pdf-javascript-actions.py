@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import re
 import zlib
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_automatic_actions import (
     PDFAutomaticActionError, inspect_pdf_automatic_actions,
 )

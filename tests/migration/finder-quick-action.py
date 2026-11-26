@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-__import__('module-loader')
+__import__('src.module-loader')
 from scripts.installation.existing_finder_quick_action import detect_existing_finder_quick_action
 
 

@@ -9,6 +9,7 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+export PYTHONPATH="$script_dir"
 install_dir="$HOME/Library/Application Support/Studio/allow-and-open"
 workflow="$HOME/Library/Services/Allow and Open.workflow/Contents/document.wflow"
 
@@ -141,9 +142,9 @@ else:
     with os.fdopen(fd, 'w', encoding='ascii') as stream:
         stream.write('com.brave.Browser\n')
 TARGET_APP
-cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/module-loader.py" "$script_dir/file-launcher.py" "$script_dir/browser-registry.py" "$script_dir/scan-results.py" "$script_dir/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$script_dir/signature-update-status.py" "$install_dir/"
+cp "$script_dir/allow-and-open.sh" "$script_dir/src/scan/scan-and-open.py" "$script_dir/src/module-loader.py" "$script_dir/src/native/launch/file-launcher.py" "$script_dir/src/browser/browser-registry.py" "$script_dir/src/scan/scan-results.py" "$script_dir/src/scanner/scanner-argument-validation.py" "$script_dir/src/scanner/scanner-concurrency-validation.py" "$script_dir/src/scanner/scanner-filesystem-sandbox.py" "$script_dir/src/scan/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$script_dir/src/scanner/signature-update-status.py" "$install_dir/"
 # Deploy the read-only status display beside its Launch Services lookup.
-cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
+cp "$script_dir/src/native/handler/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
 /usr/bin/xcrun swiftc -O "$script_dir/src/native/launch/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/launch-scanned-file"
@@ -163,7 +164,7 @@ chmod 755 "$install_dir/detect-pdf-handler-change"
 chmod 755 "$install_dir/pdf-handler-history"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/launch/verify-pdf-target.swift" -o "$install_dir/verify-pdf-target"
 # User-invoked custom .app chooser reuses the existing PDF verification logic.
-cp "$script_dir/select-custom-pdf-application.py" "$install_dir/select-custom-pdf-application.py"
+cp "$script_dir/src/native/launch/select-custom-pdf-application.py" "$install_dir/select-custom-pdf-application.py"
 /usr/bin/xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING -O \
     "$script_dir/src/native/launch/verify-pdf-target.swift" "$script_dir/src/native/launch/select-custom-pdf-application.swift" \
     -o "$install_dir/select-custom-pdf-application"

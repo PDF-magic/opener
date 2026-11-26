@@ -11,9 +11,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 import maximum_memory_limits as limits
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_isolated_analysis import WORKER_MEMORY_MIB
 
 
@@ -93,17 +93,17 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
         self.assertLess(worker.index("impose_maximum_worker_memory_limit()"),
                         worker.index("from importlib import import_module"))
         self.assertIn("except BaseException:", worker)
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_memory_limits", scanner)
         self.assertNotIn("maximum_isolated_worker", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        __import__('module-loader')
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
 
     @unittest.skipUnless(sys.platform == "linux", "Linux hard RLIMIT_AS validation")
     def test_real_os_rejects_allocation_beyond_worker_ceiling(self):
-        script = "\nimport sys\nsys.path.insert(0, sys.argv[1])\n__import__('module-loader'); from maximum_memory_limits import impose_maximum_worker_memory_limit, WORKER_MEMORY_BYTES\nimpose_maximum_worker_memory_limit()\ntry:\n    bytearray(WORKER_MEMORY_BYTES * 2)\nexcept MemoryError:\n    print('memory-ceiling-enforced')\n    raise SystemExit(0)\nraise SystemExit(3)\n"
+        script = "\nimport sys\nsys.path.insert(0, sys.argv[1])\n__import__('src.module-loader'); from maximum_memory_limits import impose_maximum_worker_memory_limit, WORKER_MEMORY_BYTES\nimpose_maximum_worker_memory_limit()\ntry:\n    bytearray(WORKER_MEMORY_BYTES * 2)\nexcept MemoryError:\n    print('memory-ceiling-enforced')\n    raise SystemExit(0)\nraise SystemExit(3)\n"
 
 
 
@@ -125,7 +125,7 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
 
     def test_real_worker_bootstraps_under_limits_without_pdf_input(self):
         # Only type names appear in diagnostics; never emit user paths/PDF bytes.
-        script = "\nimport sys\nsys.path.insert(0, sys.argv[1])\ntry:\n    __import__('module-loader'); from maximum_isolated_worker import _apply_limits\n    _apply_limits()\n    print('memory-ready')\n    import pypdf\n    print('parser-ready')\nexcept BaseException as error:\n    print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))\n    raise SystemExit(2)\n"
+        script = "\nimport sys\nsys.path.insert(0, sys.argv[1])\ntry:\n    __import__('src.module-loader'); from maximum_isolated_worker import _apply_limits\n    _apply_limits()\n    print('memory-ready')\n    import pypdf\n    print('parser-ready')\nexcept BaseException as error:\n    print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))\n    raise SystemExit(2)\n"
 
 
 

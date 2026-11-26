@@ -14,7 +14,7 @@ SOURCE_EXTENSIONS = frozenset({
     ".pbxproj", ".plist"
 })
 SELF = "tools/audit-quarantine-removal.py"
-LEGACY = "scan-and-open.py"
+LEGACY = "src/scan/scan-and-open.py"
 DIRECT = re.compile(
     r"\b(?:[fl]?removexattr|remove_?xattr|delete_?xattr|clear_?xattr)\b"
     r"|\bxattr\.remove\s*\(", re.IGNORECASE

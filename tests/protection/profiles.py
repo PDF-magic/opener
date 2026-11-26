@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 from pathlib import Path
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import (
     BASELINE_SAFETY_CHECKS,
     PROTECTION_PROFILES,
@@ -66,7 +66,7 @@ class ProtectionProfileDefinitionTests(unittest.TestCase):
                 protection_profile_definition(invalid)
 
     def test_definitions_do_not_activate_unimplemented_policy_or_change_settings(self):
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         panel = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
         settings = (ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift").read_text(
             encoding="utf-8"

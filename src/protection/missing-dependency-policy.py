@@ -9,9 +9,9 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Mapping
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import PolicyControl
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

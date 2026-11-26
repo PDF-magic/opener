@@ -13,17 +13,17 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_process_termination import MAX_WALL_SECONDS
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure, MAX_STRUCTURE_INPUT_BYTES
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_policy_definitions import PolicyControl
-__import__('module-loader')
+__import__('src.module-loader')
 from src.protection.protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
-__import__('module-loader')
+__import__('src.module-loader')
 import timed_pdf_structure_analysis as timed
 
 
@@ -142,7 +142,7 @@ class TimedPDFStructureTests(unittest.TestCase):
           timed.parse_pdf_structure_timed(make_pdf())
 
   def test_parser_confinement_policy_is_deny_by_default(self):
-    __import__('module-loader')
+    __import__('src.module-loader')
     import parser_filesystem_confinement as confinement
     profile = confinement._MACOS_PROFILE
     self.assertIn("(deny default)", profile)
@@ -166,7 +166,7 @@ class TimedPDFStructureTests(unittest.TestCase):
   def test_real_kernel_denies_parser_unrelated_files_and_writes(self):
     # Run a fresh process because Seatbelt/Landlock restrictions are permanent.
     # Probe only synthetic test paths; never attempt to access real user files.
-    probe = '\nfrom pathlib import Path\nimport sys\nsys.path.insert(0, sys.argv[1])\n__import__(\'module-loader\'); from parser_filesystem_confinement import confine_parser_filesystem\nconfine_parser_filesystem()\n__import__(\'module-loader\'); from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES\nprivate, output, alias = map(Path, sys.argv[2:])\ndef blocked_read(path):\n  try:\n    path.read_bytes()\n  except OSError:\n    return True\n  return False\ndef blocked_write(path):\n  try:\n    path.write_bytes(b"forbidden")\n  except OSError:\n    return True\n  return False\nraise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0\n    and blocked_read(private) and blocked_read(alias)\n    and blocked_write(output)) else 1)\n'
+    probe = '\nfrom pathlib import Path\nimport sys\nsys.path.insert(0, sys.argv[1])\n__import__(\'src.module-loader\'); from parser_filesystem_confinement import confine_parser_filesystem\nconfine_parser_filesystem()\n__import__(\'src.module-loader\'); from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES\nprivate, output, alias = map(Path, sys.argv[2:])\ndef blocked_read(path):\n  try:\n    path.read_bytes()\n  except OSError:\n    return True\n  return False\ndef blocked_write(path):\n  try:\n    path.write_bytes(b"forbidden")\n  except OSError:\n    return True\n  return False\nraise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0\n    and blocked_read(private) and blocked_read(alias)\n    and blocked_write(output)) else 1)\n'
 
 
 
@@ -211,7 +211,7 @@ class TimedPDFStructureTests(unittest.TestCase):
 
   def test_ci_includes_timeout_tests_but_scanner_is_unmodified(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     source = (ROOT / "src/pdf/timed-pdf-structure-analysis.py").read_text(
       encoding="utf-8"
     )
@@ -220,7 +220,7 @@ class TimedPDFStructureTests(unittest.TestCase):
     self.assertNotIn("timed_pdf_structure_worker", scanner)
     self.assertNotIn("remove_quarantine(", source)
     self.assertNotIn("launch_clean_file(", source)
-    __import__('module-loader')
+    __import__('src.module-loader')
     from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
     self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

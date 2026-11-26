@@ -102,6 +102,7 @@ def select_groups(paths):
             path.startswith(".github/workflows/")
             or path.startswith(".github/scripts/")
             or path.startswith("scripts/")
+            or name == "module-loader.py"
             or name.startswith("requirements")
             or path in CONFIG_FILES
             or name in SHARED_SECURITY_FILES

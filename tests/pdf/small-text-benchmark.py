@@ -7,11 +7,11 @@ import subprocess
 import sys
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
-__import__('module-loader')
+__import__('src.module-loader')
 import benchmarks.small_text_pdf_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,7 +88,7 @@ class SmallTextPDFBenchmarkTests(unittest.TestCase):
         self.assertNotIn(str(ROOT), result.stdout)
 
     def test_live_opening_policy_and_measurement_ui_are_unchanged(self):
-        live = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        live = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("small_text_pdf_benchmark", live)
         self.assertIn("if not cached_clean(cache_id):", live)
         report = (ROOT / "PDFMagicOpenerApp/protection-performance.json").read_text()

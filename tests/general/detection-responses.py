@@ -4,11 +4,11 @@
 from dataclasses import FrozenInstanceError
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.detection_responses import (
     DetectionAction, DetectionResponse, response_for_detection,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

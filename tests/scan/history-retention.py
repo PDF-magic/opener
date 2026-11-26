@@ -8,12 +8,12 @@ import tempfile
 import unittest
 from unittest import mock
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.scan.scan_history_metadata import (
     RETENTION_ALLOWED_DAYS, RETENTION_DEFAULT_DAYS, ScanHistoryStorageError,
     prune_expired_history, store_scan_metadata,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

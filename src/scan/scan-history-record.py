@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import unicodedata
 
-__import__('module-loader')
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 

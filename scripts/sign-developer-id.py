@@ -9,7 +9,7 @@ import subprocess
 
 if __name__ == '__main__' and not __package__:
     __import__('sys').path.append(str(__import__('pathlib').Path(__file__).resolve().parents[1]))
-__import__('module-loader')
+__import__('src.module-loader')
 from package_application_helpers import APP_NAME, BUNDLE_ID, HELPER_FOLDER, validate_helpers
 
 EXTENSION = Path("Contents/PlugIns/PDFMagicOpenerSafari.appex")

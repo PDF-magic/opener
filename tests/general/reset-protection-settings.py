@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text()
 PREF = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
-SCANNER = (ROOT / "scan-and-open.py").read_text()
+SCANNER = (ROOT / "src/scan/scan-and-open.py").read_text()
 
 
 class ResetProtectionSettingsTests(unittest.TestCase):

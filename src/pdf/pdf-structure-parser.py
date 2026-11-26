@@ -253,7 +253,7 @@ def parse_pdf_structure(contents: bytes) -> PDFStructure:
             if total_objects > MAX_STRUCTURE_OBJECTS:
                 raise PDFStructureParseError(_SIZE)
             # Check original bytes, not a library-recovered stream payload.
-            __import__('module-loader')
+            __import__('src.module-loader')
             from pdf_stream_lengths import validate_pdf_stream_lengths
             validate_pdf_stream_lengths(contents, reader)
             _verify_decoded_stream_budget(reader)

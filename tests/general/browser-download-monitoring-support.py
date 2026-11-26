@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DOC = ROOT / "docs/browser-download-monitoring-support.md"
 INDEX = ROOT / "docs/README.md"
 CI = ROOT / ".github/workflows/ci.yml"
-REGISTRY = ROOT / "browser-registry.py"
+REGISTRY = ROOT / "src/browser/browser-registry.py"
 EXPECTED = {
     "Brave": ("com.brave.Browser", "Conditional"),
     "Google Chrome": ("com.google.Chrome", "Documented"),

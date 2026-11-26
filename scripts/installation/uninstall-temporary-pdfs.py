@@ -16,7 +16,7 @@ import sys
 
 if __name__ == '__main__' and not __package__:
     __import__('sys').path.append(str(__import__('pathlib').Path(__file__).resolve().parents[2]))
-__import__('module-loader')
+__import__('src.module-loader')
 from maximum_temporary_output import (
     MaximumTemporaryOutputError,
     cleanup_uninstall_temporary_pdfs,

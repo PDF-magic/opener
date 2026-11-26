@@ -11,13 +11,13 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, IndirectObject, NameObject
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_object_relationships import (
     MAX_RELATIONSHIP_OBJECTS, MAX_RELATIONSHIP_EDGES,
     PDFObjectRelationships, PDFObjectRelationshipError,
     inspect_pdf_object_relationships,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -117,7 +117,7 @@ class ObjectRelationshipInspectionTests(unittest.TestCase):
         check_error(self, output.getvalue())
 
     def test_unreadable_or_oversized_inputs_fail_closed(self):
-        __import__('module-loader')
+        __import__('src.module-loader')
         from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES
         for invalid in (None, "PDF", 5, bytearray(REFERENCE_PDFS[0].content),
                         b"", b"%PDF-1.4\n", b"X" * (MAX_STRUCTURE_INPUT_BYTES + 1)):
@@ -147,7 +147,7 @@ class ObjectRelationshipInspectionTests(unittest.TestCase):
         self.assertLessEqual(MAX_RELATIONSHIP_OBJECTS, 4096)
         self.assertLessEqual(MAX_RELATIONSHIP_EDGES, 65536)
         source = (ROOT / "src/pdf/pdf-object-relationships.py").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         resolver = (ROOT / "src/protection/effective-protection-policy.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_object_relationships", scanner)

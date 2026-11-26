@@ -4,7 +4,7 @@ from pathlib import Path
 import ast
 import unittest
 
-__import__('module-loader')
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]

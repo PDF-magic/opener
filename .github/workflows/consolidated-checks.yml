@@ -313,7 +313,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import sys
-          __import__('module-loader'); import maximum_isolated_renderer as renderer
+          __import__('src.module-loader'); import maximum_isolated_renderer as renderer
 
           root = Path(renderer.__file__).resolve().parent
           worker = root / "src/protection/maximum-render-worker.py"

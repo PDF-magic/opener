@@ -146,7 +146,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
         self.assertIn('cleanup_progress', script)
         self.assertIn('"$updater" --config-file=', script)
         self.assertIn("last-successful-update", script)
-        scan = (ROOT / "scan-and-open.py").read_text()
+        scan = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("update-in-progress", scan)
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scan)
 

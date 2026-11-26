@@ -31,7 +31,7 @@ class DependencyDeliveryDecisionTests(unittest.TestCase):
         self.assertIn("cannot", content)
 
     def test_runtime_clamav_remains_external_and_version_gated(self):
-        source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         assignment = next(node for node in tree.body
                           if isinstance(node, ast.Assign)

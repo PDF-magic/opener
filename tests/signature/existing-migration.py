@@ -121,7 +121,7 @@ class SignatureMigrationTests(unittest.TestCase):
 
   def test_ci_and_scanner_freshness_gate_stay_independent(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    gate = (ROOT / "scan-and-open.py").read_text()
+    gate = (ROOT / "src/scan/scan-and-open.py").read_text()
     self.assertIn("python3 tests/signature/existing-migration.py -v", ci)
     self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", gate)
     self.assertIn("check_database()", gate)

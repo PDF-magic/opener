@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from io import BytesIO
 import unicodedata
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.enhanced.enhanced_embedded_files import (
     MAX_NAME_TREE_NODES, _specifications,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure
 
 MAX_ATTACHMENTS = 32

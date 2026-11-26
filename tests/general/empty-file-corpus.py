@@ -13,15 +13,15 @@ import sys
 import unittest
 from unittest.mock import patch
 
-__import__('module-loader')
+__import__('src.module-loader')
 from src.pdf.pdf_format_identification import UNDETERMINED, identify_pdf_format
-__import__('module-loader')
+__import__('src.module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode,
     PDFStructureParseFailure,
     parse_pdf_structure_result,
 )
-__import__('module-loader')
+__import__('src.module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -30,7 +30,7 @@ FIXTURES = ROOT / "tests/fixtures"
 EMPTY_FILES = ("empty.pdf", "empty.txt", "empty")
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "empty_corpus_scan_gate", ROOT / "scan-and-open.py"
+    "empty_corpus_scan_gate", ROOT / "src/scan/scan-and-open.py"
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)

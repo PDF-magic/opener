@@ -21,7 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-__import__('module-loader')
+__import__('src.module-loader')
 from browser_registry import DEFAULT_BROWSER_BUNDLE_ID, SUPPORTED_BROWSER_BUNDLE_IDS
 
 MAX_DISCOVERY_BYTES = 256 * 1024
