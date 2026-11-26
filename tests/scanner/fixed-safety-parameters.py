@@ -5,6 +5,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
+__import__('src.module-loader')
 from scanner_argument_validation import (
     InvalidScannerArguments,
     validate_scanner_arguments,
@@ -12,7 +13,7 @@ from scanner_argument_validation import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("fixed_safety_scan_gate", ROOT / "scan-and-open.py")
+SPEC = importlib.util.spec_from_file_location("fixed_safety_scan_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 
@@ -122,8 +123,8 @@ class ScannerFixedSafetyParameterTests(unittest.TestCase):
 
     def test_fixed_inventory_matches_enforcement_and_ci(self):
         document = (ROOT / "docs/scanner/safety-fixed-parameters.md").read_text()
-        validator = (ROOT / "scanner_argument_validation.py").read_text()
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        validator = (ROOT / "src/scanner/scanner-argument-validation.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         for option in (
             *FIXED_FLAGS, "--max-filesize=0", "--max-scansize=0",

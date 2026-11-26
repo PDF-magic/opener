@@ -41,4 +41,4 @@ jobs:
       - name: Check reviewed MDN browser compatibility revisions
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/firefox_api_watch.py
+        run: python3 scripts/firefox-api-watch.py

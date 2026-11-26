@@ -53,4 +53,4 @@ jobs:
           xcodebuild -project PDFMagicOpener.xcodeproj -scheme PDFMagicOpener -configuration Release -destination 'generic/platform=macOS' -derivedDataPath "$RUNNER_TEMP/PDFMagicSigningDerived" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
       - name: Verify compiled runtime and exact signed entitlement allowlists
         run: |
-          python3 scripts/verify_macos_app_signature.py --app "$RUNNER_TEMP/PDFMagicSigningDerived/Build/Products/Release/PDFMagicOpener.app"
+          python3 scripts/verify-macos-app-signature.py --app "$RUNNER_TEMP/PDFMagicSigningDerived/Build/Products/Release/PDFMagicOpener.app"

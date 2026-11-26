@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
@@ -60,6 +60,7 @@ class PDFFilenameTests(unittest.TestCase):
 
     def test_original_pdf_name_is_preserved_from_scan_through_launch(self):
         """Neither ClamAV nor the approved launcher receives a shell-expanded path."""
+        __import__('src.module-loader')
         from file_launcher import NATIVE_LAUNCHER
         for index, filename in enumerate(FILENAMES):
             with self.subTest(filename=filename):
@@ -102,9 +103,10 @@ class PDFFilenameTests(unittest.TestCase):
 
     def test_shared_finder_and_native_shell_gate_preserves_literal_pdf_argument(self):
         """The shell entry point forwards one literal argument, not a command string."""
-        source = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8")
         original = 'exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"'
         self.assertEqual(source.count(original), 1)
+        # The deployed gate and its companion scripts share a flat directory.
         gate = self.root / "allow-and-open.sh"
         gate.write_text(
             source.replace(original, 'exec /bin/bash "$script_dir/capture.sh" "$@"'),

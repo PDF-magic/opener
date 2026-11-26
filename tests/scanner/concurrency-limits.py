@@ -8,6 +8,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from scanner_concurrency_validation import (
     MAX_PERMITTED_CONCURRENT_SCANS,
     validate_scanner_concurrency_limit,
@@ -15,7 +16,7 @@ from scanner_concurrency_validation import (
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
@@ -72,10 +73,10 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
             self.assertEqual(opener.MAX_CONCURRENT_SCANS, 2)
 
     def test_no_user_editable_setting_or_existing_two_slot_policy_change(self):
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        native = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
+        native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
         prefs = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(encoding="utf-8")
-        validator = (ROOT / "configuration_validation.py").read_text(encoding="utf-8")
+        validator = (ROOT / "src/configuration/configuration-validation.py").read_text(encoding="utf-8")
         self.assertIn("MAX_CONCURRENT_SCANS = 2", gate)
         self.assertIn("validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)", gate)
         self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", gate)

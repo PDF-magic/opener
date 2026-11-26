@@ -1,8 +1,8 @@
 # Dependency licensing review (opener-0959)
 
-The offline reviewer `python3 scripts/check_dependency_licenses.py` checks the
+The offline reviewer `python3 scripts/check-dependency-licenses.py` checks the
 versioned Python dependencies used in GitHub Actions and
-`requirements-enhanced-pdf.txt` against the evidence-backed inventory in
+`requirements/requirements-enhanced-pdf.txt` against the evidence-backed inventory in
 [dependency-licenses.json](dependency-licenses.json). It also checks that the
 WebExtension remains dependency-free, that the project retains its AGPLv3
 license, and that the separate ClamAV package-manager installation route

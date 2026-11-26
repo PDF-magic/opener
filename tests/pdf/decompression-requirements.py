@@ -13,7 +13,8 @@ import zlib
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, NameObject
 
-from pdf_decompression_requirements import (
+__import__('src.module-loader')
+from src.pdf.pdf_decompression_requirements import (
     MAX_EXPANSION_RATIO,
     MAX_INPUT_BYTES,
     MAX_STREAM_DECODED_BYTES,
@@ -140,8 +141,8 @@ class PDFDecompressionRequirementsTests(unittest.TestCase):
                 inspect_pdf_decompression_requirements(make_pdf())
 
     def test_no_active_scanner_integration_or_private_data_in_errors(self):
-        module = (ROOT / "pdf_decompression_requirements.py").read_text(encoding="utf-8")
-        scanner_path = ROOT / "scan-and-open.py"
+        module = (ROOT / "src/pdf/pdf-decompression-requirements.py").read_text(encoding="utf-8")
+        scanner_path = ROOT / "src/scan/scan-and-open.py"
         if scanner_path.exists():
             scanner = scanner_path.read_text(encoding="utf-8")
             self.assertNotIn("pdf_decompression_requirements", scanner)

@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("scanner_process_limit", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scanner_process_limit", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
@@ -104,7 +104,7 @@ class ScannerSubprocessLimitTests(unittest.TestCase):
 
     def test_concurrency_limit_is_not_user_editable_or_weakened(self):
         self.assertEqual(gate.MAX_CONCURRENT_SCANS, 2)
-        self.assertIn("with scan_slot():", (ROOT / "scan-and-open.py").read_text())
+        self.assertIn("with scan_slot():", (ROOT / "src/scan/scan-and-open.py").read_text())
 
 
 if __name__ == "__main__":

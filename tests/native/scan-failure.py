@@ -10,13 +10,13 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-native = (ROOT / "brave-pdf-opener.swift").read_text()
+native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
 assert native.count("alert.runModal()") == 1, "Production must present an actual modal warning"
 assert native.count("if let failure = failure {") == 1
 assert native.count("makeScanFailureAlert(") == 2, "Only the factory and error branch may use it"
 
 classes = native.split("@main\nstruct PDFMagicOpenerEntry {", 1)[0]
-classes += "\n" + (ROOT / "scan-progress-view.swift").read_text()
+classes += "\n" + (ROOT / "src/scan/scan-progress-view.swift").read_text()
 classes += "\n" + (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text().replace(
     "import Foundation\n", ""
 )
@@ -62,7 +62,7 @@ classes = classes.replace(
 
 with tempfile.TemporaryDirectory(prefix="opener-failure-presentation-") as directory:
     work = Path(directory)
-    (work / "twilight-reading.png").write_bytes((ROOT / "twilight-reading.png").read_bytes())
+    (work / "twilight-reading.png").write_bytes((ROOT / "src/scan/twilight-reading.png").read_bytes())
     gate = work / "gate.py"
     gate.write_text(
         "import os, sys\n"

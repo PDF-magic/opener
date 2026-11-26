@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
+__import__('src.module-loader')
 import maximum_overwrite_warning as warning
 
 

@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts/require_release_checks.py"
+SCRIPT = ROOT / "scripts/require-release-checks.py"
 spec = importlib.util.spec_from_file_location("release_check_gate", SCRIPT)
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
@@ -157,7 +157,7 @@ class ReleaseGateTests(unittest.TestCase):
     self.assertIn("workflow_dispatch:", workflow)
     self.assertIn("needs: critical-release-gate", workflow)
     self.assertIn("--verify-tag", workflow)
-    self.assertEqual(workflow.count("python3 scripts/require_release_checks.py --tag"), 2)
+    self.assertEqual(workflow.count("python3 scripts/require-release-checks.py --tag"), 2)
     self.assertIn("checks: read", workflow)
     self.assertIn("persist-credentials: false", workflow)
     self.assertNotIn("upload-artifact", workflow)

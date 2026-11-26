@@ -14,7 +14,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "post_install", ROOT / "scripts/verify_installed_clamav.py"
+    "post_install", ROOT / "scripts/verify-installed-clamav.py"
 )
 helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
@@ -135,7 +135,7 @@ class PostInstallClamAVTests(unittest.TestCase):
         ))
 
     def test_runtime_scan_gate_and_supported_paths_remain_authoritative(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("require_supported_scanner_version(scanner)", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("remove_quarantine", scanner)
@@ -144,10 +144,10 @@ class PostInstallClamAVTests(unittest.TestCase):
         self.assertIn("1\\.(?:4|5)\\.[0-9]+", helper.VERSION.pattern)
 
     def test_installer_verifies_after_package_install_before_installed_file_changes(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        consent = 'python3 "$script_dir/scripts/confirm_clamav_install.py"'
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
+        consent = 'python3 "$script_dir/scripts/confirm-clamav-install.py"'
         provisioning = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
-        verify = 'python3 "$script_dir/scripts/verify_installed_clamav.py"'
+        verify = 'python3 "$script_dir/scripts/verify-installed-clamav.py"'
         self.assertIn(consent, source)
         self.assertIn(provisioning, source)
         self.assertIn(verify, source)
@@ -156,7 +156,7 @@ class PostInstallClamAVTests(unittest.TestCase):
         self.assertLess(source.index(verify), source.index('mkdir -p "$install_dir/signatures"'))
         self.assertLess(source.index(verify), source.index('bash "$install_dir/update-malware-signatures.sh"'))
         self.assertEqual(source.count(verify), 1)
-        self.assertIn('scripts/report_install_prerequisites.py', source)
+        self.assertIn('scripts/report-install-prerequisites.py', source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("tests/clamav/post-install-verification.py -v", ci)
 

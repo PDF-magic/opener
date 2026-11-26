@@ -1,6 +1,6 @@
 # Benchmarking Enhanced structural analysis (opener-1078)
 
-Run `PYTHONPATH=. python3 enhanced_structure_benchmark.py --samples 5`.
+Run `PYTHONPATH=. python3 benchmarks/enhanced-structure-benchmark.py --samples 5`.
 The CI workflow also runs a three-sample benchmark and regression tests
 with the pinned optional `pypdf` dependency. Output is JSON.
 

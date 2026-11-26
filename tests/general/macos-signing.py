@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj"
 HOST_ENTITLEMENTS = ROOT / "PDFMagicOpenerApp/PDFMagicOpener.entitlements"
 SAFARI_ENTITLEMENTS = ROOT / "extensions/safari/SafariExtension.entitlements"
-VERIFIER = ROOT / "scripts/verify_macos_app_signature.py"
+VERIFIER = ROOT / "scripts/verify-macos-app-signature.py"
 spec = importlib.util.spec_from_file_location("verify_macos_app_signature", VERIFIER)
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
@@ -81,7 +81,7 @@ class MacOSSigningTests(unittest.TestCase):
     self.assertIn("runs-on: macos-latest", workflow)
     self.assertIn("-configuration Release", workflow)
     self.assertIn("CODE_SIGN_IDENTITY=-", workflow)
-    self.assertIn("scripts/verify_macos_app_signature.py --app", workflow)
+    self.assertIn("scripts/verify-macos-app-signature.py --app", workflow)
     self.assertNotIn("APPLE_ID", workflow)
     self.assertNotIn("DEVELOPER_ID", workflow)
 

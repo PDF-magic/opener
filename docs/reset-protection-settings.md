@@ -8,6 +8,6 @@ Unknown future values, unsupported scanner policy metadata, invalid schema versi
 
 This reset is intentionally narrower than the existing **General Preferences Reset**. Its behavior is independent of future expansion of actual protection tiers, which must undergo separate safety review before any tier can be activated or reset as an enforcement policy.
 
-\`test-reset-protection-settings.swift\` exercises isolated UserDefaults domains, selected previews, the first-install marker, repeated resets, persistence after reopening, unknown/future/malformed settings, incompatible schema and policy, and unchanged browser/notification preferences. \`test-reset-protection-settings.py\` asserts the visible confirmation/cancel controls and that the reset cannot bypass the installed scanner. Both tests run under the existing CI, with native SwiftUI compilation on macOS.
+\`tests/protection/reset-settings.swift\` exercises isolated UserDefaults domains, selected previews, the first-install marker, repeated resets, persistence after reopening, unknown/future/malformed settings, incompatible schema and policy, and unchanged browser/notification preferences. \`test-reset-protection-settings.py\` asserts the visible confirmation/cancel controls and that the reset cannot bypass the installed scanner. Both tests run under the existing CI, with native SwiftUI compilation on macOS.
 
 The implementation relies on the immediate preview-persistence UI from opener-0336 / PR #226; it is scoped to the reset action, not a duplicate save implementation.

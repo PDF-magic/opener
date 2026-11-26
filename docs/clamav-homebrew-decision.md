@@ -8,7 +8,7 @@ engine, not a copy bundled with PDF Magic Opener.
 
 ## Rationale and alternatives
 
-- The existing `install-allow-and-open.sh` already installs `clamav`
+- The existing `scripts/installation/install-allow-and-open.sh` already installs `clamav`
   through Homebrew **only when** it finds no executable at its three
   supported paths. This preserves existing installations and avoids a
   second scanner distribution/update channel.

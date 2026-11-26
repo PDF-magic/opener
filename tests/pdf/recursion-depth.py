@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
+__import__('src.module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_RECURSION_DEPTH,
     PDFStructure,
@@ -125,8 +126,8 @@ class PDFRecursionDepthTests(unittest.TestCase):
         self.assertEqual(parse_pdf_structure(output.getvalue()).page_count, 1)
 
     def test_parser_is_still_passive_and_ci_exercises_depth_guard(self):
-        parser = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        parser = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         self.assertIn("_validate_direct_nesting(contents)", parser)
         self.assertLess(parser.index("_validate_direct_nesting(contents)"),
@@ -135,7 +136,7 @@ class PDFRecursionDepthTests(unittest.TestCase):
                         parser.index("pages = reader.pages"))
         self.assertNotIn("pdf_structure_parser", gate)
         self.assertIn("python3 tests/pdf/recursion-depth.py -v", workflow)
-        self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
+        self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt", workflow)
 
 
 if __name__ == "__main__":

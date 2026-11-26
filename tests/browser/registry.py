@@ -5,7 +5,9 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('src.module-loader')
 import browser_registry as registry
+__import__('src.module-loader')
 import file_launcher as launcher
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,10 +51,10 @@ class BrowserRegistryTests(unittest.TestCase):
         self.assertEqual(len(rows), len(EXPECTED_BROWSERS))
         self.assertEqual({bundle_id for _, bundle_id, _ in rows},
                          registry.SUPPORTED_BROWSER_BUNDLE_IDS)
-        self.assertIn("../browser_registry.py", guide)
+        self.assertIn("../src/browser/browser-registry.py", guide)
 
     def test_native_primary_list_matches_supported_registry(self):
-        source = (ROOT / "browser-preference-list.swift").read_text(encoding="utf-8")
+        source = (ROOT / "src/browser/browser-preference-list.swift").read_text(encoding="utf-8")
         match = re.search(
             r"private let supportedBrowserBundleIDs: Set<String> = \[([^\]]+)\]",
             source,
@@ -63,11 +65,11 @@ class BrowserRegistryTests(unittest.TestCase):
         self.assertEqual(len(identifiers), len(registry.SUPPORTED_BROWSER_BUNDLE_IDS))
 
     def test_registry_is_deployed_with_launcher(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         line = next(line for line in installer.splitlines()
-                    if line.startswith('cp "$script_dir/allow-and-open.sh"'))
-        self.assertIn('"$script_dir/file_launcher.py"', line)
-        self.assertIn('"$script_dir/browser_registry.py"', line)
+                    if line.startswith('cp "$script_dir/src/scan/allow-and-open.sh"'))
+        self.assertIn('"$script_dir/src/native/launch/file-launcher.py"', line)
+        self.assertIn('"$script_dir/src/browser/browser-registry.py"', line)
 
 
 if __name__ == "__main__":

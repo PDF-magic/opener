@@ -5,18 +5,21 @@ from pathlib import Path
 import re
 import unittest
 
-from effective_protection_policy import ACTIVE_PROFILE_ID, resolve_effective_policy
-from protection_exception_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import ACTIVE_PROFILE_ID, resolve_effective_policy
+__import__('src.module-loader')
+from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION, ProtectionExceptionNotSupported,
     request_protection_exception,
 )
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text(
     encoding="utf-8"
 )
-SCANNER = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+SCANNER = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
 
 
 class LowerProtectionWarningTests(unittest.TestCase):

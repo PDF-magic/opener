@@ -24,7 +24,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("finder_app_scan_gate",
-                                               ROOT / "scan-and-open.py")
+                                               ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 
@@ -196,7 +196,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="finder-wrapper-") as directory:
             folder = Path(directory)
             wrapper = folder / "allow-and-open.sh"
-            shutil.copyfile(ROOT / "allow-and-open.sh", wrapper)
+            shutil.copyfile(ROOT / "src/scan/allow-and-open.sh", wrapper)
             (folder / "record-scan-origin.py").write_text(
                 "import os\nfrom pathlib import Path\n"
                 "Path(os.environ['ORIGIN_RECEIPT']).write_text("
@@ -226,13 +226,13 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
             self.assert_quarantine_intact()
 
     def test_installer_keeps_finder_quick_action_connected_to_shared_scan_gate(self):
-        script = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn("PDF_MAGIC_REQUEST_ORIGIN=finder", script)
         self.assertIn("'com.apple.RunShellScript'", script)
         self.assertIn("parameters['inputMethod'] = 1", script)
         self.assertIn('"$@"', script)
-        self.assertIn('"$script_dir/allow-and-open.sh"', script)
-        wrapper = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")
+        self.assertIn('"$script_dir/src/scan/allow-and-open.sh"', script)
+        wrapper = (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('record-scan-origin.py" "$@"', wrapper)
         self.assertIn('scan-and-open.py" "$@"', wrapper)
 
@@ -299,6 +299,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
                 self.assert_quarantine_intact()
 
     def test_native_bundle_launch_does_not_invoke_pdf_browser_preferences(self):
+        __import__('src.module-loader')
         import file_launcher
         with patch.object(file_launcher, "pdf_target_application",
                           side_effect=AssertionError("PDF preferences were read")), \

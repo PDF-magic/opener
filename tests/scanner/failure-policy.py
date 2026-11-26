@@ -10,8 +10,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
-from scanner_failure_policy import (
+__import__('src.module-loader')
+from src.scanner.scanner_failure_policy import (
     INCOMPLETE_MESSAGE,
     INITIALIZATION_MESSAGE,
     PROCESS_MESSAGE,
@@ -25,7 +27,7 @@ from scanner_failure_policy import (
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("failure_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("failure_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
@@ -168,11 +170,11 @@ class ScannerFailurePolicyTests(unittest.TestCase):
             ScanResultStatus.scanFailed)
 
     def test_contract_does_not_add_scanner_processes_or_override_settings(self):
-        source = (ROOT / "scanner_failure_policy.py").read_text()
+        source = (ROOT / "src/scanner/scanner-failure-policy.py").read_text()
         for forbidden in ("subprocess", "launch_clean_file", "remove_quarantine(",
                           "UserDefaults", "import os", "target-app.txt"):
             self.assertNotIn(forbidden, source)
-        gate_source = (ROOT / "scan-and-open.py").read_text()
+        gate_source = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("scanner_failure_policy", gate_source)
         self.assertIn("if not decision.allowed:", gate_source)
         self.assertIn("remove_quarantine(path)", gate_source)

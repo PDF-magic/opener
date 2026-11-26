@@ -12,7 +12,7 @@ import unittest
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-  "preinstall_app_verifier", ROOT / "scripts/verify_pdf_opener_bundle.py")
+  "preinstall_app_verifier", ROOT / "scripts/verify-pdf-opener-bundle.py")
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
 
@@ -130,11 +130,11 @@ class PreinstallBundleTests(unittest.TestCase):
       self.verify()
 
   def test_installer_validates_signed_staging_before_replacing_installed_app(self):
-    source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     for needed in (
       "mktemp -d",
       'codesign --force --sign - "$app"',
-      'python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"',
+      'python3 "$script_dir/scripts/verify-pdf-opener-bundle.py" "$app"',
       'mv "$app" "$installed_app"',
       'mv "$installed_app" "$bundle_stage_dir/previous.app"',
       'trap rollback_installation EXIT',
@@ -142,18 +142,18 @@ class PreinstallBundleTests(unittest.TestCase):
       with self.subTest(needed=needed):
         self.assertIn(needed, source)
     self.assertLess(
-      source.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'),
+      source.index('python3 "$script_dir/scripts/verify-pdf-opener-bundle.py" "$app"'),
       source.index('mv "$app" "$installed_app"'),
     )
     self.assertLess(
-      source.index('python3 "$script_dir/scripts/preserve_existing_opener.py" snapshot'),
-      source.index('cp "$script_dir/allow-and-open.sh"'),
+      source.index('python3 "$script_dir/scripts/preserve-existing-opener.py" snapshot'),
+      source.index('cp "$script_dir/src/scan/allow-and-open.sh"'),
     )
     self.assertIn('mv "$bundle_stage_dir/previous.app" "$installed_app"', source)
     self.assertLess(source.index('mv "$app" "$installed_app"'),
                     source.index('migration_committed=1'))
     self.assertLess(source.index('codesign --force --sign - "$app"'),
-                    source.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'))
+                    source.index('python3 "$script_dir/scripts/verify-pdf-opener-bundle.py" "$app"'))
     self.assertIn('python3 - "$app" "$install_dir" "$app_name" <<\x27CONFIG\x27', source)
 
 

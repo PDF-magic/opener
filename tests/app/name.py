@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text()
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
 APP_NAME = "PDF Magic Opener"
 BUNDLE_ID = "local.studio.brave-pdf-opener"
 
@@ -45,8 +45,8 @@ class ApplicationNameTests(unittest.TestCase):
         self.assertIn('app="$HOME/Applications/$app_name.app"', INSTALLER)
         self.assertIn("local.studio.brave-pdf-opener", INSTALLER)
         self.assertIn("# PDF Magic Opener", (ROOT / "README.md").read_text())
-        self.assertIn("PDF Magic Opener — Scanning", (ROOT / "scan-progress-view.swift").read_text())
-        self.assertIn("ScanProgressPanel(", (ROOT / "brave-pdf-opener.swift").read_text())
+        self.assertIn("PDF Magic Opener — Scanning", (ROOT / "src/scan/scan-progress-view.swift").read_text())
+        self.assertIn("ScanProgressPanel(", (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text())
 
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)

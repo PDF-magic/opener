@@ -6,7 +6,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-NEW_NAME = "set-pdf-default-handler.swift"
+NEW_NAME = "src/native/handler/set-pdf-default-handler.swift"
 OLD_NAME = "set-brave-pdf-default.swift"
 
 
@@ -22,8 +22,8 @@ class DefaultPDFHandlerNameTests(unittest.TestCase):
         self.assertIn('Could not set the PDF default handler:', source)
 
     def test_installer_invokes_renamed_utility_for_opener_bundle(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        self.assertIn('python3 "$script_dir/offer-restore-pdf-handler.py"', installer)
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
+        self.assertIn('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"', installer)
         self.assertIn('"$script_dir/' + NEW_NAME + '" "$app"', installer)
         self.assertNotIn('/usr/bin/swift "$script_dir/' + NEW_NAME + '" "$app"', installer)
         self.assertNotIn(OLD_NAME, installer)

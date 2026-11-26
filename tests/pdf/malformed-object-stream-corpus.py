@@ -9,10 +9,12 @@ import unittest
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
-from malformed_object_stream_corpus import (
+__import__('src.module-loader')
+from tests.fixtures.pdf.malformed_object_stream_corpus import (
     MALFORMED_OBJECT_STREAM_PDFS,
     VALID_OBJECT_STREAM_PDFS,
 )
+__import__('src.module-loader')
 from pdf_structure_parser import (
     PDFStructure,
     PDFStructureFailureCode,
@@ -21,8 +23,10 @@ from pdf_structure_parser import (
     parse_pdf_structure,
     parse_pdf_structure_result,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -80,7 +84,7 @@ class MalformedObjectStreamCorpusTests(unittest.TestCase):
         self.assertEqual(len(REFERENCE_PDFS), 6)
         self.assertTrue(all(sample.content.startswith(b"%PDF-1.4\n") for sample in REFERENCE_PDFS))
         self.assertFalse(protection_profile_definition(ProtectionProfileID.ENHANCED).selectable)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("malformed_object_stream_corpus", scanner)
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

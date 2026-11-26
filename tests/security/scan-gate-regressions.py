@@ -14,13 +14,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from scanner_argument_validation import InvalidScannerArguments
 
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "security_regression_scan_gate", ROOT / "scan-and-open.py"
+    "security_regression_scan_gate", ROOT / "src/scan/scan-and-open.py"
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)

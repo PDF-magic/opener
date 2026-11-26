@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("signature_update_status", ROOT / "signature_update_status.py")
+spec = importlib.util.spec_from_file_location("signature_update_status", ROOT / "src/scanner/signature-update-status.py")
 status = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(status)
 
@@ -33,7 +33,7 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         self.fake.chmod(0o700)
         # Adapt the *test copy* only. Neither production paths nor installed
         # scanners, signature databases or user files are touched.
-        original = (ROOT / "update-malware-signatures.sh").read_text()
+        original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         names = "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam /usr/local/clamav/bin/freshclam"
         self.assertIn(names, original)
         self.script = self.root / "test-update.sh"
@@ -117,13 +117,13 @@ class SignatureUpdateTimeTests(unittest.TestCase):
         self.assertIsNone(status.read_update_time(marker, now=1_700_000_001))
 
     def test_scan_gate_installation_and_agent_are_not_changed(self):
-        gate = (ROOT / "scan-and-open.py").read_text()
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("signature_update_status", gate)
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", gate)
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn('"$script_dir/signature_update_status.py"', installer)
-        self.assertIn('python3 "$script_dir/scripts/migrate_update_agent.py"', installer)
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        self.assertIn('"$script_dir/src/scanner/signature-update-status.py"', installer)
+        self.assertIn('python3 "$script_dir/scripts/migrate-update-agent.py"', installer)
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)

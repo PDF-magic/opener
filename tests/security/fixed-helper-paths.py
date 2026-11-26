@@ -13,11 +13,14 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
+__import__('src.module-loader')
 import file_launcher
+__import__('src.module-loader')
 import maximum_process_termination as worker
+__import__('src.module-loader')
 import maximum_sanitizer_process as sanitizer
 
-spec = importlib.util.spec_from_file_location("fixed_helper_scanner_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("fixed_helper_scanner_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
@@ -140,7 +143,7 @@ class FixedHelperPathsTests(unittest.TestCase):
         self.assertEqual(selected.read_bytes(), b"%PDF-1.4\n")
 
     def test_finder_shell_wrapper_uses_fixed_system_interpreter(self):
-        source = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('/usr/bin/python3 "$script_dir/record-scan-origin.py" "$@"', source)
         self.assertIn('exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"', source)
         self.assertNotIn("env python3", source)

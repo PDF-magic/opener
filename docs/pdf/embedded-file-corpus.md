@@ -1,6 +1,6 @@
 # Embedded-file PDF security corpus — opener-1038
 
-The embedded_file_corpus.py module generates four small, deterministic, inert
+The tests/fixtures/pdf/embedded-file-corpus.py module generates four small, deterministic, inert
 PDF **documents** in memory, each containing real /EmbeddedFile streams and
 /Filespec objects. The cases cover:
 

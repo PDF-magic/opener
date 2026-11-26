@@ -15,17 +15,21 @@ from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
 
-import enhanced_embedded_files as inspector
-from effective_protection_policy import (
+__import__('src.module-loader')
+import src.enhanced.enhanced_embedded_files as inspector
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     FailureDisposition,
     PROTECTION_POLICIES,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID
 
 

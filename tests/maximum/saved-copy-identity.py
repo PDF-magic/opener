@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 
+__import__('src.module-loader')
 from maximum_sanitized_copy import (
     GENERATED_CONTENT_ORIGIN, SAVED_COPY_LABEL, SAVED_COPY_NOTICE,
     SanitizedCopyOffer, suggested_saved_copy_filename,
@@ -88,7 +89,7 @@ class SavedCopyIdentityTests(unittest.TestCase):
         workflow = (root / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
-        scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (root / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("python3 tests/maximum/saved-copy-identity.py -v", workflow)
         self.assertNotIn("maximum_saved_copy_identity", scanner)
 

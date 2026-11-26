@@ -15,10 +15,10 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "brave-pdf-opener.swift"
-PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
+SOURCE = ROOT / "src/native/launch/brave-pdf-opener.swift"
+PROGRESS_SOURCE = ROOT / "src/scan/scan-progress-view.swift"
 PREFERENCE_SOURCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"
-HANDLER_READER = ROOT / "identify-pdf-handler.swift"
+HANDLER_READER = ROOT / "src/native/handler/identify-pdf-handler.swift"
 SCRIPT_ANCHOR = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
     '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
@@ -44,7 +44,7 @@ def main():
         executable.parent.mkdir(parents=True)
         resources.mkdir()
         (resources / "twilight-reading.png").write_bytes(
-            (ROOT / "twilight-reading.png").read_bytes()
+            (ROOT / "src/scan/twilight-reading.png").read_bytes()
         )
         receipt = root / "scan-receipt.txt"
         gate = root / "fake-clean-gate.py"

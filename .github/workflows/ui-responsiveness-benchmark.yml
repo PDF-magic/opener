@@ -34,4 +34,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Benchmark live AppKit panel and Cancel during controlled native scan
-        run: python3 ui_responsiveness_benchmark.py --samples 3
+        run: python3 benchmarks/ui-responsiveness-benchmark.py --samples 3

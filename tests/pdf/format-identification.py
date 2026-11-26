@@ -8,11 +8,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from pdf_format_identification import (
+__import__('src.module-loader')
+from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, PDFFormatStatus, identify_pdf_format,
     identify_pdf_header,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -79,7 +81,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
                     self.assertIs(identify_pdf_format(path), UNDETERMINED)
             self.assertIs(identify_pdf_format(None), UNDETERMINED)
             self.assertEqual(source.read_bytes(), b"%PDF-2.0\ntest")
-            with patch("pdf_format_identification.os.open", side_effect=PermissionError("/private/secret.pdf")):
+            with patch("src.pdf.pdf_format_identification.os.open", side_effect=PermissionError("/private/secret.pdf")):
                 result = identify_pdf_format(source)
                 self.assertIs(result, UNDETERMINED)
                 self.assertNotIn("secret", repr(result))
@@ -107,7 +109,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
                 def fileno(self):
                     return self.source.fileno()
 
-            with patch("pdf_format_identification.os.fdopen",
+            with patch("src.pdf.pdf_format_identification.os.fdopen",
                        side_effect=lambda *args, **kwargs: BoundedReader(real_fdopen(*args, **kwargs))):
                 result = identify_pdf_format(source)
             self.assertEqual(reads, [9])
@@ -119,9 +121,9 @@ class PDFFormatIdentificationTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             result.version = "1.0"
         self.assertFalse(result.permits_open)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_format_identification", scanner)
-        policy = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
+        policy = (ROOT / "src/protection/protection-profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", policy)
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/format-identification.py -v", workflow)

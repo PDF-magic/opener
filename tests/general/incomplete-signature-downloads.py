@@ -46,7 +46,7 @@ class IncompleteDownloadTests(unittest.TestCase):
         self.fake = self.root / "fake-freshclam"
         self.fake.write_text(FAKE)
         self.fake.chmod(0o700)
-        original = (ROOT / "update-malware-signatures.sh").read_text()
+        original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, original)
         self.script = self.root / "updater.sh"
         # Synthetic update tests bypass only the separately tested ClamAV
@@ -112,14 +112,14 @@ class IncompleteDownloadTests(unittest.TestCase):
         self.assertNotIn("incomplete-download", failure)
 
     def test_installed_scan_gate_and_agent_not_weakened(self):
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertNotIn("check_incomplete_downloads", scanner)
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
-        source = (ROOT / "update-malware-signatures.sh").read_text()
+        source = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertLess(source.index('check_incomplete_downloads "$stage_dir"'),
                         source.index('last-successful-update'))
         self.assertIn('failure_reason="incomplete-download"', source)

@@ -10,7 +10,7 @@ that a document is safe to open.
 ## Policy checks
 
 The source of truth is the non-executable
-[`protection_policy_definitions.py`](../../protection_policy_definitions.py)
+[`protection-policy-definitions.py`](../../src/protection/protection-policy-definitions.py)
 contract. Enhanced requires the four Built-in safeguards **plus** a planned
 PDF-structure check. Its behavior-analysis check is optional and planned.
 

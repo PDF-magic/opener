@@ -19,26 +19,30 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
     FailureDisposition,
     protection_policy_definition,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "standard_valid_pdf_scanner", ROOT / "scan-and-open.py"
+    "standard_valid_pdf_scanner", ROOT / "src/scan/scan-and-open.py"
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)

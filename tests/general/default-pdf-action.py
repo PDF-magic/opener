@@ -60,7 +60,7 @@ class GeneralDefaultPDFActionTests(unittest.TestCase):
     self.assertIn("B19700000000000000000001,", src)
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertIn(f"{Path(__file__).resolve().relative_to(ROOT).as_posix()} -v", ci)
-    self.assertIn("test-general-default-pdf-action.swift", ci)
+    self.assertIn("tests/default/pdf-action.swift", ci)
     self.assertIn("PDF_DEFAULT_ACTION_TESTING", ci)
 
 

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # Existing production call sites, not a second implementation of the launch path.
 INVENTORY = {
-    "launch-scanned-file.swift": (
+    "src/native/launch/launch-scanned-file.swift": (
         "urlsForApplications(withBundleIdentifier:",
         "urlForApplication(withBundleIdentifier:",
         "open([target], withApplicationAt:",
@@ -16,14 +16,14 @@ INVENTORY = {
         "urlForApplication(toOpen:",
         "workspace.open(target)",
     ),
-    "verify-pdf-target.swift": ("urlsForApplications(toOpen:",),
-    "identify-pdf-handler.swift": ("LSCopyDefaultRoleHandlerForContentType(",),
-    "set-pdf-default-handler.swift": (
+    "src/native/launch/verify-pdf-target.swift": ("urlsForApplications(toOpen:",),
+    "src/native/handler/identify-pdf-handler.swift": ("LSCopyDefaultRoleHandlerForContentType(",),
+    "src/native/handler/set-pdf-default-handler.swift": (
         "LSCopyDefaultRoleHandlerForContentType(",
         "setDefaultApplication(at:",
     ),
-    "make-pdf-magic-default.swift": ("setDefaultApplication(",),
-    "pdf-handler-history.swift": (
+    "src/native/handler/make-pdf-magic-default.swift": ("setDefaultApplication(",),
+    "src/native/handler/pdf-handler-history.swift": (
         "LSCopyDefaultRoleHandlerForContentType(",
         "setDefaultApplication(at:",
     ),
@@ -62,9 +62,9 @@ class FileHandlerAPIWatchTests(unittest.TestCase):
     def test_inventory_detects_removed_or_renamed_calls(self):
         fake = {path: "\n".join(symbols) for path, symbols in INVENTORY.items()}
         self.assertEqual(missing_uses(fake), [])
-        fake["launch-scanned-file.swift"] = ""
+        fake["src/native/launch/launch-scanned-file.swift"] = ""
         self.assertIn(
-            ("launch-scanned-file.swift", "openApplication(at:"),
+            ("src/native/launch/launch-scanned-file.swift", "openApplication(at:"),
             missing_uses(fake),
         )
 
@@ -97,7 +97,7 @@ class FileHandlerAPIWatchTests(unittest.TestCase):
                 self.assertIn(required, workflow)
         self.assertNotIn("issues: write", workflow)
         self.assertNotIn("pull-requests: write", workflow)
-        self.assertNotIn("set-pdf-default-handler.swift -o", workflow)
+        self.assertNotIn("src/native/handler/set-pdf-default-handler.swift -o", workflow)
 
     def test_maintenance_runbook_is_linked_and_explicit_about_limits(self):
         index = (ROOT / "docs/README.md").read_text(encoding="utf-8")

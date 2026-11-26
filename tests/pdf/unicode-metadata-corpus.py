@@ -10,10 +10,14 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-from pdf_declared_metadata import extract_pdf_declared_metadata
+__import__('src.module-loader')
+from src.pdf.pdf_declared_metadata import extract_pdf_declared_metadata
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
-from unicode_metadata_corpus import UNICODE_METADATA_PDFS, _pdf_with_metadata
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.unicode_metadata_corpus import UNICODE_METADATA_PDFS, _pdf_with_metadata
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -96,7 +100,7 @@ class UnicodeMetadataCorpusTests(unittest.TestCase):
             for forbidden in (b"/JavaScript", b"/Launch", b"/OpenAction",
                               b"/EmbeddedFiles", b"/AA "):
                 self.assertNotIn(forbidden, item.content)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("unicode_metadata_corpus", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

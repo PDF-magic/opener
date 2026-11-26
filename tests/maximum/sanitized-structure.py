@@ -14,7 +14,9 @@ from pypdf.generic import (
     ArrayObject, ByteStringObject, DictionaryObject, NameObject, NumberObject,
     StreamObject, TextStringObject,
 )
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
+__import__('src.module-loader')
 from maximum_sanitized_structure import (
     BLOCK_MESSAGE, MAX_OUTPUT_BYTES, MAX_OUTPUT_PAGES,
     SanitizedPDFStructure, SanitizedPDFStructureError,
@@ -202,9 +204,10 @@ class SanitizedStructureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             SanitizedPDFStructure(1, 1, permits_open=True)
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_sanitized_structure", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

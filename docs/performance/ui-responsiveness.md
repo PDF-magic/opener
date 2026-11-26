@@ -2,7 +2,7 @@
 
 Run on macOS with Xcode Command Line Tools:
 
-    python3 ui_responsiveness_benchmark.py --samples 3
+    python3 benchmarks/ui-responsiveness-benchmark.py --samples 3
 
 This **opt-in** benchmark compiles a temporary copy of the existing native
 PDF handler plus the real AppKit scan-progress panel. Only in that test copy,

@@ -7,13 +7,16 @@ import json
 from pathlib import Path
 import unittest
 
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID
+__import__('src.module-loader')
 from protection_policy_definitions import (
     ControlAvailability,
     PolicyControl,
     PROTECTION_POLICIES,
 )
-from protection_stage_time_limits import (
+__import__('src.module-loader')
+from src.protection.protection_stage_time_limits import (
     STAGE_MAXIMUM_SECONDS,
     STAGE_TIME_LIMIT_SCHEMA_VERSION,
     PROFILE_STAGE_LIMITS,
@@ -123,8 +126,8 @@ class StageLimitTests(unittest.TestCase):
         self.assertEqual(len(standard.stages), len(PROTECTION_POLICIES[ProtectionProfileID.STANDARD].requirements))
         self.assertNotEqual(standard.stages[0].maximum_seconds, 1)
 
-        source = (ROOT / "protection_stage_time_limits.py").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/protection/protection-stage-time-limits.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         preferences = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text(encoding="utf-8")
         self.assertNotIn("protection_stage_time_limits", scanner)
         self.assertNotIn("protection_stage_time_limits", preferences)

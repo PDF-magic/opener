@@ -9,8 +9,11 @@ import sys
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 import maximum_isolated_renderer as renderer
-import maximum_network_isolation as isolation
+from importlib import import_module
+__import__('src.module-loader')
+isolation = import_module("maximum-network-isolation")
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,7 +28,9 @@ ENV = {
 LINUX_PROBE = r'''
 import errno, os, subprocess, sys, threading
 sys.path.insert(0, sys.argv[1])
-from maximum_network_isolation import apply_linux_child_process_denial
+__import__('src.module-loader')
+from importlib import import_module
+apply_linux_child_process_denial = import_module("maximum-network-isolation").apply_linux_child_process_denial
 apply_linux_child_process_denial()
 
 def denied(error):
@@ -69,56 +74,56 @@ if all((check_fork(), check_popen(), check_posix_spawn(), check_thread())):
 raise SystemExit(41)
 '''
 
-MACOS_PROBE = r'''
-import errno, os, subprocess, sys, threading
-from pathlib import Path
-sys.path.insert(0, sys.argv[1])
-import maximum_isolated_renderer as renderer
-context = renderer._renderer_sandbox_context(
-    Path(renderer.__file__).resolve().with_name("maximum_render_worker.py")
-)
-renderer.apply_renderer_sandbox(context)
+MACOS_PROBE = '\nimport errno, os, subprocess, sys, threading\nfrom pathlib import Path\nsys.path.insert(0, sys.argv[1])\n__import__(\'src.module-loader\'); __import__(\'src.module-loader\'); import maximum_isolated_renderer as renderer\ncontext = renderer._renderer_sandbox_context(\n    Path(renderer.__file__).resolve().with_name("maximum-render-worker.py")\n)\nrenderer.apply_renderer_sandbox(context)\n\ndef denied(error):\n    return error.errno in (errno.EPERM, errno.EACCES, errno.ENOSYS)\n\ndef check_fork():\n    try:\n        pid = os.fork()\n    except OSError as error:\n        return denied(error)\n    if pid == 0:\n        os._exit(0)\n    os.waitpid(pid, 0)\n    return False\n\ndef check_popen():\n    try:\n        child = subprocess.Popen(["/usr/bin/true"], close_fds=True)\n    except OSError as error:\n        return denied(error)\n    child.wait(timeout=2)\n    return False\n\ndef check_posix_spawn():\n    try:\n        pid = os.posix_spawn("/usr/bin/true", ["/usr/bin/true"], {})\n    except OSError as error:\n        return denied(error)\n    os.waitpid(pid, 0)\n    return False\n\ndef check_thread():\n    finished = []\n    worker = threading.Thread(target=lambda: finished.append(True))\n    worker.start()\n    worker.join(timeout=2)\n    return finished == [True] and not worker.is_alive()\n\nif all((check_fork(), check_popen(), check_posix_spawn(), check_thread())):\n    raise SystemExit(0)\nraise SystemExit(41)\n'
 
-def denied(error):
-    return error.errno in (errno.EPERM, errno.EACCES, errno.ENOSYS)
 
-def check_fork():
-    try:
-        pid = os.fork()
-    except OSError as error:
-        return denied(error)
-    if pid == 0:
-        os._exit(0)
-    os.waitpid(pid, 0)
-    return False
 
-def check_popen():
-    try:
-        child = subprocess.Popen(["/usr/bin/true"], close_fds=True)
-    except OSError as error:
-        return denied(error)
-    child.wait(timeout=2)
-    return False
 
-def check_posix_spawn():
-    try:
-        pid = os.posix_spawn("/usr/bin/true", ["/usr/bin/true"], {})
-    except OSError as error:
-        return denied(error)
-    os.waitpid(pid, 0)
-    return False
 
-def check_thread():
-    finished = []
-    worker = threading.Thread(target=lambda: finished.append(True))
-    worker.start()
-    worker.join(timeout=2)
-    return finished == [True] and not worker.is_alive()
 
-if all((check_fork(), check_popen(), check_posix_spawn(), check_thread())):
-    raise SystemExit(0)
-raise SystemExit(41)
-'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class MaximumChildProcessRestrictionTests(unittest.TestCase):
@@ -134,10 +139,10 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
     def test_macos_renderer_command_uses_combined_restriction_profile(self):
         context = {
             "python": str(Path(sys.executable).resolve()),
-            "worker": str((ROOT / "maximum_render_worker.py").resolve()),
-            "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
-            "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
-            "renderer_support": str((ROOT / "maximum_isolated_renderer.py").resolve()),
+            "worker": str((ROOT / "src/protection/maximum-render-worker.py").resolve()),
+            "worker_support": str((ROOT / "src/protection/maximum-isolated-worker.py").resolve()),
+            "network_support": str((ROOT / "src/protection/maximum-network-isolation.py").resolve()),
+            "renderer_support": str((ROOT / "src/protection/maximum-isolated-renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
         }
@@ -150,7 +155,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
             patch.object(renderer, "_renderer_sandbox_context", return_value=context),
         ):
             command = renderer._renderer_command(
-                ROOT / "maximum_render_worker.py", 0,
+                ROOT / "src/protection/maximum-render-worker.py", 0,
             )
         self.assertEqual(command, (
             context["python"], "-I", "-B", context["worker"], "0",
@@ -163,7 +168,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertNotIn("(allow file-write", profile)
         for _key, parameter, _filename in renderer.RENDERER_LIMIT_SUPPORT:
             self.assertIn('(literal (param "' + parameter + '"))', profile)
-        worker_source = (ROOT / "maximum_render_worker.py").read_text(encoding="utf-8")
+        worker_source = (ROOT / "src/protection/maximum-render-worker.py").read_text(encoding="utf-8")
         self.assertLess(worker_source.index("apply_renderer_sandbox(context)"),
                         worker_source.index("document_bytes = sys.stdin.buffer.read"))
 
@@ -207,7 +212,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
         self.assertEqual(str(error.exception), isolation.CHILD_PROCESS_BLOCK_MESSAGE)
 
     def test_restriction_is_installed_before_pdf_read_and_renderer_import(self):
-        source = (ROOT / "maximum_render_worker.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/protection/maximum-render-worker.py").read_text(encoding="utf-8")
         for restriction in ("apply_linux_child_process_denial()", "apply_renderer_sandbox(context)"):
             with self.subTest(restriction=restriction):
                 position = source.index(restriction)
@@ -215,9 +220,11 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
                 self.assertLess(position, source.index("import pymupdf"))
 
     def test_installed_scanner_and_nonselectable_profile_are_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_network_isolation", scanner)
+        self.assertNotIn("maximum-network-isolation", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

@@ -7,7 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text(encoding="utf-8")
 SHARED = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(encoding="utf-8")
-SCANNER = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+SCANNER = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
 
@@ -39,10 +39,10 @@ class ProtectionChoicePersistenceTests(unittest.TestCase):
         self.assertIn("choosing a card does not enable it", VIEW)
 
     def test_real_restart_regression_is_required_in_macos_ci(self):
-        self.assertIn("test-protection-choice-restart.swift", CI)
+        self.assertIn("tests/protection/choice-restart.swift", CI)
         self.assertIn("tests/protection/choice-persistence.py -v", CI)
-        self.assertIn("test-protection-choice-restart.swift", "\n".join(
-            p.name for p in ROOT.glob("test-protection-choice-restart.swift")))
+        self.assertIn("tests/protection/choice-restart.swift", "\n".join(
+            p.relative_to(ROOT).as_posix() for p in ROOT.glob("tests/protection/choice-restart.swift")))
 
 
 if __name__ == "__main__":

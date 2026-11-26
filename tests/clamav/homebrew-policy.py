@@ -5,8 +5,8 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
-SCANNER = ROOT / "scan-and-open.py"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
+SCANNER = ROOT / "src/scan/scan-and-open.py"
 DECISION = ROOT / "docs/clamav-homebrew-decision.md"
 README = ROOT / "README.md"
 
@@ -32,8 +32,8 @@ class HomebrewDependencyDecisionTests(unittest.TestCase):
         self.assertIn(command, fallback)
         self.assertEqual(source.count(command), 1)
         self.assertNotIn(command, source[:start])
-        self.assertIn("scripts/detect_homebrew.py", fallback)
-        self.assertLess(fallback.index("scripts/detect_homebrew.py"),
+        self.assertIn("scripts/detect-homebrew.py", fallback)
+        self.assertLess(fallback.index("scripts/detect-homebrew.py"),
                         fallback.index(command))
 
     def test_non_homebrew_installs_use_the_same_fail_closed_scan_gate(self):

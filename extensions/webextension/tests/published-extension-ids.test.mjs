@@ -3,7 +3,7 @@ import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { validatePublishedExtensionIds, verifyFromFiles } from "../../../scripts/verify_published_extension_ids.mjs";
+import { validatePublishedExtensionIds, verifyFromFiles } from "../../../scripts/verify-published-extension-ids.mjs";
 
 const chromeId = "abcdefghijklmnopabcdefghijklmnop";
 const edgeId = "ponmlkjihgfedcbaponmlkjihgfedcba";

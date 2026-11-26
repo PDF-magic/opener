@@ -34,11 +34,11 @@ These are **delivery** properties, not substitutes for scanner safety.
    against a private staged database, validates before promotion and
    preserves the usable live definitions on failure. Do not replace it with
    bundled signature snapshots.
-3. `scripts/package_application_helpers.py` stages only its reviewed native
+3. `scripts/package-application-helpers.py` stages only its reviewed native
    helper allowlist. The separate `PDFOpener` scan-handler bundle, ClamAV,
    FreshClam and `pypdf` are **not** inside this helper package. This
    is not a signed/notarized release installer.
-4. `requirements-enhanced-pdf.txt` is an optional pinned CI/parser dependency,
+4. `requirements/requirements-enhanced-pdf.txt` is an optional pinned CI/parser dependency,
    not part of the installed Built-in scan path. It grants no permission to
    select Enhanced/Maximum or to skip a mandatory engine.
 
@@ -62,8 +62,8 @@ The Homebrew *default installation route* decision is opener-0957
 detection is separately opener-0954 (PR #641). This evaluation does not
 reimplement those decisions or modify the installer or runtime.
 
-Supporting implementation: `install-allow-and-open.sh`,
+Supporting implementation: `scripts/installation/install-allow-and-open.sh`,
 `scan-and-open.py`, `update-malware-signatures.sh`,
-`scripts/package_application_helpers.py`,
-`requirements-enhanced-pdf.txt` and
+`scripts/package-application-helpers.py`,
+`requirements/requirements-enhanced-pdf.txt` and
 `docs/protection/profile-dependencies.md`.

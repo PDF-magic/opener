@@ -8,8 +8,8 @@ Each callback returns the original matching `StageAnalysis`; the timer does
 not modify the result or swallow errors.
 
 ```python
-from enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-from enhanced_analysis_timing import AdditionalAnalysisTimer
+from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
+from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
 
 timer = AdditionalAnalysisTimer((AnalysisStage.pdfStructure,))
 result = timer.measure(
@@ -31,7 +31,7 @@ readings fail closed. Exception messages, PDF content, paths, URLs and
 filenames are never included in timing reports.
 
 The observer does not enforce the planned stage budgets in
-`protection_stage_time_limits.py`, start security scans, persist or reset
+`src/protection/protection-stage-time-limits.py`, start security scans, persist or reset
 preferences, select Enhanced, clear quarantine, or authorize opening. Even a
 complete measurement is **not** evidence that the PDF is clean. A future,
 independently reviewed production orchestrator must decide which inspections

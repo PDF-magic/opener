@@ -1,6 +1,6 @@
 # External PDF launch action inspection (opener-0288)
 
-The standalone Enhanced inspection module `pdf_external_launch_actions.py` uses
+The standalone Enhanced inspection module `src/pdf/pdf-external-launch-actions.py` uses
 strict parsing with maintained `pypdf==5.9.0` on immutable in-memory PDF bytes.
 It identifies PDF actions capable of launching local programs or opening other
 resources: `/Launch`, remote `/GoToR`, embedded `/GoToE`, `/URI`,

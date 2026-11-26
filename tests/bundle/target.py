@@ -54,7 +54,7 @@ class BundleTargetTests(unittest.TestCase):
             make_app("PDFOpener", "local.studio.brave-pdf-opener")
             pdf = root / "local document.PDF"
             pdf.write_bytes(b"%PDF-1.4\\n")
-            source = (Path(__file__).resolve().parents[2] / "launch-scanned-file.swift").read_text()
+            source = (Path(__file__).resolve().parents[2] / "src/native/launch/launch-scanned-file.swift").read_text()
             prelude, marker, _ = source.partition(
                 "guard launch(Array(CommandLine.arguments.dropFirst())) else {"
             )

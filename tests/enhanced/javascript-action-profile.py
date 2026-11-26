@@ -14,25 +14,32 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
-from enhanced_analysis_findings import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity, StageAnalysis,
     StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_blocking_policy import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_blocking_policy import (
     BlockingDisposition, determine_blocking_findings,
 )
-from pdf_javascript_actions import (
+__import__('src.module-loader')
+from src.pdf.pdf_javascript_actions import (
     PDFJavaScriptInspectionError, inspect_pdf_javascript_actions,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     ControlAvailability, FailureDisposition, PROTECTION_POLICIES,
     PolicyControl,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -112,7 +119,7 @@ class EnhancedJavaScriptActionProfileTests(unittest.TestCase):
         self.assertEqual(resolve_effective_policy().profile_id, "built-in")
         self.assertNotIn(
             "pdf_javascript_actions",
-            (ROOT / "scan-and-open.py").read_text(encoding="utf-8"),
+            (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8"),
         )
 
     def test_modeled_active_content_finding_requires_review_not_opening(self):

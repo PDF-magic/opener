@@ -41,7 +41,7 @@ jobs:
           python-version: "3.11"
       - name: Compile native progress UI and verify the SwiftUI integration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
       - name: Verify the real macOS deny-by-default filesystem sandbox
         run: PYTHONPATH=. python3 tests/maximum/filesystem-sandbox.py -v
@@ -55,9 +55,9 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
-          import maximum_isolated_renderer as renderer
+          __import__('src.module-loader'); import maximum_isolated_renderer as renderer
 
-          worker = Path(renderer.__file__).resolve().with_name("maximum_render_worker.py")
+          worker = Path(renderer.__file__).resolve().with_name("maximum-render-worker.py")
           try:
               command = list(renderer._renderer_command(worker, 0))
           except renderer.MaximumPDFRenderError:
@@ -67,7 +67,7 @@ jobs:
               "import resource, sys",
               "sys.path.insert(0, " + repr(str(worker.parent)) + ")",
               "try:",
-              "    from maximum_isolated_worker import _apply_limits",
+              "    __import__('src.module-loader'); from maximum_isolated_worker import _apply_limits",
               "except BaseException:",
               "    print('probe-import-failed', flush=True)",
               "    raise SystemExit(2)",
@@ -107,7 +107,7 @@ jobs:
               print("probe_execution=failed")
           PY
       - name: Compile the CoreGraphics PDF sanitizer used by the handoff tests
-        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+        run: swiftc -O src/sanitization/maximum-sanitized-copy.swift -o maximum-sanitized-copy
       - name: Verify native raster conversion, page fidelity and active-content removal
         run: |
           PYTHONPATH=. python3 tests/maximum/sanitized-copy.py -v

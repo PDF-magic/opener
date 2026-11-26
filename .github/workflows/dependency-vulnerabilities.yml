@@ -26,10 +26,10 @@ jobs:
           python-version: "3.11"
       - name: Verify reviewed pins and audit fail-closed handling
         run: |
-          python3 scripts/check_dependency_licenses.py
+          python3 scripts/check-dependency-licenses.py
           PYTHONPATH=. python3 tests/general/dependency-vulnerabilities.py -v
       - name: Generate complete manifests from reviewed CI pins
-        run: python3 scripts/dependency_vulnerability_audit.py manifest --output-dir "$RUNNER_TEMP/dependency-audit"
+        run: python3 scripts/dependency-vulnerability-audit.py manifest --output-dir "$RUNNER_TEMP/dependency-audit"
       - name: Block on known vulnerabilities in current Enhanced parser dependency
         shell: bash
         run: |
@@ -39,7 +39,7 @@ jobs:
             --format json --output "$RUNNER_TEMP/dependency-audit/current.json"
           status=$?
           set -e
-          python3 scripts/dependency_vulnerability_audit.py verify \
+          python3 scripts/dependency-vulnerability-audit.py verify \
             --kind current --report "$RUNNER_TEMP/dependency-audit/current.json" --status "$status"
       - name: Block on known vulnerabilities in the pinned PyMuPDF renderer
         shell: bash
@@ -52,7 +52,7 @@ jobs:
             --format json --output "$RUNNER_TEMP/dependency-audit/renderer.json"
           status=$?
           set -e
-          python3 scripts/dependency_vulnerability_audit.py verify \
+          python3 scripts/dependency-vulnerability-audit.py verify \
             --kind renderer --report "$RUNNER_TEMP/dependency-audit/renderer.json" --status "$status"
       - name: Report pre-existing vulnerabilities in legacy CI-only test pins
         shell: bash
@@ -63,5 +63,5 @@ jobs:
             --format json --output "$RUNNER_TEMP/dependency-audit/legacy.json"
           status=$?
           set -e
-          python3 scripts/dependency_vulnerability_audit.py verify \
+          python3 scripts/dependency-vulnerability-audit.py verify \
             --kind legacy --report "$RUNNER_TEMP/dependency-audit/legacy.json" --status "$status"

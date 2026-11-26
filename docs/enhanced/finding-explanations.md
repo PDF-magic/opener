@@ -34,11 +34,11 @@ minimum response and rejects downgraded or inconsistent results.
 Example (once the structured findings contract is available):
 
 ```python
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StageAnalysis, StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_finding_explanations import explain_analysis_findings
+from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 
 source = StructuredAnalysisFindings(
     (AnalysisStage.embeddedUrls,),

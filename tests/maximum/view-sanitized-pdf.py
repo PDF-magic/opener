@@ -6,10 +6,13 @@ import stat
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from maximum_sanitized_copy import (
     CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN, SanitizedCopyOffer,
 )
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
+__import__('src.module-loader')
 import maximum_view_sanitized_pdf as view
 
 
@@ -146,11 +149,12 @@ class SanitizedPDFViewTests(unittest.TestCase):
 
     def test_installed_handler_unchanged_and_real_gate_is_reused(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text()
-        handoff = (root / "maximum_safe_copy_handoff.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
+        handoff = (root / "src/sanitization/maximum-safe-copy-handoff.py").read_text()
         self.assertIn("def scan_and_open_generated_copy(item, offer):", scanner)
         self.assertIn("module.scan_and_open_generated_copy(str(path), offer)", handoff)
         self.assertNotIn("maximum_view_sanitized_pdf", scanner)
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

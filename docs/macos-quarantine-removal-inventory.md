@@ -10,13 +10,13 @@ third-party applications, compiled external binaries, or untracked local files.
 
 | Location | Call or operation | Effect | Classification |
 | --- | --- | --- | --- |
-| [`scan-and-open.py`, `remove_quarantine(path)`](../scan-and-open.py) | Definition near line 759 | Its only executable statement is `return None`; no subprocess, xattr change, or filesystem mutation | **Inert compatibility hook** |
-| [`scan-and-open.py`, `scan_and_open`](../scan-and-open.py) | `remove_quarantine(path)` call near line 997 | Invokes inert hook after destination verification, before another integrity check and safe launch | **One call to inert hook; not a removal** |
+| [`scan-and-open.py`, `remove_quarantine(path)`](../src/scan/scan-and-open.py) | Definition near line 759 | Its only executable statement is `return None`; no subprocess, xattr change, or filesystem mutation | **Inert compatibility hook** |
+| [`scan-and-open.py`, `scan_and_open`](../src/scan/scan-and-open.py) | `remove_quarantine(path)` call near line 997 | Invokes inert hook after destination verification, before another integrity check and safe launch | **One call to inert hook; not a removal** |
 | [`tests/general/retain-os-quarantine.py`](../tests/general/retain-os-quarantine.py) | Negative assertions against `os.removexattr`/`xattr`; macOS-only `os.setxattr`/`os.getxattr` | Tests that tagged PDFs retain their extended attribute after fresh, cached, and blocked scans | **Test assertions and fixture setup, not production deletion** |
-| [`maximum_sanitized_copy.py`](../maximum_sanitized_copy.py) | `preserve_quarantine` policy | Declares that future sanitized output must preserve quarantine | **Preservation contract, not a removal** |
+| [`maximum-sanitized-copy.py`](../src/sanitization/maximum-sanitized-copy.py) | `preserve_quarantine` policy | Declares that future sanitized output must preserve quarantine | **Preservation contract, not a removal** |
 
-The [`allow-and-open.sh`](../allow-and-open.sh) entry point delegates to the
-scanner. The [`install-allow-and-open.sh`](../install-allow-and-open.sh)
+The [`allow-and-open.sh`](../src/scan/allow-and-open.sh) entry point delegates to the
+scanner. The [`scripts/installation/install-allow-and-open.sh`](../scripts/installation/install-allow-and-open.sh)
 installer deploys the scanner and native components. Neither of these inspected
 shell entry points strips `com.apple.quarantine`. Keep the legacy hook for
 compatibility; do not delete it in an inventory-only change.
@@ -26,7 +26,7 @@ compatibility; do not delete it in an inventory-only change.
 Run from the repository root:
 
 ```sh
-python3 tools/audit_quarantine_removal.py
+python3 tools/audit-quarantine-removal.py
 PYTHONPATH=. python3 tests/general/quarantine-removal-inventory.py -v
 PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
 ```

@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
-  "chromium_extension_api_watch", ROOT / "scripts/chromium_extension_api_watch.py"
+  "chromium_extension_api_watch", ROOT / "scripts/chromium-extension-api-watch.py"
 )
 watch = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(watch)

@@ -12,12 +12,12 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKAGE = ROOT / "scripts/package_application_helpers.py"
+PACKAGE = ROOT / "scripts/package-application-helpers.py"
 spec = importlib.util.spec_from_file_location("package_application_helpers", PACKAGE)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
 PROJECT = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
 
 
@@ -177,8 +177,8 @@ class PackagedHelperTests(unittest.TestCase):
 
   def test_ci_builds_and_verifies_staged_app_without_mutating_xcode_app(self):
     self.assertIn("tests/general/application-helper-packaging.py -v", CI)
-    self.assertIn("scripts/package_application_helpers.py --app", CI)
-    self.assertIn("scripts/package_application_helpers.py --verify", CI)
+    self.assertIn("scripts/package-application-helpers.py --app", CI)
+    self.assertIn("scripts/package-application-helpers.py --verify", CI)
     self.assertIn("scanner-tests:", CI)
     self.assertIn("macos-build:", CI)
 

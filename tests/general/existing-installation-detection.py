@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-DETECTOR = ROOT / "scripts/detect_existing_installations.py"
+DETECTOR = ROOT / "scripts/detect-existing-installations.py"
 spec = importlib.util.spec_from_file_location("existing_installations", DETECTOR)
 detector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(detector)
@@ -90,7 +90,7 @@ class ExistingInstallationDetectionTests(unittest.TestCase):
         self.assertTrue(app.is_dir())
 
     def test_ids_match_current_repository_metadata(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         project = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text()
         self.assertIn("local.studio.brave-pdf-opener", installer)
         self.assertIn("local.studio.pdfmagicopener.swiftui", project)

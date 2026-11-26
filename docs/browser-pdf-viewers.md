@@ -24,7 +24,7 @@ no browser integration is currently active.
 | Mozilla Firefox | `org.mozilla.firefox` | Built-in **PDF.js** reader rather than Chromium's viewer; supports forms, text/drawing annotations, highlights, and visible signature marks. |
 | Apple Safari | `com.apple.Safari` | PDF display in Safari's macOS interface; **Preview** is a separate app for more extensive Markup and page rearrangement. |
 
-The canonical, machine-readable [supported browser registry](../browser_registry.py)
+The canonical, machine-readable [supported browser registry](../src/browser/browser-registry.py)
 keeps these bundle identifiers consistent across the launcher and its tests.
 It is a catalog, not an installation check or an allowlist; verified custom
 applications remain configurable.
@@ -62,11 +62,11 @@ and installing updates does not overwrite an existing user selection.
 
 The **ClamAV verdict, file-integrity, quarantine, and local-file-availability
 gates** apply regardless of browser. The
-[PDF target verifier](../verify-pdf-target.swift) requires the selected
+[PDF target verifier](../src/native/launch/verify-pdf-target.swift) requires the selected
 application to be registered for PDF opening or satisfy a **specific verified
 exception**. Some browsers display PDFs without macOS PDF-handler registration,
 but a built-in viewer alone cannot bypass verification. The
-[native launcher](../launch-scanned-file.swift) additionally checks the
+[native launcher](../src/native/launch/launch-scanned-file.swift) additionally checks the
 installed application's identity and executable. Failed verification must
 stop opening, **not fall back** to an unchecked handler or invoke the opener
 recursively.

@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-HELPER = ROOT / "scripts/confirm_clamav_install.py"
+HELPER = ROOT / "scripts/confirm-clamav-install.py"
 spec = importlib.util.spec_from_file_location("confirm_clamav_install", HELPER)
 approval = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(approval)
@@ -62,7 +62,7 @@ class InstallationConsentTests(unittest.TestCase):
         with patch("builtins.open", side_effect=OSError("no controlling tty")):
             self.assertFalse(approval.confirm_installation())
         with patch("builtins.open", side_effect=OSError), \
-                patch.object(sys, "argv", ["confirm_clamav_install.py"]):
+                patch.object(sys, "argv", ["confirm-clamav-install.py"]):
             with patch.object(sys, "stderr", io.StringIO()) as diagnostic:
                 self.assertEqual(approval.main(), 1)
         self.assertIn("not authorized", diagnostic.getvalue().lower())
@@ -83,36 +83,36 @@ class InstallationConsentTests(unittest.TestCase):
                 self.assertNotIn(forbidden, source)
 
     def test_root_rejected_before_all_installer_operations(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         root_guard = source.index('if [ "$EUID" -eq 0 ]; then')
         self.assertLess(root_guard, source.index('script_dir='))
         self.assertIn("Do not run the PDF Magic Opener installer as root", source)
         self.assertNotIn("sudo ", source.split("\n", 1)[-1].split("script_dir=", 1)[1])
 
     def test_brew_is_gated_by_existing_binary_check_and_real_consent(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         start = source.index("if ! [ -x /opt/homebrew/bin/clamscan ]")
         end = source.index("\nfi", start)
         fallback = source[start:end]
         self.assertIn("[ -x /usr/local/bin/clamscan ]", fallback)
         self.assertIn("[ -x /usr/local/clamav/bin/clamscan ]", fallback)
-        consent = 'python3 "$script_dir/scripts/confirm_clamav_install.py"'
+        consent = 'python3 "$script_dir/scripts/confirm-clamav-install.py"'
         self.assertIn(consent, fallback)
         command = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
         self.assertIn(command, fallback)
-        self.assertIn("scripts/detect_homebrew.py", fallback)
-        self.assertLess(fallback.index("scripts/detect_homebrew.py"), fallback.index(consent))
+        self.assertIn("scripts/detect-homebrew.py", fallback)
+        self.assertLess(fallback.index("scripts/detect-homebrew.py"), fallback.index(consent))
         self.assertLess(fallback.index(consent), fallback.index(command))
         self.assertEqual(source.count(command), 1)
         self.assertNotIn(command, source[:start])
 
     def test_normal_installer_path_and_scan_gates_remain_present(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         for anchor in (
-            'migration_attempt="$(python3 "$script_dir/scripts/migration_state.py"',
-            'python3 "$script_dir/existing_signature_database.py"',
-            'python3 "$script_dir/offer-restore-pdf-handler.py"',
+            'migration_attempt="$(python3 "$script_dir/scripts/migration-state.py"',
+            'python3 "$script_dir/scripts/installation/existing-signature-database.py"',
+            'python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"',
         ):
             self.assertIn(anchor, installer)
         self.assertIn("require_supported_scanner_version(scanner)", scanner)

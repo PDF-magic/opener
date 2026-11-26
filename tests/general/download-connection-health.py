@@ -66,9 +66,9 @@ class DownloadConnectionHealthTests(unittest.TestCase):
   def test_ci_executes_native_contract_in_addition_to_source_guard(self):
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("tests/general/download-connection-health.py -v", workflow)
-    self.assertIn("test-download-connection-health.swift", workflow)
+    self.assertIn("tests/download/connection-health.swift", workflow)
     self.assertIn(
-        "PDFMagicOpenerApp/ScanProgressPreference.swift test-download-connection-health.swift",
+        "PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/connection-health.swift",
         workflow,
     )
 

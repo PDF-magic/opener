@@ -67,7 +67,7 @@ From the repository root:
 ```sh
 PYTHONPATH=. python3 tests/general/open-quarantined-pdf.py -v
 PYTHONPATH=. python3 tests/general/retain-os-quarantine.py -v
-python3 tools/audit_quarantine_removal.py
+python3 tools/audit-quarantine-removal.py
 ```
 
 The focused test is an explicit step in both Ubuntu `scanner-tests`

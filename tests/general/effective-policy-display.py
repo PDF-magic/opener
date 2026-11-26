@@ -6,11 +6,14 @@ from pathlib import Path
 import re
 import unittest
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import BASELINE_CONTROLS, FailureDisposition
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -90,7 +93,7 @@ class EffectivePolicyDisplayTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, disclosure)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("ExactEffectiveScanPolicy", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
 

@@ -8,15 +8,19 @@ import unittest
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject, NullObject
 
-from pdf_object_relationships import (
+__import__('src.module-loader')
+from src.pdf.pdf_object_relationships import (
     MAX_RELATIONSHIP_DEPTH, PDFObjectRelationshipError,
     inspect_pdf_object_relationships,
 )
+__import__('src.module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_RECURSION_DEPTH, PDFStructure, parse_pdf_structure,
 )
-from reference_pdf_collection import REFERENCE_PDFS
-from deep_object_reference_corpus import (
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.deep_object_reference_corpus import (
     DEEP_OBJECT_REFERENCE_DEPTH, SECURITY_REFERENCE_PDFS,
     _deeply_nested_object_references_pdf,
 )
@@ -84,7 +88,7 @@ class DeepObjectReferenceCorpusTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/deep-object-references.yml").read_text(encoding="utf-8")
         self.assertIn("PYTHONPATH=. python3 tests/pdf/deep-object-references.py -v",
                       workflow)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("SECURITY_REFERENCE_PDFS", scanner)
 
 

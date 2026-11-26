@@ -16,14 +16,20 @@ from pypdf.generic import (
     TextStringObject,
 )
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-from pdf_form_actions import inspect_pdf_form_actions
+__import__('src.module-loader')
+from src.pdf.pdf_form_actions import inspect_pdf_form_actions
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure
-from pdf_xfa_forms import inspect_pdf_xfa_forms
+__import__('src.module-loader')
+from src.pdf.pdf_xfa_forms import inspect_pdf_xfa_forms
+__import__('src.module-loader')
 from protection_policy_definitions import PROTECTION_POLICIES
+__import__('src.module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
 
 
@@ -132,7 +138,7 @@ class EnhancedLegitimateFormTests(unittest.TestCase):
             resolve_effective_policy({SELECTED_PROFILE_KEY: "enhanced"})
 
         # Neither passive inspection module is part of the deployed open gate.
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_form_actions", gate)
         self.assertNotIn("pdf_xfa_forms", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)

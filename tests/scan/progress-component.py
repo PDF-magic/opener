@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-COMPONENT = (Path(__file__).resolve().parents[2] / "scan-progress-view.swift")
+COMPONENT = (Path(__file__).resolve().parents[2] / "src/scan/scan-progress-view.swift")
 
 
 class ScanProgressComponentTests(unittest.TestCase):
@@ -21,7 +21,7 @@ class ScanProgressComponentTests(unittest.TestCase):
         # PDF raster dependencies that are not installed for native UI tests.
         import ast
 
-        module = ast.parse(COMPONENT.with_name("maximum_sanitized_copy.py").read_text())
+        module = ast.parse((COMPONENT.parents[2] / "src/sanitization/maximum-sanitized-copy.py").read_text())
         kinds = next(
             node for node in module.body
             if isinstance(node, ast.ClassDef) and node.name == "SanitizerFailureKind"
@@ -59,7 +59,7 @@ class ScanProgressComponentTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="opener-scan-progress-") as directory:
             root = Path(directory)
             (root / "twilight-reading.png").write_bytes(
-                (Path(__file__).resolve().parents[2] / "twilight-reading.png").read_bytes())
+                (Path(__file__).resolve().parents[2] / "src/scan/twilight-reading.png").read_bytes())
             harness = root / "test.swift"
             harness.write_text(source + """
 let app = NSApplication.shared

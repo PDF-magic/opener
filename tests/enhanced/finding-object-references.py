@@ -5,12 +5,14 @@ from pathlib import Path
 import json
 import unittest
 
-from enhanced_analysis_findings import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     MAX_PDF_OBJECT_GENERATION, StageAnalysis, StageOutcome,
     StructuredAnalysisFindings,
 )
-from enhanced_finding_explanations import explain_analysis_findings
+__import__('src.module-loader')
+from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -87,7 +89,7 @@ class FindingObjectReferenceTests(unittest.TestCase):
         output = finding.to_dict()
         output["objectReference"]["generationNumber"] = 65535
         self.assertEqual(finding.to_dict()["objectReference"]["generationNumber"], 0)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )

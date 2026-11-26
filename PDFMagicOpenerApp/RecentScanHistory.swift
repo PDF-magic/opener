@@ -3,7 +3,7 @@ import Darwin
 import SQLite3
 
 // Read-only presentation of the optional metadata store defined by
-// scan_history_metadata.py. Never open a document, infer a successful launch
+// scan-history-metadata.py. Never open a document, infer a successful launch
 // from a clean verdict, or create a database merely to populate the UI.
 struct RecentScanHistoryRow: Identifiable {
   let id: Int64

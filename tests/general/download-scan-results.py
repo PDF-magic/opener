@@ -50,7 +50,7 @@ class DownloadScanResultsTests(unittest.TestCase):
     self.assertIn('"optional_permissions": [', shared)
     self.assertNotIn('"downloads.open"', shared)
     self.assertTrue(background.strip().endswith("void 0;"))
-    scanner = (ROOT / "scan-and-open.py").read_text()
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
     self.assertIn("ClamAV", scanner)
 
 if __name__ == "__main__":

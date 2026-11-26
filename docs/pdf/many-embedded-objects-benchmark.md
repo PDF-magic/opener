@@ -10,10 +10,10 @@ unreachable fake objects. The fixture is under the 16 MiB structural parser
 input limit, the 4,096-object inspection limit, and the 32-attachment ceiling.
 No fetched or private PDF is ever processed.
 
-From the repository root with `requirements-enhanced-pdf.txt` installed:
+From the repository root with `requirements/requirements-enhanced-pdf.txt` installed:
 
 ```sh
-PYTHONPATH=. python3 many_embedded_objects_benchmark.py --samples 5
+PYTHONPATH=. python3 benchmarks/many-embedded-objects-benchmark.py --samples 5
 ```
 
 The script creates the exact same bytes before timing and performs one

@@ -16,18 +16,21 @@ import time
 import unittest
 from unittest.mock import patch
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, FailureDisposition, PolicyControl,
     protection_policy_definition,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("parity_scanner", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("parity_scanner", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 

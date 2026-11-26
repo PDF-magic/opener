@@ -9,8 +9,10 @@ import zlib
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -121,10 +123,10 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
         )
 
   def test_parser_is_passive_and_ci_executes_real_fixture_tests(self):
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    module = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
-    relationships = (ROOT / "pdf_object_relationships.py").read_text(
+    module = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
+    relationships = (ROOT / "src/pdf/pdf-object-relationships.py").read_text(
       encoding="utf-8"
     )
     self.assertNotIn("pdf_structure_parser", scanner)
@@ -134,7 +136,7 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
     self.assertIn("strict=True", module)
     self.assertIn("MAX_STRUCTURE_INPUT_BYTES", module)
     self.assertIn("python3 tests/pdf/cross-reference-parsing.py -v", workflow)
-    self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
+    self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt", workflow)
 
 
 if __name__ == "__main__":

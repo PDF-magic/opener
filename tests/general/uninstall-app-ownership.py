@@ -12,10 +12,11 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+__import__('src.module-loader')
 from verify_pdf_opener_bundle import METADATA
 
 spec = importlib.util.spec_from_file_location(
-  "verify_uninstall_app", ROOT / "scripts/verify_uninstall_app.py")
+  "verify_uninstall_app", ROOT / "scripts/verify-uninstall-app.py")
 check = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check)
 
@@ -107,11 +108,11 @@ class UninstallOwnershipTests(unittest.TestCase):
     self.assert_unrelated_untouched()
 
   def test_no_broad_removal_and_documented_ci_gate(self):
-    source = (ROOT / "scripts/verify_uninstall_app.py").read_text()
+    source = (ROOT / "scripts/verify-uninstall-app.py").read_text()
     for forbidden in ("unlink(", "rmtree(", "shutil.move(", "os.remove(", "rm -rf"):
       self.assertNotIn(forbidden, source)
     guide = (ROOT / "docs/uninstall-procedure.md").read_text()
-    self.assertIn("python3 scripts/verify_uninstall_app.py", guide)
+    self.assertIn("python3 scripts/verify-uninstall-app.py", guide)
     self.assertIn("read-only", guide.lower())
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("python3 tests/general/uninstall-app-ownership.py -v", ci)

@@ -10,8 +10,8 @@ APP = ROOT / "PDFMagicOpenerApp"
 ENTRY = APP / "PDFMagicOpenerApp.swift"
 GENERAL = APP / "GeneralSettingsView.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
-INSTALLER = ROOT / "install-allow-and-open.sh"
-SCANNER = ROOT / "brave-pdf-opener.swift"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
+SCANNER = ROOT / "src/native/launch/brave-pdf-opener.swift"
 DOC = ROOT / "docs" / "launch-at-login-decision.md"
 
 
@@ -54,12 +54,12 @@ class LaunchAtLoginDecisionTests(unittest.TestCase):
     self.assertIn("'CFBundleIdentifier': 'local.studio.brave-pdf-opener'", installer)
     self.assertIn("'LSItemContentTypes': ['com.adobe.pdf']", installer)
     self.assertIn("'CFBundleExecutable': 'PDFOpener'", installer)
-    migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+    migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
     self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
     self.assertIn('"StartInterval": 14400', migrator)
     self.assertIn('"RunAtLoad": True', migrator)
     self.assertIn('"update-malware-signatures.sh"', migrator)
-    self.assertIn('python3 "$script_dir/scripts/migrate_update_agent.py"', installer)
+    self.assertIn('python3 "$script_dir/scripts/migrate-update-agent.py"', installer)
     # Do not mistake the updater agent for a preferences login item.
     self.assertNotIn("pdfmagicopener.swiftui", migrator)
     self.assertNotIn("PDFMagicOpenerApp", migrator)

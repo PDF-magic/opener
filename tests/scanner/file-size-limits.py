@@ -4,6 +4,7 @@
 import unittest
 from pathlib import Path
 
+__import__('src.module-loader')
 from scanner_argument_validation import (
     InvalidScannerArguments,
     validate_scanner_arguments,
@@ -117,8 +118,8 @@ class ScannerFileSizeLimitTests(unittest.TestCase):
 
     def test_runtime_gate_and_ci_use_validator(self):
         root = Path(__file__).resolve().parents[2]
-        source = (root / "scan-and-open.py").read_text()
-        validator = (root / "scanner_argument_validation.py").read_text()
+        source = (root / "src/scan/scan-and-open.py").read_text()
+        validator = (root / "src/scanner/scanner-argument-validation.py").read_text()
         workflow = (root / ".github/workflows/ci.yml").read_text()
         self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", source)
         self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", validator)

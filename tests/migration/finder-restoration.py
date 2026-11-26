@@ -11,7 +11,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from restore_finder_quick_action import FIXED_COMMAND, restore_finder_action, RestorationRefused
+__import__('src.module-loader')
+from scripts.installation.restore_finder_quick_action import FIXED_COMMAND, restore_finder_action, RestorationRefused
 
 
 class FinderRestorationTests(unittest.TestCase):
@@ -46,7 +47,7 @@ class FinderRestorationTests(unittest.TestCase):
 
     def cli(self, *options):
         return subprocess.run(
-            [sys.executable, str(ROOT / "restore_finder_quick_action.py"),
+            [sys.executable, str(ROOT / "scripts/installation/restore-finder-quick-action.py"),
              "--home", str(self.home), *options],
             text=True, capture_output=True, timeout=5
         )

@@ -22,6 +22,6 @@ success state based on the “Enable Browser Download Monitoring” preference.
 Regression coverage: `tests/general/browser-integration-test.py` verifies
 that the action is explicit and accessibility-labeled, remains isolated from
 native scanning and permissions, and has CI coverage.
-`test-browser-integration.swift` verifies the compiled diagnostic model
+`tests/browser/integration.swift` verifies the compiled diagnostic model
 for absent, partial and complete discovery and proves that a saved opt-in
 cannot turn an unavailable integration into a success.

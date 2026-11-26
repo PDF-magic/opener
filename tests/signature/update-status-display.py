@@ -46,7 +46,7 @@ class SignatureStatusDisplayTests(unittest.TestCase):
         for prohibited in (
             "Process(", "URLSession", "downloadTask", "UserDefaults",
             "freshclam --", "write(to:", "removeItem", "createFile",
-            "subprocess", "clamscan(", "signature_update_status.py",
+            "subprocess", "clamscan(", "signature-update-status.py",
         ):
             with self.subTest(prohibited=prohibited):
                 self.assertNotIn(prohibited, reader)
@@ -58,17 +58,17 @@ class SignatureStatusDisplayTests(unittest.TestCase):
         self.assertIn("B38000000000000000000002,", project)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/signature/update-status-display.py -v", ci)
-        self.assertIn("test-signature-update-status.swift", ci)
+        self.assertIn("tests/signature/update-status.swift", ci)
         self.assertIn("PDFMagicOpenerApp/SignatureUpdateStatus.swift", ci)
         self.assertIn("xcrun swiftc -parse-as-library -warnings-as-errors", ci)
 
     def test_no_change_to_updater_or_fail_closed_scan_gate(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
-        gate = (ROOT / "scan-and-open.py").read_text()
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", gate)
         self.assertNotIn("SignatureUpdateStatus", gate)
         self.assertNotIn("SignatureUpdateStatus", installer)

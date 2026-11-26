@@ -10,7 +10,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "dependency_vulnerability_audit", ROOT / "scripts/dependency_vulnerability_audit.py")
+    "dependency_vulnerability_audit", ROOT / "scripts/dependency-vulnerability-audit.py")
 # The audit script imports the existing scripts directory's licensing gate.
 import sys
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -23,6 +23,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     temp = tempfile.TemporaryDirectory(prefix="opener-vulnerabilities-")
     self.addCleanup(temp.cleanup)
     self.root = Path(temp.name)
+    (self.root / "requirements").mkdir()
     self.expected = {("pypdf", "6.21.4")}
     self.report = self.root / "report.json"
 
@@ -33,7 +34,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     return {"name": name, "version": version, "vulns": vulns or []}
 
   def test_current_and_legacy_pins_come_from_license_review(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.4\n")
+    (self.root / "requirements/requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.4\n")
     versions = {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
                 ("Pillow", "11.3.0"), ("cryptography", "46.0.4"),
                 ("PyMuPDF", "2.0")}
@@ -73,7 +74,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
       audit.verify_report(self.report, expected, 0, True)
 
   def test_missing_or_ambiguous_renderer_pin_is_rejected(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("pypdf==6.21.4\n")
+    (self.root / "requirements/requirements-enhanced-pdf.txt").write_text("pypdf==6.21.4\n")
     for versions in (
         {("pypdf", "6.21.4"), ("pypdf", "5.9.0")},
         {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
@@ -127,16 +128,16 @@ class DependencyVulnerabilityTests(unittest.TestCase):
 
   def test_security_pin_upgrade_keeps_paired_benchmark_environment_equal(self):
     workflow = (ROOT / ".github/workflows/performance-regression-thresholds.yml").read_text()
-    self.assertIn("cmp -s baseline/medium_pdf_benchmark.py candidate/medium_pdf_benchmark.py",
+    self.assertIn("python3 candidate/scripts/compare-benchmark-layout.py baseline candidate",
                   workflow)
-    self.assertIn("cmp -s baseline/pdf_parser_memory_benchmark.py candidate/pdf_parser_memory_benchmark.py",
+    self.assertIn('python3 "$BASELINE_BENCHMARK" --runs 5',
                   workflow)
     self.assertNotIn("cmp -s baseline/requirements-enhanced-pdf.txt", workflow)
     self.assertIn("working-directory: candidate", workflow)
     self.assertIn("Run alternating, independent 5-sample comparisons", workflow)
 
   def test_unreviewed_active_pin_is_rejected(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("other==9.9\n")
+    (self.root / "requirements/requirements-enhanced-pdf.txt").write_text("other==9.9\n")
     with mock.patch.object(audit.licenses, "check", return_value=self.expected | {("pymupdf", "2.0"), ("pypdf", "5.9.0")}):
       with self.assertRaises(audit.VulnerabilityAuditError):
         audit.pins(self.root)

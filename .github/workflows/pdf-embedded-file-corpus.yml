@@ -3,14 +3,14 @@ name: Embedded-file PDF security corpus
 on:
   pull_request:
     paths:
-      - embedded_file_corpus.py
+      - tests/fixtures/pdf/embedded-file-corpus.py
       - tests/pdf/embedded-file-corpus.py
       - docs/pdf/embedded-file-corpus.md
       - .github/workflows/pdf-embedded-file-corpus.yml
   push:
     branches: [main]
     paths:
-      - embedded_file_corpus.py
+      - tests/fixtures/pdf/embedded-file-corpus.py
       - tests/pdf/embedded-file-corpus.py
       - docs/pdf/embedded-file-corpus.md
       - .github/workflows/pdf-embedded-file-corpus.yml
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pinned PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Validate real embedded-file PDF documents and scan isolation
         run: PYTHONPATH=. python3 tests/pdf/embedded-file-corpus.py -v
       - name: Preserve existing embedded-file inspection regressions

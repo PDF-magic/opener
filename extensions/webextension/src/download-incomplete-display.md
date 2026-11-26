@@ -2,7 +2,7 @@
 
 An incomplete scan is a **blocked result**, not a clean or malware
 detection. The canonical native status is exactly \`incompleteScan\`
-(defined in \`scan_results.py\`); the installed native response contract
+(defined in \`scan-results.py\`); the installed native response contract
 also mandates \`DENY_OPEN\`, preserved quarantine, and an attention alert.
 This change adds an **opt-in, extension-owned** presentation boundary
 without weakening the installed scan gate or changing user notifications.

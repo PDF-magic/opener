@@ -1,6 +1,6 @@
 # Invalid PDF header corpus (opener-1029)
 
-`INVALID_PDF_HEADERS` in `reference_pdf_collection.py` provides nine
+`INVALID_PDF_HEADERS` in `tests/fixtures/pdf/reference-pdf-collection.py` provides nine
 deterministic, harmless negative inputs derived from the first valid reference
 PDF. Only its nine-byte header is replaced; the PDF objects, cross-reference
 table, trailer and EOF are preserved byte-for-byte.

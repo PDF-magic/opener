@@ -10,6 +10,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter, get_configuration
 from pypdf.generic import DecodedStreamObject
 
+__import__('src.module-loader')
 import pdf_structure_parser as parser
 
 
@@ -85,7 +86,7 @@ class PDFDecodedSizeTests(unittest.TestCase):
         self.assertNotIn("authorizesOpen", str(error.exception))
 
     def test_budget_is_isolated_from_installed_scanner_and_ci_wired(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertIn("verify_file_integrity", scanner)

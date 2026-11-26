@@ -11,7 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "preserve_existing_opener", ROOT / "scripts/preserve_existing_opener.py")
+    "preserve_existing_opener", ROOT / "scripts/preserve-existing-opener.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
@@ -35,12 +35,12 @@ class FailedInstallationTests(unittest.TestCase):
         before = self.original.stat()
         module.snapshot(self.install, self.backup)
         self.original.write_bytes(b"broken replacement")
-        (self.install / "file_launcher.py").write_bytes(b"new helper")
+        (self.install / "file-launcher.py").write_bytes(b"new helper")
         module.restore(self.install, self.backup)
         self.assertEqual(self.original.read_bytes(), b"working scanner\n")
         self.assertEqual(self.original.stat().st_mode & 0o777, 0o700)
         self.assertEqual(self.original.stat().st_mtime_ns, before.st_mtime_ns)
-        self.assertFalse((self.install / "file_launcher.py").exists())
+        self.assertFalse((self.install / "file-launcher.py").exists())
         self.assertEqual((self.install / "target-app.txt").read_bytes(), b"custom browser\n")
         self.assertEqual((self.install / "freshclam.conf").read_bytes(), b"custom proxy settings\n")
 
@@ -73,7 +73,7 @@ class FailedInstallationTests(unittest.TestCase):
         self.assertTrue((recovery / "scan-and-open.py").exists())
 
     def test_failed_app_swap_restores_previous_bundle_and_legacy_name(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         extracted = re.search(r"(?ms)^rollback_installation\(\) \{\n.*?^\}", installer)
         self.assertIsNotNone(extracted)
         for legacy in (False, True):
@@ -115,14 +115,14 @@ exit 9
                 self.assertFalse(stage.exists())
 
     def test_installer_snapshots_before_overwriting_programs_and_defers_legacy_rename(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertLess(installer.index('preserve_existing_opener.py" snapshot'),
-                        installer.index('cp "$script_dir/allow-and-open.sh"'))
-        self.assertLess(installer.index('verify_pdf_opener_bundle.py" "$app"'),
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        self.assertLess(installer.index('preserve-existing-opener.py" snapshot'),
+                        installer.index('cp "$script_dir/src/scan/allow-and-open.sh"'))
+        self.assertLess(installer.index('verify-pdf-opener-bundle.py" "$app"'),
                         installer.index("legacy.rename(destination)"))
         self.assertLess(installer.index("legacy.rename(destination)"),
                         installer.index('mv "$app" "$installed_app"'))
-        self.assertLess(installer.index('migrate_update_agent.py"'),
+        self.assertLess(installer.index('migrate-update-agent.py"'),
                         installer.index("migration_committed=1"))
         self.assertIn('trap rollback_installation EXIT', installer)
         self.assertNotIn('trap cleanup_bundle_stage EXIT', installer)

@@ -11,17 +11,20 @@ from hashlib import sha256
 from pathlib import Path
 import unittest
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode,
     PDFStructureParseFailure,
     parse_pdf_structure_result,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
@@ -29,8 +32,10 @@ from protection_policy_definitions import (
     PolicyControl,
     protection_policy_definition,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,7 +93,7 @@ class StandardMalformedPDFTests(unittest.TestCase):
         self.assertEqual(ACTIVE_PROFILE_ID, "built-in")
 
     def test_unsupported_standard_is_not_silently_wired_to_active_scanner(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertNotIn("protection_profiles", scanner)
         self.assertNotIn("effective_protection_policy", scanner)

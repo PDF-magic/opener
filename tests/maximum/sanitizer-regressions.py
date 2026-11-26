@@ -18,7 +18,9 @@ from pypdf.generic import (
     DictionaryObject, NameObject, NumberObject, StreamObject, TextStringObject,
 )
 
+__import__('src.module-loader')
 import maximum_sanitized_copy as sanitizer
+__import__('src.module-loader')
 from maximum_sanitized_structure import verify_sanitized_pdf_structure
 
 

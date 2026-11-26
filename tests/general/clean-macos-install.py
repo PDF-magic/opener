@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+__import__('src.module-loader')
 import verify_clean_mac_install as install  # noqa: E402
 
 
@@ -124,7 +125,7 @@ class CleanMacInstallTests(unittest.TestCase):
       ".github/workflows/notarize-macos.yml",
       "name: notarized-macos-app",
       "PDFMagicOpener-notarized.zip",
-      "scripts/verify_clean_mac_install.py",
+      "scripts/verify-clean-mac-install.py",
       "tests/general/clean-macos-install.py",
     ):
       with self.subTest(token=token):

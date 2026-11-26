@@ -18,7 +18,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("unscannable_quarantine_gate",
-                                              ROOT / "scan-and-open.py")
+                                              ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 
@@ -147,7 +147,7 @@ class UnscannableQuarantineTests(unittest.TestCase):
                 self.assert_unscannable_is_blocked(failure, expected_message=message)
 
     def test_no_quarantine_removal_or_preference_modification_is_added(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("def remove_quarantine(path):", scanner)
         self.assertIn("    return None", scanner.split(
             "def remove_quarantine(path):", 1)[1].split(

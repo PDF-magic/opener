@@ -14,6 +14,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+__import__('src.module-loader')
 import notarize_release as notary  # noqa: E402
 
 TEAM_ID = "A1B2C3D4E5"
@@ -156,7 +157,7 @@ class NotarizationTests(unittest.TestCase):
     self.assertIn("name: signed-macos-app", workflow)
     self.assertIn("name: notarized-macos-app", workflow)
     self.assertIn("secrets.NOTARY_APP_PASSWORD", workflow)
-    self.assertIn("python3 scripts/notarize_release.py", workflow)
+    self.assertIn("python3 scripts/notarize-release.py", workflow)
     self.assertIn("pull_request:", tests)
     self.assertIn("merge_group:", tests)
     self.assertIn("tests/general/macos-notarization.py", tests)

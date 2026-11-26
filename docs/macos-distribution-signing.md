@@ -28,7 +28,7 @@ rejects unsigned or unexpectedly privileged artifacts. To validate a separately
 signed Release build without installing or launching it:
 
 ```sh
-python3 scripts/verify_macos_app_signature.py --app /path/to/PDFMagicOpener.app
+python3 scripts/verify-macos-app-signature.py --app /path/to/PDFMagicOpener.app
 ```
 
 Ad-hoc signing verifies these build properties but **does not establish**

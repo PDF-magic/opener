@@ -19,9 +19,9 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
-REPAIR = ROOT / "Repair Installation.command"
-MIGRATOR = ROOT / "scripts/migrate_update_agent.py"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
+REPAIR = ROOT / "scripts/installation/repair-installation.command"
+MIGRATOR = ROOT / "scripts/migrate-update-agent.py"
 sys.dont_write_bytecode = True
 
 
@@ -57,17 +57,18 @@ class RepairPreferencesTests(unittest.TestCase):
         self.app = self.home / "Applications/PDF Magic Opener.app"
         (self.app / "Contents").mkdir(parents=True)
         self.checkout = self.root / "trusted-checkout"
-        self.checkout.mkdir()
-        self.repair = self.checkout / REPAIR.name
+        installation = self.checkout / "scripts/installation"
+        installation.mkdir(parents=True)
+        self.repair = installation / REPAIR.name
         self.repair.write_bytes(REPAIR.read_bytes())
         self.repair.chmod(0o755)
         scripts = self.checkout / "scripts"
-        scripts.mkdir()
-        for name in ("report_install_prerequisites.py", "confirm_clamav_install.py"):
+        scripts.mkdir(exist_ok=True)
+        for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# test fixture\n", encoding="utf-8")
         self.marker = self.root / "repair-ran"
-        self.fixture = self.checkout / "simulate-managed-initializers.py"
-        self.fake_installer = self.checkout / INSTALLER.name
+        self.fixture = installation / "simulate-managed-initializers.py"
+        self.fake_installer = installation / INSTALLER.name
         # This is an inert fixture, never the real installer. The three snippets
         # come verbatim from the real installer and run only under synthetic HOME.
         python_source = (
@@ -176,7 +177,8 @@ class RepairPreferencesTests(unittest.TestCase):
                 if pid:
                     done = True
                     code = os.waitstatus_to_exitcode(status)
-                    self.assertTrue(responded, "Repair did not present its authorization prompt")
+                    self.assertTrue(responded, "Repair did not present its authorization prompt: "
+                                    + buffer[-1200:].decode("utf-8", errors="replace"))
                     self.assertEqual(code, 0, buffer[-1200:].decode("utf-8", errors="replace"))
                     return
             self.fail("Synthetic repair did not complete within the bounded timeout")
@@ -231,7 +233,7 @@ class RepairPreferencesTests(unittest.TestCase):
         self.assertIn("os.O_EXCL", self.target)
         self.assertIn("os.O_EXCL", self.freshclam)
         self.assertIn("os.O_EXCL", self.agent)
-        self.assertIn('scripts/migrate_update_agent.py', self.installer)
+        self.assertIn('scripts/migrate-update-agent.py', self.installer)
 
     def test_new_ci_suite_covers_explicit_repair_preference_preservation(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()

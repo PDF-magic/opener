@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+SPEC = importlib.util.spec_from_file_location("scan_and_open", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(opener)
 

@@ -12,7 +12,7 @@ card replaces the preview of the first. The page scrolls with larger text.
 The three cards are **selectable previews, not selectable enforced policies**.
 The currently installed PDF opener supports **Built-in ClamAV scanning**,
 which remains the active scan policy. All three named tiers remain planned and
-non-selectable for enforcement in `protection_profiles.py`. Their status is
+non-selectable for enforcement in `protection-profiles.py`. Their status is
 visible directly on every card, in the explanatory text, and in accessible
 VoiceOver values and hints. Selecting a preview does not save a setting,
 activate incomplete inspection, start a scan, override a failed scan, open

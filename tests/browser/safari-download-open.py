@@ -83,7 +83,7 @@ def ensure_safari_download(path, requests, timeout=35):
 
 def load_opener():
     spec = importlib.util.spec_from_file_location("safari_scan_gate_under_test",
-                                                   ROOT / "scan-and-open.py")
+                                                   ROOT / "src/scan/scan-and-open.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

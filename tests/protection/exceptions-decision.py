@@ -10,18 +10,22 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     resolve_effective_policy,
 )
-from protection_exception_policy import (
+__import__('src.module-loader')
+from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ExceptionDisposition,
     ProtectionExceptionDecision,
     ProtectionExceptionNotSupported,
     request_protection_exception,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import BASELINE_CONTROLS, PROTECTION_POLICIES
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -91,7 +95,7 @@ class ProtectionExceptionDecisionTests(unittest.TestCase):
 
     def test_user_requested_exemption_cannot_override_infected_scan(self):
         spec = importlib.util.spec_from_file_location(
-            "scanner_for_exception_test", ROOT / "scan-and-open.py")
+            "scanner_for_exception_test", ROOT / "src/scan/scan-and-open.py")
         self.assertIsNotNone(spec)
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
@@ -121,7 +125,7 @@ class ProtectionExceptionDecisionTests(unittest.TestCase):
                 launch.assert_not_called()
 
     def test_no_exception_parameters_or_scanner_exception_registry_exist(self):
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         for entry in ("scan_and_open", "scan_and_open_generated_copy"):
             self.assertIn(f"def {entry}(", scanner)
         for forbidden in (

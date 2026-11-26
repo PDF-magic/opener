@@ -10,8 +10,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
-from unsupported_pdf_features import (
+__import__('src.module-loader')
+from src.pdf.unsupported_pdf_features import (
     ENCRYPTED_RESPONSE,
     ENCRYPTION_BLOCK_REASON,
     GENERIC_BLOCK_REASON,
@@ -25,7 +27,7 @@ from unsupported_pdf_features import (
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("native_scan_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("native_scan_gate", ROOT / "src/scan/scan-and-open.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
@@ -126,13 +128,13 @@ class UnsupportedPDFFeaturePolicyTests(unittest.TestCase):
                     remember.assert_not_called()
 
     def test_policy_remains_declarative_without_adding_a_pdf_parser_or_override(self):
-        gate_source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate_source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("unsupported_pdf_features", gate_source)
         self.assertIn("'--alert-exceeds-max=yes', '--alert-encrypted=yes'", gate_source)
         self.assertIn("if not decision.allowed:", gate_source)
         self.assertIn("remove_quarantine(path)", gate_source)
         self.assertIn("if not cached_clean(cache_id):", gate_source)
-        profiles = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
+        profiles = (ROOT / "src/protection/protection-profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", profiles)
 
 

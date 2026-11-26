@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
@@ -91,7 +91,7 @@ class ScanRequestApplicationTests(unittest.TestCase):
         self.assertEqual(target.read_text(), "preserve me")
 
     def test_gate_passes_native_and_finder_origin_without_losing_paths(self):
-        original = (ROOT / "allow-and-open.sh").read_text()
+        original = (ROOT / "src/scan/allow-and-open.sh").read_text()
         original_call = 'exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"'
         self.assertEqual(original.count(original_call), 1)
         temporary = Path(self.temp.name)
@@ -113,7 +113,7 @@ class ScanRequestApplicationTests(unittest.TestCase):
                                         env=variables, capture_output=True, text=True, check=True)
                 self.assertEqual(result.stdout.splitlines(),
                                  [expected_app, "/document with spaces.pdf"])
-        native = (ROOT / "brave-pdf-opener.swift").read_text()
+        native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
         self.assertIn('process.arguments = [script.path, path]', native)
         self.assertIn('environment["PDF_MAGIC_REQUESTING_APPLICATION"] = "PDF Magic Opener"', native)
 

@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VIEW = (ROOT / "PDFMagicOpenerApp/ProtectionSettingsView.swift").read_text()
 PREF = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
-SCANNER = (ROOT / "scan-and-open.py").read_text()
+SCANNER = (ROOT / "src/scan/scan-and-open.py").read_text()
 
 
 class ResetProtectionSettingsTests(unittest.TestCase):
@@ -67,9 +67,9 @@ class ResetProtectionSettingsTests(unittest.TestCase):
 
     def test_ci_requires_real_macos_swift_and_python_checks(self):
         self.assertIn("tests/general/reset-protection-settings.py -v", CI)
-        self.assertIn("test-reset-protection-settings.swift", CI)
+        self.assertIn("tests/protection/reset-settings.swift", CI)
         self.assertIn("macos-build:", CI)
-        self.assertTrue((ROOT / "test-reset-protection-settings.swift").exists())
+        self.assertTrue((ROOT / "tests/protection/reset-settings.swift").exists())
 
 
 if __name__ == "__main__":

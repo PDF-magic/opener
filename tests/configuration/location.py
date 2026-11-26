@@ -16,7 +16,7 @@ class ConfigurationLocationTests(unittest.TestCase):
     self.assertIn("static let suiteName = ScanProgressPreference.suiteName", source)
 
   def test_scanner_location_and_verified_browser_selection_match(self):
-    installer = (ROOT / "install-allow-and-open.sh").read_text()
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
     chooser = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text()
     self.assertIn('install_dir="$HOME/Library/Application Support/Studio/allow-and-open"', installer)
     self.assertIn('.appendingPathComponent("Library/Application Support/Studio/allow-and-open", isDirectory: true)', chooser)
@@ -27,7 +27,7 @@ class ConfigurationLocationTests(unittest.TestCase):
     self.assertNotIn('write(to: preferenceDirectory', chooser)
 
   def test_existing_customization_survives_reinstallation(self):
-    installer = (ROOT / "install-allow-and-open.sh").read_text()
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
     self.assertIn("os.O_WRONLY | os.O_CREAT | os.O_EXCL", installer)
     self.assertIn("except FileExistsError:", installer)
     self.assertIn("pass", installer)

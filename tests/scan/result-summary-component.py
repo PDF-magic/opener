@@ -4,11 +4,12 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "scan-result-summary-view.swift"
-SWIFT_TEST = ROOT / "test-scan-result-summary.swift"
+SOURCE = ROOT / "src/scan/scan-result-summary-view.swift"
+SWIFT_TEST = ROOT / "tests/scan/result-summary.swift"
 CI = ROOT / ".github/workflows/ci.yml"
 
 
@@ -156,7 +157,7 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
     def test_stale_signatures_are_explicit_and_inconsistent_clean_is_not_reassuring(self):
         source = SOURCE.read_text(encoding="utf-8")
         native = SWIFT_TEST.read_text(encoding="utf-8")
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertIn("enum ScanResultSummarySignatureFreshness: String, CaseIterable", source)
         for case in ("recentUpdate", "stale", "unverified"):
@@ -180,7 +181,7 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
         workflow = CI.read_text(encoding="utf-8")
         self.assertIn("python3 tests/scan/result-summary-component.py -v", workflow)
-        self.assertIn("scan-result-summary-view.swift test-scan-result-summary.swift", workflow)
+        self.assertIn("src/scan/scan-result-summary-view.swift tests/scan/result-summary.swift", workflow)
         self.assertIn('"$RUNNER_TEMP/TestScanResultSummary"', workflow)
         harness = SWIFT_TEST.read_text(encoding="utf-8")
         self.assertIn("@main", harness)

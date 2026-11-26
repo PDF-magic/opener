@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "signature_database_load_benchmark", ROOT / "signature_database_load_benchmark.py"
+    "signature_database_load_benchmark", ROOT / "benchmarks/signature-database-load-benchmark.py"
 )
 benchmark = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmark)
@@ -132,7 +132,7 @@ class SignatureLoadBenchmarkTests(unittest.TestCase):
         self.assertEqual(calls, ["init", "new", "load", "compile", "version", "free"])
 
     def test_benchmark_never_participates_in_live_scan_or_settings(self):
-        live = (ROOT / "scan-and-open.py").read_text()
+        live = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("signature_database_load_benchmark", live)
         self.assertNotIn("cl_engine_new", live)
         self.assertNotIn("cl_engine_compile", live)
@@ -140,7 +140,7 @@ class SignatureLoadBenchmarkTests(unittest.TestCase):
         self.assertIn("python3 tests/scanner/signature-database-load-benchmark.py -v", workflow)
         self.assertIn("python3 tests/scanner/startup-benchmark.py -v", workflow)
         doc = (ROOT / "docs/signature-database-load-benchmark.md").read_text()
-        self.assertIn("signature_database_load_benchmark.py", doc)
+        self.assertIn("benchmarks/signature-database-load-benchmark.py", doc)
 
 
 if __name__ == "__main__":

@@ -6,13 +6,16 @@ from pathlib import Path
 import re
 import unittest
 
-from malformed_xref_pdf_collection import MALFORMED_XREF_PDFS
-from pdf_malformed_structures import (
+__import__('src.module-loader')
+from tests.fixtures.pdf.malformed_xref_pdf_collection import MALFORMED_XREF_PDFS
+__import__('src.module-loader')
+from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -95,7 +98,7 @@ class MalformedXRefCorpusTests(unittest.TestCase):
                 self.assertIs(sample.content, original)
 
     def test_scanner_policy_preferences_and_ci_wiring_are_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
@@ -104,6 +107,7 @@ class MalformedXRefCorpusTests(unittest.TestCase):
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
         self.assertIn("python3 tests/pdf/malformed-xref-corpus.py -v", workflow)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

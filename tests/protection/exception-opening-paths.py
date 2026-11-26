@@ -9,18 +9,21 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from protection_exception_policy import (
+__import__('src.module-loader')
+from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ProtectionExceptionNotSupported,
     record_exception_rejection_reason,
     request_protection_exception,
 )
-from protection_failure_exception_boundary import report_protection_block
-from scanner_failure_policy import ScannerFailureKind
+__import__('src.module-loader')
+from src.protection.protection_failure_exception_boundary import report_protection_block
+__import__('src.module-loader')
+from src.scanner.scanner_failure_policy import ScannerFailureKind
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "opener353_gate", (Path(__file__).resolve().parents[2] / "scan-and-open.py")
+    "opener353_gate", (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py")
 )
 gate = importlib.util.module_from_spec(spec)
 assert spec.loader is not None

@@ -30,6 +30,6 @@ application. Existing download settings remain independently functional.
 
 CI runs `tests/general/download-connection-health.py` for UI and inactive
 transport boundaries, and compiles/runs
-`test-download-connection-health.swift` to cover truthful initial status,
+`tests/download/connection-health.swift` to cover truthful initial status,
 host-transport-only state, invalid and privileged claims, and preservation
 of unrelated settings in a disposable preferences suite.

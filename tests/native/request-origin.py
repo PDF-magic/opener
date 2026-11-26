@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 
 repository = Path(__file__).resolve().parents[2]
-source = (repository / 'brave-pdf-opener.swift').read_text()
+source = (repository / 'src/native/launch/brave-pdf-opener.swift').read_text()
 shared_preferences = repository / 'PDFMagicOpenerApp' / 'ScanProgressPreference.swift'
 classes = source.split('final class PDFOpener: NSObject, NSApplicationDelegate {')[0]
 assert 'func requestSource(forBundleIdentifier' in classes

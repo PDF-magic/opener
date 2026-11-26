@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class AttentionRequiredTests(unittest.TestCase):
     def test_failed_scan_requires_explicit_close_without_bypassing_scan(self):
-        source = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
-        progress = (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8")
+        source = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
+        progress = (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8")
         preference = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
         self.assertEqual(source.count("alert.runModal()"), 1)
         self.assertIn("if pending.isEmpty && attentionRequired {", source)
@@ -37,7 +37,7 @@ class AttentionRequiredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="opener-attention-") as folder:
             root = Path(folder)
             (root / "twilight-reading.png").write_bytes(
-                (ROOT / "twilight-reading.png").read_bytes())
+                (ROOT / "src/scan/twilight-reading.png").read_bytes())
             gate = root / "gate.py"
             gate.write_text(
                 "import sys\n"
@@ -97,7 +97,7 @@ app.run()
             self.assertIn("PASS: user explicitly closed the failed scan window", result.stdout)
 
     def test_success_and_hidden_progress_remain_unchanged(self):
-        source = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+        source = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("guard ScanProgressPreference.isEnabled() else {", source)
         self.assertIn("attentionRequired = false\n            panel?.orderOut(nil)", source)

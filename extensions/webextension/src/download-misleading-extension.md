@@ -37,5 +37,5 @@ the two metadata records separately with effective downloads permission and
 revocation checks. The `tests/download-misleading-extension.test.mjs` suite
 is automatically executed by the existing WebExtensions `npm test` step
 within the repository's `scanner-tests` GitHub CI job. Existing
-`pdf_format_identification.py` remains the distinct bounded, read-only
+`src/pdf/pdf-format-identification.py` remains the distinct bounded, read-only
 native header-inspection primitive and is not changed by this task.

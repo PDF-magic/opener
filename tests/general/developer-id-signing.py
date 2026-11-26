@@ -11,9 +11,10 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-spec = importlib.util.spec_from_file_location("sign_developer_id", ROOT / "scripts/sign_developer_id.py")
+spec = importlib.util.spec_from_file_location("sign_developer_id", ROOT / "scripts/sign-developer-id.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+__import__('src.module-loader')
 from package_application_helpers import HELPER_NAMES
 
 TEAM = "ABCDE12345"
@@ -140,8 +141,8 @@ class SigningTests(unittest.TestCase):
     self.assertIn("workflow_dispatch:", workflow)
     self.assertNotIn("pull_request:", workflow)
     self.assertIn("CODE_SIGNING_ALLOWED=NO", workflow)
-    self.assertIn("scripts/package_application_helpers.py", workflow)
-    self.assertIn("scripts/sign_developer_id.py", workflow)
+    self.assertIn("scripts/package-application-helpers.py", workflow)
+    self.assertIn("scripts/sign-developer-id.py", workflow)
     self.assertIn("--verify-only", workflow)
     self.assertIn("secrets.APPLE_DEVELOPER_ID_CERTIFICATE_BASE64", workflow)
     self.assertIn("secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD", workflow)

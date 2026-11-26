@@ -4,13 +4,16 @@
 from pathlib import Path
 import unittest
 
-from combined_scan_results import combine_scan_results
-from document_security_report import (
+__import__('src.module-loader')
+from src.scan.combined_scan_results import combine_scan_results
+__import__('src.module-loader')
+from src.scan.document_security_report import (
     DocumentSecurityReport,
     MAX_DISPLAYED_SIGNATURES,
     create_document_security_report,
 )
-from enhanced_analysis_findings import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding,
     AnalysisStage,
     FindingCode,
@@ -19,6 +22,7 @@ from enhanced_analysis_findings import (
     StageOutcome,
     StructuredAnalysisFindings,
 )
+__import__('src.module-loader')
 from scan_results import ScanResult, ScanResultStatus
 
 
@@ -255,11 +259,12 @@ class DocumentSecurityReportTests(unittest.TestCase):
         self.assertNotIn("/private", report.to_text())
 
     def test_existing_scanner_gate_and_user_profile_defaults_are_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("decision = decide_opening(detection)", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("create_document_security_report", scanner)
 
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

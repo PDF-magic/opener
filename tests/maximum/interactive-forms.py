@@ -17,6 +17,7 @@ from pypdf.generic import (
     NameObject, NumberObject, TextStringObject,
 )
 
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -235,7 +236,7 @@ class InteractiveFormFixtureTests(unittest.TestCase):
                 self.assertFalse(_retains_underlay(shifted, index))
 
     def test_existing_scanner_sanitizer_and_user_preferences_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
@@ -247,6 +248,7 @@ class InteractiveFormFixtureTests(unittest.TestCase):
         self.assertTrue(offer.rasterized)
         self.assertTrue(offer.needs_separate_scan)
         self.assertFalse(offer.permits_open)
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

@@ -9,7 +9,7 @@ class BlockedNotificationTests(unittest.TestCase):
   def test_setting_and_delivery_are_wired(self):
     general = (ROOT / "PDFMagicOpenerApp/GeneralSettingsView.swift").read_text()
     prefs = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
-    opener = (ROOT / "brave-pdf-opener.swift").read_text()
+    opener = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
     self.assertIn('Toggle("Show Blocked File Notifications"', general)
     self.assertIn('accessibilityIdentifier("showBlockedFileNotificationsToggle")', general)
     self.assertIn('BlockedFileNotificationPreference.save(enabled)', general)

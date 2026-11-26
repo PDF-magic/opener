@@ -49,7 +49,7 @@ class SignatureDirectoryPermissionTests(unittest.TestCase):
         self.fake = self.root / "fake-freshclam"
         self.fake.write_text(FAKE_FRESHCLAM)
         self.fake.chmod(0o700)
-        source = (ROOT / "update-malware-signatures.sh").read_text()
+        source = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(FRESHCLAM_CANDIDATES, source)
         self.script = self.root / "update.sh"
         self.script.write_text(
@@ -135,7 +135,7 @@ class SignatureDirectoryPermissionTests(unittest.TestCase):
             workflow.count("python3 tests/signature/directory-permissions.py -v"),
             2,
         )
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn('trap cleanup EXIT', script)
         self.assertIn('run_freshclam_with_network_recovery "$updater"', script)
         self.assertIn('check_incomplete_downloads "$stage_dir"', script)

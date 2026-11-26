@@ -36,7 +36,7 @@ card does not switch the scanner into a new mode or change any saved settings.
 requirement or optional check. It is a separate planned control for higher
 levels, not an inspection promised by Standard.
 
-These lists mirror `protection_policy_definitions.py`. The three proposed
+These lists mirror `protection-policy-definitions.py`. The three proposed
 Standard, Enhanced and Maximum profiles are non-selectable for enforcement;
 `selectedProtectionProfile = "standard"` is rejected by the effective-policy
 resolver rather than silently accepted or downgraded. The existing **Built-in**

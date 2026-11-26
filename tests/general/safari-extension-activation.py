@@ -6,7 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SAFARI = ROOT / "extensions" / "safari"
-PROBE = ROOT / "test-safari-extension-activation.swift"
+PROBE = ROOT / "tests/browser/safari-extension-activation.swift"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 
 
@@ -62,7 +62,7 @@ class SafariExtensionActivationTests(unittest.TestCase):
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("python3 tests/general/safari-extension-activation.py -v", ci)
     self.assertIn(
-      "swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift",
+      "swiftc -parse-as-library -warnings-as-errors tests/browser/safari-extension-activation.swift",
       ci
     )
     self.assertIn('"$RUNNER_TEMP/TestSafariExtensionActivation" --self-test', ci)

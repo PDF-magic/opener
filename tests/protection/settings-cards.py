@@ -74,6 +74,7 @@ class ProtectionCardsTests(unittest.TestCase):
         self.assertNotIn(forbidden, self.source)
 
   def test_builtin_scanner_and_planned_profile_catalog_remain_authoritative(self):
+    __import__('src.module-loader')
     from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
     self.assertEqual(set(PROTECTION_PROFILES), {
         ProtectionProfileID.STANDARD,
@@ -81,10 +82,10 @@ class ProtectionCardsTests(unittest.TestCase):
         ProtectionProfileID.MAXIMUM})
     self.assertTrue(all(not definition.selectable
                         for definition in PROTECTION_PROFILES.values()))
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     self.assertIn("if not cached_clean(cache_id):", scanner)
     self.assertNotIn("PlannedProtectionTier", scanner)
-    stored = (ROOT / "test-selected-protection-profile.swift").read_text(encoding="utf-8")
+    stored = (ROOT / "tests/protection/selected-profile.swift").read_text(encoding="utf-8")
     self.assertIn("SelectedProtectionProfilePreference.selected(defaults: defaults) == .builtIn", stored)
 
   def test_maximum_preview_distinguishes_original_from_safe_copy_without_activation(self):
@@ -121,8 +122,8 @@ class ProtectionCardsTests(unittest.TestCase):
 
   def test_origin_comparison_does_not_replace_verified_generated_copy_identity(self):
     root = Path(__file__).resolve().parents[2]
-    offer = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
-    route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
+    offer = (root / "src/sanitization/maximum-sanitized-copy.py").read_text(encoding="utf-8")
+    route = (root / "src/sanitization/maximum-safe-copy-handoff.py").read_text(encoding="utf-8")
     for source in (offer, route):
       self.assertIn('"contentOrigin": GENERATED_CONTENT_ORIGIN', source)
       self.assertIn('"isUntouchedOriginal": False', source)

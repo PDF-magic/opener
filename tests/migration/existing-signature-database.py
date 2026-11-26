@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "existing_signature_database.py"
+SOURCE = ROOT / "scripts/installation/existing-signature-database.py"
 spec = importlib.util.spec_from_file_location("existing_signature_database", SOURCE)
 detector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(detector)
@@ -95,14 +95,14 @@ class ExistingSignatureDatabaseTests(unittest.TestCase):
             self.assertEqual(detector.detect_existing_signature_database(self.database), "unsafe")
 
     def test_installer_runs_detection_before_mutation_and_ci_tracks_it(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        marker = 'python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"'
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        marker = 'python3 "$script_dir/scripts/installation/existing-signature-database.py" "$install_dir/signatures"'
         self.assertIn(marker, installer)
         self.assertLess(installer.index(marker), installer.index('mkdir -p "$install_dir/signatures"'))
         self.assertIn('bash "$install_dir/update-malware-signatures.sh"', installer)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/migration/existing-signature-database.py -v", ci)
-        self.assertIn("bash -n install-allow-and-open.sh", ci)
+        self.assertIn("bash -n scripts/installation/install-allow-and-open.sh", ci)
 
 
 if __name__ == "__main__":

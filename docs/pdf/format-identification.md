@@ -7,7 +7,7 @@ It does **not** activate Enhanced protection, a PDF parser or a new scanner
 bypass. The deployed **Built-in** ClamAV and file-integrity gates remain
 authoritative for opening files.
 
-Use `identify_pdf_format(path)` from `pdf_format_identification.py` to
+Use `identify_pdf_format(path)` from `src/pdf/pdf-format-identification.py` to
 read only the first nine bytes of a local regular file. No extension check,
 file copy, persistent output, document-name logging, network call or saved
 preference is involved.

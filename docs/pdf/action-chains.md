@@ -45,7 +45,7 @@ and 128 entries per /Next array. Depth beyond 8 and width beyond 8
 are flagged before hard limits are reached.
 
 This is a separate, inactive Enhanced-stage evidence collector. It does
-not change `pdf_automatic_actions.py`, the installed ClamAV safety gate,
+not change `src/pdf/pdf-automatic-actions.py`, the installed ClamAV safety gate,
 quarantine, cache, browser handoff, preference storage or profile
 selection. Production use requires independent isolation and an
 explicitly reviewed fail-closed policy.

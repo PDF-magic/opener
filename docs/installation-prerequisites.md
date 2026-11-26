@@ -1,6 +1,6 @@
 # Installation prerequisite reporting (opener-0961)
 
-Running `install-allow-and-open.sh` checks basic requirements before modifying
+Running `scripts/installation/install-allow-and-open.sh` checks basic requirements before modifying
 any installed application, workflow, signature database, preference, or migration
 journal. The check reports **each missing prerequisite** with a fixed, actionable
 message and exits nonzero. It never prints local paths, raw command errors, PDF

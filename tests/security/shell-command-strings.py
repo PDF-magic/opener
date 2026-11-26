@@ -11,7 +11,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
 FIXED_COMMAND = (
     'export PDF_MAGIC_REQUEST_ORIGIN=finder\n'
     'exec /bin/bash "$HOME/Library/Application Support/Studio/'

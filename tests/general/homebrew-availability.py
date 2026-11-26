@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("detect_homebrew", ROOT / "scripts/detect_homebrew.py")
+spec = importlib.util.spec_from_file_location("detect_homebrew", ROOT / "scripts/detect-homebrew.py")
 detector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(detector)
 
@@ -85,12 +85,12 @@ class HomebrewDetectionTests(unittest.TestCase):
         self.assertEqual((target.read_bytes(), target.stat().st_mtime_ns), before)
 
     def test_installer_checks_availability_only_when_scanner_missing(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-        self.assertIn('brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"', source)
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
+        self.assertIn('brew_executable="$(python3 "$script_dir/scripts/detect-homebrew.py")"', source)
         self.assertIn('"$brew_executable" install clamav', source)
         self.assertNotIn("\n    brew install clamav\n", source)
         preflight = source.index('if ! [ -x /opt/homebrew/bin/clamscan ]')
-        detector = source.index('scripts/detect_homebrew.py')
+        detector = source.index('scripts/detect-homebrew.py')
         installation = source.index('"$brew_executable" install clamav')
         mutation = source.index('mkdir -p "$install_dir/signatures"')
         self.assertLess(preflight, detector)

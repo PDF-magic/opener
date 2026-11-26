@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-OPENER = (ROOT / "brave-pdf-opener.swift").read_text()
+OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
 PREF = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text()
 CI = (ROOT / ".github/workflows/ci.yml").read_text()
 
@@ -58,7 +58,7 @@ class NotificationDeduplicationTests(unittest.TestCase):
 
   def test_both_ci_suites_run_behavioral_regressions(self):
     self.assertIn("tests/notifications/deduplication.py -v", CI)
-    self.assertIn("test-notification-deduplication.swift", CI)
+    self.assertIn("tests/notifications/deduplication.swift", CI)
 
 
 if __name__ == "__main__":

@@ -18,9 +18,9 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
-REPAIR = ROOT / "Repair Installation.command"
-UPDATER = ROOT / "update-malware-signatures.sh"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
+REPAIR = ROOT / "scripts/installation/repair-installation.command"
+UPDATER = ROOT / "src/scanner/update-malware-signatures.sh"
 FRESHCLAM_CANDIDATES = (
     "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam "
     "/usr/local/clamav/bin/freshclam"
@@ -88,14 +88,15 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
         self.signatures = self.install / "signatures"
         self.signatures.mkdir(parents=True)
         self.checkout = self.root / "trusted-checkout"
-        self.checkout.mkdir()
-        repair = self.checkout / REPAIR.name
+        installation = self.checkout / "scripts/installation"
+        installation.mkdir(parents=True)
+        repair = installation / REPAIR.name
         shutil.copyfile(REPAIR, repair)
         repair.chmod(0o755)
         self.repair = repair
         scripts = self.checkout / "scripts"
-        scripts.mkdir()
-        for name in ("report_install_prerequisites.py", "confirm_clamav_install.py"):
+        scripts.mkdir(exist_ok=True)
+        for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# inert repair test fixture\n", encoding="utf-8")
 
         # Preserve a complete, already-valid main/daily pair and user-defined
@@ -129,20 +130,22 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
         updater = self.updaterSource.replace(
             FRESHCLAM_CANDIDATES, str(self.fakeFreshclam)
         ).replace(CLAMSCAN_CANDIDATES, str(self.fakeClamscan))
-        (self.checkout / UPDATER.name).write_text(updater, encoding="utf-8")
+        updaterPath = self.checkout / "src/scanner" / UPDATER.name
+        updaterPath.parent.mkdir(parents=True)
+        updaterPath.write_text(updater, encoding="utf-8")
 
         # A synthetic installer reproduces the actual installer ordering:
         # create signatures if absent, deploy updater, invoke updater.
         # Never execute the real installer on the CI host.
         fixture = (
             '#!/bin/bash\nset -euo pipefail\n'
-            'script_dir="$(cd "$(dirname "$0")" && pwd)"\n'
+            'script_dir="$(cd "$(dirname "$0")/../.." && pwd)"\n'
             'install_dir="$HOME/Library/Application Support/Studio/allow-and-open"\n'
             'mkdir -p "$install_dir/signatures"\n'
-            'cp "$script_dir/update-malware-signatures.sh" "$install_dir/"\n'
+            'cp "$script_dir/src/scanner/update-malware-signatures.sh" "$install_dir/"\n'
             'bash "$install_dir/update-malware-signatures.sh"\n'
         )
-        (self.checkout / INSTALLER.name).write_text(fixture, encoding="utf-8")
+        (installation / INSTALLER.name).write_text(fixture, encoding="utf-8")
 
     def snapshot(self):
         return {
@@ -184,7 +187,8 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
                 pid, status = os.waitpid(child, os.WNOHANG)
                 if pid:
                     finished = True
-                    self.assertTrue(answered, "Missing explicit repair confirmation")
+                    self.assertTrue(answered, "Missing explicit repair confirmation: "
+                                    + received[-1200:].decode("utf-8", errors="replace"))
                     return os.waitstatus_to_exitcode(status), received.decode(
                         "utf-8", errors="replace"
                     )
@@ -262,7 +266,7 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
     def test_real_install_and_updater_guards_are_still_required(self):
         self.assertIn('mkdir -p "$install_dir/signatures"', self.installerSource)
         self.assertIn('bash "$install_dir/update-malware-signatures.sh"', self.installerSource)
-        self.assertIn('"$script_dir/update-malware-signatures.sh"', self.installerSource)
+        self.assertIn('"$script_dir/src/scanner/update-malware-signatures.sh"', self.installerSource)
         self.assertIn('exec /bin/bash "$installer"', self.repairSource)
         self.assertIn('if [ "$response" != "REPAIR" ]; then', self.repairSource)
         self.assertIn('/bin/cp -pR "$signature_dir/." "$stage_dir/"',

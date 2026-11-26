@@ -134,7 +134,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     view = WELCOME.read_text(encoding="utf-8")
     shared = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(
       encoding="utf-8")
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     for expected in (
       "Choose your initial protection preference",
       "Built-in ClamAV scanning and fail-closed opening remain the only active protection.",
@@ -160,7 +160,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
     self.assertNotIn("SelectedProtectionProfilePreference.save(", view)
     self.assertIn("if not cached_clean(cache_id):", scanner)
     ci = CI.read_text(encoding="utf-8")
-    self.assertIn("test-first-run-profile-choice.swift", ci)
+    self.assertIn("tests/first-run/profile-choice.swift", ci)
 
   def test_first_run_explains_scanning_is_not_a_safety_guarantee(self):
     source = WELCOME.read_text(encoding="utf-8")
@@ -376,7 +376,7 @@ class FirstRunWelcomeTests(unittest.TestCase):
       self.assertIn(ident, sources)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-welcome.py -v", ci)
-    self.assertIn("test-first-run-welcome.swift", ci)
+    self.assertIn("tests/first-run/welcome.swift", ci)
     self.assertIn("TestFirstRunWelcome", ci)
 
 

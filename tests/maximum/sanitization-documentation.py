@@ -4,12 +4,13 @@ from pathlib import Path
 import ast
 import unittest
 
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "docs/maximum/limitations.md"
 INDEX = ROOT / "docs/README.md"
-SOURCE = ROOT / "maximum_sanitized_copy.py"
+SOURCE = ROOT / "src/sanitization/maximum-sanitized-copy.py"
 
 
 def constant_integer(expression):

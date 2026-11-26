@@ -59,7 +59,7 @@ class SignatureValidationTests(unittest.TestCase):
         self.scanner = self.root / "fake-clamscan"
         self.scanner.write_text(SCAN)
         self.scanner.chmod(0o700)
-        original = (ROOT / "update-malware-signatures.sh").read_text()
+        original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(FRESH_PATHS, original)
         self.assertIn(SCAN_PATHS, original)
         self.script = self.root / "update.sh"
@@ -121,7 +121,7 @@ class SignatureValidationTests(unittest.TestCase):
         self.assert_preserved()
 
     def test_ci_and_updater_ordering(self):
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/general/validate-signature-database.py -v", ci)
         self.assertLess(script.index("if ! scan_output="), script.index("success_tmp="))

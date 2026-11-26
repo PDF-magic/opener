@@ -4,7 +4,7 @@ This **opt-in observation-only** experiment measures the peak resident set
 size (RSS) of an actual standalone `clamscan` process scanning the repository's
 existing, inert, one-page synthetic PDF. It complements, but does **not**
 replace, the structural PDF parser's separate RSS benchmark in
-`pdf_parser_memory_benchmark.py`. This is **not** the combined application's
+`benchmarks/pdf-parser-memory-benchmark.py`. This is **not** the combined application's
 memory, concurrent-scanner memory, a PDF viewer/rendering benchmark, or an
 end-to-end scan-to-open measurement.
 
@@ -13,7 +13,7 @@ end-to-end scan-to-open measurement.
 With an **existing, trusted** local scanner and complete signature directory:
 
 ```sh
-python3 peak_memory_benchmark.py \
+python3 benchmarks/peak-memory-benchmark.py \
   --scanner /opt/homebrew/bin/clamscan \
   --database "/path/to/existing/clamav/signatures" \
   --samples 3

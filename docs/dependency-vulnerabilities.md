@@ -4,7 +4,7 @@ The dedicated `Dependency vulnerability audit` GitHub Actions workflow runs on
 pull requests, merge queue entries, pushes to `main`, weekly on Monday, and by
 manual dispatch. It uses `pip-audit==2.10.1` to query published Python package
 security advisories. This is separate from the offline dependency **licensing**
-gate (`scripts/check_dependency_licenses.py`): an acceptable license says
+gate (`scripts/check-dependency-licenses.py`): an acceptable license says
 nothing about vulnerability status.
 
 The first live audit identified CVE-2026-119203, CVE-2026-119204, and
@@ -17,7 +17,7 @@ The workflow derives **every explicitly reviewed Python version** from the
 license gate's checked CI requirements and workflow installs, then writes two
 scoped temporary manifests (never committed):
 
-- **Current optional Enhanced parser** (`requirements-enhanced-pdf.txt`):
+- **Current optional Enhanced parser** (`requirements/requirements-enhanced-pdf.txt`):
   a **blocking** audit, including resolver-selected transitive dependencies.
   Any published vulnerability, malformed/incomplete scan, scanner failure or
   unreachable advisory service fails CI. This parser is not part of the

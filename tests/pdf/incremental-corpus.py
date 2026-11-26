@@ -9,12 +9,14 @@ import unittest
 
 from pypdf import PdfReader
 
-from pdf_incremental_revisions import (
+__import__('src.module-loader')
+from src.pdf.pdf_incremental_revisions import (
     BLOCK_MESSAGE,
     PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )
-from reference_pdf_collection import (
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import (
     INCREMENTAL_REFERENCE_PDFS,
     REFERENCE_PDFS,
 )
@@ -89,7 +91,7 @@ class IncrementalPDFCorpusTests(unittest.TestCase):
                          & {item.identifier for item in INCREMENTAL_REFERENCE_PDFS})
         self.assertTrue(all(item.content.count(b"startxref\n") == 1
                             for item in REFERENCE_PDFS))
-        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("INCREMENTAL_REFERENCE_PDFS", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
 

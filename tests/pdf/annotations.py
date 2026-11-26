@@ -14,7 +14,8 @@ from pypdf.generic import (
     ArrayObject, DecodedStreamObject, DictionaryObject, FloatObject, NameObject, NumberObject,
     TextStringObject,
 )
-from pdf_annotations import (
+__import__('src.module-loader')
+from src.pdf.pdf_annotations import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFAnnotationInspectionError,
     inspect_pdf_annotations,
 )
@@ -47,7 +48,8 @@ def pdf_with(*annotations, direct=False):
 
 class PDFAnnotationTests(unittest.TestCase):
     def test_clean_reference_collection_is_inert_evidence_only(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        __import__('src.module-loader')
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for pdf in REFERENCE_PDFS:
             with self.subTest(pdf=pdf.identifier):
                 result = inspect_pdf_annotations(pdf.content)
@@ -136,7 +138,8 @@ class PDFAnnotationTests(unittest.TestCase):
             inspect_pdf_annotations(output.getvalue())
 
     def test_annotation_count_limit_fails_closed(self):
-        from pdf_annotations import MAX_ANNOTATIONS
+        __import__('src.module-loader')
+        from src.pdf.pdf_annotations import MAX_ANNOTATIONS
         writer = PdfWriter()
         page = writer.add_blank_page(width=100, height=100)
         entry = annotation("Text")
@@ -163,9 +166,10 @@ class PDFAnnotationTests(unittest.TestCase):
 
     def test_no_scanner_policy_or_preference_change(self):
         root = Path(__file__).resolve().parents[2]
-        source = (root / "scan-and-open.py").read_text()
+        source = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("pdf_annotations", source)
         self.assertIn("if not cached_clean(cache_id):", source)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

@@ -9,7 +9,9 @@ import sys
 import unittest
 from unittest.mock import patch, Mock
 
-import maximum_network_isolation as isolation
+from importlib import import_module
+__import__('src.module-loader')
+isolation = import_module("maximum-network-isolation")
 
 
 class OfflineWorkerContractTests(unittest.TestCase):
@@ -105,11 +107,13 @@ class OfflineWorkerContractTests(unittest.TestCase):
 
     def test_deployed_scanner_updater_and_user_preferences_are_not_reconfigured(self):
         root = Path(__file__).resolve().parents[2]
-        scanner_path = root / "scan-and-open.py"
+        scanner_path = root / "src/scan/scan-and-open.py"
         if scanner_path.exists():
             scanner = scanner_path.read_text(encoding="utf-8")
             self.assertNotIn("maximum_network_isolation", scanner)
+            self.assertNotIn("maximum-network-isolation", scanner)
             self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

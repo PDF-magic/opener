@@ -12,8 +12,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 ENTRY = ROOT / "PDFMagicOpenerApp" / "PDFMagicOpenerApp.swift"
-SCANNER = ROOT / "brave-pdf-opener.swift"
-INSTALLER = ROOT / "install-allow-and-open.sh"
+SCANNER = ROOT / "src/native/launch/brave-pdf-opener.swift"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
 
 
 def target_build_settings(project, config_id):

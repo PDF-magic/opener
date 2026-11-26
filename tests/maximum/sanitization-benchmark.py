@@ -8,9 +8,12 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import maximum_sanitization_benchmark as bench
+__import__('src.module-loader')
+import benchmarks.maximum_sanitization_benchmark as bench
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -101,7 +104,7 @@ class MaximumSanitizationBenchmarkTests(unittest.TestCase):
 
     def test_cli_rejects_invalid_sample_counts_without_json(self):
         run = subprocess.run(
-            [sys.executable, str(ROOT / "maximum_sanitization_benchmark.py"),
+            [sys.executable, str(ROOT / "benchmarks/maximum-sanitization-benchmark.py"),
              "--samples", "0"],
             cwd=ROOT, capture_output=True, text=True, timeout=30,
         )
@@ -110,9 +113,10 @@ class MaximumSanitizationBenchmarkTests(unittest.TestCase):
         self.assertIn("Choose 3 to 10", run.stderr)
 
     def test_live_scanner_and_unavailable_maximum_remain_untouched(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_sanitization_benchmark", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         performance = json.loads(
@@ -121,7 +125,7 @@ class MaximumSanitizationBenchmarkTests(unittest.TestCase):
         self.assertEqual(performance["measurements"], [])
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text()
         self.assertIn("python3 tests/maximum/sanitization-benchmark.py -v", workflow)
-        self.assertIn("python3 maximum_sanitization_benchmark.py --samples 3", workflow)
+        self.assertIn("python3 benchmarks/maximum-sanitization-benchmark.py --samples 3", workflow)
 
 
 if __name__ == "__main__":

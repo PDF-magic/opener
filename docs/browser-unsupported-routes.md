@@ -20,7 +20,7 @@ For a user-facing explanation of **when no automatic interception guarantee can 
 | `firefox` | Mozilla Firefox | Firefox response-stream filter and blocking webRequest need grants and a trusted, complete native scan/release integration not yet built. | **Inactive** |
 | `safari` | Apple Safari | Safari's versioned DNR/network permissions and nativeMessaging host do not establish a universal byte-hold or scanner gate. | **Inactive** |
 
-These are the nine IDs from [browser registry](../browser_registry.py), the [vendor research matrix](browser-automatic-interception-capabilities.json), and the [deployment capability matrix](../extensions/webextension/src/automatic-interception-capability-matrix.js). `documented` browser API support means *vendor API documentation*, not an installed/verifiable PDF Magic interception gate. Even Firefox's potential response-body filter is currently **inactive**. Apple Safari's `nativeMessaging` is not an interception authorization. Chrome and Edge normal MV3 installs cannot assume the enterprise-policy-only blocking `webRequest` exception.
+These are the nine IDs from [browser registry](../src/browser/browser-registry.py), the [vendor research matrix](browser-automatic-interception-capabilities.json), and the [deployment capability matrix](../extensions/webextension/src/automatic-interception-capability-matrix.js). `documented` browser API support means *vendor API documentation*, not an installed/verifiable PDF Magic interception gate. Even Firefox's potential response-body filter is currently **inactive**. Apple Safari's `nativeMessaging` is not an interception authorization. Chrome and Edge normal MV3 installs cannot assume the enterprise-policy-only blocking `webRequest` exception.
 
 ## Entry-route register
 

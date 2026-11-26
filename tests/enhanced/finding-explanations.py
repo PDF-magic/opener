@@ -6,11 +6,13 @@ import json
 from pathlib import Path
 import unittest
 
-from enhanced_analysis_findings import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StageAnalysis, StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_finding_explanations import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_finding_explanations import (
     ExplainedFinding, ExplainableAnalysisFindings, FindingNextAction,
     FindingResult, explain_analysis_findings,
 )
@@ -190,7 +192,7 @@ class FindingExplanationsTests(unittest.TestCase):
             self.assertNotIn("confirmed malware", result["explanation"].lower())
 
         # The native panel displays uncertainty and rejects unknown assessment values.
-        native = ((Path(__file__).resolve().parents[2] / "scan-progress-view.swift")
+        native = ((Path(__file__).resolve().parents[2] / "src/scan/scan-progress-view.swift")
                   .read_text(encoding="utf-8"))
         self.assertIn('if let rawAssessment = result["malwareAssessment"]', native)
         self.assertIn('guard let value = rawAssessment as? String,', native)
@@ -199,10 +201,11 @@ class FindingExplanationsTests(unittest.TestCase):
         self.assertIn('— \\(resultLabel) · \\(malwareAssessmentLabel)', native)
 
     def test_scanner_and_profile_remain_untouched(self):
-        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("enhanced_finding_explanations", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

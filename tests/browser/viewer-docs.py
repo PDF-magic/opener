@@ -40,14 +40,14 @@ class BrowserViewerDocumentationTests(unittest.TestCase):
 
     def test_scan_and_identity_gates_are_explicit(self):
         for token in ("ClamAV", "file-integrity", "quarantine",
-                      "local-file-availability", "verify-pdf-target.swift",
-                      "launch-scanned-file.swift", "not fall back"):
+                      "local-file-availability", "src/native/launch/verify-pdf-target.swift",
+                      "src/native/launch/launch-scanned-file.swift", "not fall back"):
             with self.subTest(token=token):
                 self.assertIn(token, self.guide)
 
     def test_repo_links_resolve(self):
-        for link in ("../README.md", "../verify-pdf-target.swift",
-                     "../launch-scanned-file.swift"):
+        for link in ("../README.md", "../src/native/launch/verify-pdf-target.swift",
+                     "../src/native/launch/launch-scanned-file.swift"):
             self.assertTrue((GUIDE.parent / link).is_file(), link)
 
     def test_vendor_sources_are_linked(self):

@@ -2,7 +2,7 @@
 
 The legacy installer records its current attempt in the private installation
 directory as .installation-migration.json. The status command
-(python3 scripts/migration_state.py status) reports not_started, partial, or
+(python3 scripts/migration-state.py status) reports not_started, partial, or
 complete without creating files or changing installed settings.
 
 The journal begins before installer mutations and records completion only

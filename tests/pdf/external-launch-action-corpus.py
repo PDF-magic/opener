@@ -14,10 +14,14 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import DictionaryObject
 
-from external_launch_action_corpus import EXTERNAL_LAUNCH_PDFS, _document_with_launch
-from pdf_automatic_actions import inspect_pdf_automatic_actions
-from pdf_external_launch_actions import inspect_pdf_external_launch_actions
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.external_launch_action_corpus import EXTERNAL_LAUNCH_PDFS, _document_with_launch
+__import__('src.module-loader')
+from src.pdf.pdf_automatic_actions import inspect_pdf_automatic_actions
+__import__('src.module-loader')
+from src.pdf.pdf_external_launch_actions import inspect_pdf_external_launch_actions
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -104,7 +108,7 @@ class ExternalLaunchActionCorpusTests(unittest.TestCase):
         for sample in REFERENCE_PDFS:
             with self.subTest(pdf=sample.identifier):
                 self.assertEqual(inspect_pdf_external_launch_actions(sample.content).action_count, 0)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("external_launch_action_corpus", scanner)
         self.assertNotIn("EXTERNAL_LAUNCH_PDFS", scanner)
 

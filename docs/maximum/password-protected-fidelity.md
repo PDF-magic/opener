@@ -28,7 +28,7 @@ sanitizer can reach its converter path and still reject invalid output.
 
 The CI workflow runs these tests on Ubuntu (policy, noninterference,
 fixtures) and macOS (policy plus real worker). This is a **test-only**
-extension: `maximum_sanitized_copy.py`, the CoreGraphics worker, live
+extension: `maximum-sanitized-copy.py`, the CoreGraphics worker, live
 ClamAV protections, quarantine, configuration, user preferences and
 clean-cache/launch gates are unchanged. Maximum remains unselectable.
 Rejection is not a malware detection; it does not authorize bypass,

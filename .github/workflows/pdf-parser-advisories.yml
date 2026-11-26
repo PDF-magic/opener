@@ -40,4 +40,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Watch all reviewed parser pins using published OSV advisories
-        run: python3 scripts/pdf_parser_advisory_watch.py
+        run: python3 scripts/pdf-parser-advisory-watch.py

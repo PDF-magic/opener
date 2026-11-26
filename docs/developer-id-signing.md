@@ -49,7 +49,7 @@ To revalidate a previously signed and extracted staged app on macOS without
 any private key:
 
 ```sh
-python3 scripts/sign_developer_id.py --app /path/to/PDFMagicOpener.app \
+python3 scripts/sign-developer-id.py --app /path/to/PDFMagicOpener.app \
   --team-id TEAMID1234 --verify-only
 ```
 

@@ -8,9 +8,12 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-from encrypted_pdf_collection import ENCRYPTED_REFERENCE_PDFS
-from pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
-from unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
+__import__('src.module-loader')
+from tests.fixtures.pdf.encrypted_pdf_collection import ENCRYPTED_REFERENCE_PDFS
+__import__('src.module-loader')
+from src.pdf.pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
+__import__('src.module-loader')
+from src.pdf.unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,7 +61,7 @@ class EncryptedCorpusTests(unittest.TestCase):
                     self.assertNotIn(item.test_user_password, evidence.response.reason)
 
     def test_corpus_does_not_change_installed_scanner_or_preferences(self):
-        gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("--alert-encrypted=yes", gate)
         self.assertNotIn("encrypted_pdf_collection", gate)
         self.assertNotIn("pdf_encryption_policy", gate)

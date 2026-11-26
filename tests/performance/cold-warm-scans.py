@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import cold_warm_scan_benchmark as perf
+__import__('src.module-loader')
+import benchmarks.cold_warm_scan_benchmark as perf
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -119,10 +120,10 @@ class ColdWarmTests(unittest.TestCase):
     def test_workflow_exercises_real_clamscan_and_live_gate_is_untouched(self):
         ci = (ROOT / ".github/workflows/cold-warm-scans.yml").read_text()
         self.assertIn("python3 tests/performance/cold-warm-scans.py -v", ci)
-        self.assertIn("python3 cold_warm_scan_benchmark.py", ci)
+        self.assertIn("python3 benchmarks/cold-warm-scan-benchmark.py", ci)
         self.assertIn("/usr/bin/clamscan", ci)
         self.assertIn("benchmark-never-match", ci)
-        self.assertNotIn("cold_warm_scan_benchmark", (ROOT / "scan-and-open.py").read_text())
+        self.assertNotIn("cold_warm_scan_benchmark", (ROOT / "src/scan/scan-and-open.py").read_text())
         doc = (ROOT / "docs/performance/cold-warm-scans.md").read_text()
         self.assertIn("not a physically cold disk-cache", doc)
 

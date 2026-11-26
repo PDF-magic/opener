@@ -9,7 +9,7 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 INDEX = (ROOT / "docs/README.md").read_text(encoding="utf-8")
 GENERAL = (ROOT / "PDFMagicOpenerApp/GeneralSettingsView.swift").read_text(encoding="utf-8")
 PREFS = (ROOT / "PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift").read_text(encoding="utf-8")
-CHOOSER = (ROOT / "select-custom-pdf-application.py").read_text(encoding="utf-8")
+CHOOSER = (ROOT / "src/native/launch/select-custom-pdf-application.py").read_text(encoding="utf-8")
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
 

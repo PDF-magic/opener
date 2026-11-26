@@ -32,7 +32,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-        run: python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+        run: python3 scripts/ci-test-scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
       - name: Verify actionable failure-report formatting and metadata handling
         run: PYTHONPATH=. python3 tests/general/ci-failure-report.py -v
       - name: Verify dependency-map behavior
@@ -57,7 +57,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/structure-ambiguity.py -v
 
       - name: pdf / pdf-automatic-external-requests / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-automatic-external-requests / Detect network-targeting actions reached from automatic triggers
         run: PYTHONPATH=. python3 tests/pdf/automatic-external-requests.py -v
       - name: pdf / pdf-automatic-external-requests / Preserve form action inspection regressions
@@ -68,13 +68,13 @@ jobs:
         run: PYTHONPATH=. python3 tests/enhanced/password-protected.py -v
 
       - name: pdf / pdf-document-permissions / Install pinned optional PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-embedded-file-types / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-embedded-filenames / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-embedded-object-sizes / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-form-actions / Install maintained PDF parser
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
       - name: pdf / pdf-incremental-revisions / Install PDF parser used by the Enhanced inspection suites
@@ -85,13 +85,13 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/incremental-corpus.py -v
 
       - name: pdf / pdf-repeated-structures / Install pinned optional PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-unsupported-feature-inspection / Install pinned optional PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-unsupported-feature-inspection / Preserve unusual object-count inspection
         run: PYTHONPATH=. python3 tests/pdf/unusual-object-counts.py -v
       - name: pdf / pdf-unusual-object-counts / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
   protection-policy-tests:
     needs: detect-scope
     if: needs.detect-scope.outputs.run_policy == 'true'
@@ -109,7 +109,7 @@ jobs:
           PYTHONPATH=. python3 tests/general/structured-protection-policy.py -v
           PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: policy / clamav-structural-success-priority / Install the pinned passive PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: policy / clamav-structural-success-priority / Ensure structural success cannot override a ClamAV detection
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v -k structural_success_cannot_override_clamav_detection
 
@@ -222,7 +222,7 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: maximum / maximum-safe-copy-handoff / Compile the real sanitized conversion worker on macOS
         if: runner.os == 'macOS'
-        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+        run: swiftc -O src/sanitization/maximum-sanitized-copy.swift -o maximum-sanitized-copy
       - name: maximum / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
         run: |
           PYTHONPATH=. python3 tests/maximum/temporary-output.py -v
@@ -296,7 +296,7 @@ jobs:
           python-version: "3.11"
       - name: mac / blocking-severity-native / Compile native PDF opener with the shared scan progress component
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
 
 
@@ -313,10 +313,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import sys
-          import maximum_isolated_renderer as renderer
+          __import__('src.module-loader'); import maximum_isolated_renderer as renderer
 
           root = Path(renderer.__file__).resolve().parent
-          worker = root / "maximum_render_worker.py"
+          worker = root / "src/protection/maximum-render-worker.py"
           checks = {
               "python": renderer._trusted_regular_file(
                   str(Path(renderer._sandbox_python_executable()).resolve()),
@@ -355,7 +355,7 @@ jobs:
       - name: mac / maximum-generated-rescan / Install strict PDF validator
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-generated-rescan / Build isolated optional CoreGraphics raster converter
-        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+        run: swiftc -O src/sanitization/maximum-sanitized-copy.swift -o maximum-sanitized-copy
       - name: mac / maximum-generated-rescan / Verify converted PDF re-enters mandatory scan before browser handoff
         run: PYTHONPATH=. python3 tests/maximum/generated-rescan.py -v
 
@@ -367,9 +367,9 @@ jobs:
 
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING src/sanitization/maximum-safe-copy-destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
-          xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/sanitization/maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: mac / maximum-safe-copy-handoff / Install pinned sanitization dependencies
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
@@ -386,7 +386,7 @@ jobs:
       - name: mac / performance / Verify Maximum benchmark contract before live conversion
         run: PYTHONPATH=. python3 tests/maximum/sanitization-benchmark.py -v
       - name: mac / performance / Benchmark actual Maximum rasterization and output verification
-        run: PYTHONPATH=. python3 maximum_sanitization_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/maximum-sanitization-benchmark.py --samples 3
       - name: mac / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
       - name: mac / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
@@ -475,7 +475,7 @@ jobs:
       - name: Summarize failed jobs and their failing steps
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci_failure_report.py
+        run: python3 scripts/ci-failure-report.py
       - name: Publish downloadable failure summary
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

@@ -5,11 +5,14 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 
+__import__('src.module-loader')
 from maximum_sanitized_copy import (
     CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN, OFFER_EXPLANATION,
     OFFER_LABEL, SanitizedCopyOffer,
 )
+__import__('src.module-loader')
 from maximum_safe_copy_handoff import MaximumSafeCopyHandoff
+__import__('src.module-loader')
 from maximum_generated_rescan import verified_generated_pdf_bytes
 
 class GeneratedCopyOriginTests(unittest.TestCase):
@@ -101,10 +104,10 @@ class GeneratedCopyOriginTests(unittest.TestCase):
 
     def test_provenance_does_not_change_installed_scan_or_pdf_metadata(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
-        source = (root / "maximum_sanitized_copy.py").read_text(encoding="utf-8")
-        rescan = (root / "maximum_generated_rescan.py").read_text(encoding="utf-8")
-        route = (root / "maximum_safe_copy_handoff.py").read_text(encoding="utf-8")
+        scanner = (root / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
+        source = (root / "src/sanitization/maximum-sanitized-copy.py").read_text(encoding="utf-8")
+        rescan = (root / "src/sanitization/maximum-generated-rescan.py").read_text(encoding="utf-8")
+        route = (root / "src/sanitization/maximum-safe-copy-handoff.py").read_text(encoding="utf-8")
         workflow = (root / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertNotIn("maximum_generated_content_marking", scanner)
         self.assertIn("force_rescan=True", scanner)

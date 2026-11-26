@@ -10,7 +10,7 @@ marks the start of automated tracking, **not** a claim that older releases have
 been reviewed or that any new feature is compatible.
 
 Run `python3 tests/general/safari-api-watch.py -v` for offline regression tests
-and `python3 scripts/safari_api_watch.py` for the live check. The offline tests
+and `python3 scripts/safari-api-watch.py` for the live check. The offline tests
 run for pull requests, merge queues and `main`; public network polling happens
 **only** on the weekly schedule or by manual `workflow_dispatch`. The live
 check reports article links to the Actions step summary and fails when new
@@ -35,7 +35,7 @@ passing feed check is **not** evidence of runtime compatibility.
    Record affected Safari/macOS/Xcode versions, links, test evidence and any
    follow-up issues/PRs; do not silently accept a breaking API change.
 4. Only after investigating **all** articles in the window, advance
-   `WATCH_START` in `scripts/safari_api_watch.py` to the UTC date of the latest
+   `WATCH_START` in `scripts/safari-api-watch.py` to the UTC date of the latest
    fully reviewed article (never a future date), in a normal reviewed PR. This
    acknowledgement does **not** change the live extension, update software,
    enable permissions or mark automatic interception production-ready.

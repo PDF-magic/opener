@@ -29,11 +29,11 @@ installed, authorized, tested **PDF Magic Opener controlled-opening flow**.
    this API. A future implementation must not use it to bypass the native
    verified application preference.
 3. **Native verified application handoff (preferred for this project):** The
-   macOS [scan gate](../scan-and-open.py) separately enforces an actual
+   macOS [scan gate](../src/scan/scan-and-open.py) separately enforces an actual
    complete clean ClamAV result, fresh signatures, current file identity,
    content integrity, quarantine retention and the user's selected
-   [verified PDF target](../verify-pdf-target.swift). The
-   [native launcher](../launch-scanned-file.swift) then performs the
+   [verified PDF target](../src/native/launch/verify-pdf-target.swift). The
+   [native launcher](../src/native/launch/launch-scanned-file.swift) then performs the
    application handoff. This is a capability of the *native application*,
    not proof that a browser allows an extension to prevent **other** opening
    paths. The native destination can be one of the registered browser bundle
@@ -49,7 +49,7 @@ API-family support makes a future integration plausible, but the precise
 `downloads.open` behavior must be verified on that browser and version.
 "Unverified" means no source here establishes the required API. Every row's
 **PDF Magic Opener flow is currently inactive**. These are macOS bundle IDs
-from the [browser registry](../browser_registry.py), not a browser
+from the [browser registry](../src/browser/browser-registry.py), not a browser
 installation probe or authorization allowlist.
 
 | Browser | macOS bundle ID | Extension `downloads.open` route | Verified native handoff | Current PDF Magic Opener download-opening flow |

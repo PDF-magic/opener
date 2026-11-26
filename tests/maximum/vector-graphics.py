@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, NameObject
 
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -214,7 +215,7 @@ class VectorFixtureTests(unittest.TestCase):
                         _vector_evidence(altered, index), index))
 
     def test_optional_sanitizer_and_installed_scanner_are_unchanged(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (
             ROOT / ".github/workflows/consolidated-checks.yml"
         ).read_text(encoding="utf-8")
@@ -222,6 +223,7 @@ class VectorFixtureTests(unittest.TestCase):
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertEqual(
             workflow.count("python3 tests/maximum/vector-graphics.py -v"), 2)
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         offer = copies.SanitizedCopyOffer(_pdf(), 2)

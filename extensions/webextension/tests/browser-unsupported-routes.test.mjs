@@ -55,7 +55,7 @@ test("catalog exactly covers existing runtime path and bypass inventories", asyn
 test("all registered browsers and all catalog routes remain unverified for native interception", async () => {
   const [data, research, registry] = await Promise.all([
     catalog(), read("docs/browser-automatic-interception-capabilities.json").then(JSON.parse),
-    read("browser_registry.py")
+    read("src/browser/browser-registry.py")
   ]);
   const ids = AUTOMATIC_INTERCEPTION_CAPABILITY_MATRIX.map(row => row.id);
   const supported = [...registry.matchAll(/^\s*"([a-z]+)": "([A-Za-z0-9.-]+)",?\s*$/gmu)]

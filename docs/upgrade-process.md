@@ -26,7 +26,7 @@ updater. ClamAV malware-definition updates are separate from application upgrade
 From the root of that complete checkout, in Terminal, run:
 
 ```sh
-bash install-allow-and-open.sh
+bash scripts/installation/install-allow-and-open.sh
 ```
 
 The existing installer diagnoses prerequisites before changing installation
@@ -56,7 +56,7 @@ take back a default that the user changed.
 
 1. Require the installer to exit successfully; a started or interrupted
    upgrade is **not** a completed installation. From the same checkout,
-   `python3 scripts/migration_state.py status` is a read-only way to inspect
+   `python3 scripts/migration-state.py status` is a read-only way to inspect
    the migration journal: expect `complete` for a successful recorded run;
    `partial` requires investigation and a safe retry.
 2. Verify the effective PDF handler using the installed

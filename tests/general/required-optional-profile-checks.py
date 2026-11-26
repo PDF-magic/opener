@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 import unittest
 
+__import__('src.module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     OPTIONAL_CHECKS_BY_PROFILE,
@@ -112,8 +114,8 @@ class ProfileCheckAssignmentsTests(unittest.TestCase):
             standard.optional_checks[0].availability = ControlAvailability.CURRENT
 
     def test_definition_is_non_executable_and_preserves_scanner_policy(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        policy_source = (ROOT / "protection_policy_definitions.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
+        policy_source = (ROOT / "src/protection/protection-policy-definitions.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_policy_definitions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("UserDefaults", policy_source)
@@ -121,7 +123,7 @@ class ProfileCheckAssignmentsTests(unittest.TestCase):
         self.assertNotIn("def apply_policy", policy_source)
         self.assertNotIn("def select_profile", policy_source)
         self.assertIn('static let name = "Built-in"',
-                      (ROOT / "scan-progress-view.swift").read_text(encoding="utf-8"))
+                      (ROOT / "src/scan/scan-progress-view.swift").read_text(encoding="utf-8"))
         self.assertIn("python3 tests/general/required-optional-profile-checks.py -v",
                       (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
 

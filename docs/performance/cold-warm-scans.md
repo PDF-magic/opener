@@ -9,7 +9,7 @@ signature loading and shutdown. A calibration pair is discarded, then 3–7
 matched pairs are recorded. Each pair uses its own fixture path.
 
 ```sh
-python3 cold_warm_scan_benchmark.py --scanner /opt/homebrew/bin/clamscan --pairs 5
+python3 benchmarks/cold-warm-scan-benchmark.py --scanner /opt/homebrew/bin/clamscan --pairs 5
 ```
 
 Specify `--database /existing/signatures` only when necessary. The output

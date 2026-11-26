@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 import maximum_temporary_output as cleanup
 
 
@@ -210,9 +211,10 @@ class MaximumTemporaryOutputTests(unittest.TestCase):
             cleanup.MaximumTemporaryOutput(Path(self.parent.name) / "fake.pdf").release()
 
     def test_active_scanner_and_profile_settings_unchanged(self):
-        code = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        code = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_temporary_output", code)
         self.assertIn("if not cached_clean(cache_id):", code)
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

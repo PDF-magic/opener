@@ -1,7 +1,7 @@
 # Network-disabled Maximum analysis worker (opener-0308)
 
 A future **Maximum protection** inspection can invoke
-`maximum_network_isolation.run_maximum_offline_worker((absolute_program, ...))`
+`import_module("maximum-network-isolation").run_maximum_offline_worker((absolute_program, ...))` (using `importlib.import_module`)
 to execute a *trusted, separately implemented analysis subprocess* with
 macOS Seatbelt denying all `network*` operations, including both outbound
 connections and inbound listening on loopback. The fixed, non-user-editable

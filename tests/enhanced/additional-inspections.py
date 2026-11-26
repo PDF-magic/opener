@@ -6,11 +6,13 @@ import json
 from pathlib import Path
 import unittest
 
-from enhanced_analysis_findings import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity, StageAnalysis,
     StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_additional_inspections import (
+__import__('src.module-loader')
+from src.enhanced.enhanced_additional_inspections import (
     AdditionalInspectionPlan, FindingInspectionRequirement, FollowUpInspection,
     plan_additional_inspections,
 )
@@ -210,10 +212,11 @@ class AdditionalInspectionPolicyTests(unittest.TestCase):
 
     def test_deployed_scanner_profiles_and_preferences_remain_separate(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("enhanced_additional_inspections", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

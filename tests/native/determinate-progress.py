@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class NativeDeterminateProgressTests(unittest.TestCase):
     def test_actual_request_completion_and_unknown_single_file_progress(self):
-        native = (ROOT / "brave-pdf-opener.swift").read_text().split(
+        native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text().split(
             "@main\nstruct PDFMagicOpenerEntry {", 1)[0]
-        progress = (ROOT / "scan-progress-view.swift").read_text()
+        progress = (ROOT / "src/scan/scan-progress-view.swift").read_text()
         preference = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text()
         self.assertIn("finishedRequests += 1", native)
         self.assertNotIn("ScanProgressPreference", native.split(
@@ -22,7 +22,7 @@ class NativeDeterminateProgressTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="opener-determinate-") as directory:
             root = Path(directory)
             (root / "twilight-reading.png").write_bytes(
-                (ROOT / "twilight-reading.png").read_bytes())
+                (ROOT / "src/scan/twilight-reading.png").read_bytes())
             first = root / "first.pdf"
             second = root / "second.pdf"
             first.write_bytes(b"%PDF-1.4\n")

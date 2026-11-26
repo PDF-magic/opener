@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from file_launcher import (NATIVE_LAUNCHER, PDF_DEFAULT_BUNDLE_ID, PDF_OPENER_BUNDLE_ID,
                            scanned_file_identity,
                            PDF_TARGET_VERIFIER, PDF_TARGET_UNAVAILABLE_MESSAGE,
@@ -136,7 +137,7 @@ class FileLauncherTests(unittest.TestCase):
                 launch_clean_file(document)
 
     def test_scanner_delegates_selection_without_brave_policy(self):
-        source = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("com.brave.Browser", source)
         self.assertNotIn("PDF_DEFAULT_BUNDLE_ID", source)
         self.assertIn("launch_clean_file(path, target_app=destination if is_pdf else None)", source)
@@ -151,7 +152,7 @@ class FileLauncherTests(unittest.TestCase):
         self.assertLess(final_check, launch)
 
     def test_native_workspace_api_routing(self):
-        swift = (ROOT / "launch-scanned-file.swift").read_text()
+        swift = (ROOT / "src/native/launch/launch-scanned-file.swift").read_text()
         for name in ("NSWorkspace", "workspace.open([target], withApplicationAt:",
                      "workspace.openApplication(at: target", "workspace.open(target)"):
             self.assertIn(name, swift)
@@ -216,21 +217,21 @@ class FileLauncherTests(unittest.TestCase):
                 run.assert_not_called()
 
     def test_scanner_preflights_target_before_quarantine_release(self):
-        source = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("verify_launch_target(path, target_app=destination if is_pdf else None)", source)
         self.assertLess(source.rindex("    verify_launch_target(path, target_app=destination if is_pdf else None)"),
                         source.rindex("    remove_quarantine(path)"))
 
     def test_installer_deploys_launch_module_with_scanner(self):
-        script = (ROOT / "install-allow-and-open.sh").read_text()
+        script = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         line = next(line for line in script.splitlines()
-                    if line.startswith('cp "$script_dir/allow-and-open.sh"'))
-        self.assertIn('"$script_dir/scan-and-open.py"', line)
-        self.assertIn('"$script_dir/file_launcher.py"', line)
+                    if line.startswith('cp "$script_dir/src/scan/allow-and-open.sh"'))
+        self.assertIn('"$script_dir/src/scan/scan-and-open.py"', line)
+        self.assertIn('"$script_dir/src/native/launch/file-launcher.py"', line)
         self.assertIn('"$install_dir/"', line)
-        self.assertIn('swiftc -parse-as-library -O "$script_dir/verify-pdf-target.swift"', script)
+        self.assertIn('swiftc -parse-as-library -O "$script_dir/src/native/launch/verify-pdf-target.swift"', script)
         self.assertIn('"$install_dir/verify-pdf-target"', script)
-        self.assertIn('swiftc -O "$script_dir/launch-scanned-file.swift"', script)
+        self.assertIn('swiftc -O "$script_dir/src/native/launch/launch-scanned-file.swift"', script)
         self.assertIn('"$install_dir/launch-scanned-file"', script)
 
 
@@ -255,6 +256,7 @@ class ExecutablePathValidationTests(unittest.TestCase):
         self.pdf.write_bytes(b"%PDF-1.4\n")
 
     def test_accepts_only_absolute_executable_regular_files(self):
+        __import__('src.module-loader')
         from file_launcher import require_executable_path
         self.assertEqual(require_executable_path(self.executable), str(self.executable))
         self.assertEqual(require_executable_path(str(self.executable)), str(self.executable))
@@ -263,6 +265,7 @@ class ExecutablePathValidationTests(unittest.TestCase):
 
     def test_rejects_relative_missing_symlink_directory_and_special_paths(self):
         import socket
+        __import__('src.module-loader')
         from file_launcher import require_executable_path
         dangling = self.root / "dangling"
         dangling.symlink_to(self.root / "missing")
@@ -283,6 +286,7 @@ class ExecutablePathValidationTests(unittest.TestCase):
                 patch("file_launcher.DEFAULT_BROWSER_RESOLVER", self.blocked), \
                 patch("file_launcher.subprocess.run") as start, \
                 patch("file_launcher.sys.platform", "darwin"):
+            __import__('src.module-loader')
             from file_launcher import (verify_launch_target, verify_local_file_available,
                                       launch_clean_file, _resolve_default_browser)
             for callback in (
@@ -298,6 +302,7 @@ class ExecutablePathValidationTests(unittest.TestCase):
         self.assertEqual(self.pdf.read_bytes(), b"%PDF-1.4\n")
 
     def test_validated_helpers_keep_literal_argv_and_customized_destination(self):
+        __import__('src.module-loader')
         from file_launcher import launch_clean_file, verify_launch_target
         with patch("file_launcher.PDF_TARGET_VERIFIER", self.executable), \
                 patch("file_launcher.NATIVE_LAUNCHER", self.executable), \

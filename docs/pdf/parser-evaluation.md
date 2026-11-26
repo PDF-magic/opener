@@ -2,7 +2,7 @@
 
 **Decision: retain pypdf, update reviewed pin to 6.21.4.** The parser was introduced by [PR #179](https://github.com/PDF-magic/opener/pull/179)
 for optional, strict Enhanced PDF structure inspection. The dependency is
-**exactly pinned** as `pypdf==6.21.4` in `requirements-enhanced-pdf.txt`.
+**exactly pinned** as `pypdf==6.21.4` in `requirements/requirements-enhanced-pdf.txt`.
 This decision confirms that selection; it neither adds a competing parser
 nor enables the planned Enhanced profile.
 
@@ -34,7 +34,7 @@ that **this application's** restricted inspection admits all those inputs.
 The qualitative differences above describe allocation models, **not**
 benchmarked rankings. Peak RSS must be measured on the **same** host, OS,
 Python version, fixture, and installed library versions. The offline
-`pdf_parser_memory_benchmark.py` generates a deterministic synthetic PDF
+`benchmarks/pdf-parser-memory-benchmark.py` generates a deterministic synthetic PDF
 with a bounded page tree and one shared, uncompressed payload stream.
 Each candidate is parsed in a **fresh subprocess**; it reports the child
 process's `ru_maxrss` (MiB), Python package version, page count and input
@@ -46,10 +46,10 @@ Run after installing the optional candidates **in a disposable environment**
 and independently checking their licenses:
 
 ```sh
-python3 -m pip install -r requirements-enhanced-pdf.txt
-python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
+python3 -m pip install -r requirements/requirements-enhanced-pdf.txt
+python3 benchmarks/pdf-parser-memory-benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
 # Optionally, in an isolated evaluation environment with pikepdf and PyMuPDF:
-python3 pdf_parser_memory_benchmark.py --parser all --pages 512 --stream-bytes 4194304
+python3 benchmarks/pdf-parser-memory-benchmark.py --parser all --pages 512 --stream-bytes 4194304
 ```
 
 Missing optional candidates are reported as `not-installed`. This is a

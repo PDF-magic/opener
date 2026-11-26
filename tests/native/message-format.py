@@ -4,7 +4,8 @@ from pathlib import Path
 import subprocess
 import unittest
 
-from native_message_format import (
+__import__('src.module-loader')
+from src.native.native_message_format import (
   InvalidNativeMessage, MAX_MESSAGE_BYTES, MESSAGE_VERSION,
   decode_native_message, encode_native_message,
 )
@@ -94,7 +95,7 @@ class NativeMessageFormatTests(unittest.TestCase):
         decode_native_message(encode_native_message(sample(payload=untrusted)))["payload"],
         untrusted
       )
-    source = (ROOT / "native_message_format.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/native/native-message-format.py").read_text(encoding="utf-8")
     for forbidden in ("subprocess.run(", "os.system(", "scan_and_open(",
                       "open_pdf(", "sendNativeMessage(", "connectNative("):
       self.assertNotIn(forbidden, source)

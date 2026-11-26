@@ -6,11 +6,13 @@ from pathlib import Path
 import unittest
 
 from pypdf import PdfWriter
-from pdf_incremental_revisions import (
+__import__('src.module-loader')
+from src.pdf.pdf_incremental_revisions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 def append_revision(original, number=6, payload=b"<< /Marker (inert) >>"):
@@ -106,9 +108,10 @@ class IncrementalRevisionTests(unittest.TestCase):
         )
 
     def test_scanner_and_preference_noninterference(self):
-        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("pdf_incremental_revisions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

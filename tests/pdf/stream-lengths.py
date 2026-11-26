@@ -8,9 +8,12 @@ from runpy import run_path
 import unittest
 
 from pypdf import PdfReader
+__import__('src.module-loader')
 from pdf_stream_lengths import PDFStreamLengthError, validate_pdf_stream_lengths
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf_structure
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -114,16 +117,16 @@ class PDFStreamLengthTests(unittest.TestCase):
       with self.subTest(kind=type(invalid).__name__):
         with self.assertRaises(PDFStreamLengthError):
           validate_pdf_stream_lengths(invalid, None)
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-    module = (ROOT / "pdf_stream_lengths.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
+    module = (ROOT / "src/pdf/pdf-stream-lengths.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertNotIn("pdf_stream_lengths", scanner)
     self.assertNotIn("remove_quarantine(", module)
     self.assertNotIn("launch_clean_file(", module)
     self.assertNotIn("get_data(", module)
-    self.assertIn("strict=True", (ROOT / "pdf_structure_parser.py").read_text())
+    self.assertIn("strict=True", (ROOT / "src/pdf/pdf-structure-parser.py").read_text())
     self.assertIn("python3 tests/pdf/stream-lengths.py -v", workflow)
-    self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt",
+    self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt",
                   workflow)
 
 

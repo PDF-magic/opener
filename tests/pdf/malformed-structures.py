@@ -9,7 +9,8 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfWriter
-from pdf_malformed_structures import (
+__import__('src.module-loader')
+from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFMalformedStructureError,
     PDFMalformedStructureInspection, inspect_pdf_malformed_structures,
 )
@@ -44,7 +45,8 @@ class MalformedStructureTests(unittest.TestCase):
             PDFMalformedStructureInspection(1, 1, permits_open=True)
 
     def test_reference_pdf_collection(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        __import__('src.module-loader')
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(sample=sample.identifier):
                 before = sample.content
@@ -104,7 +106,7 @@ class MalformedStructureTests(unittest.TestCase):
 
     def test_input_and_object_budget_fail_closed(self):
         self.assert_rejected(b"x" * (MAX_PDF_BYTES + 1))
-        with patch("pdf_malformed_structures.MAX_OBJECTS", 1):
+        with patch("src.pdf.pdf_malformed_structures.MAX_OBJECTS", 1):
             self.assert_rejected(sample_pdf())
 
     def test_missing_library_is_not_silently_accepted(self):
@@ -118,10 +120,11 @@ class MalformedStructureTests(unittest.TestCase):
 
     def test_scanner_and_user_customizations_are_unchanged(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (root / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_malformed_structures", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

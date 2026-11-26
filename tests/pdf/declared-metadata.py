@@ -15,11 +15,13 @@ from pypdf.generic import (
     NumberObject, TextStringObject,
 )
 
-from pdf_declared_metadata import (
+__import__('src.module-loader')
+from src.pdf.pdf_declared_metadata import (
     MAX_METADATA_TEXT, MAX_XMP_BYTES, PDFDeclaredMetadata,
     PDFDeclaredMetadataError, extract_pdf_declared_metadata,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -236,8 +238,8 @@ class PDFDeclaredMetadataTests(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             PDFDeclaredMetadata((), (), False, True)
-        source = (ROOT / "pdf_declared_metadata.py").read_text()
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/pdf/pdf-declared-metadata.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         docs = (ROOT / "docs/pdf/declared-metadata.md").read_text()
         self.assertNotIn("pdf_declared_metadata", scanner)

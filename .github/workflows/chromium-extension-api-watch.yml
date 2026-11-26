@@ -39,4 +39,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Check for unreviewed Chrome Extensions platform changes
-        run: python3 scripts/chromium_extension_api_watch.py
+        run: python3 scripts/chromium-extension-api-watch.py

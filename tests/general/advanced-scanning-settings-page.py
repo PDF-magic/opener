@@ -116,7 +116,7 @@ class AdvancedScanningSettingsPageTests(unittest.TestCase):
     for forbidden in ("removePersistentDomain", "setPersistentDomain", "clamscan",
                       "target-app.txt", "LSSetDefault", "Process("):
       self.assertNotIn(forbidden, shared.split("enum RecommendedScannerLimitsReset {", 1)[1])
-    self.assertIn("test-recommended-scanner-limits.swift", ci)
+    self.assertIn("tests/scanner/recommended-limits.swift", ci)
     self.assertIn("tests/general/advanced-scanning-settings-page.py -v", ci)
 
   def test_page_is_part_of_built_swiftui_app_target(self):

@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('src.module-loader')
 from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
 
 

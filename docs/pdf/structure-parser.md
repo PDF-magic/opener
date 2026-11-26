@@ -12,7 +12,7 @@ verdict. The dedicated regression test parses the existing safe reference PDF
 collection and pypdf-generated documents.
 
 Install this *optional* dependency with
-`python3 -m pip install -r requirements-enhanced-pdf.txt`. The pinned version
+`python3 -m pip install -r requirements/requirements-enhanced-pdf.txt`. The pinned version
 was reviewed against the 2026-10-27 release; regularly update this pin after
 security review.
 
@@ -54,7 +54,7 @@ streams, and page dictionaries stored in object streams, plus malformed
 cross-reference/stream indexes that must fail closed. The test is included
 in the existing `scanner-tests` CI job that pins the pypdf dependency.
 
-The separate `pdf_object_relationships.py` stage continues to reject
+The separate `src/pdf/pdf-object-relationships.py` stage continues to reject
 object streams pending its own graph-validation scope; this task does not
 relax that restriction. Neither parser is wired into the installed Built-in
 ClamAV gate, which retains its mandatory safety and handoff checks.

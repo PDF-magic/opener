@@ -103,10 +103,10 @@ jobs:
               encoding="ascii",
           )
           PY
-          python3 scanner_startup_benchmark.py \
+          python3 benchmarks/scanner-startup-benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" \
             --files 5 --cycles 3
-          python3 peak_memory_benchmark.py \
+          python3 benchmarks/peak-memory-benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" \
             --samples 3
 
@@ -188,7 +188,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
             echo "run_macos=true" >> "$GITHUB_OUTPUT"
           else
-            python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+            python3 scripts/ci-test-scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
           fi
       - name: Verify dependency-map behavior
         run: PYTHONPATH=. python3 tests/general/ci-test-scope.py -v
@@ -205,7 +205,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install reviewed optional PDF parser dependency
-        run: python3 -m pip install --disable-pip-version-check --requirement requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check --requirement requirements/requirements-enhanced-pdf.txt
       - name: Verify real macOS filesystem sandbox and timed parser
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
 
@@ -270,7 +270,9 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          tests = list(Path("tests").glob("*/*.py"))
+          # Python package markers are not regression suites or ordinary filenames.
+          tests = [path for path in Path("tests").glob("*/*.py")
+                   if path.name != "__init__.py"]
           assert len(tests) >= 250, "Regression suites are missing"
           for path in tests:
               topic = path.parent.name
@@ -285,13 +287,13 @@ jobs:
       - name: Detect pre-existing scan entry points without changing installation state
         run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
-        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+        run: bash -n scripts/installation/install-allow-and-open.sh src/scan/allow-and-open.sh src/scanner/update-malware-signatures.sh scripts/installation/make-pdf-magic-default.command
       - name: Enforce documented dependency update ownership and review process
         run: PYTHONPATH=. python3 tests/general/dependency-updates.py -v
       - name: Exercise dependency update fail-closed and audit regressions
         run: PYTHONPATH=. python3 tests/dependencies/update-regressions.py -v
       - name: Check declared dependency license obligations before optional installs
-        run: python3 scripts/check_dependency_licenses.py
+        run: python3 scripts/check-dependency-licenses.py
       - name: Verify license checker rejects unreviewed dependencies and missing notices
         run: PYTHONPATH=. python3 tests/general/dependency-licensing.py -v
       - name: Report missing installation prerequisites clearly before mutation
@@ -313,7 +315,7 @@ jobs:
       - name: Detect interrupted installation migrations and verify safe retries
         run: PYTHONPATH=. python3 tests/migration/repeatable-state.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
         run: PYTHONPATH=. python3 tests/pdf/embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
@@ -353,11 +355,11 @@ jobs:
       - name: Verify the evaluated parser, BSD license and consistent version pin
         run: PYTHONPATH=. python3 tests/pdf/parser-evaluation.py -v
       - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
-        run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
+        run: python3 benchmarks/pdf-parser-memory-benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Verify bounded small text PDF timing and fail-closed benchmark behavior
         run: PYTHONPATH=. python3 tests/pdf/small-text-benchmark.py -v
       - name: Benchmark a real small text-based PDF through supervised structure analysis
-        run: PYTHONPATH=. python3 small_text_pdf_benchmark.py --samples 5
+        run: PYTHONPATH=. python3 benchmarks/small-text-pdf-benchmark.py --samples 5
       - name: Inspect indirect PDF object links and page-tree consistency
         run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
       - name: Detect suspiciously repeated PDF object structures
@@ -464,7 +466,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/ci-safety-contract.py -v
       - name: Inspect embedded PDF attachments under the planned Enhanced policy
         run: |
-          python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+          python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
           PYTHONPATH=. python3 tests/enhanced/embedded-files.py -v
       - name: Test Enhanced policy with a PDF containing embedded attachments
         run: PYTHONPATH=. python3 tests/enhanced/profile-embedded-attachments.py -v
@@ -475,7 +477,7 @@ jobs:
       - name: Verify bounded many embedded PDF objects benchmark
         run: PYTHONPATH=. python3 tests/pdf/many-embedded-objects-benchmark.py -v
       - name: Benchmark many real synthetic embedded PDF objects
-        run: PYTHONPATH=. python3 many_embedded_objects_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/many-embedded-objects-benchmark.py --samples 3
       - name: Validate oversized embedded-stream security PDF corpus
         run: PYTHONPATH=. python3 tests/pdf/oversized-stream-corpus.py -v
       - name: Detect excessive PDF decompression requirements safely
@@ -540,7 +542,7 @@ jobs:
       - name: Verify bounded, fail-closed large PDF benchmark behavior
         run: PYTHONPATH=. python3 tests/pdf/large-pdf-benchmark.py -v
       - name: Sample real 256-page large PDF parsing in an isolated worker
-        run: python3 large_pdf_benchmark.py --case many-large-pages --runs 1
+        run: python3 benchmarks/large-pdf-benchmark.py --case many-large-pages --runs 1
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
@@ -865,7 +867,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/gatekeeper-protections.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
-          python3 tools/audit_quarantine_removal.py
+          python3 tools/audit-quarantine-removal.py
           PYTHONPATH=. python3 tests/general/quarantine-removal-inventory.py -v
       - name: Guard changed legacy scan-and-open behavior and regression wiring
         run: PYTHONPATH=. python3 tests/general/legacy-behavior-regressions.py -v
@@ -1025,7 +1027,7 @@ jobs:
       - name: Verify Enhanced structural benchmark contracts and real workers
         run: PYTHONPATH=. python3 tests/enhanced/structural-benchmark.py -v
       - name: Benchmark Enhanced structural inspection on generated PDFs
-        run: PYTHONPATH=. python3 enhanced_structure_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/enhanced-structure-benchmark.py --samples 3
       - name: Verify cross-process scan concurrency
         run: PYTHONPATH=. python3 tests/scan/concurrency.py
       - name: Verify native owner termination aborts active scans
@@ -1114,9 +1116,9 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING src/sanitization/maximum-safe-copy-destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
-          xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/sanitization/maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify descriptor-pinned scan inputs on macOS
@@ -1133,48 +1135,48 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Test read-only ClamAV signature revision parsing
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift tests/updates/manual-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
           "$RUNNER_TEMP/TestManualUpdateActions"
       - name: Verify safe native signature timestamp status reading
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/signature/update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
           "$RUNNER_TEMP/TestSignatureUpdateStatus"
       - name: Exercise read-only recent scan-history retrieval using synthetic SQLite rows
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift test-recent-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift tests/scan/recent-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
           "$RUNNER_TEMP/TestRecentScanHistory"
       - name: Exercise confirmed history deletion with synthetic private SQLite files
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift test-clear-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift tests/scan/clear-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
           "$RUNNER_TEMP/TestClearScanHistory"
       - name: Exercise automatic native scan-history retention with private synthetic SQLite rows
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ScanHistoryRetention.swift test-scan-history-retention.swift -lsqlite3 -o "$RUNNER_TEMP/TestScanHistoryRetention"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ScanHistoryRetention.swift tests/scan/history-retention.swift -lsqlite3 -o "$RUNNER_TEMP/TestScanHistoryRetention"
           "$RUNNER_TEMP/TestScanHistoryRetention"
       - name: Verify native stale-signature warning at the scanner age boundary
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/signature/stale-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
           "$RUNNER_TEMP/TestStaleSignatureWarning"
       - name: Verify native signature-update failure metadata safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-failures.swift -o "$RUNNER_TEMP/TestSignatureUpdateFailures"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/signature/update-failures.swift -o "$RUNNER_TEMP/TestSignatureUpdateFailures"
           "$RUNNER_TEMP/TestSignatureUpdateFailures"
       - name: Verify on-open, live and manual browser refresh actions
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift test-browser-preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING src/browser/browser-preference-list.swift src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift tests/browser/preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
           "$RUNNER_TEMP/TestBrowserPreferenceList"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift test-browser-preference-live-refresh.swift -o "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift tests/browser/preference-live-refresh.swift -o "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
       - name: Verify atomic and cross-process configuration persistence and failure safety
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift test-atomic-configuration-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/AtomicConfigurationWriter.swift tests/configuration/atomic-writer.swift -o "$RUNNER_TEMP/TestAtomicConfigurationWriter"
           "$RUNNER_TEMP/TestAtomicConfigurationWriter"
       - name: Verify native signature-update progress metadata safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateProgress.swift test-signature-update-progress.swift -o "$RUNNER_TEMP/TestSignatureUpdateProgress"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateProgress.swift tests/signature/update-progress.swift -o "$RUNNER_TEMP/TestSignatureUpdateProgress"
           "$RUNNER_TEMP/TestSignatureUpdateProgress"
       - name: Build SwiftUI application target without registering PDF handling
         run: |
@@ -1187,8 +1189,8 @@ jobs:
         run: |
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           stage="$RUNNER_TEMP/PDFMagicOpenerHelpersPackage"
-          python3 scripts/package_application_helpers.py --app "$app" --output-dir "$stage"
-          python3 scripts/package_application_helpers.py --verify "$stage/PDFMagicOpener.app"
+          python3 scripts/package-application-helpers.py --app "$app" --output-dir "$stage"
+          python3 scripts/package-application-helpers.py --verify "$stage/PDFMagicOpener.app"
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/pdf-magic-native-host"
           test -x "$stage/PDFMagicOpener.app/Contents/Helpers/launch-scanned-file"
           test ! -e "$app/Contents/Helpers"
@@ -1197,18 +1199,18 @@ jobs:
           stage="$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
           archive="$RUNNER_TEMP/PDFMagicOpener-unsigned.zip"
           extracted="$RUNNER_TEMP/PDFMagicOpenerReleaseExtract"
-          python3 scripts/create_release_archive.py --app "$stage" --output "$archive"
-          python3 scripts/create_release_archive.py --verify "$archive"
+          python3 scripts/create-release-archive.py --app "$stage" --output "$archive"
+          python3 scripts/create-release-archive.py --verify "$archive"
           mkdir -p "$extracted"
           ditto -x -k "$archive" "$extracted"
-          python3 scripts/package_application_helpers.py --verify "$extracted/PDFMagicOpener.app"
+          python3 scripts/package-application-helpers.py --verify "$extracted/PDFMagicOpener.app"
           test -x "$extracted/PDFMagicOpener.app/Contents/MacOS/PDFMagicOpener"
       - name: Smoke-test staged macOS app from a fresh uninstalled location
         run: python3 tests/app/fresh-launch.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app"
       - name: Measure first SwiftUI appearance of the staged app on macOS
         run: |
           PYTHONPATH=. python3 tests/app/launch-benchmark.py -v
-          python3 app_launch_benchmark.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app" --samples 3
+          python3 benchmarks/app-launch-benchmark.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app" --samples 3
       - name: Test native notifications after quitting the built Settings application
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission
@@ -1219,14 +1221,14 @@ jobs:
           PYTHONPATH=. python3 tests/browser/preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
       - name: Compile and self-test read-only Safari activation probe
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
+          xcrun swiftc -parse-as-library -warnings-as-errors tests/browser/safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
           "$RUNNER_TEMP/TestSafariExtensionActivation" --self-test
       - name: Package and verify unsigned Safari Web Extension host app
         run: |
           app="$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
           output="$RUNNER_TEMP/pdf-magic-safari-package"
-          python3 scripts/package_safari_extension.py --app "$app" --output-dir "$output"
-          python3 scripts/package_safari_extension.py --verify "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip"
+          python3 scripts/package-safari-extension.py --app "$app" --output-dir "$output"
+          python3 scripts/package-safari-extension.py --verify "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip"
           unzip -t "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip"
           mkdir -p "$RUNNER_TEMP/PDFMagicSafariExtract"
           ditto -x -k "$output/pdf-magic-opener-safari-0.1.0-unsigned.zip" "$RUNNER_TEMP/PDFMagicSafariExtract"
@@ -1250,7 +1252,7 @@ jobs:
             PDFMagicOpenerApp/ScanHistoryResultDetailView.swift \
             PDFMagicOpenerApp/ClearScanHistory.swift \
             PDFMagicOpenerApp/ScanHistoryRetention.swift \
-            test-preferences-large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
+            tests/preferences/large-text.swift -lsqlite3 -o "$RUNNER_TEMP/TestPreferencesLargeText"
           "$RUNNER_TEMP/TestPreferencesLargeText"
       - name: Test General PDF handler status against Launch Services
         run: |
@@ -1258,7 +1260,7 @@ jobs:
             PDFMagicOpenerApp/GeneralSettingsView.swift PDFMagicOpenerApp/DefaultPDFBrowserPreferences.swift \
             PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift \
             PDFMagicOpenerApp/ScanProgressPreference.swift \
-            test-general-pdf-handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
+            tests/pdf/handler-indicator.swift -o "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
           "$RUNNER_TEMP/TestGeneralPDFHandlerIndicator"
       - name: Verify built app icon and macOS window branding
         run: |
@@ -1288,142 +1290,142 @@ jobs:
           cmp LICENSE "$app/Contents/Resources/LICENSE"
       - name: Verify per-browser monitoring status does not imply scanner connectivity
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-monitoring-status.swift -o "$RUNNER_TEMP/TestBrowserMonitoringStatus"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/browser/monitoring-status.swift -o "$RUNNER_TEMP/TestBrowserMonitoringStatus"
           "$RUNNER_TEMP/TestBrowserMonitoringStatus"
       - name: Verify browser integration preflight never claims scanner connectivity
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-integration.swift -o "$RUNNER_TEMP/TestBrowserIntegration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/browser/integration.swift -o "$RUNNER_TEMP/TestBrowserIntegration"
           "$RUNNER_TEMP/TestBrowserIntegration"
       - name: Verify isolated browser download monitoring toggle preference
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/browser/download-monitoring.swift -o "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
           "$RUNNER_TEMP/TestBrowserDownloadMonitoring"
       - name: Verify isolated per-browser automatic interception opt-ins
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-browser-automatic-pdf-interception.swift -o "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/browser/automatic-pdf-interception.swift -o "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
           "$RUNNER_TEMP/TestBrowserAutomaticPDFInterception"
       - name: Verify browser failed-scan notification preference in isolated user defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/notify-on-failed-scan.swift -o "$RUNNER_TEMP/TestNotifyOnFailedScan"
           "$RUNNER_TEMP/TestNotifyOnFailedScan"
       - name: Verify browser connection-health snapshots are never scanner authorization
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-connection-health.swift -o "$RUNNER_TEMP/TestDownloadConnectionHealth"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/connection-health.swift -o "$RUNNER_TEMP/TestDownloadConnectionHealth"
           "$RUNNER_TEMP/TestDownloadConnectionHealth"
       - name: Verify Show Only Warnings saved preference and fail-open warning visibility
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-only-warnings.swift -o "$RUNNER_TEMP/TestShowOnlyWarnings"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/show-only-warnings.swift -o "$RUNNER_TEMP/TestShowOnlyWarnings"
           "$RUNNER_TEMP/TestShowOnlyWarnings"
       - name: Verify isolated download scan-result display preference
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-scan-results.swift -o "$RUNNER_TEMP/TestDownloadScanResults"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/scan-results.swift -o "$RUNNER_TEMP/TestDownloadScanResults"
           "$RUNNER_TEMP/TestDownloadScanResults"
       - name: Verify opt-in successful scan notifications in isolated user defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-successful-scan-notifications.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/successful-scan.swift -o "$RUNNER_TEMP/TestSuccessfulScanNotifications"
           "$RUNNER_TEMP/TestSuccessfulScanNotifications"
       - name: Verify failed-scan notices with isolated user settings
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-failed-scan-notifications.swift -o "$RUNNER_TEMP/TestFailedScanNotifications"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/failed-scan.swift -o "$RUNNER_TEMP/TestFailedScanNotifications"
           "$RUNNER_TEMP/TestFailedScanNotifications"
       - name: Verify malware notifications reject unrelated failures and cancellations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malware-detection-notifications.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/malware-detection.swift -o "$RUNNER_TEMP/TestMalwareDetectionNotifications"
           "$RUNNER_TEMP/TestMalwareDetectionNotifications"
       - name: Verify per-document notification deduplication and expiration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-notification-deduplication.swift -o "$RUNNER_TEMP/TestNotificationDeduplication"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/notifications/deduplication.swift -o "$RUNNER_TEMP/TestNotificationDeduplication"
           "$RUNNER_TEMP/TestNotificationDeduplication"
       - name: Verify confirmed General preference reset preserves customizations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-general-preferences.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/reset-general.swift -o "$RUNNER_TEMP/TestResetGeneralPreferences"
           "$RUNNER_TEMP/TestResetGeneralPreferences"
       - name: Verify Restore Recommended Limits preserves scanner safety and customizations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-recommended-scanner-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/scanner/recommended-limits.swift -o "$RUNNER_TEMP/TestRecommendedScannerLimits"
           "$RUNNER_TEMP/TestRecommendedScannerLimits"
       - name: Test versioned configuration serialization and compatibility
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/schema.swift -o "$RUNNER_TEMP/TestConfigurationSchema"
           "$RUNNER_TEMP/TestConfigurationSchema"
       - name: Verify active configuration schema version is persisted safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-active-schema-version.swift -o "$RUNNER_TEMP/TestActiveSchemaVersion"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/active-schema-version.swift -o "$RUNNER_TEMP/TestActiveSchemaVersion"
           "$RUNNER_TEMP/TestActiveSchemaVersion"
       - name: Verify safe malformed configuration recovery
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-malformed-configuration-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/malformed-recovery.swift -o "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
           "$RUNNER_TEMP/TestMalformedConfigurationRecovery"
       - name: Test legacy configuration schema upgrades without resetting preferences
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-configuration-migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/migration.swift -o "$RUNNER_TEMP/TestConfigurationMigration"
           "$RUNNER_TEMP/TestConfigurationMigration"
       - name: Verify application upgrade retains shared preferences across launches
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-application-upgrade-preferences.swift -o "$RUNNER_TEMP/TestApplicationUpgradePreferences"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/application-upgrade.swift -o "$RUNNER_TEMP/TestApplicationUpgradePreferences"
           "$RUNNER_TEMP/TestApplicationUpgradePreferences"
       - name: Verify additive policy settings upgrade preserves saved preferences
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-policy-settings-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/policy-upgrade.swift -o "$RUNNER_TEMP/TestPolicySettingsUpgrade"
           "$RUNNER_TEMP/TestPolicySettingsUpgrade"
       - name: Verify all processes refresh the same effective configuration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-cross-process-effective-configuration.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/cross-process-effective.swift -o "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
           "$RUNNER_TEMP/TestCrossProcessEffectiveConfiguration"
           PYTHONPATH=. python3 tests/general/cross-process-configuration.py -v
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/scan/show-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
           "$RUNNER_TEMP/TestShowScanProgress"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-initial-configuration.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/initial.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
           "$RUNNER_TEMP/TestInitialConfiguration"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunWelcomeState.swift test-first-run-welcome.swift -o "$RUNNER_TEMP/TestFirstRunWelcome"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunWelcomeState.swift tests/first-run/welcome.swift -o "$RUNNER_TEMP/TestFirstRunWelcome"
           "$RUNNER_TEMP/TestFirstRunWelcome"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunScannerInstallation.swift test-first-run-scanner-installation.swift -o "$RUNNER_TEMP/TestFirstRunScannerInstallation"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunScannerInstallation.swift tests/first-run/scanner-installation.swift -o "$RUNNER_TEMP/TestFirstRunScannerInstallation"
           "$RUNNER_TEMP/TestFirstRunScannerInstallation"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-first-run-profile-choice.swift -o "$RUNNER_TEMP/TestFirstRunProfileChoice"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/first-run/profile-choice.swift -o "$RUNNER_TEMP/TestFirstRunProfileChoice"
           "$RUNNER_TEMP/TestFirstRunProfileChoice"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunInstallationHealth.swift test-first-run-installation-health.swift -o "$RUNNER_TEMP/TestFirstRunInstallationHealth"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/FirstRunInstallationHealth.swift tests/first-run/installation-health.swift -o "$RUNNER_TEMP/TestFirstRunInstallationHealth"
           "$RUNNER_TEMP/TestFirstRunInstallationHealth"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-first-run-signature-availability.swift -o "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/first-run/signature-availability.swift -o "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
           "$RUNNER_TEMP/TestFirstRunSignatureAvailability"
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-selected-protection-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/selected-profile.swift -o "$RUNNER_TEMP/TestSelectedProtectionProfile"
           "$RUNNER_TEMP/TestSelectedProtectionProfile"
       - name: Verify existing installations retain Standard without changing active Built-in policy
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/legacy-standard-preference.swift -o "$RUNNER_TEMP/TestLegacyStandardPreference"
           "$RUNNER_TEMP/TestLegacyStandardPreference"
       - name: Verify Reset Protection Settings preserves scanner and user customizations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-reset-protection-settings.swift -o "$RUNNER_TEMP/TestProtectionSettingsReset"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/reset-settings.swift -o "$RUNNER_TEMP/TestProtectionSettingsReset"
           "$RUNNER_TEMP/TestProtectionSettingsReset"
       - name: Verify planned protection preview persists across process restarts
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-protection-choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/protection/choice-restart.swift -o "$RUNNER_TEMP/TestProtectionChoiceRestart"
           "$RUNNER_TEMP/TestProtectionChoiceRestart"
       - name: Verify isolated opt-in download scan scope persistence
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-scan-other-supported-files.swift -o "$RUNNER_TEMP/TestScanOtherSupportedFiles"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/scan/other-supported-files.swift -o "$RUNNER_TEMP/TestScanOtherSupportedFiles"
           "$RUNNER_TEMP/TestScanOtherSupportedFiles"
       - name: Verify settings survive app restart and replacement executable
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-persistent-settings-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/persistent-lifecycle.swift -o "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
           "$RUNNER_TEMP/TestPersistentSettingsLifecycle"
       - name: Verify editing preferences while the malware scan is running
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-preferences-during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/during-scan.swift -o "$RUNNER_TEMP/TestPreferencesDuringScan"
           PREFERENCE_TEST_HELPER="$RUNNER_TEMP/TestPreferencesDuringScan" PYTHONPATH=. python3 tests/preferences/during-scan.py -v
       - name: Compile native PDF opener with the shared scan progress component
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift -o "$RUNNER_TEMP/PDFOpener"
           PYTHONPATH=. python3 tests/scan/progress-component.py -v
       - name: Verify staged native PDF handler before installation
         run: |
           app="$RUNNER_TEMP/preinstall/PDF Magic Opener.app"
           mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
           cp "$RUNNER_TEMP/PDFOpener" "$app/Contents/MacOS/PDFOpener"
-          xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$app/Contents/MacOS/MakePDFMagicDefault"
-          cp twilight-reading.png "$app/Contents/Resources/twilight-reading.png"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/handler/make-pdf-magic-default.swift -o "$app/Contents/MacOS/MakePDFMagicDefault"
+          cp src/scan/twilight-reading.png "$app/Contents/Resources/twilight-reading.png"
           python3 - "$app" <<'BUNDLE_PLIST'
           import plistlib
           import sys
@@ -1449,56 +1451,56 @@ jobs:
           BUNDLE_PLIST
           /usr/bin/codesign --force --sign - "$app"
           /usr/bin/codesign --verify "$app"
-          python3 scripts/verify_pdf_opener_bundle.py "$app"
+          python3 scripts/verify-pdf-opener-bundle.py "$app"
           chmod u-x "$app/Contents/MacOS/PDFOpener"
-          if python3 scripts/verify_pdf_opener_bundle.py "$app"; then exit 1; fi
+          if python3 scripts/verify-pdf-opener-bundle.py "$app"; then exit 1; fi
       - name: Compile and test reusable AppKit scan-result summary
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors scan-result-summary-view.swift test-scan-result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/scan/scan-result-summary-view.swift tests/scan/result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
           "$RUNNER_TEMP/TestScanResultSummary"
           PYTHONPATH=. python3 tests/scan/result-summary-component.py -v
       - name: Verify direct native scanner and origin processes on macOS
         run: PYTHONPATH=. python3 tests/scan/direct-native-process.py -v
       - name: Verify General PDF association action with synthetic apps only
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-default-pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift tests/default/pdf-action.swift -o "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
           "$RUNNER_TEMP/TestGeneralPDFDefaultAction"
       - name: Verify Restore Previous Default safely with synthetic handler status
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift test-general-restore-previous-default.swift -o "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift tests/default/restore-previous.swift -o "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
           "$RUNNER_TEMP/TestGeneralPDFRestorePrevious"
       - name: Verify user-triggered PDF Magic default selection without altering CI defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING make-pdf-magic-default.swift test-make-pdf-magic-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/handler/make-pdf-magic-default.swift -o "$RUNNER_TEMP/MakePDFMagicDefault"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_DEFAULT_ACTION_TESTING src/native/handler/make-pdf-magic-default.swift tests/default/make-default.swift -o "$RUNNER_TEMP/TestMakePDFMagicDefault"
           "$RUNNER_TEMP/TestMakePDFMagicDefault"
           if "$RUNNER_TEMP/MakePDFMagicDefault" unexpected-argument; then exit 1; fi
       - name: Compile PDF handler utility
-        run: xcrun swiftc set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
+        run: xcrun swiftc src/native/handler/set-pdf-default-handler.swift -o "$RUNNER_TEMP/SetPDFHandler"
       - name: Verify that PDF default-handler updates take effect
         run: PYTHONPATH=. python3 tests/pdf/default-handler.py -v
       - name: Verify previous PDF-handler backup and safe restoration
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING pdf-handler-history.swift test-pdf-handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/handler/pdf-handler-history.swift -o "$RUNNER_TEMP/PDFHandlerHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_HISTORY_TESTING src/native/handler/pdf-handler-history.swift tests/pdf/handler-history.swift -o "$RUNNER_TEMP/TestPDFHandlerHistory"
           "$RUNNER_TEMP/TestPDFHandlerHistory"
           if "$RUNNER_TEMP/PDFHandlerHistory" >/dev/null 2>&1; then exit 1; fi
       - name: Identify the current macOS PDF handler without modifying it
         run: |
-          xcrun swiftc -parse-as-library identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
-          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING identify-pdf-handler.swift test-pdf-handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
+          xcrun swiftc -parse-as-library src/native/handler/identify-pdf-handler.swift -o "$RUNNER_TEMP/IdentifyPDFHandler"
+          xcrun swiftc -parse-as-library -D PDF_HANDLER_TESTING src/native/handler/identify-pdf-handler.swift tests/pdf/handler.swift -o "$RUNNER_TEMP/TestPDFHandler"
           "$RUNNER_TEMP/TestPDFHandler"
           if "$RUNNER_TEMP/IdentifyPDFHandler" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Detect when another application becomes the PDF default
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING identify-pdf-handler.swift detect-pdf-handler-change.swift test-detect-pdf-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING src/native/handler/identify-pdf-handler.swift src/native/handler/detect-pdf-handler-change.swift -o "$RUNNER_TEMP/DetectPDFHandlerChange"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_HANDLER_TESTING -D PDF_HANDLER_CHANGE_TESTING src/native/handler/identify-pdf-handler.swift src/native/handler/detect-pdf-handler-change.swift tests/pdf/detect-handler.swift -o "$RUNNER_TEMP/TestDetectPDFHandler"
           "$RUNNER_TEMP/TestDetectPDFHandler"
           if "$RUNNER_TEMP/DetectPDFHandlerChange" unexpected-argument >/dev/null 2>&1; then exit 1; fi
       - name: Verify discovered app availability, PDF handlers and signed browser exceptions
         run: |
-          xcrun swiftc -parse-as-library verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
-          xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING verify-pdf-target.swift test-verify-pdf-target.swift -o "$RUNNER_TEMP/TestPDFTarget"
+          xcrun swiftc -parse-as-library src/native/launch/verify-pdf-target.swift -o "$RUNNER_TEMP/VerifyPDFTarget"
+          xcrun swiftc -parse-as-library -D PDF_TARGET_TESTING src/native/launch/verify-pdf-target.swift tests/target/verify.swift -o "$RUNNER_TEMP/TestPDFTarget"
           "$RUNNER_TEMP/TestPDFTarget"
           if "$RUNNER_TEMP/VerifyPDFTarget" >/dev/null 2>&1; then exit 1; fi
           if [ -d /Applications/Safari.app ]; then
@@ -1509,7 +1511,7 @@ jobs:
           fi
       - name: Compile and smoke-test NSWorkspace launcher
         run: |
-          xcrun swiftc -warnings-as-errors launch-scanned-file.swift -o "$RUNNER_TEMP/LaunchScannedFile"
+          xcrun swiftc -warnings-as-errors src/native/launch/launch-scanned-file.swift -o "$RUNNER_TEMP/LaunchScannedFile"
           if "$RUNNER_TEMP/LaunchScannedFile"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
           if "$RUNNER_TEMP/LaunchScannedFile" --bundle-id com.brave.Browser "$RUNNER_TEMP/nonexistent.pdf"; then exit 1; fi
@@ -1527,76 +1529,76 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/file-availability.py
       - name: Verify browser names, icons, versions and executable paths
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING browser-app-metadata.swift test-browser-app-metadata.swift -o "$RUNNER_TEMP/TestBrowserApplicationMetadata"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/browser/browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING src/browser/browser-app-metadata.swift tests/browser/app-metadata.swift -o "$RUNNER_TEMP/TestBrowserApplicationMetadata"
           BROWSER_METADATA_TOOL="$RUNNER_TEMP/ReadBrowserApplicationMetadata" "$RUNNER_TEMP/TestBrowserApplicationMetadata"
           if "$RUNNER_TEMP/ReadBrowserApplicationMetadata"; then exit 1; fi
       - name: Compile and test system-default-browser resolution
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift test-default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/browser/resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING src/browser/resolve-default-browser.swift tests/system/default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
       - name: Discover installed macOS browsers across standard and custom locations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors discover-installed-browsers.swift -o "$RUNNER_TEMP/DiscoverInstalledBrowsers"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-installed-browsers.swift -o "$RUNNER_TEMP/TestInstalledBrowsers"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/browser/discover-installed-browsers.swift -o "$RUNNER_TEMP/DiscoverInstalledBrowsers"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/installed.swift -o "$RUNNER_TEMP/TestInstalledBrowsers"
           "$RUNNER_TEMP/TestInstalledBrowsers"
           "$RUNNER_TEMP/DiscoverInstalledBrowsers" | python3 -c 'import json, sys; assert isinstance(json.load(sys.stdin), list)'
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --application relative.app; then exit 1; fi
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --search-directory; then exit 1; fi
       - name: Test browser discovery with Brave only
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
           "$RUNNER_TEMP/TestBraveOnlyDiscovery"
       - name: Verify Safari-only installed browser discovery
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
           "$RUNNER_TEMP/TestSafariOnlyDiscovery"
       - name: Test Firefox and Chromium installed together
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-firefox-chromium-discovery.swift -o "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/firefox-chromium-discovery.swift -o "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
           "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
       - name: Verify newly installed browser detection without changing PDF selection
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-newly-installed-browser.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/native/launch/verify-pdf-target.swift tests/browser/newly-installed.swift \
             -o "$RUNNER_TEMP/TestNewlyInstalledBrowser"
           "$RUNNER_TEMP/TestNewlyInstalledBrowser"
       - name: Test multiple installed browsers and verified PDF target isolation
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift verify-pdf-target.swift test-multiple-browser-installations.swift \
+            src/browser/discover-installed-browsers.swift src/native/launch/verify-pdf-target.swift tests/browser/multiple-installations.swift \
             -o "$RUNNER_TEMP/TestMultipleBrowserInstallations"
           "$RUNNER_TEMP/TestMultipleBrowserInstallations"
       - name: Verify removal of the selected installed browser
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-selected-browser-removed.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/native/launch/verify-pdf-target.swift tests/browser/selected-removed.swift \
             -o "$RUNNER_TEMP/TestSelectedBrowserRemoved"
           "$RUNNER_TEMP/TestSelectedBrowserRemoved"
       - name: Test in-place browser upgrades and fail-closed PDF-target recovery
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift test-browser-upgrades.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/native/launch/verify-pdf-target.swift tests/browser/upgrades.swift \
             -o "$RUNNER_TEMP/TestBrowserUpgrades"
           "$RUNNER_TEMP/TestBrowserUpgrades"
 
       - name: Test discovery and preferences with no third-party browsers
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift \
-            browser-preference-live-refresh.swift test-no-third-party-browsers.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift \
+            src/browser/browser-preference-live-refresh.swift tests/browser/no-third-party.swift \
             -o "$RUNNER_TEMP/TestNoThirdPartyBrowsers"
           "$RUNNER_TEMP/TestNoThirdPartyBrowsers"
       - name: Verify renamed browser bundles are rediscovered safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift test-renamed-browser-discovery.swift -o "$RUNNER_TEMP/TestRenamedBrowserDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/renamed-discovery.swift -o "$RUNNER_TEMP/TestRenamedBrowserDiscovery"
           "$RUNNER_TEMP/TestRenamedBrowserDiscovery"
       - name: Query and validate installed macOS applications
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING installed-applications.swift test-installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING src/native/installed-applications.swift tests/system/installed-applications-check.swift -o "$RUNNER_TEMP/TestInstalledApplications"
           "$RUNNER_TEMP/TestInstalledApplications"
           if "$RUNNER_TEMP/InstalledApplications" >/dev/null 2>&1; then exit 1; fi
           if "$RUNNER_TEMP/InstalledApplications" " " >/dev/null 2>&1; then exit 1; fi
@@ -1605,11 +1607,11 @@ jobs:
       - name: Validate manually chosen application bundles against PDF launch targets
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
-            verify-pdf-target.swift select-custom-pdf-application.swift \
+            src/native/launch/verify-pdf-target.swift src/native/launch/select-custom-pdf-application.swift \
             -o "$RUNNER_TEMP/SelectCustomPDFApplication"
           xcrun swiftc -parse-as-library -warnings-as-errors -D PDF_TARGET_TESTING \
-            -D CUSTOM_APP_SELECTION_TESTING verify-pdf-target.swift \
-            select-custom-pdf-application.swift test-select-custom-pdf-application.swift \
+            -D CUSTOM_APP_SELECTION_TESTING src/native/launch/verify-pdf-target.swift \
+            src/native/launch/select-custom-pdf-application.swift tests/target/select-custom-application.swift \
             -o "$RUNNER_TEMP/TestSelectCustomPDFApplication"
           "$RUNNER_TEMP/TestSelectCustomPDFApplication"
           if "$RUNNER_TEMP/SelectCustomPDFApplication" --application relative.app; then exit 1; fi
@@ -1671,7 +1673,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/general/finder-quarantined-application.py -v
       - name: Inventory quarantine-removal calls and reject any mutators
         run: |
-          python3 tools/audit_quarantine_removal.py
+          python3 tools/audit-quarantine-removal.py
           PYTHONPATH=. python3 tests/general/quarantine-removal-inventory.py -v
       - name: Verify scan subprocess resources are cleaned on failure
         timeout-minutes: 5
@@ -1679,7 +1681,7 @@ jobs:
       - name: Compile Finder Open AppleScript and test the safe integration harness
         timeout-minutes: 2
         run: |
-          /usr/bin/osacompile -o "$RUNNER_TEMP/FinderOpen.scpt" test-finder-open.applescript
+          /usr/bin/osacompile -o "$RUNNER_TEMP/FinderOpen.scpt" tests/general/finder-open.applescript
           PYTHONPATH=. python3 tests/general/finder-open.py -v
       - name: Verify native open-event origin classification
         run: PYTHONPATH=. python3 tests/native/request-origin.py
@@ -1689,7 +1691,7 @@ jobs:
 
       - name: Verify supported setting defaults and existing user overrides
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-supported-preference-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/preferences/supported-defaults.swift -o "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
           "$RUNNER_TEMP/TestSupportedPreferenceDefaults"
 
 
@@ -1717,7 +1719,7 @@ jobs:
       - name: Summarize failed jobs and their failing steps
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci_failure_report.py
+        run: python3 scripts/ci-failure-report.py
       - name: Publish downloadable failure summary
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

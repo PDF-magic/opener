@@ -60,7 +60,7 @@ class RecentScanHistoryDisplayTests(unittest.TestCase):
         self.assertIn('B21200000000000000000001', PROJECT)
         self.assertIn('B21200000000000000000002', PROJECT)
         self.assertIn('tests/scan/recent-history-display.py -v', CI)
-        self.assertIn('test-recent-scan-history.swift -lsqlite3', CI)
+        self.assertIn('tests/scan/recent-history.swift -lsqlite3', CI)
         self.assertIn('macos-build:', CI)
 
 if __name__ == "__main__":

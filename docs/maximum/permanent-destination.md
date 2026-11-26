@@ -1,7 +1,7 @@
 # Choose a permanent sanitized-copy destination — opener-0545
 
 The optional Maximum workflow can ask the user to select a permanent PDF
-destination using the macOS AppKit helper `maximum_safe_copy_destination.swift`.
+destination using the macOS AppKit helper `src/sanitization/maximum-safe-copy-destination.swift`.
 Invoke its standalone `MaximumSafeCopyDestinationCommand` **only** after the
 user chooses the separate **Save Sanitized Copy** action and a verified,
 in-memory `SanitizedCopyOffer` is available. It presents a native

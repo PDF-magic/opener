@@ -50,7 +50,7 @@ class NetworkInterruptionTests(unittest.TestCase):
         self.fake = self.root / "fake-freshclam"
         self.fake.write_text(FAKE)
         self.fake.chmod(0o700)
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, script)
         self.script = self.root / "updater.sh"
         # Synthetic update tests bypass only the separately tested ClamAV
@@ -138,7 +138,7 @@ class NetworkInterruptionTests(unittest.TestCase):
         self.assert_clean_progress()
 
     def test_scanner_policy_and_user_update_settings_are_unchanged(self):
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn("run_freshclam_with_network_recovery", script)
         self.assertIn('trap cleanup EXIT', script)
         self.assertIn('cleanup_progress', script)
@@ -147,11 +147,11 @@ class NetworkInterruptionTests(unittest.TestCase):
         self.assertNotIn("curl ", script)
         self.assertNotIn("wget ", script)
         self.assertNotIn("last-successful-update.new", script.split("run_freshclam_with_network_recovery() {")[1].split("for candidate in")[0])
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
         self.assertNotIn("run_freshclam_with_network_recovery", scanner)
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()

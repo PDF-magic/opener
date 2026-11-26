@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-  "release_checksums", ROOT / "scripts/create_release_checksums.py")
+  "release_checksums", ROOT / "scripts/create-release-checksums.py")
 checksums = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checksums)
 TAG = "v0.1.0"
@@ -112,7 +112,7 @@ class ReleaseChecksumTests(unittest.TestCase):
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     regression = (ROOT / ".github/workflows/release-gate-tests.yml").read_text(
       encoding="utf-8")
-    gate = (ROOT / "scripts/require_release_checks.py").read_text(encoding="utf-8")
+    gate = (ROOT / "scripts/require-release-checks.py").read_text(encoding="utf-8")
     audit = (ROOT / "docs/browser-extension-distribution.md").read_text(encoding="utf-8")
     guide = (ROOT / "docs/release-gate.md").read_text(encoding="utf-8")
     for phrase in ("git archive --format=tar", "git archive --format=zip",
@@ -123,7 +123,7 @@ class ReleaseChecksumTests(unittest.TestCase):
     self.assertLess(workflow.index("gh release create"), workflow.index("gh release upload"))
     self.assertLess(workflow.index("gh release upload"), workflow.index("--release-json"))
     self.assertLess(workflow.index("--release-json"), workflow.index("gh release edit"))
-    self.assertEqual(workflow.count("python3 scripts/require_release_checks.py --tag"), 2)
+    self.assertEqual(workflow.count("python3 scripts/require-release-checks.py --tag"), 2)
     self.assertNotIn("--clobber", workflow)
     self.assertNotIn("pdf-magic-opener-macos-unsigned.zip", workflow)
     self.assertNotIn("unsigned-release-candidates", workflow)

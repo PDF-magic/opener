@@ -10,15 +10,16 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('scan_and_open_target', ROOT / 'scan-and-open.py')
+spec = importlib.util.spec_from_file_location('scan_and_open_target', ROOT / 'src/scan/scan-and-open.py')
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
-INSTALLER = (ROOT / 'install-allow-and-open.sh').read_text()
+INSTALLER = (ROOT / 'scripts/installation/install-allow-and-open.sh').read_text()
 MARKER = "python3 - \"$install_dir/target-app.txt\" <<'TARGET_APP'\n"
 assert INSTALLER.count(MARKER) == 1
 INIT = INSTALLER.split(MARKER, 1)[1].split('\nTARGET_APP\n', 1)[0]

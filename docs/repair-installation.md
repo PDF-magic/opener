@@ -1,7 +1,7 @@
 # Repair Installation action (opener-0965)
 
 From a **complete, trusted PDF Magic Opener source checkout**, double-click
-**Repair Installation.command** in Finder or run:
+**scripts/installation/repair-installation.command** in Finder or run:
 ```sh
 ./Repair\ Installation.command
 ```
@@ -44,7 +44,7 @@ user-selected PDF default associations.
 ## Preference-preservation regression
 
 The CI regression `tests/general/repair-preferences.py` authorizes the real
-`Repair Installation.command` through an isolated controlling terminal while
+`scripts/installation/repair-installation.command` through an isolated controlling terminal while
 substituting a harmless installer that executes the actual preference
 initializers and update-agent migrator against a temporary synthetic home.
 It compares existing browser choices, PDF fallback, FreshClam mirror/proxy

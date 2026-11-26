@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -139,9 +140,10 @@ class TextFidelityMetricTests(unittest.TestCase):
 
     def test_sanitizer_gates_are_unmodified(self):
         # The text checks are CI-only diagnostics, not an opening policy.
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum-text-readability", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         self.assertTrue(copies.SanitizedCopyOffer(_synthetic_text_pdf(), 2).needs_separate_scan)

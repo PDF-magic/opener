@@ -30,6 +30,6 @@ It does not change native ClamAV enforcement, file-integrity gates, PDF
 destination or unrelated customizations.
 
 CI exercises `tests/download/notify-on-failed-scan.py` and compiles/runs
-`test-notify-on-failed-scan.swift` in a disposable isolated UserDefaults
+`tests/download/notify-on-failed-scan.swift` in a disposable isolated UserDefaults
 suite, covering explicit opt-in, malformed values, valid results, cancellation,
 unrelated preferences, and mandatory warning separation.

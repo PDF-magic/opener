@@ -45,7 +45,7 @@ class ScanOtherSupportedFilesTests(unittest.TestCase):
       self.assertNotIn(forbidden, scope)
 
   def test_existing_pdf_only_native_handoff_stays_unmodified(self):
-    native = (ROOT / "scan-and-open.py").read_text()
+    native = (ROOT / "src/scan/scan-and-open.py").read_text()
     handoff = (ROOT / "extensions/webextension/src/download-native-submit.js").read_text()
     defaults = (ROOT / "extensions/webextension/src/configuration-defaults.js").read_text()
     self.assertIn("Only regular files and application bundles can be scanned", native)
@@ -58,7 +58,7 @@ class ScanOtherSupportedFilesTests(unittest.TestCase):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v", ci)
     self.assertIn(
-        "PDFMagicOpenerApp/ScanProgressPreference.swift test-scan-other-supported-files.swift",
+        "PDFMagicOpenerApp/ScanProgressPreference.swift tests/scan/other-supported-files.swift",
         ci,
     )
     self.assertIn("macos-build:", ci)

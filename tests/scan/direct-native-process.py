@@ -14,7 +14,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SWIFT = ROOT / "brave-pdf-opener.swift"
+SWIFT = ROOT / "src/native/launch/brave-pdf-opener.swift"
 BEGIN = "// BEGIN NATIVE DIRECT PROCESS GATE"
 END = "// END NATIVE DIRECT PROCESS GATE"
 
@@ -46,7 +46,7 @@ class DirectNativeProcessTests(unittest.TestCase):
         self.assertIn("if !finishedInTime {", source)
         # Finder continues to use its required macOS Run Shell Script action.
         self.assertIn('exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"',
-                      (ROOT / "allow-and-open.sh").read_text(encoding="utf-8"))
+                      (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8"))
 
     @unittest.skipUnless(sys.platform == "darwin", "Swift Foundation Process test runs on macOS")
     def test_real_process_does_not_interpret_shell_special_document_path(self):

@@ -3,7 +3,7 @@ import SwiftUI
 // The installed ClamAV gate owns the effective protection policy. These
 // planned tier cards can be selected for comparison only; their persistent
 // preview preference never claims an unavailable tier is enforcing scans.
-// These display-only check IDs mirror protection_policy_definitions.py.
+// These display-only check IDs mirror protection-policy-definitions.py.
 // The native view intentionally does not alter scanner policy or preferences.
 private struct ProtectionLevelCheck: Identifiable {
   enum Availability: String {

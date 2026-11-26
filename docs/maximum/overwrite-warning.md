@@ -6,7 +6,7 @@ separate task (opener-0544), not yet part of the installed Built-in handler.
 
 Before offering a sanitized-copy destination, call
 `review_sanitized_copy_destination(destination)` in
-`maximum_overwrite_warning.py`. If its `requires_confirmation` flag is
+`maximum-overwrite-warning.py`. If its `requires_confirmation` flag is
 true, display its fixed `warning` and present distinct **Replace** and
 **Cancel** actions. Cancel is the default; the caller must not write anything
 unless the user explicitly selects Replace. Before attempting the operation,

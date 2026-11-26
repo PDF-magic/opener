@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
+__import__('src.module-loader')
 import maximum_isolated_analysis as isolated
 
 
@@ -26,6 +27,7 @@ def sample_pdf():
 class MaximumIsolatedAnalysisTests(unittest.TestCase):
     def assert_isolated_worker_succeeds(self, payload, inspection):
         """Show only a fixed, non-document failure category in CI regressions."""
+        __import__('src.module-loader')
         from maximum_process_termination import MaximumProcessTerminationError
         original = isolated.run_limited_worker
         failures = []
@@ -91,7 +93,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
         self.assertEqual(cmd[0], sys.executable)
         self.assertEqual(cmd[1:3], ("-I", "-B"))
         self.assertEqual(cmd[-1], "malformedStructures")
-        self.assertTrue(cmd[-2].endswith("maximum_isolated_worker.py"))
+        self.assertTrue(cmd[-2].endswith("maximum-isolated-worker.py"))
         self.assertEqual(opts["timeout_seconds"], isolated.WORKER_WALL_TIMEOUT_SECONDS)
         self.assertEqual(set(opts["environment"]),
                          {"PATH", "HOME", "LANG", "PYTHONDONTWRITEBYTECODE",
@@ -162,7 +164,7 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
             self.assertEqual(str(caught.exception), isolated.BLOCK_MESSAGE)
 
     def test_child_rejects_unapproved_dispatch_and_input(self):
-        child = Path(isolated.__file__).with_name("maximum_isolated_worker.py")
+        child = Path(isolated.__file__).with_name("maximum-isolated-worker.py")
         for stage, payload in (("arbitrary_module", sample_pdf()),
                                ("structureAmbiguity", b"")):
             with self.subTest(stage=stage):
@@ -186,11 +188,12 @@ class MaximumIsolatedAnalysisTests(unittest.TestCase):
 
     def test_installed_gate_and_profile_selection_unchanged(self):
         root = Path(__file__).resolve().parents[2]
-        scan = (root / "scan-and-open.py").read_text()
+        scan = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("maximum_isolated_analysis", scan)
         self.assertNotIn("maximum_isolated_worker", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
         self.assertIn("remove_quarantine(path)", scan)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)

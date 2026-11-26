@@ -5,8 +5,10 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
-from scanner_failure_policy import (
+__import__('src.module-loader')
+from src.scanner.scanner_failure_policy import (
   SCANNER_FAILURE_RESPONSES,
   UNKNOWN_SCANNER_FAILURE_RESPONSE,
   ScannerFailureKind,
@@ -15,7 +17,7 @@ from scanner_failure_policy import (
 ROOT = Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "docs/scanner/errors.md"
 INDEX = ROOT / "docs/README.md"
-GATE = ROOT / "scan-and-open.py"
+GATE = ROOT / "src/scan/scan-and-open.py"
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 

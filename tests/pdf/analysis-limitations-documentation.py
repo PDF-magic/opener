@@ -4,6 +4,7 @@
 from pathlib import Path
 import unittest
 
+__import__('src.module-loader')
 from pdf_structure_parser import (
   MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES,
   MAX_STRUCTURE_INPUT_BYTES,
@@ -79,7 +80,7 @@ class StructuralAnalysisLimitationsDocumentationTests(unittest.TestCase):
 
   def test_inactive_stage_cannot_replace_scanner_and_user_handoff(self):
     text = DOCUMENT.read_text(encoding="utf-8")
-    scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+    scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
     self.assertNotIn("pdf_structure_parser", scanner)
     for phrase in (
       "Only the installed Built-in ClamAV scan gate is active",

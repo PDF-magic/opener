@@ -17,7 +17,7 @@ class ConfigurationSchemaContractTests(unittest.TestCase):
                   "guard version == Self.currentVersion",
                   "decodeIfPresent(Bool.self", "encoder.outputFormatting = [.sortedKeys]"):
       self.assertIn(token, SOURCE)
-    self.assertIn("test-configuration-schema.swift", CI)
+    self.assertIn("tests/configuration/schema.swift", CI)
 
   def test_legacy_preference_keys_and_defaults_remain_untouched(self):
     self.assertIn('key = "showScanProgress"', SOURCE)

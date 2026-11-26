@@ -14,19 +14,23 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 from pdf_structure_parser import parse_pdf_structure_result
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
     FailureDisposition,
     PROTECTION_POLICIES,
 )
+__import__('src.module-loader')
 from protection_profiles import (
     BASELINE_SAFETY_CHECKS,
     PROTECTION_PROFILES,
@@ -39,23 +43,23 @@ ROOT = Path(__file__).resolve().parents[2]
 # Enumerate the real fixture producers, not copied samples or synthetic verdicts.
 # Retain the six baseline documents independently of the adversarial families.
 COLLECTIONS = {
-    "reference": ("reference_pdf_collection", "REFERENCE_PDFS", "identifier"),
-    "incorrectly-named": ("reference_pdf_collection", "INCORRECTLY_NAMED_FILES", "filename"),
-    "invalid-header": ("reference_pdf_collection", "INVALID_PDF_HEADERS", "identifier"),
-    "incremental": ("reference_pdf_collection", "INCREMENTAL_REFERENCE_PDFS", "identifier"),
-    "malformed-xref": ("malformed_xref_pdf_collection", "MALFORMED_XREF_PDFS", "identifier"),
-    "valid-object-stream": ("malformed_object_stream_corpus", "VALID_OBJECT_STREAM_PDFS", "identifier"),
-    "malformed-object-stream": ("malformed_object_stream_corpus", "MALFORMED_OBJECT_STREAM_PDFS", "identifier"),
-    "encrypted": ("encrypted_pdf_collection", "ENCRYPTED_REFERENCE_PDFS", "identifier"),
-    "javascript": ("javascript_action_corpus", "JAVASCRIPT_ACTION_PDFS", "identifier"),
-    "external-launch": ("external_launch_action_corpus", "EXTERNAL_LAUNCH_PDFS", "identifier"),
-    "embedded-file": ("embedded_file_corpus", "EMBEDDED_FILE_PDFS", "identifier"),
-    "interactive-form": ("interactive_form_corpus", "INTERACTIVE_FORM_PDFS", "identifier"),
-    "unicode-metadata": ("unicode_metadata_corpus", "UNICODE_METADATA_PDFS", "identifier"),
-    "oversized-stream": ("oversized_stream_corpus", "OVERSIZED_STREAM_PDFS", "identifier"),
-    "large-valid": ("large_valid_pdf_corpus", "LARGE_VALID_PDF_CASES", "identifier"),
-    "memory-stress": ("memory_stress_pdf_corpus", "MEMORY_STRESS_PDFS", "identifier"),
-    "deep-reference": ("deep_object_reference_corpus", "SECURITY_REFERENCE_PDFS", "identifier"),
+    "reference": ("tests.fixtures.pdf.reference_pdf_collection", "REFERENCE_PDFS", "identifier"),
+    "incorrectly-named": ("tests.fixtures.pdf.reference_pdf_collection", "INCORRECTLY_NAMED_FILES", "filename"),
+    "invalid-header": ("tests.fixtures.pdf.reference_pdf_collection", "INVALID_PDF_HEADERS", "identifier"),
+    "incremental": ("tests.fixtures.pdf.reference_pdf_collection", "INCREMENTAL_REFERENCE_PDFS", "identifier"),
+    "malformed-xref": ("tests.fixtures.pdf.malformed_xref_pdf_collection", "MALFORMED_XREF_PDFS", "identifier"),
+    "valid-object-stream": ("tests.fixtures.pdf.malformed_object_stream_corpus", "VALID_OBJECT_STREAM_PDFS", "identifier"),
+    "malformed-object-stream": ("tests.fixtures.pdf.malformed_object_stream_corpus", "MALFORMED_OBJECT_STREAM_PDFS", "identifier"),
+    "encrypted": ("tests.fixtures.pdf.encrypted_pdf_collection", "ENCRYPTED_REFERENCE_PDFS", "identifier"),
+    "javascript": ("tests.fixtures.pdf.javascript_action_corpus", "JAVASCRIPT_ACTION_PDFS", "identifier"),
+    "external-launch": ("tests.fixtures.pdf.external_launch_action_corpus", "EXTERNAL_LAUNCH_PDFS", "identifier"),
+    "embedded-file": ("tests.fixtures.pdf.embedded_file_corpus", "EMBEDDED_FILE_PDFS", "identifier"),
+    "interactive-form": ("tests.fixtures.pdf.interactive_form_corpus", "INTERACTIVE_FORM_PDFS", "identifier"),
+    "unicode-metadata": ("tests.fixtures.pdf.unicode_metadata_corpus", "UNICODE_METADATA_PDFS", "identifier"),
+    "oversized-stream": ("tests.fixtures.pdf.oversized_stream_corpus", "OVERSIZED_STREAM_PDFS", "identifier"),
+    "large-valid": ("tests.fixtures.pdf.large_valid_pdf_corpus", "LARGE_VALID_PDF_CASES", "identifier"),
+    "memory-stress": ("tests.fixtures.pdf.memory_stress_pdf_corpus", "MEMORY_STRESS_PDFS", "identifier"),
+    "deep-reference": ("tests.fixtures.pdf.deep_object_reference_corpus", "SECURITY_REFERENCE_PDFS", "identifier"),
 }
 TRACKED = {
     "truncated": ROOT / "tests/fixtures/pdf-security-corpus/truncated",
@@ -80,7 +84,8 @@ def corpus_cases():
             yield family, getattr(case, identifier_name), content
 
     # Synthetic, test-only signing keys stay in memory; no private key file is read.
-    from digital_signature_corpus import signed_pdf_corpus
+    __import__('src.module-loader')
+    from tests.fixtures.pdf.digital_signature_corpus import signed_pdf_corpus
     for case in signed_pdf_corpus():
         yield "digital-signature", case.identifier, case.content
 
@@ -175,7 +180,7 @@ class SecurityCorpusProfileMatrixTests(unittest.TestCase):
         self.assertIn(
             "PYTHONPATH=. python3 tests/protection/security-corpus-matrix.py -v", ci
         )
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("security_corpus_matrix", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)

@@ -12,7 +12,7 @@ blurring their meanings:
   retaining expected-stage order, missing/incomplete stages, finding identifiers,
   bounded locations, and fixed handling explanations.
 
-The public entry point is combine_scan_results in combined_scan_results.py. It
+The public entry point is combine_scan_results in combined-scan-results.py. It
 requires a validated ScanResultStatus, ScanResult, and StructuredAnalysisFindings.
 Detection names are checked again before serialization, duplicates are rejected,
 and more than 256 names fail validation rather than being silently truncated.

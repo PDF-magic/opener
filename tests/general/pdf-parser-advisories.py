@@ -12,6 +12,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+__import__('src.module-loader')
 import pdf_parser_advisory_watch as watch
 
 
@@ -104,7 +105,7 @@ class ParserAdvisoryTests(unittest.TestCase):
     self.assertIn("merge_group:", workflow)
     self.assertIn("tests/general/pdf-parser-advisories.py -v", workflow)
     self.assertIn("github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", workflow)
-    self.assertIn("scripts/pdf_parser_advisory_watch.py", workflow)
+    self.assertIn("scripts/pdf-parser-advisory-watch.py", workflow)
     self.assertIn("contents: read", workflow)
     self.assertNotIn("issues: write", workflow)
     docs = (ROOT / "docs/pdf/parser-security-advisories.md").read_text()

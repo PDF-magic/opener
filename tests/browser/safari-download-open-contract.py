@@ -44,7 +44,7 @@ class SafariDownloadedFileOpenContract(unittest.TestCase):
                 self.assertNotIn(forbidden, source)
         self.assertTrue((ROOT / "extensions/webextension/src/background.js")
                         .read_text(encoding="utf-8").strip().endswith("void 0;"))
-        assert (ROOT / "scan-and-open.py").is_file()
+        assert (ROOT / "src/scan/scan-and-open.py").is_file()
 
 
 if __name__ == "__main__":

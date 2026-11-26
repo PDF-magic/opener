@@ -12,7 +12,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "bundle_symlink_scan_gate", ROOT / "scan-and-open.py"
+    "bundle_symlink_scan_gate", ROOT / "src/scan/scan-and-open.py"
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
@@ -121,7 +121,7 @@ class BundleSymlinkContainmentTests(unittest.TestCase):
         opened.assert_not_called()
 
     def test_containment_runs_before_hashing_and_preserves_scan_invariants(self):
-        source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         preflight = source.index("target = entry.resolve(strict=True)")
         hashed = source.index("with os.fdopen(fd, 'rb', closefd=False) as stream:")
         descriptor_stat = source.index("info = os.fstat(fd)")

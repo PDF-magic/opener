@@ -6,8 +6,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 from maximum_sanitized_copy import SanitizedCopyOffer
+__import__('src.module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
+__import__('src.module-loader')
 import maximum_save_sanitized_copy as saving
 
 
@@ -125,9 +128,10 @@ class SaveSanitizedCopyTests(unittest.TestCase):
                 self.assertFalse(self.destination.exists())
 
     def test_installed_maximum_profile_remains_unselectable(self):
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
-        scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
+        scanner = (Path(__file__).resolve().parents[2] / "src/scan/scan-and-open.py").read_text()
         self.assertIn("force_rescan=True, expected_fingerprint=expected, scan_only=True",
                       scanner)
         self.assertIn("if scan_only:", scanner)

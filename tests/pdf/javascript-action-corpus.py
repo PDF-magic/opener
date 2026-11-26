@@ -10,12 +10,16 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import DictionaryObject
 
-from javascript_action_corpus import (
+__import__('src.module-loader')
+from tests.fixtures.pdf.javascript_action_corpus import (
     JAVASCRIPT_ACTION_PDFS, _document_with_action,
 )
-from pdf_automatic_actions import inspect_pdf_automatic_actions
-from pdf_javascript_actions import inspect_pdf_javascript_actions
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from src.pdf.pdf_automatic_actions import inspect_pdf_automatic_actions
+__import__('src.module-loader')
+from src.pdf.pdf_javascript_actions import inspect_pdf_javascript_actions
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -87,8 +91,8 @@ class JavaScriptActionCorpusTests(unittest.TestCase):
         for sample in REFERENCE_PDFS:
             with self.subTest(sample=sample.identifier):
                 self.assertEqual(inspect_pdf_javascript_actions(sample.content).action_count, 0)
-        self.assertNotIn("javascript_action_corpus", (ROOT / "scan-and-open.py").read_text())
-        self.assertNotIn("javascript_action_corpus", (ROOT / "effective_protection_policy.py").read_text())
+        self.assertNotIn("javascript_action_corpus", (ROOT / "src/scan/scan-and-open.py").read_text())
+        self.assertNotIn("javascript_action_corpus", (ROOT / "src/protection/effective-protection-policy.py").read_text())
 
 
 if __name__ == "__main__":

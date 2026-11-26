@@ -14,7 +14,7 @@ do not update browser extensions, change permissions or assert incompatibility.
   `optional_permissions`, and `permissions`.
 - Canonical data: [MDN browser-compat-data](https://github.com/mdn/browser-compat-data/tree/main/webextensions).
   Its file history is queried through the read-only GitHub commits API. The
-  reviewed SHA for each path lives in `scripts/firefox_api_watch.py`, checked
+  reviewed SHA for each path lives in `scripts/firefox-api-watch.py`, checked
   against the latest path-specific commit on November 1, 2026.
 - During triage also consult [Mozilla's Add-ons engineering updates](https://blog.mozilla.org/addons/),
   [Firefox release notes](https://www.mozilla.org/firefox/releases/), and
@@ -62,7 +62,7 @@ PYTHONPATH=. python3 tests/general/firefox-api-watch.py -v
 Live upstream review (network, run only when explicitly investigating a change):
 
 ```sh
-python3 scripts/firefox_api_watch.py
+python3 scripts/firefox-api-watch.py
 ```
 
 The upstream query is not performed during pull-request validation. This

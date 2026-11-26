@@ -8,8 +8,10 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 import maximum_temporary_output as staging
-import temporary_disk_benchmark as benchmark
+__import__('src.module-loader')
+import benchmarks.temporary_disk_benchmark as benchmark
 
 
 class TemporaryDiskBenchmarkTests(unittest.TestCase):

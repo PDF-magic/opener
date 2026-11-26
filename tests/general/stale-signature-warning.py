@@ -13,7 +13,7 @@ VIEW = ROOT / "PDFMagicOpenerApp/UpdatesSettingsView.swift"
 class StaleSignatureWarningTests(unittest.TestCase):
     def test_warning_matches_exact_existing_inclusive_48_hour_scan_gate(self):
         model = MODEL.read_text()
-        scanner = (ROOT / "scan-and-open.py").read_text()
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertRegex(scanner, r"MAX_DATABASE_AGE\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertRegex(model, r"maximumSignatureAge:\s*TimeInterval\s*=\s*48\s*\*\s*60\s*\*\s*60")
         self.assertIn("age > Self.maximumSignatureAge", model)
@@ -40,9 +40,9 @@ class StaleSignatureWarningTests(unittest.TestCase):
     def test_native_age_boundary_is_in_macos_ci_and_linux_guard(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/general/stale-signature-warning.py -v", ci)
-        self.assertIn("test-stale-signature-warning.swift", ci)
+        self.assertIn("tests/signature/stale-warning.swift", ci)
         self.assertIn("xcrun swiftc -parse-as-library -warnings-as-errors", ci)
-        native = (ROOT / "test-stale-signature-warning.swift").read_text()
+        native = (ROOT / "tests/signature/stale-warning.swift").read_text()
         self.assertIn("48 * 60 * 60 + 1", native)
         self.assertIn("48 * 60 * 60]", native)
         self.assertIn("cannot be verified", native)
@@ -50,13 +50,13 @@ class StaleSignatureWarningTests(unittest.TestCase):
         self.assertIn("addingTimeInterval(-20)", native)
 
     def test_scan_gate_agent_and_customization_are_unchanged(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
-        gate = (ROOT / "scan-and-open.py").read_text()
+        gate = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("freshnessWarning", gate)
-        updater = (ROOT / "update-malware-signatures.sh").read_text()
+        updater = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertNotIn("freshnessWarning", updater)
         self.assertIn("last-successful-update", updater)
 

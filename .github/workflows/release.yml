@@ -33,7 +33,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
-        run: python3 scripts/require_release_checks.py --tag "$RELEASE_TAG"
+        run: python3 scripts/require-release-checks.py --tag "$RELEASE_TAG"
       - name: Run the release gate regression suite
         run: PYTHONPATH=. python3 tests/general/release-check-gate.py -v
 
@@ -61,13 +61,13 @@ jobs:
           mkdir -m 700 "$stage"
           git archive --format=tar --prefix="$base/" "$GITHUB_SHA" | gzip -n > "$stage/$base-source.tar.gz"
           git archive --format=zip --prefix="$base/" "$GITHUB_SHA" > "$stage/$base-source.zip"
-          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG"
-          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify
+          python3 scripts/create-release-checksums.py --directory "$stage" --tag "$RELEASE_TAG"
+          python3 scripts/create-release-checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify
       - name: Reverify exact main and tag before drafting the source-only release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
-        run: python3 scripts/require_release_checks.py --tag "$RELEASE_TAG"
+        run: python3 scripts/require-release-checks.py --tag "$RELEASE_TAG"
       - name: Create draft, upload verified sources and checksums, then publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,9 +76,9 @@ jobs:
         run: |
           set -euo pipefail
           stage="$RUNNER_TEMP/pdf-magic-source-release"
-          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify
+          python3 scripts/create-release-checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify
           gh release create "$RELEASE_TAG" --verify-tag --target "$GITHUB_SHA" --title "$RELEASE_TAG" --generate-notes --draft
           gh release upload "$RELEASE_TAG" "$stage"/*
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/source-release-metadata.json"
-          python3 scripts/create_release_checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify --release-json "$RUNNER_TEMP/source-release-metadata.json"
+          python3 scripts/create-release-checksums.py --directory "$stage" --tag "$RELEASE_TAG" --verify --release-json "$RUNNER_TEMP/source-release-metadata.json"
           gh release edit "$RELEASE_TAG" --draft=false

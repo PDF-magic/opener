@@ -35,7 +35,7 @@ From Terminal, as the ordinary macOS user, at the **root of the trusted
 checkout**:
 
 ```sh
-bash install-allow-and-open.sh
+bash scripts/installation/install-allow-and-open.sh
 ```
 
 The installer runs the read-only prerequisite checks first, then uses its
@@ -55,7 +55,7 @@ Xcode, and from inactive browser-extension scaffolds.
 ## Verify before using
 
 1. Require the installer to exit successfully. From the same source checkout,
-   `python3 scripts/migration_state.py status` is a read-only migration
+   `python3 scripts/migration-state.py status` is a read-only migration
    check. A `partial` state is **not** a completed installation.
 2. Check the intended macOS PDF association using the installed
    `~/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py`

@@ -12,13 +12,16 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from pdf_format_identification import (
+__import__('src.module-loader')
+from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, identify_pdf_format, identify_pdf_header,
 )
+__import__('src.module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode, PDFStructureParseFailure, parse_pdf_structure_result,
 )
-from reference_pdf_collection import INVALID_PDF_HEADERS, REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import INVALID_PDF_HEADERS, REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -75,7 +78,7 @@ class InvalidPDFHeaderCorpusTests(unittest.TestCase):
         for case in REFERENCE_PDFS:
             self.assertEqual(identify_pdf_header(case.content).version, "1.4")
             self.assertFalse(identify_pdf_header(case.content).permits_open)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("INVALID_PDF_HEADERS", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)

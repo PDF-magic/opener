@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const docs = new URL("../../../docs/download-opening-browser-support.md", import.meta.url);
-const registry = new URL("../../../browser_registry.py", import.meta.url);
+const registry = new URL("../../../src/browser/browser-registry.py", import.meta.url);
 const viewer = new URL("../../../docs/browser-pdf-viewers.md", import.meta.url);
 const manifest = new URL("../manifest.json", import.meta.url);
 const safariManifest = new URL("../../safari/manifest.json", import.meta.url);

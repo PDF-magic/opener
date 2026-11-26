@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import peak_memory_benchmark as benchmark
+__import__('src.module-loader')
+import benchmarks.peak_memory_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -106,12 +107,12 @@ class PeakMemoryBenchmarkTests(unittest.TestCase):
     def test_ci_and_live_opening_are_isolated(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/scanner/peak-memory.py -v", ci)
-        self.assertIn("python3 peak_memory_benchmark.py", ci)
+        self.assertIn("python3 benchmarks/peak-memory-benchmark.py", ci)
         self.assertIn("--scanner /usr/bin/clamscan --database", ci)
         self.assertTrue((ROOT / "docs/peak-memory-benchmark.md").is_file())
-        live = (ROOT / "scan-and-open.py").read_text()
+        live = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("peak_memory_benchmark", live)
-        self.assertNotIn("peak_memory_benchmark", (ROOT / "scanner_startup_benchmark.py").read_text())
+        self.assertNotIn("peak_memory_benchmark", (ROOT / "benchmarks/scanner-startup-benchmark.py").read_text())
         self.assertEqual(json.loads((ROOT / "PDFMagicOpenerApp/protection-performance.json").read_text())["measurements"], [])
 
 

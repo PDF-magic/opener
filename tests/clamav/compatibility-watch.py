@@ -10,7 +10,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "clamav_compatibility_watch", ROOT / "scripts/clamav_compatibility_watch.py")
+    "clamav_compatibility_watch", ROOT / "scripts/clamav-compatibility-watch.py")
 watch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(watch)
 
@@ -88,8 +88,8 @@ class CompatibilityWatchTests(unittest.TestCase):
     guide = (ROOT / "docs/scanner/compatibility-watch.md").read_text()
     index = (ROOT / "docs/README.md").read_text()
     workflow = (ROOT / ".github/workflows/clamav-compatibility-watch.yml").read_text()
-    runtime = (ROOT / "scan-and-open.py").read_text()
-    installer = (ROOT / "scripts/verify_installed_clamav.py").read_text()
+    runtime = (ROOT / "src/scan/scan-and-open.py").read_text()
+    installer = (ROOT / "scripts/verify-installed-clamav.py").read_text()
     for marker in ("clamav-1.4.6", "clamav-1.5.4", "48-hour",
                    "EICAR", "fail-closed", "signature", "FreshClam"):
       self.assertIn(marker, guide)
@@ -101,7 +101,7 @@ class CompatibilityWatchTests(unittest.TestCase):
     self.assertNotIn("issues: write", workflow)
     self.assertIn("tests/clamav/compatibility-watch.py -v", workflow)
     self.assertIn("github.event_name == 'schedule'", workflow)
-    self.assertIn("python3 scripts/clamav_compatibility_watch.py", workflow)
+    self.assertIn("python3 scripts/clamav-compatibility-watch.py", workflow)
     self.assertIn(r"1\.(?:4|5)\.[0-9]+", runtime)
     self.assertIn(r"1\.(?:4|5)\.[0-9]+", installer)
 

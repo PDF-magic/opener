@@ -1,0 +1,49 @@
+name: Validate Python runtime layout
+on:
+  push:
+    branches: [shoeshine]
+    paths:
+      - .github/workflows/validate-python-runtime-layout.yml
+      - src/**
+      - tests/**
+      - scripts/**
+      - scripts/installation/install-allow-and-open.sh
+  pull_request:
+    paths:
+      - src/**
+      - tests/**
+      - scripts/**
+      - scripts/installation/install-allow-and-open.sh
+      - .github/workflows/validate-python-runtime-layout.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt 'Pillow==11.3.0'
+      - name: Verify committed source and installed paths
+        env:
+          PYTHONPATH: .
+        run: |
+          python3 tests/general/python-source-layout.py -v
+          python3 -m compileall -q src tests scripts benchmarks
+          bash -n scripts/installation/install-allow-and-open.sh src/scan/allow-and-open.sh
+          python3 tests/general/quarantine-removal-inventory.py -v
+          python3 tests/migration/failed-installation.py -v
+          python3 tests/pdf/handler-status.py -v
+          python3 tests/signature/update-times.py -v
+          python3 tests/maximum/safe-copy-handoff.py -v
+          python3 tests/security/fixed-helper-paths.py -v
+          python3 tests/browser/registry.py -v
+          python3 tests/file/launcher.py -v
+          python3 tests/scan/and-open.py -v
+          python3 tests/maximum/isolated-analysis.py -v
+          python3 tests/general/timed-pdf-structure-analysis.py -v

@@ -13,7 +13,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 root = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "opened_document_origin_test_scanner", root / "scan-and-open.py"
+    "opened_document_origin_test_scanner", root / "src/scan/scan-and-open.py"
 )
 scanner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(scanner)
@@ -185,9 +185,10 @@ class OpenedDocumentOriginTests(unittest.TestCase):
         self.assertEqual(self.rows(), [])
 
     def test_scanner_and_user_preferences_are_unchanged(self):
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
-        scanner_source = (root / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner_source = (root / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner_source)
         self.assertIn("if requires_scan():", scanner_source)
         self.assertNotIn("from maximum_sanitized_copy", scanner_source)

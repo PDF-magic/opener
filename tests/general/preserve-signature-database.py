@@ -44,7 +44,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.fake = self.root / "fake-freshclam"
         self.fake.write_text(FAKE)
         self.fake.chmod(0o700)
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, script)
         self.script = self.root / "update.sh"
         # Synthetic update tests bypass only the separately tested ClamAV
@@ -156,12 +156,12 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.assert_no_work_dirs()
 
     def test_scan_gate_remains_independent_and_ci_runs_regressions(self):
-        source = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", source)
         self.assertIn("check_database()", source)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/general/preserve-signature-database.py -v", ci)
-        self.assertIn("bash -n install-allow-and-open.sh", ci)
+        self.assertIn("bash -n scripts/installation/install-allow-and-open.sh", ci)
 
 
 if __name__ == "__main__":

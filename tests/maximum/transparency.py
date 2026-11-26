@@ -16,6 +16,7 @@ from pypdf.generic import (
     NameObject, NumberObject,
 )
 
+__import__('src.module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -233,7 +234,7 @@ class TransparencyFixtureTests(unittest.TestCase):
         self.assertFalse(_preserves_transparency(_evidence(opaque_mask, 0)))
 
     def test_only_optional_converter_is_tested_not_scanner_or_user_settings(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(
             encoding="utf-8"
         )
@@ -242,6 +243,7 @@ class TransparencyFixtureTests(unittest.TestCase):
         self.assertEqual(workflow.count(
             "python3 tests/maximum/transparency.py -v"
         ), 2)
+        __import__('src.module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         offer = copies.SanitizedCopyOffer(_pdf(), 2)

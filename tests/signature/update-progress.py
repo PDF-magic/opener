@@ -27,7 +27,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
             'exit "$FAKE_EXIT"\n'
         )
         self.fake.chmod(0o700)
-        original = (ROOT / "update-malware-signatures.sh").read_text()
+        original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(SCANNER_PATHS, original)
         self.script = self.root / "test-update.sh"
         # Synthetic update tests bypass only the separately tested ClamAV
@@ -136,17 +136,17 @@ class SignatureUpdateProgressTests(unittest.TestCase):
                           "write(to:", "removeItem(", "downloadTask"):
             self.assertNotIn(forbidden, reader)
         self.assertEqual(project.count("path = SignatureUpdateProgress.swift;"), 1)
-        self.assertIn("test-signature-update-progress.swift", ci)
+        self.assertIn("tests/signature/update-progress.swift", ci)
         self.assertIn("python3 tests/signature/update-progress.py -v", ci)
 
     def test_active_marker_is_only_display_metadata(self):
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn('progress_record="$(/bin/date +%s) $$"', script)
         self.assertIn('trap cleanup EXIT', script)
         self.assertIn('cleanup_progress', script)
         self.assertIn('"$updater" --config-file=', script)
         self.assertIn("last-successful-update", script)
-        scan = (ROOT / "scan-and-open.py").read_text()
+        scan = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("update-in-progress", scan)
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scan)
 

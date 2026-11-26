@@ -9,14 +9,17 @@ import unittest
 
 from pypdf import PdfReader
 
-from large_valid_pdf_corpus import (
+__import__('src.module-loader')
+from tests.fixtures.pdf.large_valid_pdf_corpus import (
     LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES, build_large_valid_pdf,
 )
+__import__('src.module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES, PDFStructureFailureCode,
     PDFStructureParseFailure, parse_pdf_structure_result,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -85,7 +88,7 @@ class LargeValidPDFCorpusTests(unittest.TestCase):
                 case.page_count = 0
         with self.assertRaises(ValueError):
             build_large_valid_pdf(None)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("large_valid_pdf_corpus", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)

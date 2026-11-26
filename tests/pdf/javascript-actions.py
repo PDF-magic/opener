@@ -14,11 +14,13 @@ from pypdf.generic import (
     ArrayObject, ByteStringObject, DecodedStreamObject, DictionaryObject,
     EncodedStreamObject, NameObject, TextStringObject,
 )
-from pdf_javascript_actions import (
+__import__('src.module-loader')
+from src.pdf.pdf_javascript_actions import (
     MAX_SCRIPT_BYTES, MAX_JAVASCRIPT_ACTIONS, PDFJavaScriptInspection,
     PDFJavaScriptInspectionError, _decode_script, inspect_pdf_javascript_actions,
 )
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -243,9 +245,9 @@ class PDFJavaScriptActionTests(unittest.TestCase):
                 inspect_pdf_javascript_actions(REFERENCE_PDFS[0].content)
 
     def test_no_scanner_activation_and_ci_registers_the_stage(self):
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        resolver = (ROOT / "effective_protection_policy.py").read_text(encoding="utf-8")
-        module = (ROOT / "pdf_javascript_actions.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
+        resolver = (ROOT / "src/protection/effective-protection-policy.py").read_text(encoding="utf-8")
+        module = (ROOT / "src/pdf/pdf-javascript-actions.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_javascript_actions", scanner)
         self.assertNotIn("pdf_javascript_actions", resolver)

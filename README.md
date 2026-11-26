@@ -151,9 +151,9 @@ scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
 **Scanner feature check (opener-0357):** The opt-in, read-only
-`scanner_feature_check.py` utility inspects only the selected ClamAV
+`src/scanner/scanner-feature-check.py` utility inspects only the selected ClamAV
 binary's `--help` declarations. Run
-`python3 scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
+`python3 src/scanner/scanner-feature-check.py /opt/homebrew/bin/clamscan` (or pass
 the trusted installed `clamscan` path). It reports whether PDF,
 archive, document, and executable-type scanning switches are advertised
 and whether the options used by the existing Built-in scan gate appear.
@@ -291,7 +291,7 @@ settings. Notification toggles and alert delivery are separate future work.
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
-by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
+by `scripts/installation/install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
 
 The SwiftUI application also includes an **About PDF Magic Opener** command
@@ -303,7 +303,7 @@ change the installed PDF handler or scanner.
 
 ## Art
 
-`twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
+`src/scan/twilight-reading.png` [comes from](https://desuarchive.org/mlp/thread/28772083/#28800531) /r/ Anon
 
 ## Installation and usage
 
@@ -313,7 +313,7 @@ and public-release limitations, see the [source installation instructions](docs/
 Install local malware scanning for the existing **Allow and Open** Finder action and native PDF opening (requires Apple command line tools; Homebrew is used to provision ClamAV only when a supported installed scanner is not found). See the [ClamAV Homebrew dependency decision](docs/clamav-homebrew-decision.md) for the packaging rationale and supported non-Homebrew installations:
 
 ```sh
-bash install-allow-and-open.sh
+bash scripts/installation/install-allow-and-open.sh
 ```
 
 Brave is the default PDF destination, **not an installation prerequisite**.
@@ -326,7 +326,7 @@ An unavailable destination blocks opening without bypassing the scan gate or
 silently overwriting a saved application choice.
 
 To **Repair Installation** from the same complete, trusted source checkout,
-double-click `Repair Installation.command` in Finder or run
+double-click `scripts/installation/repair-installation.command` in Finder or run
 `./Repair\ Installation.command` in Terminal. This explicit, confirmed
 action reruns the existing safe installer to restore missing or damaged
 managed application components; it does not force-reinstall a detected
@@ -386,9 +386,9 @@ retains strictly parsed, pinned `pypdf==6.21.3`. See the
 malformed-file handling, memory comparisons and licensing; the Built-in
 scanner remains unchanged.
 
-**ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `scanner_startup_benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regressions plus a real, disposable Linux ClamAV startup baseline with a tiny test-only database; neither is a representative production benchmark.
+**ClamAV startup optimization (opener-0375):** No clamd migration is authorized or proposed. Continue using per-request `clamscan` unless measured repeated startup costs justify a separate review. The opt-in `benchmarks/scanner-startup-benchmark.py` measures repeated real `clamscan` invocations against a one-process batch on synthetic PDFs; it does not start `clamd`, change the installed scan gate, or assert a representative performance gain. The measurement and decision criteria are in [docs/clamav-startup-benchmark.md](docs/clamav-startup-benchmark.md). CI runs mocked regressions plus a real, disposable Linux ClamAV startup baseline with a tiny test-only database; neither is a representative production benchmark.
 
-The native app uses a shared `ScanProgressPanel` from `scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
+The native app uses a shared `ScanProgressPanel` from `src/scan/scan-progress-view.swift` for the same Twilight artwork, animated progress bar, filename display, and Cancel button. New native entry points can reuse this presentation without duplicating progress UI; each caller remains responsible for its own scan lifecycle and cancellation. The installer builds the shared component into the PDF opener, and macOS CI tests its layout and reuse. The scan progress window has a **Cancel** button. Cancelling stops active scans, discards queued requests, and never opens or unquarantines cancelled files. Native scanner subprocesses run in isolated process groups and are terminated and reaped on cancellation, including when they ignore graceful termination. Finder and command-line scanning are unchanged.
 
 Different documents can scan concurrently, with a maximum of **two active scans**. The native opener dispatches requests in arrival order, queues excess documents, and starts the next queued document when a slot becomes free. The Python scan gate also uses two private advisory lock slots under `~/Library/Application Support/Studio/allow-and-open/scan-slots/` so independent Finder and native-app invocations respect the same limit. Waiting requests do not bypass scanning or quarantine; slots are released even if a scanner process exits unexpectedly. The scan-count limit is fixed and does not change the user's existing scan settings.
 
@@ -434,13 +434,13 @@ Scanner failures identify the request number and use a fixed, path-free reason; 
 
 **PDF application support:** Before opening a verified clean PDF while retaining quarantine, including a clean cache hit, the launcher checks whether macOS Launch Services registers the chosen application as capable of opening PDFs. Safari (`com.apple.Safari`) is also supported when its installed bundle is executable and its Apple signature verifies, even if Safari does not advertise PDF-handler registration. Missing, unsupported, or unverifiable destinations fail closed. To select Safari, write `com.apple.Safari` to `~/Library/Application Support/Studio/allow-and-open/target-app.txt`, then use the existing scan-and-open workflow. Reinstall to deploy the native check. Brave remains the default and existing user choices are not overwritten.
 
-**Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file_launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
+**Launch/scan separation:** `scan-and-open.py` verifies a file and passes clean requests to `file-launcher.py`, which owns the destination application selection. The scanner contains no browser bundle identifier. To retain existing behavior, the launcher currently opens PDFs in Brave (`com.brave.Browser`) and other files or application bundles through the system's default macOS application handlers. This task does not introduce new application preferences or change the user's installed associations. The installer deploys both modules together.
 
 Each accepted scan attempt also records the **requesting scan-gate application** (PDF Magic Opener or the Allow and Open Finder Quick Action) and timestamp in a separate `scan_request_applications` table of the private `scan-requests.sqlite3` database. Direct calls to `scan-and-open.py` default to **Command Line**; integrations can set `PDF_MAGIC_REQUESTING_APPLICATION`. This identifies the scan entry point, **not** the external app that originally opened a document through macOS Launch Services. Requester records contain no document paths, types, or contents. Logging failures stop the requested opening. Delete the request database while the opener is stopped to clear both requester and destination history.
 
 **Find installed applications:** The installed `"$HOME/Library/Application Support/Studio/allow-and-open/installed-applications"` command searches macOS Spotlight's indexed application bundles by display name, application-bundle name, or bundle identifier. For example, pass `"Safari"` or `"com.apple.Safari"` as a single argument. The command returns a JSON array of matching application names, bundle identifiers, and paths, sorted for display. It verifies each bundle still exists and has an executable; unavailable or stale entries are omitted. Spotlight results may be incomplete when indexing is disabled or an application is not indexed. This is read-only discovery, not PDF capability verification: searching does not choose a browser, change any preferences, or bypass malware scanning. Existing target and fallback settings remain unchanged.
 
-**Installed-browser metadata (opener-0129):** `browser-app-metadata.swift` provides a read-only lookup for an already-discovered macOS `.app` bundle. It reports the localized display name (falling back to bundle name or filename), the macOS application icon, the short version (falling back to the build version), and the executable's resolved location. For a command-line JSON response including a base64-encoded TIFF icon, build the helper with `xcrun swiftc -parse-as-library browser-app-metadata.swift -o ReadBrowserApplicationMetadata` and run `./ReadBrowserApplicationMetadata "/Applications/Brave Browser.app"`. Missing or non-executable bundles fail closed; an unavailable icon or version is reported as absent. This helper does not discover installation locations, define the supported-browser registry, authorize PDF launches, or change any saved browser selection.
+**Installed-browser metadata (opener-0129):** `src/browser/browser-app-metadata.swift` provides a read-only lookup for an already-discovered macOS `.app` bundle. It reports the localized display name (falling back to bundle name or filename), the macOS application icon, the short version (falling back to the build version), and the executable's resolved location. For a command-line JSON response including a base64-encoded TIFF icon, build the helper with `xcrun swiftc -parse-as-library src/browser/browser-app-metadata.swift -o ReadBrowserApplicationMetadata` and run `./ReadBrowserApplicationMetadata "/Applications/Brave Browser.app"`. Missing or non-executable bundles fail closed; an unavailable icon or version is reported as absent. This helper does not discover installation locations, define the supported-browser registry, authorize PDF launches, or change any saved browser selection.
 
 **Bundle-ID verification and duplicate installations:** If macOS registers several copies of a browser under the same bundle identifier, PDF Magic Opener examines them in Launch Services' preferred order and uses the first existing, executable app with the exact requested identifier. Stale registrations, missing executables, and mismatched identities are skipped, not treated as other browser choices. The PDF-capability preflight and the native launcher apply the same selection rule; if the chosen copy is not PDF-capable, opening stops rather than switching to an alternate copy or default PDF handler. Changing `target-app.txt` is not required, and existing choices remain intact. Reinstall to deploy the native helpers. Launch Services discovery also excludes paths that cannot be read as app bundles: each discovered application must have a readable regular `Info.plist` and a regular executable file with execute permission. Broken or dangling app links and inaccessible installations are omitted; working links to custom installations remain usable. The final native handoff independently rechecks the selected bundle.
 
@@ -454,13 +454,13 @@ Each accepted scan attempt also records the **requesting scan-gate application**
 
 **Already-running browsers:** If the selected PDF browser is already open, macOS receives the approved file through the same explicit `NSWorkspace` application handoff, rather than launching a second browser by design. The macOS CI regression uses a temporary browser-like `.app` and verifies the open event reaches its existing process. This does not bypass malware scanning, change application preferences, or require a real browser installation.
 
-**Native application launching:** After the scan gate approves a file, verifies unchanged contents, and retains macOS quarantine metadata, `file_launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
+**Native application launching:** After the scan gate approves a file, verifies unchanged contents, and retains macOS quarantine metadata, `file-launcher.py` invokes an installed Swift helper using macOS `NSWorkspace` APIs rather than `/usr/bin/open`. PDFs still target Brave by bundle identifier; other files use their system default app, and `.app` bundles launch as applications. A missing target or failed launch stops opening without fallback. Existing installations must rerun the installer to build the helper.
 
 Browser integrations may optionally pass `--browser-download-id <identifier> <file-path>` to attach a validated session-only download identifier to a scan request. Regular Finder, native and direct-path opens leave it unset. It is never logged, persisted, or used to change the file scanned or the selected PDF application.
 
 The installer downloads ClamAV's official signatures and installs a user LaunchAgent to check for updates every four hours while logged in. See the [signature update process](docs/scanner/signature-update-process.md) for scheduling, verified publication, failure handling, and recovery. To update manually:
 
-The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
+The updater records each attempted run in `signatures/last-attempted-update` **before** invoking FreshClam, including unsuccessful attempts. The existing `signatures/last-successful-update` timestamp advances **only** after FreshClam exits successfully; the existing 48-hour scan gate still relies on that successful marker alone. Read either timestamp without updating definitions or reading user files by running the installed `python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature-update-status.py"`. It prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc` as UTC ISO 8601 times or `null` when missing or invalid. On existing installations, the attempted time is unknown until the updated agent first runs. An attempt time does **not** mean the update succeeded or prove definitions are current.
 
 **Signature-update failures (opener-0384):** The existing automatic or manual updater records an additional, atomic `signatures/last-failed-update` marker only when its run exits unsuccessfully. The marker contains the failure time and one fixed, path-free category (`freshclam-error` or `updater-unavailable`); it never exposes FreshClam stderr, document contents or installed paths. Preferences → Updates shows the last recorded failure and its sanitized explanation, distinguishes an unresolved failure from a subsequent recorded success, and treats missing or corrupt markers as unknown. The last-successful marker still advances only after FreshClam succeeds, and the 48-hour scan gate remains authoritative; a failure warning never approves a scan or changes the update interval.
 
@@ -476,7 +476,7 @@ While FreshClam runs, Preferences → Updates shows **Signature update in progre
 bash update-malware-signatures.sh
 ```
 
-The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 restore_finder_quick_action.py` or `python3 restore_finder_quick_action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
+The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 scripts/installation/restore-finder-quick-action.py` or `python3 scripts/installation/restore-finder-quick-action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift src/native/handler/set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
 
@@ -650,7 +650,7 @@ To inspect the **release channel** of an installed browser (stable, beta, dev,
 nightly, canary, or other recognized preview), run the read-only metadata tool:
 
 ```sh
-python3 browser_release.py "/Applications/Brave Browser.app"
+python3 src/browser/browser-release.py "/Applications/Brave Browser.app"
 ```
 
 It prints the bundle ID, browser family, exact channel, stable/preview/unknown
@@ -679,19 +679,19 @@ printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/al
 ```
 
 **Discovery-populated browser preference selector (opener-0137):** The standalone
-`browser_preference_selector.py` command accepts installed-browser discovery JSON
+`src/browser/browser-preference-selector.py` command accepts installed-browser discovery JSON
 on standard input and presents a numbered selection on the controlling terminal.
 Its input is either a list of browser records or an object with a `browsers`
 list. Each record contains `bundle_id`, `name`, and `installed: true`.
 Only installed, valid browsers with **exact bundle IDs** in the supported
-browser registry (`browser_registry.py`) appear in the primary list. Unknown,
+browser registry (`browser-registry.py`) appear in the primary list. Unknown,
 custom and unsupported preview identifiers are hidden, even when their name or
 bundle-ID prefix resembles a supported browser. Duplicate installations of a
 supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
-`python3 browser_preference_selector.py < discovered-browsers.json`.
+`python3 src/browser/browser-preference-selector.py < discovered-browsers.json`.
 When opened again, the selector reads the previously saved browser from
 `target-app.txt` and marks it `(current)` without changing the file.
 The existing verified manual-app chooser and preference workflow own writes;
@@ -893,7 +893,7 @@ The normal success path advances through the five active stages to completion.
 Failures, cancellation, or a revoked decision can block a request at any
 nonterminal stage. A blocked or completed request cannot resume; retry with a
 new queued request. Self-transitions and skipped stages are invalid.
-`file_lifecycle.py` provides `FileState`, immutable `VALID_TRANSITIONS`,
+`src/scan/file-lifecycle.py` provides `FileState`, immutable `VALID_TRANSITIONS`,
 `can_transition`, and a validating `transition_state` helper. This module
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
@@ -913,7 +913,7 @@ individual safeguards, their failure behavior, and the activation boundary.
 ## Effective protection policy resolution (opener-0260)
 
 The pure `resolve_effective_policy(saved_preferences)` function in
-`effective_protection_policy.py` returns an immutable snapshot of the **currently
+`src/protection/effective-protection-policy.py` returns an immutable snapshot of the **currently
 installed Built-in** safety policy. The four mandatory checks (ClamAV scanning,
 signature freshness, file integrity and fail-closed handoff) remain required
 regardless of presentation preferences. An absent `selectedProtectionProfile`
@@ -927,7 +927,7 @@ work may make additional profiles active.
 
 ## Protection-stage resource budgets (section 5.1)
 
-`protection_stage_resource_budgets.py` defines validated, immutable, JSON-safe
+`protection-stage-resource-budgets.py` defines validated, immutable, JSON-safe
 resource ceilings for all six policy controls (signature freshness, integrity,
 ClamAV scanning, PDF structure validation, isolated behavior analysis, and
 fail-closed handoff), in the required stage order for each inactive profile.
@@ -957,7 +957,7 @@ remain non-selectable.
 
 ## Scan result vocabulary (section 1.3)
 
-The canonical terminal result names are defined in `scan_results.py` as
+The canonical terminal result names are defined in `scan-results.py` as
 `ScanResultStatus`. They are stable, case-sensitive strings for callers to
 consume as scan-result reporting is added. These definitions do **not** change
 the current scanner's exit codes, quarantine handling, or opening behavior.
@@ -983,7 +983,7 @@ scan error, or partial scan must never be treated as `clean`.
 
 ## Detection response contract (opener-0253)
 
-`detection_responses.py` defines immutable, path-free responses for **every**
+`src/scan/detection-responses.py` defines immutable, path-free responses for **every**
 canonical `ScanResultStatus`. These are **declarative definitions only**:
 the installed scan gate remains authoritative, and this contract does not
 activate a different protection profile or change existing scan behavior.
@@ -1014,13 +1014,13 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 
 | File | Purpose |
 | --- | --- |
-| `install-allow-and-open.sh` | Install the scan gate, native app, Finder action integration, and signature update agent |
-| `brave-pdf-opener.swift` | Native PDF open handler with scan progress and duplicate-open prevention |
+| `scripts/installation/install-allow-and-open.sh` | Install the scan gate, native app, Finder action integration, and signature update agent |
+| `src/native/launch/brave-pdf-opener.swift` | Native PDF open handler with scan progress and duplicate-open prevention |
 | `allow-and-open.sh` | Shared shell entry point for the scan gate |
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |
 | `record-scan-origin.py` | Record three local scan-request origin flags without retaining file identities |
 | `update-malware-signatures.sh` | Refresh the local ClamAV signature database |
-| `set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
+| `src/native/handler/set-pdf-default-handler.swift` | Set the default PDF handler to the supplied app, or Brave when no app is supplied |
 | `tests/scan/and-open.py` | Verify scan-gate behavior with a substitute scanner |
 | `tests/target/app.py` | Verify target selection, fail-closed settings, and preservation on reinstall |
 | `tests/scan/concurrency.py` | Verify concurrent scans, queued requests, and shared process limits |

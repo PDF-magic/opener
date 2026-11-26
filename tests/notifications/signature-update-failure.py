@@ -31,7 +31,7 @@ class SignatureUpdateFailureNotificationTests(unittest.TestCase):
     self.notice.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$NOTIFICATION_LOG"\nexit "$NOTIFICATION_EXIT"\n')
     self.notice.chmod(0o700)
 
-    source = (ROOT / "update-malware-signatures.sh").read_text()
+    source = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
     self.assertIn(CANDIDATES, source)
     self.assertIn('if [ "$(/usr/bin/uname -s)" = "Darwin" ]', source)
     self.assertIn("/usr/bin/osascript -e 'display notification", source)
@@ -104,7 +104,7 @@ class SignatureUpdateFailureNotificationTests(unittest.TestCase):
     self.assertNotIn("/Users/example", self.notifications()[0])
 
   def test_real_mac_notification_remains_best_effort_and_platform_scoped(self):
-    source = (ROOT / "update-malware-signatures.sh").read_text()
+    source = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
     notifier = source.split("notify_signature_update_failure() {", 1)[1].split("\n}", 1)[0]
     self.assertIn('if [ "$(/usr/bin/uname -s)" = "Darwin" ] && [ -x /usr/bin/osascript ]; then', notifier)
     self.assertIn("</dev/null >/dev/null 2>&1 || :", notifier)

@@ -49,6 +49,6 @@ installations, access user preferences or scanner signatures, or allow scan
 bypasses. Rejected submissions, failed checks, missing credentials, invalid
 tickets, and unexpected signatures produce **no release artifact**.
 
-Authorized local operators may also run `scripts/notarize_release.py` with
+Authorized local operators may also run `scripts/notarize-release.py` with
 `--signed-zip` and `--output-zip` while supplying the three `NOTARY_*` variables
 out-of-band. Tests mock Apple tools and perform no real submissions.

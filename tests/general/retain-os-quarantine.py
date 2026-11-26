@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("scan_and_open", ROOT / "src/scan/scan-and-open.py")
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
@@ -77,7 +77,7 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
         return scans, launched
 
     def test_legacy_hook_never_strips_quarantine_or_launches_anything(self):
-        source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         hook = source.split("def remove_quarantine(path):", 1)[1].split(
             "\n@dataclass(frozen=True)", 1)[0]
         self.assertNotIn("subprocess", hook)
@@ -105,10 +105,10 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase.lower(), guide.lower())
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('codesign --force --sign - "$app"', installer)
         self.assertIn("Ad hoc signing is **not** a Developer ID", guide)
-        source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("def remove_quarantine(path):", source)
         self.assertIn("    return None\n\n\n@dataclass(frozen=True)", source)
         self.assertIn("verify_launch_target(path, target_app=", source)

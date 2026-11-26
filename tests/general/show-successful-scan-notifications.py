@@ -6,8 +6,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 PREF = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text()
 GENERAL = (ROOT / "PDFMagicOpenerApp" / "GeneralSettingsView.swift").read_text()
-OPENER = (ROOT / "brave-pdf-opener.swift").read_text()
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text()
+OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
 CI = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
 
 
@@ -72,8 +72,8 @@ class SuccessfulScanNotificationsTests(unittest.TestCase):
 
   def test_ci_covers_native_isolated_preference_and_scanner(self):
     self.assertIn("tests/general/show-successful-scan-notifications.py -v", CI)
-    self.assertIn("test-show-successful-scan-notifications.swift", CI)
-    self.assertIn("brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", CI)
+    self.assertIn("tests/notifications/successful-scan.swift", CI)
+    self.assertIn("src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", CI)
 
 
 if __name__ == "__main__":

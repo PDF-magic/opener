@@ -66,7 +66,7 @@ mean the result cannot be verified.
 To inspect the attempted and successful timestamps without running an update:
 
 ```sh
-python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature_update_status.py"
+python3 "$HOME/Library/Application Support/Studio/allow-and-open/signature-update-status.py"
 ```
 
 The command prints `lastAttemptedUpdateUtc` and `lastSuccessfulUpdateUtc`

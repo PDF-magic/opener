@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("signature_batch_gate", ROOT / "scan-and-open.py")
+spec = importlib.util.spec_from_file_location("signature_batch_gate", ROOT / "src/scan/scan-and-open.py")
 scanner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(scanner)
 
@@ -105,7 +105,7 @@ class MandatorySignatureGateTests(unittest.TestCase):
         self.assertTrue((self.signatures / "daily.cld").is_file())
 
     def test_existing_scanner_and_user_customizations_unchanged(self):
-        source = (ROOT / "scan-and-open.py").read_text()
+        source = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertIn("check_database()\n            record_scan_request(", source)
         self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", source)
         self.assertIn("if not has_signature_file('daily') or not has_signature_file('main')", source)

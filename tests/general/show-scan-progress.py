@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "PDFMagicOpenerApp"
 PREF = APP / "ScanProgressPreference.swift"
 GENERAL = APP / "GeneralSettingsView.swift"
-OPENER = ROOT / "brave-pdf-opener.swift"
+OPENER = ROOT / "src/native/launch/brave-pdf-opener.swift"
 
 
 class ShowScanProgressTests(unittest.TestCase):
@@ -72,7 +72,7 @@ class ShowScanProgressTests(unittest.TestCase):
 
   def test_both_targets_build_the_shared_preference(self):
     project = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
-    installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertIn("path = ScanProgressPreference.swift;", project)
     self.assertIn("fileRef = B20000000000000000000002;", project)
@@ -81,9 +81,9 @@ class ShowScanProgressTests(unittest.TestCase):
     self.assertIn("B20000000000000000000001,", phase)
     self.assertIn('"$script_dir/PDFMagicOpenerApp/ScanProgressPreference.swift"', installer)
     self.assertIn("tests/general/show-scan-progress.py -v", ci)
-    self.assertIn("test-show-scan-progress.swift", ci)
+    self.assertIn("tests/scan/show-progress.swift", ci)
     self.assertIn("tests/native/hidden-scan-progress.py", ci)
-    self.assertIn("brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", ci)
+    self.assertIn("src/native/launch/brave-pdf-opener.swift src/scan/scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", ci)
 
 
 if __name__ == "__main__":

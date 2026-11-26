@@ -5,12 +5,14 @@ from dataclasses import replace
 from types import MappingProxyType
 import unittest
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     ControlAvailability,
     FailureDisposition,
@@ -18,6 +20,7 @@ from protection_policy_definitions import (
     PROTECTION_POLICIES,
     protection_policy_definition,
 )
+__import__('src.module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
 
 

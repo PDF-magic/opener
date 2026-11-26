@@ -1,6 +1,6 @@
 # Existing installation detection (opener-0933)
 
-Run `python3 scripts/detect_existing_installations.py` to inventory known
+Run `python3 scripts/detect-existing-installations.py` to inventory known
 macOS application bundles in `~/Applications` and `/Applications` without
 changing them. The optional repeatable `--applications-dir` argument limits
 search roots for tests or manual diagnosis. Results are JSON.

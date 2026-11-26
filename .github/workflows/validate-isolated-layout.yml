@@ -1,0 +1,29 @@
+name: Validate relocated isolated analysis
+
+on:
+  push:
+    branches: [shoeshine]
+    paths:
+      - src/protection/maximum-isolated-analysis.py
+      - .github/workflows/validate-isolated-layout.yml
+
+permissions:
+  contents: read
+
+jobs:
+  isolated:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt 'Pillow==11.3.0'
+      - run: PYTHONPATH=. python3 tests/maximum/isolated-analysis.py -v

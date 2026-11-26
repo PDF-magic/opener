@@ -9,8 +9,8 @@ From the repository root, install the repository's reviewed optional PDF parser
 dependency and run:
 
 ```sh
-python3 -m pip install -r requirements-enhanced-pdf.txt
-PYTHONPATH=. python3 small_text_pdf_benchmark.py --samples 5
+python3 -m pip install -r requirements/requirements-enhanced-pdf.txt
+PYTHONPATH=. python3 benchmarks/small-text-pdf-benchmark.py --samples 5
 ```
 
 The benchmark reuses the **synthetic one-page text PDF** from

@@ -7,9 +7,12 @@ import subprocess
 import sys
 import unittest
 
+__import__('src.module-loader')
 from pdf_structure_parser import PDFStructure
-from reference_pdf_collection import REFERENCE_PDFS
-import small_text_pdf_benchmark as benchmark
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+import benchmarks.small_text_pdf_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,7 +75,7 @@ class SmallTextPDFBenchmarkTests(unittest.TestCase):
 
     def test_real_supervised_worker_and_cli_emit_labeled_measurement(self):
         result = subprocess.run(
-            [sys.executable, str(ROOT / "small_text_pdf_benchmark.py"),
+            [sys.executable, str(ROOT / "benchmarks/small-text-pdf-benchmark.py"),
              "--samples", "5"],
             cwd=ROOT, capture_output=True, text=True, check=True, timeout=180,
         )
@@ -85,14 +88,14 @@ class SmallTextPDFBenchmarkTests(unittest.TestCase):
         self.assertNotIn(str(ROOT), result.stdout)
 
     def test_live_opening_policy_and_measurement_ui_are_unchanged(self):
-        live = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        live = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("small_text_pdf_benchmark", live)
         self.assertIn("if not cached_clean(cache_id):", live)
         report = (ROOT / "PDFMagicOpenerApp/protection-performance.json").read_text()
         self.assertEqual(json.loads(report)["measurements"], [])
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/small-text-benchmark.py -v", ci)
-        self.assertIn("python3 small_text_pdf_benchmark.py --samples 5", ci)
+        self.assertIn("python3 benchmarks/small-text-pdf-benchmark.py --samples 5", ci)
         self.assertTrue((ROOT / "docs/pdf/small-text-performance.md").is_file())
 
 

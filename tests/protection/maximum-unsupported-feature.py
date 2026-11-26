@@ -15,17 +15,21 @@ from unittest.mock import patch
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DictionaryObject, NameObject
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('src.module-loader')
 import maximum_sanitized_copy as sanitizer
-from pdf_unsupported_feature_inspection import (
+__import__('src.module-loader')
+from src.pdf.pdf_unsupported_feature_inspection import (
     UnsupportedPDFFeature,
     inspect_pdf_unsupported_features,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
@@ -33,6 +37,7 @@ from protection_policy_definitions import (
     PolicyControl,
     protection_policy_definition,
 )
+__import__('src.module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
 
 
@@ -124,7 +129,7 @@ class MaximumUnsupportedFeatureTests(unittest.TestCase):
             "PYTHONPATH=. python3 tests/protection/maximum-unsupported-feature.py -v",
             workflow,
         )
-        installed = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        installed = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_sanitized_copy", installed)
 
 

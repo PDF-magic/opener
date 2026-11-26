@@ -9,18 +9,21 @@ from pathlib import Path
 import re
 import unittest
 
-from effective_protection_policy import (
+__import__('src.module-loader')
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy, resolve_effective_policy,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     ControlAvailability, PROTECTION_POLICIES,
 )
+__import__('src.module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "ProtectionSettingsView.swift"
-SCANNER = ROOT / "scan-and-open.py"
+SCANNER = ROOT / "src/scan/scan-and-open.py"
 
 
 class EnhancedNewInstallRecommendationTests(unittest.TestCase):
@@ -79,6 +82,7 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
     def test_installer_and_saved_preferences_are_not_modified(self):
         # This PR is strictly an explanatory status in Preferences. The
         # effective policy and existing user selections are not mutated.
+        __import__('src.module-loader')
         from protection_profiles import BASELINE_SAFETY_CHECKS
         self.assertEqual(
             frozenset(BASELINE_SAFETY_CHECKS),
@@ -90,7 +94,7 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
         scanner = SCANNER.read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("New installation recommendation", scanner)
-        config_test = (ROOT / "test-policy-settings-upgrade.swift").read_text(
+        config_test = (ROOT / "tests/protection/policy-upgrade.swift").read_text(
             encoding="utf-8"
         )
         self.assertIn("built-in", config_test)

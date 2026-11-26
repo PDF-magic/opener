@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 import maximum_temporary_output as cleanup
 
 PDF = b"%PDF-1.7\nprivate generated fixture\n"

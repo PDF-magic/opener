@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATOR = ROOT / "scripts/migrate_update_agent.py"
+MIGRATOR = ROOT / "scripts/migrate-update-agent.py"
 AGENT = "local.studio.pdf-malware-signatures.plist"
 
 
@@ -114,17 +114,17 @@ class UpdateAgentMigrationTests(unittest.TestCase):
         self.assertEqual(self.external.read_bytes(), b"unrelated user data\n")
 
     def test_installer_migrates_after_verifying_bundle_before_bootout(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migration = 'python3 "$script_dir/scripts/migrate_update_agent.py"'
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        migration = 'python3 "$script_dir/scripts/migrate-update-agent.py"'
         self.assertEqual(installer.count(migration), 1)
-        self.assertLess(installer.index('python3 "$script_dir/scripts/verify_pdf_opener_bundle.py"'),
+        self.assertLess(installer.index('python3 "$script_dir/scripts/verify-pdf-opener-bundle.py"'),
                         installer.index(migration))
-        self.assertLess(installer.index(migration), installer.index('python3 "$script_dir/scripts/reconcile_update_agent.py"'))
+        self.assertLess(installer.index(migration), installer.index('python3 "$script_dir/scripts/reconcile-update-agent.py"'))
         # Fresh-install provisioning is exclusive-create; the migrator owns upgrades.
         self.assertIn("os.O_EXCL | os.O_NOFOLLOW", installer)
         self.assertIn("except FileExistsError:", installer)
         self.assertNotIn("agent_path.write_bytes(", installer)
-        self.assertIn("migrate_update_agent.py", installer)
+        self.assertIn("migrate-update-agent.py", installer)
 
 
 
@@ -134,7 +134,7 @@ class SingleActiveUpdateAgentTests(unittest.TestCase):
     def setUp(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
-            "reconcile_update_agent", ROOT / "scripts/reconcile_update_agent.py"
+            "reconcile_update_agent", ROOT / "scripts/reconcile-update-agent.py"
         )
         self.agent_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.agent_module)
@@ -220,12 +220,12 @@ class SingleActiveUpdateAgentTests(unittest.TestCase):
                 self.assertEqual(state["boots"], 1)
 
     def test_installer_migrates_before_one_scoped_reconciliation(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrate = 'python3 "$script_dir/scripts/migrate_update_agent.py"'
-        reconcile = 'python3 "$script_dir/scripts/reconcile_update_agent.py"'
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
+        migrate = 'python3 "$script_dir/scripts/migrate-update-agent.py"'
+        reconcile = 'python3 "$script_dir/scripts/reconcile-update-agent.py"'
         self.assertEqual(installer.count(reconcile), 1)
         self.assertLess(installer.index(migrate), installer.index(reconcile))
-        self.assertLess(installer.index('verify_pdf_opener_bundle.py'),
+        self.assertLess(installer.index('verify-pdf-opener-bundle.py'),
                         installer.index(reconcile))
         self.assertNotIn('launchctl bootout "gui/$UID" "$agent"', installer)
         self.assertNotIn('launchctl bootstrap "gui/$UID" "$agent"', installer)

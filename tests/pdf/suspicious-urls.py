@@ -12,7 +12,8 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import (ArrayObject, ByteStringObject, DictionaryObject,
                            NameObject, TextStringObject)
-from pdf_suspicious_urls import (
+__import__('src.module-loader')
+from src.pdf.pdf_suspicious_urls import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, MAX_URLS, PDFSuspiciousURLInspectionError,
     inspect_pdf_suspicious_urls,
 )
@@ -59,7 +60,8 @@ def fixture(*urls, location="action"):
 
 class PDFSuspiciousURLTests(unittest.TestCase):
     def test_reference_pdfs_have_no_urls_and_no_open_authorization(self):
-        from reference_pdf_collection import REFERENCE_PDFS
+        __import__('src.module-loader')
+        from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(name=sample.identifier):
                 result = inspect_pdf_suspicious_urls(sample.content)
@@ -109,7 +111,8 @@ class PDFSuspiciousURLTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_utf16_and_utf8_bytes_inspected_without_leaking(self):
-        from pdf_suspicious_urls import _classify_url
+        __import__('src.module-loader')
+        from src.pdf.pdf_suspicious_urls import _classify_url
         self.assertEqual(
             _classify_url(ByteStringObject(b"https://example.org")), set()
         )
@@ -191,9 +194,10 @@ class PDFSuspiciousURLTests(unittest.TestCase):
 
     def test_current_scanner_and_preferences_are_not_modified(self):
         root = Path(__file__).resolve().parents[2]
-        scanner = (root / "scan-and-open.py").read_text()
+        scanner = (root / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("pdf_suspicious_urls", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('src.module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

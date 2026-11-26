@@ -9,7 +9,7 @@ CHECK = ROOT / "PDFMagicOpenerApp/FirstRunScannerInstallation.swift"
 WELCOME = ROOT / "PDFMagicOpenerApp/FirstRunWelcomeView.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj"
 CI = ROOT / ".github/workflows/ci.yml"
-GATE = ROOT / "scan-and-open.py"
+GATE = ROOT / "src/scan/scan-and-open.py"
 
 
 class FirstRunScannerInstallationTests(unittest.TestCase):
@@ -75,7 +75,7 @@ class FirstRunScannerInstallationTests(unittest.TestCase):
     self.assertIn("B97500000000000000000002,", project)
     ci = CI.read_text(encoding="utf-8")
     self.assertIn("tests/general/first-run-scanner-installation.py -v", ci)
-    self.assertIn("test-first-run-scanner-installation.swift", ci)
+    self.assertIn("tests/first-run/scanner-installation.swift", ci)
     self.assertIn("TestFirstRunScannerInstallation", ci)
 
 

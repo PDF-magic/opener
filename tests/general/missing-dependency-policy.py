@@ -12,22 +12,25 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from missing_dependency_policy import (
+__import__('src.module-loader')
+from src.protection.missing_dependency_policy import (
     MISSING_DEPENDENCY_RESPONSES,
     UNKNOWN_MISSING_DEPENDENCY_RESPONSE,
     MissingDependencyDisposition,
     MissingDependencyResponse,
     response_for_missing_dependency,
 )
+__import__('src.module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, PROTECTION_POLICIES, PolicyControl,
 )
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "missing_dependency_gate", ROOT / "scan-and-open.py"
+    "missing_dependency_gate", ROOT / "src/scan/scan-and-open.py"
 )
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
@@ -162,7 +165,7 @@ class MissingDependencyPolicyTests(unittest.TestCase):
                 self.assertIn("Malware signatures are unavailable", stderr.getvalue())
 
     def test_declarative_contract_does_not_modify_active_scanning(self):
-        installed_gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        installed_gate = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("from missing_dependency_policy import", installed_gate)
         self.assertIn("scanner = scanner_path()", installed_gate)
         self.assertIn("check_database()", installed_gate)

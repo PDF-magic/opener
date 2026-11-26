@@ -15,10 +15,10 @@ import unicodedata
 
 
 ROOT = Path(__file__).resolve().parents[2]
-APP_SOURCE = ROOT / "brave-pdf-opener.swift"
-PROGRESS_SOURCE = ROOT / "scan-progress-view.swift"
+APP_SOURCE = ROOT / "src/native/launch/brave-pdf-opener.swift"
+PROGRESS_SOURCE = ROOT / "src/scan/scan-progress-view.swift"
 PREFERENCE_SOURCE = ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift"
-HANDLER_SOURCE = ROOT / "identify-pdf-handler.swift"
+HANDLER_SOURCE = ROOT / "src/native/handler/identify-pdf-handler.swift"
 SCAN_GATE = (
     'FileManager.default.homeDirectoryForCurrentUser\n'
     '            .appendingPathComponent("Library/Application Support/Studio/allow-and-open/scan-and-open.py")'
@@ -73,7 +73,7 @@ def test_drop_handoff():
         executable.parent.mkdir(parents=True)
         resources.mkdir()
         (resources / "twilight-reading.png").write_bytes(
-            (ROOT / "twilight-reading.png").read_bytes()
+            (ROOT / "src/scan/twilight-reading.png").read_bytes()
         )
 
         receipt = root / "scan-receipt.txt"

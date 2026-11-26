@@ -12,10 +12,14 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import StreamObject
 
-from embedded_file_corpus import EMBEDDED_FILE_PDFS, _document_with_embedded_files
-import enhanced_embedded_files as inspector
-from pdf_embedded_file_types import inspect_pdf_embedded_file_types
-from reference_pdf_collection import REFERENCE_PDFS
+__import__('src.module-loader')
+from tests.fixtures.pdf.embedded_file_corpus import EMBEDDED_FILE_PDFS, _document_with_embedded_files
+__import__('src.module-loader')
+import src.enhanced.enhanced_embedded_files as inspector
+__import__('src.module-loader')
+from src.pdf.pdf_embedded_file_types import inspect_pdf_embedded_file_types
+__import__('src.module-loader')
+from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -130,7 +134,7 @@ class EmbeddedFileCorpusTests(unittest.TestCase):
         for reference in REFERENCE_PDFS:
             with self.subTest(reference=reference.identifier):
                 self.assertNotIn(b"/EmbeddedFile", reference.content)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("embedded_file_corpus", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("remove_quarantine(path)", scanner)

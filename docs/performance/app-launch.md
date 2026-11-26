@@ -8,9 +8,9 @@ interactivity. The ready signal is compiled only in **Debug** builds and sent
 through an inherited anonymous pipe; Release builds do not emit it.
 
 On a disposable macOS test account, build the `PDFMagicOpener` scheme in Debug,
-stage its app bundle using `scripts/package_application_helpers.py`, then run:
+stage its app bundle using `scripts/package-application-helpers.py`, then run:
 
-    python3 app_launch_benchmark.py --app /path/to/staged/PDFMagicOpener.app --samples 5
+    python3 benchmarks/app-launch-benchmark.py --app /path/to/staged/PDFMagicOpener.app --samples 5
 
 Provide only the known reviewed, built app bundle; the benchmark does not
 install/register the app, open PDFs, request scanning, access user documents, or

@@ -2,7 +2,7 @@
 
 `pdf_embedded_file_types.inspect_pdf_embedded_file_types(contents)` uses the
 existing strict in-memory PDF structure parser and bounded attachment discovery
-from `enhanced_embedded_files.py`. It discovers specifications reachable through
+from `src/enhanced/enhanced-embedded-files.py`. It discovers specifications reachable through
 catalog `/Names /EmbeddedFiles` trees, document and page associated-file
 (`/AF`) arrays, and `/FileAttachment` annotations. It decodes embedded bytes
 only in memory through the existing raw/Flate-only bounded decoder.

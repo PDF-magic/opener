@@ -6,7 +6,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/macos-application-bundle.yml"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj"
-HELPERS = ROOT / "scripts/package_application_helpers.py"
+HELPERS = ROOT / "scripts/package-application-helpers.py"
 
 
 class MacOSApplicationBundleTests(unittest.TestCase):
@@ -27,11 +27,11 @@ class MacOSApplicationBundleTests(unittest.TestCase):
       "runs-on: macos-latest",
       "persist-credentials: false",
       "-configuration Release", "CODE_SIGNING_ALLOWED=NO build",
-      "scripts/package_application_helpers.py --app",
-      'scripts/package_application_helpers.py --verify "$stage/PDFMagicOpener.app"',
+      "scripts/package-application-helpers.py --app",
+      'scripts/package-application-helpers.py --verify "$stage/PDFMagicOpener.app"',
       "ditto -c -k --keepParent",
       'ditto -x -k "$archive" "$extracted"',
-      'scripts/package_application_helpers.py --verify "$extracted/PDFMagicOpener.app"',
+      'scripts/package-application-helpers.py --verify "$extracted/PDFMagicOpener.app"',
       'tests/app/fresh-launch.py --app "$extracted/PDFMagicOpener.app"',
       "actions/upload-artifact@v4",
       "pdf-magic-opener-macos-unsigned.zip",
@@ -40,10 +40,10 @@ class MacOSApplicationBundleTests(unittest.TestCase):
       with self.subTest(required=required):
         self.assertIn(required, workflow)
     self.assertLess(workflow.index("-configuration Release"),
-                    workflow.index("scripts/package_application_helpers.py --app"))
-    self.assertLess(workflow.index('scripts/package_application_helpers.py --verify "$stage/'),
+                    workflow.index("scripts/package-application-helpers.py --app"))
+    self.assertLess(workflow.index('scripts/package-application-helpers.py --verify "$stage/'),
                     workflow.index("ditto -c -k --keepParent"))
-    self.assertLess(workflow.index('scripts/package_application_helpers.py --verify "$extracted/'),
+    self.assertLess(workflow.index('scripts/package-application-helpers.py --verify "$extracted/'),
                     workflow.index("actions/upload-artifact@v4"))
 
   def test_packaging_keeps_scanner_handler_and_secrets_out(self):

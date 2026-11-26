@@ -51,7 +51,7 @@ Run the platform-neutral behavior checks with:
 ```sh
 swiftc -parse-as-library -warnings-as-errors \
   extensions/safari/SafariWebExtensionHandler.swift \
-  test-safari-native-messaging.swift -o /tmp/test-safari-native-messaging
+  tests/browser/safari-native-messaging.swift -o /tmp/test-safari-native-messaging
 /tmp/test-safari-native-messaging
 ```
 

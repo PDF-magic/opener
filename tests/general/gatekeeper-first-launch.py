@@ -8,7 +8,7 @@ import unittest
 from unittest import mock
 
 sys.dont_write_bytecode = True
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "verify_gatekeeper_first_launch.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "verify-gatekeeper-first-launch.py"
 spec = importlib.util.spec_from_file_location("first_launch_gatekeeper", SCRIPT)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

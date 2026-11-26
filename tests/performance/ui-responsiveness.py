@@ -8,7 +8,7 @@ import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("ui_response", ROOT / "ui_responsiveness_benchmark.py")
+SPEC = importlib.util.spec_from_file_location("ui_response", ROOT / "benchmarks/ui-responsiveness-benchmark.py")
 benchmark = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(benchmark)
 
@@ -47,7 +47,7 @@ class UIResponsivenessContracts(unittest.TestCase):
       benchmark.aggregate([])
 
   def test_isolated_native_handler_and_real_cancel_control(self):
-    original = (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8")
+    original = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
     driver = benchmark.driver_source(Path("/tmp/gate.py"),
                                      Path("/tmp/inert.pdf"), Path("/tmp/started"))
     self.assertIn('URL(fileURLWithPath: "/tmp/gate.py")', driver)
@@ -58,7 +58,7 @@ class UIResponsivenessContracts(unittest.TestCase):
     self.assertIn(benchmark.GATE_REFERENCE, original)
     self.assertIn("ScanProgressPreference.isEnabled()", original)
     self.assertIn("process.terminate()", original)
-    self.assertEqual(original, (ROOT / "brave-pdf-opener.swift").read_text(encoding="utf-8"))
+    self.assertEqual(original, (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8"))
 
   def test_swift_compilation_failure_reports_errors_without_a_result(self):
     with tempfile.TemporaryDirectory() as folder:
@@ -69,7 +69,7 @@ class UIResponsivenessContracts(unittest.TestCase):
           benchmark.run_once(Path(folder), 0)
 
   def test_no_production_scan_bypass_or_preference_writes(self):
-    source = (ROOT / "ui_responsiveness_benchmark.py").read_text(encoding="utf-8")
+    source = (ROOT / "benchmarks/ui-responsiveness-benchmark.py").read_text(encoding="utf-8")
     for required in ("start_new_session=True", "os.killpg(process.pid, signal.SIGKILL)",
                      "run_once(root, 0)", "process.returncode != 0"):
       self.assertIn(required, source)

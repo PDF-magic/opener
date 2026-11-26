@@ -10,10 +10,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('src.module-loader')
 import maximum_temporary_output as owned
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "uninstall_temporary_pdfs.py"
+SCRIPT = ROOT / "scripts/installation/uninstall-temporary-pdfs.py"
 GUIDE = ROOT / "docs/uninstall-procedure.md"
 CI = ROOT / ".github/workflows/ci.yml"
 PDF = b"%PDF-1.7\nsynthetic generated test copy"
@@ -151,13 +152,13 @@ class UninstallTemporaryPDFTests(unittest.TestCase):
 
     def test_docs_ci_and_scanner_boundary(self):
         guide = GUIDE.read_text(encoding="utf-8")
-        self.assertIn("python3 uninstall_temporary_pdfs.py --remove", guide)
+        self.assertIn("python3 scripts/installation/uninstall-temporary-pdfs.py --remove", guide)
         self.assertIn("viewer", guide)
         self.assertIn("unrecognized", guide)
         self.assertIn("user preferences", guide.lower())
         workflow = CI.read_text(encoding="utf-8")
         self.assertIn("PYTHONPATH=. python3 tests/general/uninstall-temporary-pdfs.py -v", workflow)
-        scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
+        scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("uninstall_temporary_pdfs", scanner)
         self.assertNotIn("cleanup_uninstall_temporary_pdfs", scanner)
 

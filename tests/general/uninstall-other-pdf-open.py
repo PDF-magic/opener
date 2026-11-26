@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "verify-other-pdf-open.py"
+SCRIPT = ROOT / "scripts/installation/verify-other-pdf-open.py"
 SPEC = importlib.util.spec_from_file_location("verify_other_pdf_open", SCRIPT)
 module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(module)
@@ -125,8 +125,8 @@ class OtherPDFViewerTests(unittest.TestCase):
     def test_documentation_and_required_ci_integration(self):
         guide = (ROOT / "docs/uninstall-procedure.md").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("python3 verify-other-pdf-open.py --live", guide)
-        self.assertGreater(guide.index("python3 verify-other-pdf-open.py --live"),
+        self.assertIn("python3 scripts/installation/verify-other-pdf-open.py --live", guide)
+        self.assertGreater(guide.index("python3 scripts/installation/verify-other-pdf-open.py --live"),
                            guide.index("## 7. Verify and retain a recovery path"))
         self.assertIn("PYTHONPATH=. python3 tests/general/uninstall-other-pdf-open.py -v", ci)
         self.assertIn("No uninstall commands or OS mutations run during CI.", guide)

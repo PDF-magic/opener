@@ -7,8 +7,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 ACTION = (ROOT / "PDFMagicOpenerApp" / "PDFDefaultApplicationSettingsView.swift").read_text()
 GENERAL = (ROOT / "PDFMagicOpenerApp" / "GeneralSettingsView.swift").read_text()
-HISTORY = (ROOT / "pdf-handler-history.swift").read_text()
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text()
+HISTORY = (ROOT / "src/native/handler/pdf-handler-history.swift").read_text()
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
 CI = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
 
 
@@ -83,13 +83,13 @@ class RestorePreviousDefaultTests(unittest.TestCase):
     ):
       with self.subTest(required=required):
         self.assertIn(required, HISTORY)
-    self.assertIn('"$script_dir/pdf-handler-history.swift"', INSTALLER)
+    self.assertIn('"$script_dir/src/native/handler/pdf-handler-history.swift"', INSTALLER)
     self.assertIn('"$install_dir/pdf-handler-history"', INSTALLER)
     self.assertIn('"$install_dir/previous-pdf-handler.txt"', INSTALLER)
 
   def test_regression_suite_exercises_restore_with_no_system_mutations(self):
     self.assertIn(f"{Path(__file__).resolve().relative_to(ROOT).as_posix()} -v", CI)
-    self.assertIn("test-general-restore-previous-default.swift", CI)
+    self.assertIn("tests/default/restore-previous.swift", CI)
     self.assertIn("PDF_DEFAULT_ACTION_TESTING", CI)
     self.assertIn('Button("Set as Default PDF App")', ACTION)
 

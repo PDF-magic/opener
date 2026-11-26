@@ -7,9 +7,11 @@ import sqlite3
 import tempfile
 import unittest
 
-from scan_history_metadata import (
+__import__('src.module-loader')
+from src.scan.scan_history_metadata import (
     BrowserScanContext, store_browser_scan_metadata, store_scan_metadata,
 )
+__import__('src.module-loader')
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -106,7 +108,7 @@ class PrivateBrowsingHistoryTests(unittest.TestCase):
         self.assertIn("let status = \"consent-required\"", gate)
         self.assertIn("canProcessPrivateData", gate)
         # Consent to a private session never supplies history-write consent.
-        writer = (ROOT / "scan_history_metadata.py").read_text()
+        writer = (ROOT / "src/scan/scan-history-metadata.py").read_text()
         self.assertIn("browsing_context is not BrowserScanContext.REGULAR", writer)
         self.assertIn("history_enabled is not True", writer)
         self.assertNotIn("store_browser_scan_metadata", worker)
