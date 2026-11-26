@@ -38,9 +38,9 @@ else:
 def source_bootstrap(filename, category, parent, depth, text):
   code = bootstrap.replace("CATEGORY", repr(category)).replace("PARENT", repr(parent)).replace("DEPTH", str(depth))
   # Retain only the initial bootstrap; later imports use the registered finder.
-  text, count = re.subn(r"(?m)^__import__\(['\"]src\.module-loader['\"]\)\n", lambda m: code, text, count=1)
+  text, count = re.subn(r"(?m)^__import__\(['\"]src\.module-loader['\"]\)\n", lambda m: '__PDF_MAGIC_BOOTSTRAP_PLACEHOLDER__\n', text, count=1)
   assert count == 1, filename
-  return re.sub(r"(?m)^[ \t]*__import__\(['\"]src\.module-loader['\"]\)\n", "", text)
+  return re.sub(r"(?m)^[ \t]*__import__\(['\"]src\.module-loader['\"]\)\n", "", text).replace("__PDF_MAGIC_BOOTSTRAP_PLACEHOLDER__\n", code)
 
 paths = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
 changed = {}
@@ -143,6 +143,9 @@ with tempfile.TemporaryDirectory(prefix="opener-flat-runtime-") as directory:
   subprocess.run([os.environ.get("PYTHON", "python3"), "-c",
     "import importlib.util, sys; sys.path.insert(0, sys.argv[1]); spec = importlib.util.spec_from_file_location('scan_gate', sys.argv[1] + '/scan-and-open.py'); m = importlib.util.module_from_spec(spec); sys.modules[spec.name] = m; spec.loader.exec_module(m); assert m.ScanResult is not None",
     str(install)], check=True, cwd="/", env={**os.environ, "PYTHONPATH": ""})
+subprocess.run([os.environ.get("PYTHON", "python3"), "-c",
+  "import importlib.util, sys; spec = importlib.util.spec_from_file_location('scan_gate', sys.argv[1]); m = importlib.util.module_from_spec(spec); sys.modules[spec.name] = m; spec.loader.exec_module(m); assert m.ScanResult is not None",
+  str(ROOT / moves["scan-and-open.py"])], check=True, cwd="/", env={**os.environ, "PYTHONPATH": ""})
 for filename, updated in sorted(changed.items()):
   encoded = base64.b64encode(updated.encode()).decode()
   print("CANDIDATE_BEGIN " + filename)
