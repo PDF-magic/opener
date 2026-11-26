@@ -15,6 +15,8 @@ import stat
 PROGRAMS = (
     "allow-and-open.sh", "scan-and-open.py", "file_launcher.py",
     "browser_registry.py", "scan_results.py", "record-scan-origin.py",
+    "scanner_argument_validation.py", "scanner_concurrency_validation.py",
+    "scanner_filesystem_sandbox.py",
     "update-malware-signatures.sh", "signature_update_status.py",
     "pdf-handler-status.py", "launch-scanned-file", "resolve-default-browser",
     "discover-installed-browsers", "installed-applications", "identify-pdf-handler",
