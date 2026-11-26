@@ -312,7 +312,7 @@ app="$installed_app"
 # Offer an opt-in Finder action without overwriting user-managed scripts.
 action="$HOME/Applications/Make PDF Magic Opener Default.command"
 if [ ! -e "$action" ] && [ ! -L "$action" ]; then
-    cp "$script_dir/make-pdf-magic-default.command" "$action"
+    cp "$script_dir/scripts/installation/make-pdf-magic-default.command" "$action"
     chmod 755 "$action"
 fi
 # Reconcile only the old and new scan-handler registrations; leave the user

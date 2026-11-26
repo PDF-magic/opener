@@ -5,7 +5,7 @@ trusted native CoreGraphics converter. It measures real sanitization, not
 ClamAV, downloading, quarantine removal, or PDF-opening latency.
 
 ```sh
-swiftc -O src/sanitization/maximum_sanitized_copy.swift -o maximum-sanitized-copy
+swiftc -O src/sanitization/maximum-sanitized-copy.swift -o maximum-sanitized-copy
 python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
 PYTHONPATH=. python3 benchmarks/maximum_sanitization_benchmark.py --samples 3
 ```

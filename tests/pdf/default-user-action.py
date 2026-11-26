@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class PDFDefaultUserActionTests(unittest.TestCase):
     def test_finder_action_is_explicit_and_never_uses_untrusted_app_paths(self):
-        script = ROOT / "make-pdf-magic-default.command"
+        script = ROOT / "scripts/installation/make-pdf-magic-default.command"
         self.assertTrue(script.is_file())
         source = script.read_text()
         self.assertTrue(source.startswith("#!/bin/bash\nset -euo pipefail\n"))
@@ -27,7 +27,7 @@ class PDFDefaultUserActionTests(unittest.TestCase):
         self.assertIn('"$app/Contents/MacOS/MakePDFMagicDefault"', script)
         self.assertIn('action="$HOME/Applications/Make PDF Magic Opener Default.command"', script)
         self.assertIn('if [ ! -e "$action" ] && [ ! -L "$action" ]; then', script)
-        self.assertIn('cp "$script_dir/make-pdf-magic-default.command" "$action"', script)
+        self.assertIn('cp "$script_dir/scripts/installation/make-pdf-magic-default.command" "$action"', script)
         self.assertIn('chmod 755 "$action"', script)
         self.assertLess(script.index('MakePDFMagicDefault"'), script.index('/usr/bin/codesign --force --sign - "$app"'))
 
@@ -45,7 +45,7 @@ class PDFDefaultUserActionTests(unittest.TestCase):
     def test_ci_runs_both_syntax_and_native_validation(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/pdf/default-user-action.py -v", workflow)
-        self.assertIn("make-pdf-magic-default.command", workflow)
+        self.assertIn("scripts/installation/make-pdf-magic-default.command", workflow)
         self.assertIn("tests/default/make-default.swift", workflow)
 
 

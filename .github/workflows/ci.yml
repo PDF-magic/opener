@@ -281,7 +281,7 @@ jobs:
       - name: Detect pre-existing scan entry points without changing installation state
         run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
-        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh make-pdf-magic-default.command
+        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh scripts/installation/make-pdf-magic-default.command
       - name: Enforce documented dependency update ownership and review process
         run: PYTHONPATH=. python3 tests/general/dependency-updates.py -v
       - name: Exercise dependency update fail-closed and audit regressions
