@@ -11,11 +11,13 @@ import base64
 from contextlib import contextmanager
 import json
 import os
+from pathlib import Path
 import re
 import socket
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -261,6 +263,65 @@ def safari_session(driver_port):
         webdriver("DELETE", driver_port, f"/session/{session_id}", timeout=10)
 
 
+# Native PDF compositing can be missing from WebDriver's viewport snapshot.
+# Only on a disposable hosted runner, capture the single visible Safari window.
+SAFARI_WINDOW_QUERY = """
+import AppKit
+import CoreGraphics
+
+let pids = Set(NSRunningApplication.runningApplications(
+    withBundleIdentifier: "com.apple.Safari").map { $0.processIdentifier })
+let windows = CGWindowListCopyWindowInfo(
+    [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+    as? [[String: Any]] ?? []
+let ids = windows.compactMap { window -> UInt32? in
+    guard let pid = window[kCGWindowOwnerPID as String] as? Int32,
+          pids.contains(pid),
+          (window[kCGWindowLayer as String] as? Int) == 0,
+          let bounds = window[kCGWindowBounds as String] as? [String: Any],
+          let width = bounds["Width"] as? Double, width >= 300,
+          let height = bounds["Height"] as? Double, height >= 200
+    else { return nil }
+    return window[kCGWindowNumber as String] as? UInt32
+}
+if ids.count == 1 { print(ids[0]) }
+"""
+
+
+def native_window_id():
+    if (os.environ.get("GITHUB_ACTIONS") != "true" or
+            os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"):
+        return None
+    result = subprocess.run(
+        ["/usr/bin/swift", "-e", SAFARI_WINDOW_QUERY],
+        capture_output=True, text=True, timeout=30, check=True,
+    )
+    window_id = result.stdout.strip()
+    if not window_id.isascii() or not window_id.isdecimal() or int(window_id) == 0:
+        raise RuntimeError("No unique visible Safari automation window")
+    return window_id
+
+
+def native_window_screenshot(window_id):
+    with tempfile.TemporaryDirectory(prefix="safari-pdf-window-") as directory:
+        path = Path(directory) / "window.png"
+        subprocess.run(
+            ["/usr/sbin/screencapture", "-x", "-o", "-t", "png",
+             "-l", window_id, str(path)],
+            capture_output=True, timeout=8, check=True,
+        )
+        if path.stat().st_size > 16_000_000:
+            raise AssertionError("Oversized native Safari window screenshot")
+        return path.read_bytes()
+
+
+def rendered_color_fraction(shot, blank, color):
+    observed = sample_png_color(shot, color)
+    if shot == blank or sample_png_color(blank, color) >= 0.035:
+        return 0.0
+    return observed
+
+
 def verify_real_safari_once():
     counts = {}
     server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(counts))
@@ -273,32 +334,61 @@ def verify_real_safari_once():
             webdriver("POST", driver_port, session + "/url", {"url": "about:blank"})
             blank = base64.b64decode(webdriver("GET", driver_port, session + "/screenshot"),
                                      validate=True)
+            native_id, native_blank = None, None
+            try:
+                native_id = native_window_id()
+                if native_id is not None:
+                    native_blank = native_window_screenshot(native_id)
+                    for color, _ in ROUTES.values():
+                        sample_png_color(native_blank, color)
+            except (OSError, subprocess.SubprocessError, RuntimeError,
+                    AssertionError, ValueError, struct.error, zlib.error) as error:
+                print(f"Native Safari window capture unavailable: {type(error).__name__}",
+                      flush=True)
+                native_id, native_blank = None, None
             for route, (color, _) in ROUTES.items():
                 url = f"http://127.0.0.1:{server.server_port}{route}"
                 webdriver("POST", driver_port, session + "/url",
                           {"url": url}, timeout=45)
                 end = time.monotonic() + 45
                 observed_fraction = 0.0
+                native_fraction = 0.0
+                capture_source = "WebDriver"
                 while time.monotonic() < end:
                     current = webdriver("GET", driver_port, session + "/url")
                     shot = base64.b64decode(
                         webdriver("GET", driver_port, session + "/screenshot"),
                         validate=True
                     )
-                    observed_fraction = sample_png_color(shot, color)
-                    # The browser must request the real PDF, retain its URL,
-                    # and visibly render its colored content in its own viewport.
-                    if (counts.get(route, 0) >= 1 and current == url and
-                            shot != blank and observed_fraction >= 0.035):
-                        break
+                    observed_fraction = rendered_color_fraction(shot, blank, color)
+                    # Both capture backends require an actual PDF request,
+                    # exact top-level PDF URL and visibly rendered color.
+                    if counts.get(route, 0) >= 1 and current == url:
+                        if shot != blank and observed_fraction >= 0.035:
+                            break
+                        if native_id is not None:
+                            try:
+                                native_shot = native_window_screenshot(native_id)
+                                native_fraction = rendered_color_fraction(
+                                    native_shot, native_blank, color)
+                                if (native_fraction >= 0.035 and
+                                        webdriver("GET", driver_port, session + "/url") == url):
+                                    capture_source = "native Safari window"
+                                    break
+                            except (OSError, subprocess.SubprocessError, AssertionError,
+                                    ValueError, struct.error, zlib.error) as error:
+                                print(f"Native Safari capture failed: {type(error).__name__}",
+                                      flush=True)
+                                native_id = None
                     time.sleep(0.5)
                 else:
                     raise SafariRenderTimeout(
                         f"Safari did not visibly render {route} as inline PDF "
                         f"(requested={counts.get(route, 0)}, color={observed_fraction:.4f}, "
-                        f"current={current!r}, Safari={caps.get('browserVersion', 'unknown')})"
+                        f"nativeColor={native_fraction:.4f}, current={current!r}, "
+                        f"Safari={caps.get('browserVersion', 'unknown')})"
                     )
-                print(f"PASS Safari PDF viewer: {route}, visible {color} page")
+                print(f"PASS Safari PDF viewer: {route}, visible {color} page via {capture_source}")
             print("PASS real Safari " + str(caps.get("browserVersion", "unknown")) +
                   " PDF viewer; no extension installed or scanner invoked")
     finally:
@@ -323,7 +413,8 @@ def png_test_image(color):
     # Construct synthetic RGB PNG and prove the pixel evidence decoder cannot
     # pass on metadata alone, white canvas, or a different color.
     width, height = 80, 80
-    rgb = (224, 28, 28) if color == "red" else (20, 38, 221)
+    rgb = {"red": (224, 28, 28), "blue": (20, 38, 221),
+           "white": (255, 255, 255)}[color]
     raw = b"".join(b"\x00" + bytes(rgb) * width for _ in range(height))
     def chunk(tag, data):
         return (struct.pack(">I", len(data)) + tag + data +
@@ -407,6 +498,30 @@ def self_test():
     assert sample_png_color(red, "blue") == 0
     assert sample_png_color(blue, "blue") > .99
     assert sample_png_color(blue, "red") == 0
+    blank = png_test_image("white")
+    assert rendered_color_fraction(red, blank, "red") > .99
+    assert rendered_color_fraction(blue, blank, "blue") > .99
+    assert rendered_color_fraction(blank, blank, "red") == 0
+    assert rendered_color_fraction(blue, blank, "red") == 0
+    assert rendered_color_fraction(red, red, "red") == 0
+    from unittest.mock import patch
+    with patch.dict(os.environ, {"GITHUB_ACTIONS": "true",
+                                 "RUNNER_ENVIRONMENT": "self-hosted"}):
+        with patch("subprocess.run") as run:
+            assert native_window_id() is None
+            run.assert_not_called()
+    with patch.dict(os.environ, {"GITHUB_ACTIONS": "true",
+                                 "RUNNER_ENVIRONMENT": "github-hosted"}):
+        with patch("subprocess.run") as run:
+            run.return_value.stdout = "123\n"
+            assert native_window_id() == "123"
+            for ambiguous in ("", "123\n456", "0"):
+                run.return_value.stdout = ambiguous
+                try:
+                    native_window_id()
+                except RuntimeError:
+                    continue
+                raise AssertionError("Ambiguous Safari window was accepted")
     for bad in (b"", b"fakepng", PNG_SIGNATURE):
         try:
             sample_png_color(bad, "red")
