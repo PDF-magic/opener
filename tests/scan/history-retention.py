@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from scan_history_metadata import (
+from src.scan.scan_history_metadata import (
     RETENTION_ALLOWED_DAYS, RETENTION_DEFAULT_DAYS, ScanHistoryStorageError,
     prune_expired_history, store_scan_metadata,
 )
@@ -24,7 +24,7 @@ class HistoryRetentionTests(unittest.TestCase):
         self.db = self.folder / "scan-history.sqlite3"
         self.config = self.folder / "retention.json"
         self.now = 1_800_000_000.0
-        self.clock = mock.patch("scan_history_metadata.time.time", return_value=self.now)
+        self.clock = mock.patch("src.scan.scan_history_metadata.time.time", return_value=self.now)
         self.clock.start()
         self.addCleanup(self.clock.stop)
 

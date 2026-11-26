@@ -16,7 +16,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from effective_protection_policy import (
+from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
 from protection_policy_definitions import (

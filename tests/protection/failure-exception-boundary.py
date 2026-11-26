@@ -10,14 +10,14 @@ import unittest
 from unittest.mock import patch
 
 from scan_results import ScanResultStatus
-from scanner_failure_policy import ScannerFailureKind, response_for_scanner_failure
-from protection_exception_policy import (
+from src.scanner.scanner_failure_policy import ScannerFailureKind, response_for_scanner_failure
+from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ProtectionExceptionNotSupported,
     UNSUPPORTED_EXCEPTION_MESSAGE,
     request_protection_exception,
 )
-from protection_failure_exception_boundary import (
+from src.protection.protection_failure_exception_boundary import (
     EXCEPTION_REJECTION_MESSAGE,
     ProtectionBlockOrigin,
     ProtectionBlockReport,
@@ -152,7 +152,7 @@ class ProtectionFailureExceptionBoundaryTests(unittest.TestCase):
 
     def test_policy_metadata_and_ci_do_not_enable_exceptions(self):
         from protection_profiles import PROTECTION_PROFILES
-        from effective_protection_policy import resolve_effective_policy
+        from src.protection.effective_protection_policy import resolve_effective_policy
         self.assertTrue(all(not p.selectable for p in PROTECTION_PROFILES.values()))
         self.assertEqual(resolve_effective_policy().profile_id, "built-in")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")

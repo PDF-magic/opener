@@ -7,7 +7,7 @@ import unittest
 from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
 from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
-from protection_performance_evidence import (
+from src.protection.protection_performance_evidence import (
     PerformanceSampleGroup, build_report, encode_report,
 )
 

@@ -16,7 +16,7 @@ from pypdf import PdfWriter
 from maximum_process_termination import MAX_WALL_SECONDS
 from pdf_structure_parser import PDFStructure, MAX_STRUCTURE_INPUT_BYTES
 from protection_policy_definitions import PolicyControl
-from protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
+from src.protection.protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 import timed_pdf_structure_analysis as timed
 

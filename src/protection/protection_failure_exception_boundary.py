@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 from scan_results import ScanResultStatus
-from protection_exception_policy import UNSUPPORTED_EXCEPTION_MESSAGE
-from scanner_failure_policy import (
+from src.protection.protection_exception_policy import UNSUPPORTED_EXCEPTION_MESSAGE
+from src.scanner.scanner_failure_policy import (
     ScannerFailureKind,
     UNKNOWN_SCANNER_FAILURE_RESPONSE,
     response_for_scanner_failure,
@@ -37,7 +37,7 @@ class ProtectionBlockReport:
         if type(self.origin) is not ProtectionBlockOrigin:
             raise ValueError("Known block origin required")
         if self.origin is ProtectionBlockOrigin.SCANNER_FAILURE:
-            from scanner_failure_policy import SCANNER_FAILURE_RESPONSES
+            from src.scanner.scanner_failure_policy import SCANNER_FAILURE_RESPONSES
             approved = tuple(x.user_message for x in SCANNER_FAILURE_RESPONSES.values())
             approved += (UNKNOWN_SCANNER_FAILURE_RESPONSE.user_message,)
             if (type(self.scan_status) is not ScanResultStatus or

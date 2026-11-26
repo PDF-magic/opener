@@ -6,6 +6,12 @@ target-app.txt, changes the macOS default, or opens an application. Discovery
 itself is a separate installed-applications checklist requirement.
 """
 
+# Direct execution from the source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _layout_sys
+    from pathlib import Path as _LayoutPath
+    _layout_sys.path.insert(0, str(_LayoutPath(__file__).resolve().parents[2]))
+
 import argparse
 import json
 import os

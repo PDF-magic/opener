@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from scan_results import ScanResultStatus
-from scanner_failure_policy import (
+from src.scanner.scanner_failure_policy import (
     INCOMPLETE_MESSAGE,
     INITIALIZATION_MESSAGE,
     PROCESS_MESSAGE,
@@ -168,7 +168,7 @@ class ScannerFailurePolicyTests(unittest.TestCase):
             ScanResultStatus.scanFailed)
 
     def test_contract_does_not_add_scanner_processes_or_override_settings(self):
-        source = (ROOT / "scanner_failure_policy.py").read_text()
+        source = (ROOT / "src/scanner/scanner_failure_policy.py").read_text()
         for forbidden in ("subprocess", "launch_clean_file", "remove_quarantine(",
                           "UserDefaults", "import os", "target-app.txt"):
             self.assertNotIn(forbidden, source)

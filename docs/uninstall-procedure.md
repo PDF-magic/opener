@@ -26,7 +26,7 @@ actions triggered by opening the preferences app.
    the trusted source checkout, run this interactive, non-destructive prompt:
 
    ```sh
-   python3 ask_uninstall_preferences.py
+   python3 scripts/installation/ask_uninstall_preferences.py
    ```
 
    Answer **Yes** to retain your preferences for a future reinstall (the
@@ -51,7 +51,7 @@ actions triggered by opening the preferences app.
    removing anything, run the read-only question from the trusted source checkout:
 
    ```sh
-   python3 ask_scan_history_retention.py
+   python3 scripts/installation/ask_scan_history_retention.py
    ```
 
    Answer **yes** (or press Return) to retain scan history unchanged. Answer
@@ -90,7 +90,7 @@ actions triggered by opening the preferences app.
    LaunchAgent is recognized (read-only, does not start or stop anything):
 
    ```sh
-   python3 signature_update_launchagent.py
+   python3 scripts/installation/signature_update_launchagent.py
    ```
 
    `existing` means the identity and updater command match; `absent` means
@@ -133,14 +133,14 @@ A previously migrated `Allow and Open` Finder Quick Action may still invoke
 the installed scanner script. Inspect it with the reviewed read-only tool:
 
 ```sh
-python3 restore_finder_quick_action.py
+python3 scripts/installation/restore_finder_quick_action.py
 ```
 
 If this confirms the original saved action can safely be restored and you
 want that original action, opt in explicitly:
 
 ```sh
-python3 restore_finder_quick_action.py --restore
+python3 scripts/installation/restore_finder_quick_action.py --restore
 ```
 
 The existing restoration tool refuses to overwrite a modified action or
@@ -183,7 +183,7 @@ Only if step 1 reported `existing` and you intend to remove PDF Magic's
 checkout**. It is never run automatically during installation:
 
 ```sh
-python3 uninstall_signature_launchagent.py --remove
+python3 scripts/installation/uninstall_signature_launchagent.py --remove
 ```
 
 The command requires an interactive macOS session and the explicit confirmation
@@ -215,7 +215,7 @@ definitions and update configuration are separate user-managed resources.
 remaining active per-user processes. First inspect without signalling:
 
 ```sh
-python3 stop_owned_background_processes.py
+python3 scripts/installation/stop_owned_background_processes.py
 ```
 
 Once you have finished or cancelled any in-flight scans, closed the PDF Magic
@@ -223,7 +223,7 @@ preferences window, and (if removing scheduled updates) retired the verified
 LaunchAgent in step 5, explicitly stop remaining recognized PDF Magic processes:
 
 ```sh
-python3 stop_owned_background_processes.py --stop
+python3 scripts/installation/stop_owned_background_processes.py --stop
 ```
 
 Type `STOP` when prompted. The helper uses macOS kernel executable paths,
@@ -312,7 +312,7 @@ Magic scanners or application-owned processes, and explicitly remove only
 abandoned **application-owned temporary copies** from the trusted checkout:
 
 ```sh
-python3 uninstall_temporary_pdfs.py --remove
+python3 scripts/installation/uninstall_temporary_pdfs.py --remove
 ```
 
 This opt-in command requires an interactive `REMOVE` confirmation. It operates
@@ -337,7 +337,7 @@ policy remains unchanged for normal application operation.
    PDFs**. From the trusted source checkout on the same Mac, run:
 
    ```sh
-   python3 verify-other-pdf-open.py --live
+   python3 scripts/installation/verify-other-pdf-open.py --live
    ```
 
    This is an **explicit, interactive** verification, not an uninstall command.
@@ -360,7 +360,7 @@ policy remains unchanged for normal application operation.
 3. Confirm opted-in native messaging registrations are gone using the
    reviewed registration tools, not by modifying browser profiles.
 4. If retired, confirm `launchctl` no longer lists the exact PDF Magic
-   signature-update agent. Run `python3 stop_owned_background_processes.py`
+   signature-update agent. Run `python3 scripts/installation/stop_owned_background_processes.py`
    to verify no owned processes remain; resolve any unexpected update processes
    without signalling shared scanner services.
 5. Keep retained application data and backups until you no longer need

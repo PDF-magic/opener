@@ -121,7 +121,7 @@ class MigrationCleanupTests(unittest.TestCase):
             'python3 "$script_dir/scripts/reconcile_update_agent.py"',
             'scripts/reconcile_pdf_handler_registration.py',
             'python3 - "$workflow" <<\'PY\'',
-            'python3 "$script_dir/offer-restore-pdf-handler.py"',
+            'python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"',
             'python3 "$install_dir/pdf-handler-status.py"',
             'python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"',
         ):

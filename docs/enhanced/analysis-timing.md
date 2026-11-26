@@ -31,7 +31,7 @@ readings fail closed. Exception messages, PDF content, paths, URLs and
 filenames are never included in timing reports.
 
 The observer does not enforce the planned stage budgets in
-`protection_stage_time_limits.py`, start security scans, persist or reset
+`src/protection/protection_stage_time_limits.py`, start security scans, persist or reset
 preferences, select Enhanced, clear quarantine, or authorize opening. Even a
 complete measurement is **not** evidence that the PDF is clean. A future,
 independently reviewed production orchestrator must decide which inspections

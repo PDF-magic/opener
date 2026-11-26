@@ -25,7 +25,7 @@ if [ ! -f "$workflow" ]; then
 fi
 
 # Identify the existing signature updater before changing installed files or schedules.
-agent_state="$(python3 "$script_dir/signature_update_launchagent.py")"
+agent_state="$(python3 "$script_dir/scripts/installation/signature_update_launchagent.py")"
 if [ "$agent_state" = "existing" ]; then
     echo "Existing signature-update LaunchAgent detected; preserving its configuration."
 fi
@@ -108,7 +108,7 @@ snapshot_ready=1
 
 # Inspect the existing database before creating the directory or starting updates.
 # This only reports presence; the scanner still verifies freshness and safety.
-python3 "$script_dir/existing_signature_database.py" "$install_dir/signatures"
+python3 "$script_dir/scripts/installation/existing_signature_database.py" "$install_dir/signatures"
 # Journal before installer mutations; the marker never certifies signatures.
 migration_attempt="$(python3 "$script_dir/scripts/migration_state.py" --home "$HOME" begin)"
 
@@ -421,7 +421,7 @@ PY
 
 # Only after explicit consent, preserve the user's previous PDF handler before
 # running the verified setter; refusal never changes the association.
-python3 "$script_dir/offer-restore-pdf-handler.py" \
+python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py" \
     "$install_dir/identify-pdf-handler" "$script_dir/set-pdf-default-handler.swift" "$app" \
     "$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"
 # Display the effective association whether restoration was accepted or not.

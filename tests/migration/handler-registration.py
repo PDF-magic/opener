@@ -126,7 +126,7 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
         self.assertLess(source.index('mv "$app" "$installed_app"'),
                         source.index('scripts/reconcile_pdf_handler_registration.py'))
         self.assertLess(source.index('scripts/reconcile_pdf_handler_registration.py'),
-                        source.index('offer-restore-pdf-handler.py'))
+                        source.index('scripts/installation/offer-restore-pdf-handler.py'))
         helper = SOURCE.read_text()
         self.assertNotIn("setDefaultApplication", helper)
         self.assertNotIn("target-app.txt", helper)

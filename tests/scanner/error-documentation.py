@@ -6,7 +6,7 @@ import re
 import unittest
 
 from scan_results import ScanResultStatus
-from scanner_failure_policy import (
+from src.scanner.scanner_failure_policy import (
   SCANNER_FAILURE_RESPONSES,
   UNKNOWN_SCANNER_FAILURE_RESPONSE,
   ScannerFailureKind,

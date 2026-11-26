@@ -7,7 +7,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-import scanner_feature_check as features
+import src.scanner.scanner_feature_check as features
 
 ROOT = Path(__file__).resolve().parents[2]
 

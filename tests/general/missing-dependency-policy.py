@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from missing_dependency_policy import (
+from src.protection.missing_dependency_policy import (
     MISSING_DEPENDENCY_RESPONSES,
     UNKNOWN_MISSING_DEPENDENCY_RESPONSE,
     MissingDependencyDisposition,

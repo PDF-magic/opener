@@ -1,7 +1,7 @@
 # Concise document-security report (opener-0481)
 
 Use `create_document_security_report(combined_scan_report)` from
-`document_security_report.py` to produce a short text summary or a detached
+`src/scan/document_security_report.py` to produce a short text summary or a detached
 JSON-compatible dictionary from validated `CombinedScanReport` evidence.
 
 The report presents the existing scan status and ClamAV signature evidence

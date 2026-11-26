@@ -96,10 +96,10 @@ def inspect_scanner_features(executable):
 
 
 def main(args=None):
-    """Opt-in, read-only CLI: python3 scanner_feature_check.py /path/clamscan."""
+    """Opt-in, read-only CLI: python3 src/scanner/scanner_feature_check.py /path/clamscan."""
     args = sys.argv[1:] if args is None else args
     if len(args) != 1:
-        print("Usage: scanner_feature_check.py /absolute/path/to/clamscan", file=sys.stderr)
+        print("Usage: src/scanner/scanner_feature_check.py /absolute/path/to/clamscan", file=sys.stderr)
         return 2
     try:
         report = inspect_scanner_features(args[0])

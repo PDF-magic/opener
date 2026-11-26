@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import browser_preference_selector as selector
+import src.browser.browser_preference_selector as selector
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True

@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "stop_owned_background_processes", ROOT / "stop_owned_background_processes.py"
+    "stop_owned_background_processes", ROOT / "scripts/installation/stop_owned_background_processes.py"
 )
 mod = importlib.util.module_from_spec(spec)
 import sys
@@ -146,7 +146,7 @@ class StopOwnedBackgroundProcessesTests(unittest.TestCase):
                 mod.stop_owned_processes(self.home, snapshot=lambda: [])
         with patch("builtins.input", return_value="NO"):
             self.assertEqual(mod.main(["--stop"]), 1)
-        source = (ROOT / "stop_owned_background_processes.py").read_text()
+        source = (ROOT / "scripts/installation/stop_owned_background_processes.py").read_text()
         self.assertNotIn("shell=True", source)
         self.assertNotIn("SIGKILL", source.replace("escalate to SIGKILL", ""))
         self.assertNotIn("pkill", source)
@@ -163,7 +163,7 @@ class StopOwnedBackgroundProcessesTests(unittest.TestCase):
         self.assertIn("-ww", run.call_args.args[0])
         guide = (ROOT / "docs/uninstall-procedure.md").read_text()
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 stop_owned_background_processes.py --stop", guide)
+        self.assertIn("python3 scripts/installation/stop_owned_background_processes.py --stop", guide)
         self.assertIn("PYTHONPATH=. python3 tests/general/stop-owned-processes.py -v", ci)
 
 

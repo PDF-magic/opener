@@ -7,8 +7,8 @@ import sqlite3
 import tempfile
 import unittest
 
-from scan_history_metadata import ScanHistoryStorageError, store_scan_metadata
-from scan_history_record import ScanHistoryRecord, ScanHistorySource
+from src.scan.scan_history_metadata import ScanHistoryStorageError, store_scan_metadata
+from src.scan.scan_history_record import ScanHistoryRecord, ScanHistorySource
 from scan_results import ScanResultStatus
 
 

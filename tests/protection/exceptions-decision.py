@@ -10,11 +10,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from effective_protection_policy import (
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     resolve_effective_policy,
 )
-from protection_exception_policy import (
+from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ExceptionDisposition,
     ProtectionExceptionDecision,

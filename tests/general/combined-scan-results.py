@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import unittest
 
-from combined_scan_results import (
+from src.scan.combined_scan_results import (
     MAX_CLAMAV_DETECTION_NAMES,
     CombinedScanReport,
     combine_scan_results,

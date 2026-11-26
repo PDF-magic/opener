@@ -82,7 +82,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     if argv != ["--live"]:
-        print("Usage: python3 verify-other-pdf-open.py --live", file=sys.stderr)
+        print("Usage: python3 scripts/installation/verify-other-pdf-open.py --live", file=sys.stderr)
         return 2
     return verify(platform=sys.platform, interactive=sys.stdin.isatty(),
                   launch=subprocess.run, ask=input, say=print,

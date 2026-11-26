@@ -145,7 +145,7 @@ class ObjectRelationshipInspectionTests(unittest.TestCase):
         self.assertLessEqual(MAX_RELATIONSHIP_EDGES, 65536)
         source = (ROOT / "src/pdf/pdf_object_relationships.py").read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        resolver = (ROOT / "effective_protection_policy.py").read_text(encoding="utf-8")
+        resolver = (ROOT / "src/protection/effective_protection_policy.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_object_relationships", scanner)
         self.assertNotIn("pdf_object_relationships", resolver)

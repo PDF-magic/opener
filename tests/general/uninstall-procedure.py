@@ -36,8 +36,8 @@ class UninstallProcedureTests(unittest.TestCase):
     for before, after in zip(phases, phases[1:]):
       self.assertLess(text.index(before), text.index(after))
     for path in (
-      "signature_update_launchagent.py",
-      "restore_finder_quick_action.py",
+      "scripts/installation/signature_update_launchagent.py",
+      "scripts/installation/restore_finder_quick_action.py",
       "native-messaging/unregister-hosts.py",
       "native-messaging/uninstall-registration.md",
       "pdf-handler-history",
@@ -45,8 +45,8 @@ class UninstallProcedureTests(unittest.TestCase):
     ):
       with self.subTest(path=path):
         self.assertIn(path, text)
-    for path in ("signature_update_launchagent.py",
-                 "restore_finder_quick_action.py",
+    for path in ("scripts/installation/signature_update_launchagent.py",
+                 "scripts/installation/restore_finder_quick_action.py",
                  "native-messaging/unregister-hosts.py",
                  "native-messaging/uninstall-registration.md",
                  "docs/repair-installation.md"):
@@ -81,9 +81,9 @@ class UninstallProcedureTests(unittest.TestCase):
 
   def test_underlying_helpers_are_existing_safety_checked_actions(self):
     settings = (ROOT / "PDFMagicOpenerApp/PDFDefaultApplicationSettingsView.swift").read_text(encoding="utf-8")
-    finder = (ROOT / "restore_finder_quick_action.py").read_text(encoding="utf-8")
+    finder = (ROOT / "scripts/installation/restore_finder_quick_action.py").read_text(encoding="utf-8")
     hosts = (ROOT / "native-messaging/unregister-hosts.py").read_text(encoding="utf-8")
-    agent = (ROOT / "signature_update_launchagent.py").read_text(encoding="utf-8")
+    agent = (ROOT / "scripts/installation/signature_update_launchagent.py").read_text(encoding="utf-8")
     self.assertIn("Restore Previous Default", settings)
     self.assertIn("PDFPreviousDefaultRestoreAction.request(", settings)
     self.assertIn("def restore_finder_action(", finder)
@@ -161,13 +161,13 @@ class UninstallProcedureTests(unittest.TestCase):
 
   def test_preference_retention_prompt_precedes_removal(self):
     guide = GUIDE.read_text(encoding="utf-8")
-    helper = ROOT / "ask_uninstall_preferences.py"
+    helper = ROOT / "scripts/installation/ask_uninstall_preferences.py"
     self.assertTrue(helper.is_file())
     question = "Ask whether PDF Magic Opener preferences should be retained"
     self.assertIn(question, guide)
-    self.assertLess(guide.index("python3 ask_uninstall_preferences.py"),
+    self.assertLess(guide.index("python3 scripts/installation/ask_uninstall_preferences.py"),
                     guide.index(STATUS_COMMAND))
-    self.assertLess(guide.index("python3 ask_uninstall_preferences.py"),
+    self.assertLess(guide.index("python3 scripts/installation/ask_uninstall_preferences.py"),
                     guide.index("## 2. Restore"))
     for requirement in (
       "default when pressing Enter",
@@ -178,7 +178,7 @@ class UninstallProcedureTests(unittest.TestCase):
       self.assertIn(requirement, guide)
 
   def test_retention_prompt_choices_do_not_change_user_files(self):
-    helper = ROOT / "ask_uninstall_preferences.py"
+    helper = ROOT / "scripts/installation/ask_uninstall_preferences.py"
     spec = importlib.util.spec_from_file_location("retention_prompt_test", helper)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -8,11 +8,11 @@ not a system file association.
 
 To inspect whether restoration is possible, from the project checkout run:
 
-    python3 restore_finder_quick_action.py
+    python3 scripts/installation/restore_finder_quick_action.py
 
 To explicitly replace the managed Quick Action with the preserved original:
 
-    python3 restore_finder_quick_action.py --restore
+    python3 scripts/installation/restore_finder_quick_action.py --restore
 
 **Restoration is opt-in.** The original workflow may launch files without the
 PDF Magic malware scan gate; restoring it is not equivalent to disabling or

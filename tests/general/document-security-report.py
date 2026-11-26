@@ -4,8 +4,8 @@
 from pathlib import Path
 import unittest
 
-from combined_scan_results import combine_scan_results
-from document_security_report import (
+from src.scan.combined_scan_results import combine_scan_results
+from src.scan.document_security_report import (
     DocumentSecurityReport,
     MAX_DISPLAYED_SIGNATURES,
     create_document_security_report,

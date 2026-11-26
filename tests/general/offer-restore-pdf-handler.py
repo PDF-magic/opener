@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
-    "offer_pdf_restoration", ROOT / "offer-restore-pdf-handler.py")
+    "offer_pdf_restoration", ROOT / "scripts/installation/offer-restore-pdf-handler.py")
 offer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(offer)
 
@@ -97,14 +97,14 @@ class PDFDefaultRestorationTests(unittest.TestCase):
 
     def test_installer_uses_offer_without_unconditional_default_change(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn('python3 "$script_dir/offer-restore-pdf-handler.py"', installer)
+        self.assertIn('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
         self.assertIn('"$script_dir/set-pdf-default-handler.swift" "$app"', installer)
         self.assertIn('"$install_dir/pdf-handler-history" "$install_dir/previous-pdf-handler.txt"', installer)
         self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)
         self.assertLess(installer.index('scripts/reconcile_pdf_handler_registration.py'),
-                        installer.index('python3 "$script_dir/offer-restore-pdf-handler.py"'))
-        helper = (ROOT / "offer-restore-pdf-handler.py").read_text()
+                        installer.index('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"'))
+        helper = (ROOT / "scripts/installation/offer-restore-pdf-handler.py").read_text()
         self.assertNotIn("target-app.txt", helper)
         self.assertNotIn("scan-and-open.py", helper)
 

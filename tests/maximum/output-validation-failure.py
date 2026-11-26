@@ -17,7 +17,7 @@ from pypdf import PdfWriter
 import maximum_sanitized_copy as sanitizer
 from maximum_sanitized_structure import SanitizedPDFStructure
 from protection_profiles import ProtectionProfileID, protection_profile_definition
-from effective_protection_policy import (
+from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
 

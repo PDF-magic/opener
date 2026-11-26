@@ -151,9 +151,9 @@ scan results. It does not expose unimplemented scan overrides or change
 scanner policy, quarantine checks, or saved PDF application choices.
 
 **Scanner feature check (opener-0357):** The opt-in, read-only
-`scanner_feature_check.py` utility inspects only the selected ClamAV
+`src/scanner/scanner_feature_check.py` utility inspects only the selected ClamAV
 binary's `--help` declarations. Run
-`python3 scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
+`python3 src/scanner/scanner_feature_check.py /opt/homebrew/bin/clamscan` (or pass
 the trusted installed `clamscan` path). It reports whether PDF,
 archive, document, and executable-type scanning switches are advertised
 and whether the options used by the existing Built-in scan gate appear.
@@ -476,7 +476,7 @@ While FreshClam runs, Preferences → Updates shows **Signature update in progre
 bash update-malware-signatures.sh
 ```
 
-The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 restore_finder_quick_action.py` or `python3 restore_finder_quick_action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
+The installer preserves the original Finder Quick Action as `document.wflow.before-brave`. To inspect or explicitly restore this original **Finder action**, use `python3 scripts/installation/restore_finder_quick_action.py` or `python3 scripts/installation/restore_finder_quick_action.py --restore` from this checkout. Restoration retains the backup and refuses to overwrite a customized action. The original action may bypass the PDF Magic malware scan gate; see [Finder action restoration](docs/finder-action-restoration.md). This is separate from restoring the default PDF handler. The existing `swift set-pdf-default-handler.swift` command configures the system PDF handler rather than restoring the Finder Quick Action.
 
 Opening a file explicitly through another app bypasses this opener. Scanner details: [ClamAV scanning documentation](https://docs.clamav.net/manual/Usage/Scanning.html).
 
@@ -650,7 +650,7 @@ To inspect the **release channel** of an installed browser (stable, beta, dev,
 nightly, canary, or other recognized preview), run the read-only metadata tool:
 
 ```sh
-python3 browser_release.py "/Applications/Brave Browser.app"
+python3 src/browser/browser_release.py "/Applications/Brave Browser.app"
 ```
 
 It prints the bundle ID, browser family, exact channel, stable/preview/unknown
@@ -679,7 +679,7 @@ printf '%s\n' 'com.google.Chrome' > "$HOME/Library/Application Support/Studio/al
 ```
 
 **Discovery-populated browser preference selector (opener-0137):** The standalone
-`browser_preference_selector.py` command accepts installed-browser discovery JSON
+`src/browser/browser_preference_selector.py` command accepts installed-browser discovery JSON
 on standard input and presents a numbered selection on the controlling terminal.
 Its input is either a list of browser records or an object with a `browsers`
 list. Each record contains `bundle_id`, `name`, and `installed: true`.
@@ -691,7 +691,7 @@ supported browser display as one choice.
 
 For example, after a separate installed-application discovery component has
 produced `discovered-browsers.json`, invoke
-`python3 browser_preference_selector.py < discovered-browsers.json`.
+`python3 src/browser/browser_preference_selector.py < discovered-browsers.json`.
 When opened again, the selector reads the previously saved browser from
 `target-app.txt` and marks it `(current)` without changing the file.
 The existing verified manual-app chooser and preference workflow own writes;
@@ -893,7 +893,7 @@ The normal success path advances through the five active stages to completion.
 Failures, cancellation, or a revoked decision can block a request at any
 nonterminal stage. A blocked or completed request cannot resume; retry with a
 new queued request. Self-transitions and skipped stages are invalid.
-`file_lifecycle.py` provides `FileState`, immutable `VALID_TRANSITIONS`,
+`src/scan/file_lifecycle.py` provides `FileState`, immutable `VALID_TRANSITIONS`,
 `can_transition`, and a validating `transition_state` helper. This module
 defines the contract for future integrations; it does **not** change existing
 ClamAV scanning, opening behavior, cache, quarantine, or user configuration.
@@ -913,7 +913,7 @@ individual safeguards, their failure behavior, and the activation boundary.
 ## Effective protection policy resolution (opener-0260)
 
 The pure `resolve_effective_policy(saved_preferences)` function in
-`effective_protection_policy.py` returns an immutable snapshot of the **currently
+`src/protection/effective_protection_policy.py` returns an immutable snapshot of the **currently
 installed Built-in** safety policy. The four mandatory checks (ClamAV scanning,
 signature freshness, file integrity and fail-closed handoff) remain required
 regardless of presentation preferences. An absent `selectedProtectionProfile`
@@ -983,7 +983,7 @@ scan error, or partial scan must never be treated as `clean`.
 
 ## Detection response contract (opener-0253)
 
-`detection_responses.py` defines immutable, path-free responses for **every**
+`src/scan/detection_responses.py` defines immutable, path-free responses for **every**
 canonical `ScanResultStatus`. These are **declarative definitions only**:
 the installed scan gate remains authoritative, and this contract does not
 activate a different protection profile or change existing scan behavior.

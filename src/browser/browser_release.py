@@ -122,7 +122,7 @@ def inspect_app_bundle(application):
 
 def main(arguments):
     if len(arguments) != 1:
-        print("Usage: browser_release.py /path/to/Browser.app", file=sys.stderr)
+        print("Usage: src/browser/browser_release.py /path/to/Browser.app", file=sys.stderr)
         return 2
     try:
         release = inspect_app_bundle(arguments[0])

@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from configuration_loader import ConfigurationLoadError, load_configuration
+from src.configuration.configuration_loader import ConfigurationLoadError, load_configuration
 
 DEFAULTS = {"version": 1, "showScanProgress": True, "browser": "Brave"}
 

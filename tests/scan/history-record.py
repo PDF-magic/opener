@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 import json
 import unittest
 
-from scan_history_record import HISTORY_SCHEMA_VERSION, ScanHistoryRecord, ScanHistorySource
+from src.scan.scan_history_record import HISTORY_SCHEMA_VERSION, ScanHistoryRecord, ScanHistorySource
 from scan_results import ScanResultStatus
 
 

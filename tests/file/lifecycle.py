@@ -3,7 +3,7 @@
 
 import unittest
 
-from file_lifecycle import FileState, VALID_TRANSITIONS, can_transition, transition_state
+from src.scan.file_lifecycle import FileState, VALID_TRANSITIONS, can_transition, transition_state
 
 
 EXPECTED = {

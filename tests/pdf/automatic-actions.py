@@ -236,7 +236,7 @@ class PDFAutomaticActionTests(unittest.TestCase):
         module = (ROOT / "src/pdf/pdf_automatic_actions.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_automatic_actions", scanner)
-        self.assertNotIn("pdf_automatic_actions", (ROOT / "effective_protection_policy.py").read_text())
+        self.assertNotIn("pdf_automatic_actions", (ROOT / "src/protection/effective_protection_policy.py").read_text())
         for forbidden in (
             "subprocess.", "launch_clean_file(", "remove_quarantine(",
             "UserDefaults", "os.environ", "get_data(", "write_text(", "open(",

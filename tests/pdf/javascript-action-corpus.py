@@ -88,7 +88,7 @@ class JavaScriptActionCorpusTests(unittest.TestCase):
             with self.subTest(sample=sample.identifier):
                 self.assertEqual(inspect_pdf_javascript_actions(sample.content).action_count, 0)
         self.assertNotIn("javascript_action_corpus", (ROOT / "scan-and-open.py").read_text())
-        self.assertNotIn("javascript_action_corpus", (ROOT / "effective_protection_policy.py").read_text())
+        self.assertNotIn("javascript_action_corpus", (ROOT / "src/protection/effective_protection_policy.py").read_text())
 
 
 if __name__ == "__main__":

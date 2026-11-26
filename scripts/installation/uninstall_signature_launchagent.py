@@ -7,6 +7,12 @@ the complete original bytes in an exclusive same-directory recovery copy.
 Other LaunchAgents, scanner signatures, and user settings are never removed.
 """
 
+# Direct execution from the source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _layout_sys
+    from pathlib import Path as _LayoutPath
+    _layout_sys.path.insert(0, str(_LayoutPath(__file__).resolve().parents[2]))
+
 import argparse
 from contextlib import ExitStack
 import os
@@ -16,7 +22,7 @@ import stat
 import subprocess
 import sys
 
-from signature_update_launchagent import (
+from scripts.installation.signature_update_launchagent import (
     AGENT_FILENAME, AGENT_LABEL, MAX_PLIST_BYTES,
     UnrecognizedSignatureUpdateAgent, detect_existing_signature_update_agent,
 )

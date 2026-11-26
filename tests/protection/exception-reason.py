@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from protection_exception_policy import (
+from src.protection.protection_exception_policy import (
     EXCEPTION_REJECTION_REASON,
     EXCEPTION_SUPPORT_DECISION,
     ExceptionDisposition,

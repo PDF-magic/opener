@@ -14,8 +14,8 @@ from protection_policy_definitions import (
     _inherit_enhanced_requirements,
 )
 from protection_stage_resource_budgets import resource_budgets_for_profile
-from protection_stage_time_limits import stage_limits_for_profile
-from effective_protection_policy import (
+from src.protection.protection_stage_time_limits import stage_limits_for_profile
+from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
 

@@ -244,7 +244,7 @@ class PDFJavaScriptActionTests(unittest.TestCase):
 
     def test_no_scanner_activation_and_ci_registers_the_stage(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        resolver = (ROOT / "effective_protection_policy.py").read_text(encoding="utf-8")
+        resolver = (ROOT / "src/protection/effective_protection_policy.py").read_text(encoding="utf-8")
         module = (ROOT / "src/pdf/pdf_javascript_actions.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_javascript_actions", scanner)

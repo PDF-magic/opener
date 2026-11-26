@@ -6,7 +6,7 @@ from pathlib import Path
 from types import MappingProxyType
 import unittest
 
-from effective_protection_policy import (
+from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     EffectiveProtectionPolicy,
@@ -118,7 +118,7 @@ class EffectivePolicyResolutionTests(unittest.TestCase):
         self.assertEqual(policy.required_checks, frozenset(BASELINE_CONTROLS))
 
         # Neither this resolver nor its tests may replace the scanner gate.
-        source = (ROOT / "effective_protection_policy.py").read_text()
+        source = (ROOT / "src/protection/effective_protection_policy.py").read_text()
         scanner = (ROOT / "scan-and-open.py").read_text()
         self.assertNotIn("effective_protection_policy", scanner)
         for forbidden in ("subprocess", "open(", "write_text(", "UserDefaults", "remove_quarantine", "launch_clean_file"):

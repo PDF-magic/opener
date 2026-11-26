@@ -19,7 +19,7 @@ When a **required** protection component is missing:
 - Do not retry the same failed request automatically. After restoring the
   dependency, a *new* request must pass all of the normal checks again.
 
-The immutable response table in missing_dependency_policy.py covers every
+The immutable response table in src/protection/missing_dependency_policy.py covers every
 PolicyControl from protection_policy_definitions.py, plus a generic denial for
 unknown or untrusted controls. Only a trusted, effective **required** control
 should be passed to this response policy: simply listing a future *optional*

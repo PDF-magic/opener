@@ -13,7 +13,7 @@ import sys
 from maximum_process_termination import MAX_WALL_SECONDS, run_limited_worker
 from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure
 from protection_policy_definitions import PolicyControl
-from protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
+from src.protection.protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
 
 
 # The existing trusted group-killing supervisor supports at most 30 seconds.

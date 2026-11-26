@@ -79,7 +79,7 @@ class PDFHandlerStatusTests(unittest.TestCase):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
-        offer = installer.index('python3 "$script_dir/offer-restore-pdf-handler.py"')
+        offer = installer.index('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"')
         reporter = installer.index('python3 "$install_dir/pdf-handler-status.py"')
         self.assertGreater(reporter, offer)
         self.assertNotIn('/usr/bin/swift "$script_dir/set-pdf-default-handler.swift" "$app"', installer)

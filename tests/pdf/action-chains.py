@@ -209,7 +209,7 @@ class PDFActionChainTests(unittest.TestCase):
 
     def test_scanner_and_preferences_remain_unmodified(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        policy = (ROOT / "effective_protection_policy.py").read_text(encoding="utf-8")
+        policy = (ROOT / "src/protection/effective_protection_policy.py").read_text(encoding="utf-8")
         source = (ROOT / "src/pdf/pdf_action_chains.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_action_chains", scanner)

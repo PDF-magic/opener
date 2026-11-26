@@ -111,8 +111,8 @@ class InstallationConsentTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         for anchor in (
             'migration_attempt="$(python3 "$script_dir/scripts/migration_state.py"',
-            'python3 "$script_dir/existing_signature_database.py"',
-            'python3 "$script_dir/offer-restore-pdf-handler.py"',
+            'python3 "$script_dir/scripts/installation/existing_signature_database.py"',
+            'python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"',
         ):
             self.assertIn(anchor, installer)
         self.assertIn("require_supported_scanner_version(scanner)", scanner)

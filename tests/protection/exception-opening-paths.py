@@ -9,14 +9,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from protection_exception_policy import (
+from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ProtectionExceptionNotSupported,
     record_exception_rejection_reason,
     request_protection_exception,
 )
-from protection_failure_exception_boundary import report_protection_block
-from scanner_failure_policy import ScannerFailureKind
+from src.protection.protection_failure_exception_boundary import report_protection_block
+from src.scanner.scanner_failure_policy import ScannerFailureKind
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
