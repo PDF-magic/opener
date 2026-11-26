@@ -91,4 +91,54 @@ class BenchmarkTests(unittest.TestCase):
             self.assertNotIn("clamd", " ".join(args))
             self.assertTrue(Path(args[-1]).name.startswith(("fixture-", "clamscan-startup-")))
 
-    def test_ci_runs_a_real_isolated_clams
+    def test_ci_runs_a_real_isolated_clamscan_benchmark(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("Measure real ClamAV startup on disposable CI signatures", ci)
+        self.assertIn("python3 benchmarks/scanner-startup-benchmark.py", ci)
+        self.assertIn("--scanner /usr/bin/clamscan --database", ci)
+        self.assertIn("benchmark-never-match", ci)
+        self.assertIn('"/usr/bin/clamscan"', (ROOT / "benchmarks/scanner-startup-benchmark.py").read_text())
+
+    def test_failed_warning_timeout_and_truncated_runs_publish_no_result(self):
+        failures = (
+            subprocess.CompletedProcess([], -9, "fixture: OK", ""),
+            subprocess.CompletedProcess([], 0, "fixture: OK", "ClamAV Warning"),
+            subprocess.CompletedProcess([], 0, "file: Empty file", ""),
+            subprocess.CompletedProcess([], 0, "WARNING: OK", ""),
+            subprocess.CompletedProcess([], 0, "", ""),
+            subprocess.CompletedProcess([], 2, "", "private/file.pdf"),
+        )
+        for result in failures:
+            with self.subTest(result=result), self.assertRaisesRegex(RuntimeError, "no results"):
+                benchmark.measure(str(self.scanner), self.database,
+                                  runner=lambda *args, **kwargs: result,
+                                  clock=iter([1.0, 2.0]).__next__)
+        with self.assertRaisesRegex(RuntimeError, "no results"):
+            benchmark.measure(str(self.scanner), self.database,
+                              runner=lambda *args, **kwargs: (_ for _ in ()).throw(
+                                  subprocess.TimeoutExpired("scanner", 180)),
+                              clock=iter([1.0, 2.0]).__next__)
+
+    def test_benchmark_is_not_loaded_by_live_scan_gate(self):
+        live = (ROOT / "src/scan/scan-and-open.py").read_text()
+        self.assertNotIn("scanner_startup_benchmark", live)
+        self.assertNotIn("clamdscan", live)
+        self.assertNotIn("clamd --", live)
+        # Live size flags are now generated through the strict shared
+        # validator, not embedded as string literals in scan-and-open.py.
+        self.assertIn("size_options = validated_file_size_options(is_pdf=is_pdf)", live)
+        for option in benchmark.command("/scanner", Path("/db"), Path("/fixture"))[1:-1]:
+            if option.startswith(("--max-filesize=", "--max-scansize=")):
+                self.assertIn(option, validated_file_size_options(is_pdf=True))
+            else:
+                self.assertIn(option if not option.startswith("--database=")
+                              else "--database=", live)
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("python3 tests/scanner/startup-benchmark.py -v", ci)
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("benchmarks/scanner-startup-benchmark.py", readme)
+        self.assertIn("no clamd migration", readme.lower())
+
+
+if __name__ == "__main__":
+    unittest.main()

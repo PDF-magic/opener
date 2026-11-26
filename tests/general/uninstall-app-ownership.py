@@ -110,4 +110,13 @@ class UninstallOwnershipTests(unittest.TestCase):
   def test_no_broad_removal_and_documented_ci_gate(self):
     source = (ROOT / "scripts/verify-uninstall-app.py").read_text()
     for forbidden in ("unlink(", "rmtree(", "shutil.move(", "os.remove(", "rm -rf"):
-      
+      self.assertNotIn(forbidden, source)
+    guide = (ROOT / "docs/uninstall-procedure.md").read_text()
+    self.assertIn("python3 scripts/verify-uninstall-app.py", guide)
+    self.assertIn("read-only", guide.lower())
+    ci = (ROOT / ".github/workflows/ci.yml").read_text()
+    self.assertIn("python3 tests/general/uninstall-app-ownership.py -v", ci)
+
+
+if __name__ == "__main__":
+  unittest.main()
