@@ -11,6 +11,7 @@ import base64
 from contextlib import contextmanager
 import json
 import os
+import re
 import socket
 import struct
 import subprocess
@@ -65,20 +66,53 @@ def make_pdf(rgb):
 
 def make_handler(counts):
     class PDFHandler(BaseHTTPRequestHandler):
+        def do_HEAD(self):
+            self.serve_pdf(head_only=True)
+
         def do_GET(self):
+            self.serve_pdf()
+
+        def serve_pdf(self, head_only=False):
             if self.path not in ROUTES:
                 self.send_error(404)
                 return
             pdf = make_pdf(ROUTES[self.path][1])
-            counts[self.path] = counts.get(self.path, 0) + 1
-            self.send_response(200)
+            size = len(pdf)
+            start, end, status = 0, size - 1, 200
+            # Safari's native PDF plugin can fetch additional byte ranges.
+            # Honor single ranges; ignore malformed or multipart ranges.
+            # RFC 9110 defines Range on GET, not HEAD.
+            match = re.fullmatch(r"bytes=(\d*)-(\d*)",
+                                 self.headers.get("Range", ""))
+            if not head_only and match and any(match.groups()):
+                first, last = match.groups()
+                if first:
+                    start = int(first)
+                    end = min(int(last), size - 1) if last else size - 1
+                else:
+                    start = max(0, size - int(last))
+                if start >= size or end < start:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                status = 206
+            body = pdf[start:end + 1]
+            if not head_only:
+                counts[self.path] = counts.get(self.path, 0) + 1
+            self.send_response(status)
             self.send_header("Content-Type", "application/pdf")
             self.send_header("Content-Disposition", "inline")
-            self.send_header("Content-Length", str(len(pdf)))
+            self.send_header("Accept-Ranges", "bytes")
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
-            self.wfile.write(pdf)
+            if not head_only:
+                self.wfile.write(body)
 
         def log_message(self, format, *args):
             # No browsing history, user PDFs or request metadata in logs.
@@ -324,6 +358,40 @@ def self_test():
                 assert response.headers["Cache-Control"] == "no-store"
                 assert response.read().startswith(b"%PDF-1.4")
             assert counts[route] == 1
+            pdf = make_pdf(ROUTES[route][1])
+            size = len(pdf)
+            with urlopen(Request(base + route, method="HEAD"), timeout=3) as response:
+                assert response.status == 200
+                assert response.headers["Accept-Ranges"] == "bytes"
+                assert int(response.headers["Content-Length"]) == size
+                assert response.read() == b""
+            assert counts[route] == 1
+            for header, start, end in (
+                ("bytes=0-15", 0, 15),
+                ("bytes=16-", 16, size - 1),
+                ("bytes=-12", size - 12, size - 1),
+                ("bytes=0-99999", 0, size - 1),
+            ):
+                request = Request(base + route, headers={"Range": header})
+                with urlopen(request, timeout=3) as response:
+                    assert response.status == 206
+                    assert response.headers["Content-Range"] == f"bytes {start}-{end}/{size}"
+                    assert response.headers["Accept-Ranges"] == "bytes"
+                    assert int(response.headers["Content-Length"]) == end - start + 1
+                    assert response.read() == pdf[start:end + 1]
+            for header in (f"bytes={size}-", "bytes=-0", "bytes=20-10"):
+                request = Request(base + route, headers={"Range": header})
+                try:
+                    urlopen(request, timeout=3)
+                    raise AssertionError("Unsatisfiable range was accepted")
+                except HTTPError as error:
+                    assert error.code == 416
+                    assert error.headers["Content-Range"] == f"bytes */{size}"
+            for header in ("bytes=0-1,4-5", "bytes=invalid"):
+                request = Request(base + route, headers={"Range": header})
+                with urlopen(request, timeout=3) as response:
+                    assert response.status == 200
+                    assert response.read() == pdf
         try:
             urlopen(base + "/unlisted.pdf", timeout=3)
             raise AssertionError("Unknown path unexpectedly served")
