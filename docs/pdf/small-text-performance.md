@@ -10,7 +10,7 @@ dependency and run:
 
 ```sh
 python3 -m pip install -r requirements-enhanced-pdf.txt
-PYTHONPATH=. python3 small_text_pdf_benchmark.py --samples 5
+PYTHONPATH=. python3 benchmarks/small_text_pdf_benchmark.py --samples 5
 ```
 
 The benchmark reuses the **synthetic one-page text PDF** from

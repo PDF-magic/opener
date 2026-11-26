@@ -1,6 +1,6 @@
 # Medium-sized PDF benchmark (opener-1074)
 
-Run `PYTHONPATH=. python3 medium_pdf_benchmark.py --runs 5` after installing
+Run `PYTHONPATH=. python3 benchmarks/medium_pdf_benchmark.py --runs 5` after installing
 `requirements-enhanced-pdf.txt`. The harness builds a **deterministic ~4 MiB,
 128-page PDF 1.7** entirely in memory. The pages share one inert content stream
 containing whitespace; this is deliberately a structure-analysis workload, not

@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 ENTRY_MARKER = "@main\nstruct PDFMagicOpenerEntry {"
 GATE_REFERENCE = (
   'FileManager.default.homeDirectoryForCurrentUser\n'

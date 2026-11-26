@@ -5,13 +5,19 @@ This never invokes the installed scanner, releases quarantine, or opens a PDF.
 Results are measurements of one optional analysis stage, not end-to-end latency.
 """
 
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 import json
 import math
 import statistics
 import time
 
-from pdf_parser_memory_benchmark import synthetic_pdf
+from benchmarks.pdf_parser_memory_benchmark import synthetic_pdf
 from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure
 from timed_pdf_structure_analysis import parse_pdf_structure_timed
 

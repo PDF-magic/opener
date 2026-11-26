@@ -5,6 +5,12 @@ This is scan-process latency, not full app opening, and never an open verdict.
 No user PDFs, OCR, network, settings, or production scan controls are touched.
 """
 
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 import json
 import math
@@ -15,7 +21,7 @@ import tempfile
 import time
 import zlib
 
-from scanner_startup_benchmark import (
+from benchmarks.scanner_startup_benchmark import (
     DEFAULT_DATABASE, TRUSTED_SCANNERS, command,
 )
 

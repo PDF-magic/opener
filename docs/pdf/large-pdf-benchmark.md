@@ -11,7 +11,7 @@ traversal of every content stream** takes on two **16 MiB+** inert PDFs:
 Run from the repository root after installing `requirements-enhanced-pdf.txt`:
 
 ```sh
-python3 large_pdf_benchmark.py --case all --runs 3
+python3 benchmarks/large_pdf_benchmark.py --case all --runs 3
 ```
 
 The script creates each PDF in memory and uses a **fresh child process per

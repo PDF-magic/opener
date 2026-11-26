@@ -8,7 +8,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import maximum_sanitization_benchmark as bench
+import benchmarks.maximum_sanitization_benchmark as bench
 import maximum_sanitized_copy as copies
 from reference_pdf_collection import REFERENCE_PDFS
 
@@ -101,7 +101,7 @@ class MaximumSanitizationBenchmarkTests(unittest.TestCase):
 
     def test_cli_rejects_invalid_sample_counts_without_json(self):
         run = subprocess.run(
-            [sys.executable, str(ROOT / "maximum_sanitization_benchmark.py"),
+            [sys.executable, str(ROOT / "benchmarks/maximum_sanitization_benchmark.py"),
              "--samples", "0"],
             cwd=ROOT, capture_output=True, text=True, timeout=30,
         )
@@ -121,7 +121,7 @@ class MaximumSanitizationBenchmarkTests(unittest.TestCase):
         self.assertEqual(performance["measurements"], [])
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text()
         self.assertIn("python3 tests/maximum/sanitization-benchmark.py -v", workflow)
-        self.assertIn("python3 maximum_sanitization_benchmark.py --samples 3", workflow)
+        self.assertIn("python3 benchmarks/maximum_sanitization_benchmark.py --samples 3", workflow)
 
 
 if __name__ == "__main__":

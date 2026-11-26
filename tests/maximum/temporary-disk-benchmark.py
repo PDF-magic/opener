@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 import maximum_temporary_output as staging
-import temporary_disk_benchmark as benchmark
+import benchmarks.temporary_disk_benchmark as benchmark
 
 
 class TemporaryDiskBenchmarkTests(unittest.TestCase):

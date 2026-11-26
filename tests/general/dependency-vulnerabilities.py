@@ -127,9 +127,9 @@ class DependencyVulnerabilityTests(unittest.TestCase):
 
   def test_security_pin_upgrade_keeps_paired_benchmark_environment_equal(self):
     workflow = (ROOT / ".github/workflows/performance-regression-thresholds.yml").read_text()
-    self.assertIn("cmp -s baseline/medium_pdf_benchmark.py candidate/medium_pdf_benchmark.py",
+    self.assertIn("python3 candidate/scripts/compare_benchmark_layout.py baseline candidate",
                   workflow)
-    self.assertIn("cmp -s baseline/pdf_parser_memory_benchmark.py candidate/pdf_parser_memory_benchmark.py",
+    self.assertIn('python3 "$BASELINE_BENCHMARK" --runs 5',
                   workflow)
     self.assertNotIn("cmp -s baseline/requirements-enhanced-pdf.txt", workflow)
     self.assertIn("working-directory: candidate", workflow)

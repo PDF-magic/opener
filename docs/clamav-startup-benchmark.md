@@ -15,7 +15,7 @@ some duplicate scans and must be considered in a realistic workload.
 On a test machine with an already installed, updated ClamAV scanner and its
 signatures, from the repository root, run manually:
 
-    python3 scanner_startup_benchmark.py --scanner /opt/homebrew/bin/clamscan --files 5 --cycles 3
+    python3 benchmarks/scanner_startup_benchmark.py --scanner /opt/homebrew/bin/clamscan --files 5 --cycles 3
 
 Use one of the three executable paths already supported by the installed
 scanner, or explicitly supply the existing signature directory using the

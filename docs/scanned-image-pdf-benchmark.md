@@ -7,7 +7,7 @@ ClamAV gate remain untouched.
 
 ## Workload and measurement
 
-`scanned_pdf_benchmark.py` constructs a deterministic, valid PDF 1.4 in a
+`benchmarks/scanned_pdf_benchmark.py` constructs a deterministic, valid PDF 1.4 in a
 private temporary directory. Each US Letter page consists of a full-page,
 150-dpi, 1,275 × 1,650 grayscale raster image XObject with Flate compression,
 a simple image-drawing content stream and no native text or OCR. Page marks
@@ -19,7 +19,7 @@ Invoke manually on a system with an already installed trusted ClamAV binary
 and existing local signatures:
 
 ```sh
-python3 scanned_pdf_benchmark.py \
+python3 benchmarks/scanned_pdf_benchmark.py \
   --scanner /opt/homebrew/bin/clamscan \
   --pages 2 --runs 5
 ```

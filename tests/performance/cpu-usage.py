@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import cpu_usage_benchmark as cpu
+import benchmarks.cpu_usage_benchmark as cpu
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -115,7 +115,7 @@ class CpuUsageBenchmarkTests(unittest.TestCase):
     def test_disposable_ci_runs_real_clamscan_and_keeps_scan_gate_unchanged(self):
         workflow = (ROOT / ".github/workflows/cpu-usage-benchmark.yml").read_text()
         self.assertIn("python3 tests/performance/cpu-usage.py -v", workflow)
-        self.assertIn("python3 cpu_usage_benchmark.py", workflow)
+        self.assertIn("python3 benchmarks/cpu_usage_benchmark.py", workflow)
         self.assertIn("/usr/bin/clamscan", workflow)
         self.assertIn("benchmark-never-match", workflow)
         self.assertNotIn("cpu_usage_benchmark", (ROOT / "scan-and-open.py").read_text())

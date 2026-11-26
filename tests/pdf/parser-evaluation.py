@@ -8,7 +8,7 @@ import subprocess
 import sys
 import unittest
 
-from pdf_parser_memory_benchmark import MAX_PAGES, MAX_STREAM_BYTES, synthetic_pdf
+from benchmarks.pdf_parser_memory_benchmark import MAX_PAGES, MAX_STREAM_BYTES, synthetic_pdf
 from pdf_structure_parser import parse_pdf_structure, PDFStructure
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -39,7 +39,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
 
   def test_rss_is_measured_in_fresh_child_with_selected_parser(self):
     run = subprocess.run(
-      [sys.executable, str(ROOT / "pdf_parser_memory_benchmark.py"),
+      [sys.executable, str(ROOT / "benchmarks/pdf_parser_memory_benchmark.py"),
        "--parser", "pypdf", "--pages", "16", "--stream-bytes", "1024"],
       capture_output=True, text=True, check=True, timeout=30,
     )
@@ -68,7 +68,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
     self.assertNotIn("pypdf", scanner)
     self.assertIn("python3 tests/pdf/parser-evaluation.py -v", ci)
     self.assertIn("python3 tests/pdf/structure-parser.py -v", ci)
-    self.assertIn("python3 pdf_parser_memory_benchmark.py --parser pypdf", ci)
+    self.assertIn("python3 benchmarks/pdf_parser_memory_benchmark.py --parser pypdf", ci)
     self.assertNotIn("pypdf==5.9.0", ci)
     self.assertEqual(ci.count("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt"), 2)
 

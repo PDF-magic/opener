@@ -3,6 +3,12 @@
 
 This diagnostic never reads user documents or produces an opening verdict.
 """
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 import json
 import math
@@ -16,7 +22,7 @@ import tempfile
 import time
 
 from reference_pdf_collection import REFERENCE_PDFS
-from scanner_startup_benchmark import TRUSTED_SCANNERS, command
+from benchmarks.scanner_startup_benchmark import TRUSTED_SCANNERS, command
 
 MIN_SAMPLES = 1
 MAX_SAMPLES = 10

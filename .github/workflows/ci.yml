@@ -103,10 +103,10 @@ jobs:
               encoding="ascii",
           )
           PY
-          python3 scanner_startup_benchmark.py \
+          python3 benchmarks/scanner_startup_benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" \
             --files 5 --cycles 3
-          python3 peak_memory_benchmark.py \
+          python3 benchmarks/peak_memory_benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" \
             --samples 3
 
@@ -349,11 +349,11 @@ jobs:
       - name: Verify the evaluated parser, BSD license and consistent version pin
         run: PYTHONPATH=. python3 tests/pdf/parser-evaluation.py -v
       - name: Measure bounded synthetic PDF parsing RSS with the selected dependency
-        run: python3 pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
+        run: python3 benchmarks/pdf_parser_memory_benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
       - name: Verify bounded small text PDF timing and fail-closed benchmark behavior
         run: PYTHONPATH=. python3 tests/pdf/small-text-benchmark.py -v
       - name: Benchmark a real small text-based PDF through supervised structure analysis
-        run: PYTHONPATH=. python3 small_text_pdf_benchmark.py --samples 5
+        run: PYTHONPATH=. python3 benchmarks/small_text_pdf_benchmark.py --samples 5
       - name: Inspect indirect PDF object links and page-tree consistency
         run: PYTHONPATH=. python3 tests/pdf/object-relationships.py -v
       - name: Detect suspiciously repeated PDF object structures
@@ -471,7 +471,7 @@ jobs:
       - name: Verify bounded many embedded PDF objects benchmark
         run: PYTHONPATH=. python3 tests/pdf/many-embedded-objects-benchmark.py -v
       - name: Benchmark many real synthetic embedded PDF objects
-        run: PYTHONPATH=. python3 many_embedded_objects_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/many_embedded_objects_benchmark.py --samples 3
       - name: Validate oversized embedded-stream security PDF corpus
         run: PYTHONPATH=. python3 tests/pdf/oversized-stream-corpus.py -v
       - name: Detect excessive PDF decompression requirements safely
@@ -536,7 +536,7 @@ jobs:
       - name: Verify bounded, fail-closed large PDF benchmark behavior
         run: PYTHONPATH=. python3 tests/pdf/large-pdf-benchmark.py -v
       - name: Sample real 256-page large PDF parsing in an isolated worker
-        run: python3 large_pdf_benchmark.py --case many-large-pages --runs 1
+        run: python3 benchmarks/large_pdf_benchmark.py --case many-large-pages --runs 1
       - name: Resolve the effective protection policy without weakening mandatory checks
         run: PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: Identify PDF features unsupported by the current structural analyzer
@@ -1021,7 +1021,7 @@ jobs:
       - name: Verify Enhanced structural benchmark contracts and real workers
         run: PYTHONPATH=. python3 tests/enhanced/structural-benchmark.py -v
       - name: Benchmark Enhanced structural inspection on generated PDFs
-        run: PYTHONPATH=. python3 enhanced_structure_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/enhanced_structure_benchmark.py --samples 3
       - name: Verify cross-process scan concurrency
         run: PYTHONPATH=. python3 tests/scan/concurrency.py
       - name: Verify native owner termination aborts active scans
@@ -1204,7 +1204,7 @@ jobs:
       - name: Measure first SwiftUI appearance of the staged app on macOS
         run: |
           PYTHONPATH=. python3 tests/app/launch-benchmark.py -v
-          python3 app_launch_benchmark.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app" --samples 3
+          python3 benchmarks/app_launch_benchmark.py --app "$RUNNER_TEMP/PDFMagicOpenerHelpersPackage/PDFMagicOpener.app" --samples 3
       - name: Test native notifications after quitting the built Settings application
         run: PYTHONPATH=. python3 tests/notifications/main-app-closed.py --live -v
       - name: Verify built Safari extension containing-app native permission

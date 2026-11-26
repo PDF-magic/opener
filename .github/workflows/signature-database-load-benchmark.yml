@@ -3,14 +3,14 @@ name: ClamAV signature database loading benchmark tests
 on:
   pull_request:
     paths:
-      - signature_database_load_benchmark.py
+      - benchmarks/signature_database_load_benchmark.py
       - tests/scanner/signature-database-load-benchmark.py
       - docs/signature-database-load-benchmark.md
       - .github/workflows/signature-database-load-benchmark.yml
   push:
     branches: [main]
     paths:
-      - signature_database_load_benchmark.py
+      - benchmarks/signature_database_load_benchmark.py
       - tests/scanner/signature-database-load-benchmark.py
       - docs/signature-database-load-benchmark.md
       - .github/workflows/signature-database-load-benchmark.yml

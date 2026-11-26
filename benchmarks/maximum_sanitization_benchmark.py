@@ -6,6 +6,12 @@ nor opens PDFs, writes output, changes preferences, or grants clean verdicts.
 On non-macOS hosts without the trusted converter it fails without results.
 """
 
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 import json
 import math

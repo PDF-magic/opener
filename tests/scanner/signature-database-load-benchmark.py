@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "signature_database_load_benchmark", ROOT / "signature_database_load_benchmark.py"
+    "signature_database_load_benchmark", ROOT / "benchmarks/signature_database_load_benchmark.py"
 )
 benchmark = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmark)
@@ -140,7 +140,7 @@ class SignatureLoadBenchmarkTests(unittest.TestCase):
         self.assertIn("python3 tests/scanner/signature-database-load-benchmark.py -v", workflow)
         self.assertIn("python3 tests/scanner/startup-benchmark.py -v", workflow)
         doc = (ROOT / "docs/signature-database-load-benchmark.md").read_text()
-        self.assertIn("signature_database_load_benchmark.py", doc)
+        self.assertIn("benchmarks/signature_database_load_benchmark.py", doc)
 
 
 if __name__ == "__main__":

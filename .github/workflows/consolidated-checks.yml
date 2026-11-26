@@ -386,7 +386,7 @@ jobs:
       - name: mac / performance / Verify Maximum benchmark contract before live conversion
         run: PYTHONPATH=. python3 tests/maximum/sanitization-benchmark.py -v
       - name: mac / performance / Benchmark actual Maximum rasterization and output verification
-        run: PYTHONPATH=. python3 maximum_sanitization_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/maximum_sanitization_benchmark.py --samples 3
       - name: mac / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
       - name: mac / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior

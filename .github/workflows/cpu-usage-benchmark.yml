@@ -40,5 +40,5 @@ jobs:
               encoding="ascii",
           )
           PY
-          PYTHONPATH=. python3 cpu_usage_benchmark.py \
+          PYTHONPATH=. python3 benchmarks/cpu_usage_benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" --samples 3

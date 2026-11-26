@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-from performance_regression_thresholds import (
+from benchmarks.performance_regression_thresholds import (
   MEDIAN_FACTOR, MEDIAN_GRACE_MS, P95_FACTOR, P95_GRACE_MS,
   compare, main, read_measurement,
 )
@@ -107,7 +107,7 @@ class RegressionThresholdTests(unittest.TestCase):
   def test_cli_exit_codes_and_no_partial_results(self):
     base, head = self.pairs([record(), record()],
                             [record(70, 120), record(75, 130)])
-    program = ROOT / "performance_regression_thresholds.py"
+    program = ROOT / "benchmarks/performance_regression_thresholds.py"
     run = subprocess.run(
       [sys.executable, str(program), "--baseline", *base,
        "--candidate", *head], capture_output=True, text=True, timeout=10)
@@ -125,8 +125,8 @@ class RegressionThresholdTests(unittest.TestCase):
     workflow = (ROOT / ".github/workflows/performance-regression-thresholds.yml").read_text()
     docs = (ROOT / "docs/performance/regression-thresholds.md").read_text()
     live = (ROOT / "scan-and-open.py").read_text()
-    self.assertIn("python3 medium_pdf_benchmark.py --runs 5", workflow)
-    self.assertIn("performance_regression_thresholds.py", workflow)
+    self.assertIn("python3 benchmarks/medium_pdf_benchmark.py --runs 5", workflow)
+    self.assertIn("benchmarks/performance_regression_thresholds.py", workflow)
     self.assertIn("cmp -s", workflow)
     self.assertIn("pull_request:", workflow)
     self.assertIn("merge_group:", workflow)

@@ -9,7 +9,7 @@ import unittest
 
 from pdf_structure_parser import PDFStructure
 from reference_pdf_collection import REFERENCE_PDFS
-import small_text_pdf_benchmark as benchmark
+import benchmarks.small_text_pdf_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,7 +72,7 @@ class SmallTextPDFBenchmarkTests(unittest.TestCase):
 
     def test_real_supervised_worker_and_cli_emit_labeled_measurement(self):
         result = subprocess.run(
-            [sys.executable, str(ROOT / "small_text_pdf_benchmark.py"),
+            [sys.executable, str(ROOT / "benchmarks/small_text_pdf_benchmark.py"),
              "--samples", "5"],
             cwd=ROOT, capture_output=True, text=True, check=True, timeout=180,
         )
@@ -92,7 +92,7 @@ class SmallTextPDFBenchmarkTests(unittest.TestCase):
         self.assertEqual(json.loads(report)["measurements"], [])
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/small-text-benchmark.py -v", ci)
-        self.assertIn("python3 small_text_pdf_benchmark.py --samples 5", ci)
+        self.assertIn("python3 benchmarks/small_text_pdf_benchmark.py --samples 5", ci)
         self.assertTrue((ROOT / "docs/pdf/small-text-performance.md").is_file())
 
 

@@ -7,7 +7,7 @@ ClamAV, downloading, quarantine removal, or PDF-opening latency.
 ```sh
 swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
 python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
-PYTHONPATH=. python3 maximum_sanitization_benchmark.py --samples 3
+PYTHONPATH=. python3 benchmarks/maximum_sanitization_benchmark.py --samples 3
 ```
 
 The workload is the fixed, harmless one-page text PDF from

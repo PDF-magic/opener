@@ -6,6 +6,12 @@ preferences, scanner, sanitization or PDF-opening APIs are accessed. Observed
 peaks are sampled after completed stage operations, not continuous I/O peaks.
 """
 
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 import json
 import statistics
@@ -14,7 +20,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import maximum_temporary_output as staging
-from pdf_parser_memory_benchmark import synthetic_pdf
+from benchmarks.pdf_parser_memory_benchmark import synthetic_pdf
 
 MAX_RUNS = 5
 MAX_COPIES = 4

@@ -8,7 +8,7 @@ import unittest
 from types import SimpleNamespace
 
 from pdf_structure_parser import PDFStructure
-import enhanced_structure_benchmark as bench
+import benchmarks.enhanced_structure_benchmark as bench
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -89,7 +89,7 @@ class EnhancedStructureBenchmarkTests(unittest.TestCase):
 
     def test_real_workers_benchmark_structure_only(self):
         completed = subprocess.run(
-            [sys.executable, str(ROOT / "enhanced_structure_benchmark.py"),
+            [sys.executable, str(ROOT / "benchmarks/enhanced_structure_benchmark.py"),
              "--samples", "3"], cwd=ROOT, capture_output=True, text=True,
             check=True, timeout=120)
         report = json.loads(completed.stdout)
@@ -113,7 +113,7 @@ class EnhancedStructureBenchmarkTests(unittest.TestCase):
         self.assertTrue((ROOT / "docs/enhanced/structural-benchmark.md").is_file())
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/enhanced/structural-benchmark.py -v", ci)
-        self.assertIn("python3 enhanced_structure_benchmark.py --samples 3", ci)
+        self.assertIn("python3 benchmarks/enhanced_structure_benchmark.py --samples 3", ci)
 
 
 if __name__ == "__main__":

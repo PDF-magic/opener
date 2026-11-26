@@ -6,6 +6,12 @@ immediate repeat on that same path. This never clears OS caches or keeps a
 scanner engine alive and is not a claim about true cold-start disk latency.
 """
 
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 import json
 import math
@@ -17,7 +23,7 @@ import tempfile
 import time
 
 from reference_pdf_collection import REFERENCE_PDFS
-from scanner_startup_benchmark import (DEFAULT_DATABASE, TIMEOUT_SECONDS,
+from benchmarks.scanner_startup_benchmark import (DEFAULT_DATABASE, TIMEOUT_SECONDS,
                                        TRUSTED_SCANNERS, command)
 
 MIN_PAIRS = 3

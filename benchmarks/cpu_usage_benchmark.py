@@ -4,6 +4,12 @@
 This is diagnostic evidence only, never a scan verdict or opening permission.
 """
 
+# Direct CLI and worker execution from a source checkout.
+if __name__ == "__main__" and not __package__:
+    import sys as _benchmark_sys
+    from pathlib import Path as _BenchmarkPath
+    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))
+
 import argparse
 from dataclasses import dataclass
 import json
@@ -17,7 +23,7 @@ import tempfile
 import time
 
 from reference_pdf_collection import REFERENCE_PDFS
-from scanner_startup_benchmark import (DEFAULT_DATABASE, DIAGNOSTIC_LINE,
+from benchmarks.scanner_startup_benchmark import (DEFAULT_DATABASE, DIAGNOSTIC_LINE,
                                        TIMEOUT_SECONDS, TRUSTED_SCANNERS, command)
 
 MIN_SAMPLES = 3

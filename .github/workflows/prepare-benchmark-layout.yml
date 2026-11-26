@@ -1,23 +1,57 @@
-name: Prepare benchmark layout
+name: Validate benchmark relocation
 
 on:
   push:
     branches: [shoeshine]
     paths:
-      - scripts/prepare-benchmark-layout.py
+      - benchmarks/**
+      - scripts/compare_benchmark_layout.py
       - .github/workflows/prepare-benchmark-layout.yml
 
 permissions:
   contents: read
 
 jobs:
-  prepare:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
-      - run: python3 scripts/prepare-benchmark-layout.py --test
+      - run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt 'Pillow==11.3.0'
+      - name: Run benchmark and dependency regression suites
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q benchmarks
+          python3 tests/app/launch-benchmark.py -v
+          python3 tests/enhanced/structural-benchmark.py -v
+          python3 tests/maximum/sanitization-benchmark.py -v
+          python3 tests/maximum/temporary-disk-benchmark.py -v
+          python3 tests/pdf/large-pdf-benchmark.py -v
+          python3 tests/pdf/many-embedded-objects-benchmark.py -v
+          python3 tests/pdf/scanned-image-benchmark.py -v
+          python3 tests/pdf/small-text-benchmark.py -v
+          python3 tests/performance/cold-warm-scans.py -v
+          python3 tests/performance/cpu-usage.py -v
+          python3 tests/performance/medium-pdf.py -v
+          python3 tests/performance/regression-thresholds.py -v
+          python3 tests/performance/ui-responsiveness.py -v
+          python3 tests/scanner/peak-memory.py -v
+          python3 tests/scanner/signature-database-load-benchmark.py -v
+          python3 tests/scanner/startup-benchmark.py -v
+          python3 tests/pdf/parser-evaluation.py -v
+          python3 tests/general/dependency-vulnerabilities.py -v
+          python3 tests/general/ci-test-scope.py -v
+          python3 tests/performance/benchmark-layout.py -v
+      - name: Compare against the actual pre-relocation source
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/pre-layout" 943e4a6b189485ed5677159d3af6a866fd778892
+          test "$(python3 scripts/compare_benchmark_layout.py "$RUNNER_TEMP/pre-layout" .)" = medium_pdf_benchmark.py

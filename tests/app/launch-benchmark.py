@@ -10,7 +10,7 @@ from unittest import mock
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("app_launch_benchmark", ROOT / "app_launch_benchmark.py")
+spec = importlib.util.spec_from_file_location("app_launch_benchmark", ROOT / "benchmarks/app_launch_benchmark.py")
 benchmark = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmark)
 
