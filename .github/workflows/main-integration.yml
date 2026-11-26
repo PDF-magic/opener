@@ -107,7 +107,7 @@ jobs:
               print("probe_execution=failed")
           PY
       - name: Compile the CoreGraphics PDF sanitizer used by the handoff tests
-        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+        run: swiftc -O src/sanitization/maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: Verify native raster conversion, page fidelity and active-content removal
         run: |
           PYTHONPATH=. python3 tests/maximum/sanitized-copy.py -v

@@ -21,9 +21,9 @@ HELPER_FOLDER = Path("Contents/Helpers")
 # The separately installed PDFOpener scan gate is intentionally NOT embedded.
 HELPERS = (
   ("launch-scanned-file", (), ("launch-scanned-file.swift",)),
-  ("resolve-default-browser", (), ("resolve-default-browser.swift",)),
-  ("discover-installed-browsers", (), ("discover-installed-browsers.swift",)),
-  ("installed-applications", (), ("installed-applications.swift",)),
+  ("resolve-default-browser", (), ("src/browser/resolve-default-browser.swift",)),
+  ("discover-installed-browsers", (), ("src/browser/discover-installed-browsers.swift",)),
+  ("installed-applications", (), ("src/native/installed-applications.swift",)),
   ("identify-pdf-handler", (), ("identify-pdf-handler.swift",)),
   ("detect-pdf-handler-change", ("-D", "PDF_HANDLER_TESTING"),
    ("identify-pdf-handler.swift", "detect-pdf-handler-change.swift")),
@@ -33,8 +33,8 @@ HELPERS = (
    ("verify-pdf-target.swift", "select-custom-pdf-application.swift")),
   ("browser-preference-list",
    ("-D", "BROWSER_DISCOVERY_TESTING", "-D", "BROWSER_METADATA_TESTING"),
-   ("browser-preference-list.swift", "browser-preference-live-refresh.swift",
-    "discover-installed-browsers.swift", "browser-app-metadata.swift")),
+   ("src/browser/browser-preference-list.swift", "src/browser/browser-preference-live-refresh.swift",
+    "src/browser/discover-installed-browsers.swift", "src/browser/browser-app-metadata.swift")),
   ("pdf-magic-native-host", (),
    ("native-messaging/Host.swift", "native-messaging/HostStatus.swift",
     "native-messaging/CallerOrigin.swift",

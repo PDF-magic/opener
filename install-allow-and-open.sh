@@ -147,12 +147,12 @@ cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
 /usr/bin/xcrun swiftc -O "$script_dir/launch-scanned-file.swift" -o "$install_dir/launch-scanned-file"
 chmod 755 "$install_dir/launch-scanned-file"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/resolve-default-browser.swift" -o "$install_dir/resolve-default-browser"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/browser/resolve-default-browser.swift" -o "$install_dir/resolve-default-browser"
 chmod 755 "$install_dir/resolve-default-browser"
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/discover-installed-browsers.swift" -o "$install_dir/discover-installed-browsers"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/browser/discover-installed-browsers.swift" -o "$install_dir/discover-installed-browsers"
 chmod 755 "$install_dir/discover-installed-browsers"
 # Read-only installed application discovery uses the macOS Spotlight index.
-/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/installed-applications.swift" -o "$install_dir/installed-applications"
+/usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/src/native/installed-applications.swift" -o "$install_dir/installed-applications"
 chmod 755 "$install_dir/installed-applications"
 /usr/bin/xcrun swiftc -parse-as-library -O "$script_dir/identify-pdf-handler.swift" -o "$install_dir/identify-pdf-handler"
 chmod 755 "$install_dir/identify-pdf-handler"
@@ -170,8 +170,8 @@ cp "$script_dir/select-custom-pdf-application.py" "$install_dir/select-custom-pd
 chmod 755 "$install_dir/select-custom-pdf-application" "$install_dir/select-custom-pdf-application.py"
 # Optional read-only browser-list display; no changes to scanner or target-app.txt.
 /usr/bin/xcrun swiftc -parse-as-library -O -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING \
-    "$script_dir/browser-preference-list.swift" "$script_dir/browser-preference-live-refresh.swift" "$script_dir/discover-installed-browsers.swift" \
-    "$script_dir/browser-app-metadata.swift" -o "$install_dir/browser-preference-list"
+    "$script_dir/src/browser/browser-preference-list.swift" "$script_dir/src/browser/browser-preference-live-refresh.swift" "$script_dir/src/browser/discover-installed-browsers.swift" \
+    "$script_dir/src/browser/browser-app-metadata.swift" -o "$install_dir/browser-preference-list"
 chmod 755 "$install_dir/browser-preference-list"
 python3 - "$install_dir" <<'CONFIG'
 import os

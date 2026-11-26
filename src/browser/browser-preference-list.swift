@@ -3,7 +3,7 @@ import Foundation
 
 // Read-only presentation of already-discovered browser metadata. The discovery
 // provider and the user's selected PDF target remain separate responsibilities.
-// The JSON field names match browser-app-metadata.swift (opener-0129).
+// The JSON field names match src/browser/browser-app-metadata.swift (opener-0129).
 struct BrowserPreferenceRecord: Codable {
     let bundleIdentifier: String
     let name: String

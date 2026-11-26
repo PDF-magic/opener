@@ -7,7 +7,7 @@ import unittest
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "scan-result-summary-view.swift"
+SOURCE = ROOT / "src/scan/scan-result-summary-view.swift"
 SWIFT_TEST = ROOT / "tests/scan/result-summary.swift"
 CI = ROOT / ".github/workflows/ci.yml"
 
@@ -180,7 +180,7 @@ class ScanResultSummaryComponentTests(unittest.TestCase):
     def test_ci_compiles_and_exercises_the_component_on_macos(self):
         workflow = CI.read_text(encoding="utf-8")
         self.assertIn("python3 tests/scan/result-summary-component.py -v", workflow)
-        self.assertIn("scan-result-summary-view.swift tests/scan/result-summary.swift", workflow)
+        self.assertIn("src/scan/scan-result-summary-view.swift tests/scan/result-summary.swift", workflow)
         self.assertIn('"$RUNNER_TEMP/TestScanResultSummary"', workflow)
         harness = SWIFT_TEST.read_text(encoding="utf-8")
         self.assertIn("@main", harness)

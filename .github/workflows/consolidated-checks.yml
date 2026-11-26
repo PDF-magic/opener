@@ -222,7 +222,7 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: maximum / maximum-safe-copy-handoff / Compile the real sanitized conversion worker on macOS
         if: runner.os == 'macOS'
-        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+        run: swiftc -O src/sanitization/maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: maximum / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions
         run: |
           PYTHONPATH=. python3 tests/maximum/temporary-output.py -v
@@ -355,7 +355,7 @@ jobs:
       - name: mac / maximum-generated-rescan / Install strict PDF validator
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-generated-rescan / Build isolated optional CoreGraphics raster converter
-        run: swiftc -O maximum_sanitized_copy.swift -o maximum-sanitized-copy
+        run: swiftc -O src/sanitization/maximum_sanitized_copy.swift -o maximum-sanitized-copy
       - name: mac / maximum-generated-rescan / Verify converted PDF re-enters mandatory scan before browser handoff
         run: PYTHONPATH=. python3 tests/maximum/generated-rescan.py -v
 
@@ -367,9 +367,9 @@ jobs:
 
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING src/sanitization/maximum_safe_copy_destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
-          xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/sanitization/maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: mac / maximum-safe-copy-handoff / Install pinned sanitization dependencies
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0' 'Pillow==11.3.0'
       - name: mac / maximum-safe-copy-handoff / Reject temporary PDF symlink, hardlink and directory substitutions

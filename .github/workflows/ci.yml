@@ -1110,9 +1110,9 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING src/sanitization/maximum_safe_copy_destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
-          xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/sanitization/maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
         run: PYTHONPATH=. python3 tests/scanner/defaults-summary.py -v
       - name: Verify descriptor-pinned scan inputs on macOS
@@ -1157,10 +1157,10 @@ jobs:
           "$RUNNER_TEMP/TestSignatureUpdateFailures"
       - name: Verify on-open, live and manual browser refresh actions
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift discover-installed-browsers.swift browser-app-metadata.swift tests/browser/preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift -o "$RUNNER_TEMP/BrowserPreferenceList"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING src/browser/browser-preference-list.swift src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift tests/browser/preference-list.swift -o "$RUNNER_TEMP/TestBrowserPreferenceList"
           "$RUNNER_TEMP/TestBrowserPreferenceList"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING browser-preference-list.swift browser-preference-live-refresh.swift discover-installed-browsers.swift browser-app-metadata.swift tests/browser/preference-live-refresh.swift -o "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift tests/browser/preference-live-refresh.swift -o "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           "$RUNNER_TEMP/TestBrowserPreferenceLiveRefresh"
           if "$RUNNER_TEMP/BrowserPreferenceList" --metadata-stdin </dev/null; then exit 1; fi
           if "$RUNNER_TEMP/BrowserPreferenceList" --invalid-option; then exit 1; fi
@@ -1450,7 +1450,7 @@ jobs:
           if python3 scripts/verify_pdf_opener_bundle.py "$app"; then exit 1; fi
       - name: Compile and test reusable AppKit scan-result summary
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors scan-result-summary-view.swift tests/scan/result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/scan/scan-result-summary-view.swift tests/scan/result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
           "$RUNNER_TEMP/TestScanResultSummary"
           PYTHONPATH=. python3 tests/scan/result-summary-component.py -v
       - name: Verify direct native scanner and origin processes on macOS
@@ -1523,76 +1523,76 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/file-availability.py
       - name: Verify browser names, icons, versions and executable paths
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING browser-app-metadata.swift tests/browser/app-metadata.swift -o "$RUNNER_TEMP/TestBrowserApplicationMetadata"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/browser/browser-app-metadata.swift -o "$RUNNER_TEMP/ReadBrowserApplicationMetadata"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_METADATA_TESTING src/browser/browser-app-metadata.swift tests/browser/app-metadata.swift -o "$RUNNER_TEMP/TestBrowserApplicationMetadata"
           BROWSER_METADATA_TOOL="$RUNNER_TEMP/ReadBrowserApplicationMetadata" "$RUNNER_TEMP/TestBrowserApplicationMetadata"
           if "$RUNNER_TEMP/ReadBrowserApplicationMetadata"; then exit 1; fi
       - name: Compile and test system-default-browser resolution
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING resolve-default-browser.swift tests/system/default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/browser/resolve-default-browser.swift -o "$RUNNER_TEMP/ResolveDefaultBrowser"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D DEFAULT_BROWSER_TESTING src/browser/resolve-default-browser.swift tests/system/default-browser.swift -o "$RUNNER_TEMP/TestDefaultBrowser"
           "$RUNNER_TEMP/TestDefaultBrowser"
           if "$RUNNER_TEMP/ResolveDefaultBrowser" unexpected-argument; then exit 1; fi
       - name: Discover installed macOS browsers across standard and custom locations
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors discover-installed-browsers.swift -o "$RUNNER_TEMP/DiscoverInstalledBrowsers"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift tests/browser/installed.swift -o "$RUNNER_TEMP/TestInstalledBrowsers"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/browser/discover-installed-browsers.swift -o "$RUNNER_TEMP/DiscoverInstalledBrowsers"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/installed.swift -o "$RUNNER_TEMP/TestInstalledBrowsers"
           "$RUNNER_TEMP/TestInstalledBrowsers"
           "$RUNNER_TEMP/DiscoverInstalledBrowsers" | python3 -c 'import json, sys; assert isinstance(json.load(sys.stdin), list)'
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --application relative.app; then exit 1; fi
           if "$RUNNER_TEMP/DiscoverInstalledBrowsers" --search-directory; then exit 1; fi
       - name: Test browser discovery with Brave only
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift tests/browser/brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/brave-only-discovery.swift -o "$RUNNER_TEMP/TestBraveOnlyDiscovery"
           "$RUNNER_TEMP/TestBraveOnlyDiscovery"
       - name: Verify Safari-only installed browser discovery
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift tests/browser/safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/safari-only-discovery.swift -o "$RUNNER_TEMP/TestSafariOnlyDiscovery"
           "$RUNNER_TEMP/TestSafariOnlyDiscovery"
       - name: Test Firefox and Chromium installed together
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift tests/browser/firefox-chromium-discovery.swift -o "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/firefox-chromium-discovery.swift -o "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
           "$RUNNER_TEMP/TestFirefoxChromiumDiscovery"
       - name: Verify newly installed browser detection without changing PDF selection
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/newly-installed.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/newly-installed.swift \
             -o "$RUNNER_TEMP/TestNewlyInstalledBrowser"
           "$RUNNER_TEMP/TestNewlyInstalledBrowser"
       - name: Test multiple installed browsers and verified PDF target isolation
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift verify-pdf-target.swift tests/browser/multiple-installations.swift \
+            src/browser/discover-installed-browsers.swift verify-pdf-target.swift tests/browser/multiple-installations.swift \
             -o "$RUNNER_TEMP/TestMultipleBrowserInstallations"
           "$RUNNER_TEMP/TestMultipleBrowserInstallations"
       - name: Verify removal of the selected installed browser
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/selected-removed.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/selected-removed.swift \
             -o "$RUNNER_TEMP/TestSelectedBrowserRemoved"
           "$RUNNER_TEMP/TestSelectedBrowserRemoved"
       - name: Test in-place browser upgrades and fail-closed PDF-target recovery
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING -D PDF_TARGET_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/upgrades.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift src/browser/browser-preference-live-refresh.swift verify-pdf-target.swift tests/browser/upgrades.swift \
             -o "$RUNNER_TEMP/TestBrowserUpgrades"
           "$RUNNER_TEMP/TestBrowserUpgrades"
 
       - name: Test discovery and preferences with no third-party browsers
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING -D BROWSER_METADATA_TESTING -D BROWSER_PREFERENCE_TESTING \
-            discover-installed-browsers.swift browser-app-metadata.swift browser-preference-list.swift \
-            browser-preference-live-refresh.swift tests/browser/no-third-party.swift \
+            src/browser/discover-installed-browsers.swift src/browser/browser-app-metadata.swift src/browser/browser-preference-list.swift \
+            src/browser/browser-preference-live-refresh.swift tests/browser/no-third-party.swift \
             -o "$RUNNER_TEMP/TestNoThirdPartyBrowsers"
           "$RUNNER_TEMP/TestNoThirdPartyBrowsers"
       - name: Verify renamed browser bundles are rediscovered safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING discover-installed-browsers.swift tests/browser/renamed-discovery.swift -o "$RUNNER_TEMP/TestRenamedBrowserDiscovery"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D BROWSER_DISCOVERY_TESTING src/browser/discover-installed-browsers.swift tests/browser/renamed-discovery.swift -o "$RUNNER_TEMP/TestRenamedBrowserDiscovery"
           "$RUNNER_TEMP/TestRenamedBrowserDiscovery"
       - name: Query and validate installed macOS applications
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING installed-applications.swift tests/system/installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors src/native/installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING src/native/installed-applications.swift tests/system/installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
           "$RUNNER_TEMP/TestInstalledApplications"
           if "$RUNNER_TEMP/InstalledApplications" >/dev/null 2>&1; then exit 1; fi
           if "$RUNNER_TEMP/InstalledApplications" " " >/dev/null 2>&1; then exit 1; fi

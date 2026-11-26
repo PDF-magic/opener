@@ -1,6 +1,6 @@
 # Reusable native scan result summary
 
-`scan-result-summary-view.swift` provides an AppKit `ScanResultSummaryView`
+`src/scan/scan-result-summary-view.swift` provides an AppKit `ScanResultSummaryView`
 that can be embedded in a native result panel, notification detail, or other
 trusted presentation surface. It is independent of the scanning progress panel.
 

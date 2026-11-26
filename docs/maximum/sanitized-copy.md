@@ -10,7 +10,7 @@ unconvertible documents or missing macOS converter dependencies return
 copies, edits or reserializes the original document.
 
 The actual conversion runs in a separately compiled native
-`maximum-sanitized-copy` executable built from `maximum_sanitized_copy.swift`,
+`maximum-sanitized-copy` executable built from `src/sanitization/maximum_sanitized_copy.swift`,
 using Apple's CoreGraphics PDF renderer. It reads bytes on stdin and
 generates a PDF from only new raster images, not the source catalog,
 actions, annotations, scripts, embedded files, arbitrary metadata, forms or

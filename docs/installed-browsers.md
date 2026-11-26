@@ -37,7 +37,7 @@ existing PDF verification requirements, and be selected using the existing
 
 ## Brave-only discovery regression (opener-0153)
 
-The macOS CI suite compiles `discover-installed-browsers.swift` alongside
+The macOS CI suite compiles `src/browser/discover-installed-browsers.swift` alongside
 `tests/browser/brave-only-discovery.swift` to exercise discovery with **Brave as the only
 browser**. An isolated, disposable `Brave Browser.app` fixture uses the exact
 `com.brave.Browser` bundle identifier and an executable. The test confirms
@@ -56,7 +56,7 @@ The macOS CI suite runs `tests/browser/safari-only-discovery.swift` against the 
 
 ## Firefox and Chromium installed together (opener-0156)
 
-The macOS CI job compiles `discover-installed-browsers.swift` with
+The macOS CI job compiles `src/browser/discover-installed-browsers.swift` with
 `tests/browser/firefox-chromium-discovery.swift` and constructs **Firefox.app**
 (`org.mozilla.firefox`) and **Chromium.app** (`org.chromium.Chromium`)
 in separate disposable system-style and user-style Applications folders.

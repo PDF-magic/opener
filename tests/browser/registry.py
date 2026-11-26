@@ -52,7 +52,7 @@ class BrowserRegistryTests(unittest.TestCase):
         self.assertIn("../browser_registry.py", guide)
 
     def test_native_primary_list_matches_supported_registry(self):
-        source = (ROOT / "browser-preference-list.swift").read_text(encoding="utf-8")
+        source = (ROOT / "src/browser/browser-preference-list.swift").read_text(encoding="utf-8")
         match = re.search(
             r"private let supportedBrowserBundleIDs: Set<String> = \[([^\]]+)\]",
             source,
