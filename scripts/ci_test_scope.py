@@ -66,7 +66,7 @@ MACOS_MAXIMUM_FILES = frozenset({
     "maximum_filesystem_sandbox.py",
     "maximum_isolated_renderer.py",
     "maximum_render_worker.py",
-    "maximum_network_isolation.py",
+    "maximum-network-isolation.py",
     "maximum_sanitizer_process.py",
     "maximum_process_termination.py",
     "maximum_isolated_analysis.py",

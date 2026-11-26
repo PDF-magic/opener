@@ -4,6 +4,7 @@ This is a passive sanitization primitive. It never scans, saves, opens, or
 authorizes a PDF; failure to complete within the deadline returns no output.
 """
 import errno
+from importlib import import_module
 import os
 from pathlib import Path
 import selectors
@@ -13,7 +14,9 @@ import subprocess
 import sys
 import time
 
-from maximum_network_isolation import NETWORK_DENY_PROFILE, SANDBOX_EXEC
+_network_isolation = import_module("maximum-network-isolation")
+NETWORK_DENY_PROFILE = _network_isolation.NETWORK_DENY_PROFILE
+SANDBOX_EXEC = _network_isolation.SANDBOX_EXEC
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024

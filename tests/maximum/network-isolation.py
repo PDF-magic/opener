@@ -9,7 +9,8 @@ import sys
 import unittest
 from unittest.mock import patch, Mock
 
-import maximum_network_isolation as isolation
+from importlib import import_module
+isolation = import_module("maximum-network-isolation")
 
 
 class OfflineWorkerContractTests(unittest.TestCase):
@@ -109,6 +110,7 @@ class OfflineWorkerContractTests(unittest.TestCase):
         if scanner_path.exists():
             scanner = scanner_path.read_text(encoding="utf-8")
             self.assertNotIn("maximum_network_isolation", scanner)
+            self.assertNotIn("maximum-network-isolation", scanner)
             self.assertIn("if not cached_clean(cache_id):", scanner)
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)

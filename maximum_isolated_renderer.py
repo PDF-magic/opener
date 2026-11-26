@@ -149,7 +149,7 @@ def _renderer_sandbox_context(worker_path: Path) -> dict[str, str]:
         worker = str(Path(worker_path).resolve(strict=True))
         source_root = Path(__file__).resolve(strict=True).parent
         worker_support = (source_root / "maximum_isolated_worker.py").resolve(strict=True)
-        network_support = (source_root / "maximum_network_isolation.py").resolve(strict=True)
+        network_support = (source_root / "maximum-network-isolation.py").resolve(strict=True)
         renderer_support = Path(__file__).resolve(strict=True)
         limit_support = {
             key: (source_root / filename).resolve(strict=True)

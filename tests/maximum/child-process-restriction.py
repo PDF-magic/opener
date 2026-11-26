@@ -10,7 +10,8 @@ import unittest
 from unittest.mock import patch
 
 import maximum_isolated_renderer as renderer
-import maximum_network_isolation as isolation
+from importlib import import_module
+isolation = import_module("maximum-network-isolation")
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,7 +26,8 @@ ENV = {
 LINUX_PROBE = r'''
 import errno, os, subprocess, sys, threading
 sys.path.insert(0, sys.argv[1])
-from maximum_network_isolation import apply_linux_child_process_denial
+from importlib import import_module
+apply_linux_child_process_denial = import_module("maximum-network-isolation").apply_linux_child_process_denial
 apply_linux_child_process_denial()
 
 def denied(error):
@@ -136,7 +138,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
             "python": str(Path(sys.executable).resolve()),
             "worker": str((ROOT / "maximum_render_worker.py").resolve()),
             "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
-            "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
+            "network_support": str((ROOT / "maximum-network-isolation.py").resolve()),
             "renderer_support": str((ROOT / "maximum_isolated_renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
@@ -217,6 +219,7 @@ class MaximumChildProcessRestrictionTests(unittest.TestCase):
     def test_installed_scanner_and_nonselectable_profile_are_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_network_isolation", scanner)
+        self.assertNotIn("maximum-network-isolation", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)

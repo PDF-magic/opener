@@ -25,11 +25,10 @@ def main() -> int:
     _apply_limits()  # OS CPU/memory/no-file limits BEFORE importing renderer.
 
     if sys.platform == "linux":
-        from maximum_network_isolation import (
-            apply_linux_child_process_denial, apply_linux_network_denial,
-        )
-        apply_linux_network_denial()
-        apply_linux_child_process_denial()
+        from importlib import import_module
+        isolation = import_module("maximum-network-isolation")
+        isolation.apply_linux_network_denial()
+        isolation.apply_linux_child_process_denial()
         # Linux currently lacks the parent-enforced renderer filesystem
         # allowlist. Never read untrusted bytes or import MuPDF without it.
         return 2

@@ -179,7 +179,7 @@ class MaximumRendererTests(unittest.TestCase):
             "python": str(Path(sys.executable).resolve()),
             "worker": str((ROOT / "maximum_render_worker.py").resolve()),
             "worker_support": str((ROOT / "maximum_isolated_worker.py").resolve()),
-            "network_support": str((ROOT / "maximum_network_isolation.py").resolve()),
+            "network_support": str((ROOT / "maximum-network-isolation.py").resolve()),
             "renderer_support": str((ROOT / "maximum_isolated_renderer.py").resolve()),
             "python_prefix": str(Path(sys.prefix).resolve()),
             "python_base_prefix": str(Path(sys.base_prefix).resolve()),
@@ -220,7 +220,8 @@ class MaximumRendererTests(unittest.TestCase):
             "sys.path.insert(0, sys.argv[1])",
             "outbound = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
             "bound = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
-            "from maximum_network_isolation import apply_linux_network_denial",
+            'from importlib import import_module',
+            'apply_linux_network_denial = import_module("maximum-network-isolation").apply_linux_network_denial',
             "apply_linux_network_denial()",
             "def denied(action):",
             "    try:",
@@ -593,7 +594,7 @@ class MaximumRendererTests(unittest.TestCase):
         worker = source_root / "maximum_render_worker.py"
         support_files = (
             source_root / "maximum_isolated_worker.py",
-            source_root / "maximum_network_isolation.py",
+            source_root / "maximum-network-isolation.py",
             source_root / "maximum_isolated_renderer.py",
             *(source_root / filename
               for _key, _parameter, filename in renderer.RENDERER_LIMIT_SUPPORT),

@@ -51,8 +51,8 @@ def main() -> int:
     # Apply kernel-enforced network denial before exec; filters are inherited
     # by the converter and any descendants. Refuse an unconfined launch.
     try:
-        from maximum_network_isolation import apply_linux_network_denial
-        apply_linux_network_denial()
+        from importlib import import_module
+        import_module("maximum-network-isolation").apply_linux_network_denial()
     except Exception:
         return NETWORK_DENIAL_SETUP_FAILED_EXIT_CODE
     try:
