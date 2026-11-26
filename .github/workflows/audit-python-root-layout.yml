@@ -1,0 +1,35 @@
+name: Audit Python root layout
+on:
+  push:
+    branches: [shoeshine]
+    paths:
+      - .github/workflows/audit-python-root-layout.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          python3 - <<'PY'
+          import pathlib, re, subprocess
+          root = pathlib.Path(".")
+          names = sorted(p.name for p in root.glob("*.py"))
+          pattern = re.compile("|".join(re.escape(n) for n in names))
+          files = subprocess.check_output(["git","ls-files","-z"]).decode().split("\0")
+          for filename in filter(None,files):
+              p = pathlib.Path(filename)
+              if p.suffix not in (".py",".sh",".swift",".md",".yml",".yaml",".json",".mjs",".js",".command"):
+                  continue
+              if p.name in ("module-loader.py","audit-python-root-layout.yml"):
+                  continue
+              try:
+                  for i,line in enumerate(p.read_text().splitlines(),1):
+                      if pattern.search(line) or ("import_module(" in line and "maximum-" in line):
+                          print(f"REF {filename}:{i}: {line.strip()}")
+              except UnicodeDecodeError:
+                  pass
+          PY
