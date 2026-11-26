@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Keep the published app-version support policy consistent with release state."""
+"""Guard the source-support policy and required build metadata."""
 
 from pathlib import Path
 import json
 import re
 import unittest
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 SECURITY = ROOT / "SECURITY.md"
 DOC_INDEX = ROOT / "docs/README.md"
-RELEASE_NOTES = ROOT / "docs/release-notes.md"
-RELEASE_VERSIONING = ROOT / "docs/release-versioning.md"
+BUILD_METADATA = ROOT / "docs/release-versioning.md"
 CI = ROOT / ".github/workflows/ci.yml"
 
 
-class SupportedApplicationVersionsTests(unittest.TestCase):
+class SourceMaintenancePolicyTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.policy = SECURITY.read_text(encoding="utf-8")
-    cls.notes = RELEASE_NOTES.read_text(encoding="utf-8")
+    cls.metadata = BUILD_METADATA.read_text(encoding="utf-8")
 
-  def test_declared_development_version_matches_all_products(self):
+  def test_required_build_identifiers_remain_valid_and_consistent(self):
     project = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
     mac_versions = set(re.findall(r"MARKETING_VERSION = ([^;]+);", project))
     browser_version = json.loads(
@@ -31,56 +31,51 @@ class SupportedApplicationVersionsTests(unittest.TestCase):
     )["version"]
     self.assertEqual(mac_versions, {browser_version})
     self.assertEqual(browser_version, package_version)
-    self.assertEqual(browser_version, "0.1.0")
-    self.assertIn(f"`{browser_version}`", self.policy)
-    self.assertIn(f"Development snapshot — {browser_version} (unreleased)", self.notes)
+    self.assertRegex(browser_version, r"^\d+\.\d+\.\d+$")
+    self.assertIn("Required build metadata", self.metadata)
+    self.assertIn("not announcements or promises", self.metadata)
 
-  def test_current_release_state_and_older_versions_are_unambiguous(self):
-    self.assertIn("## Supported Versions", self.policy)
-    normalized = " ".join(self.policy.split())
+  def test_support_is_commit_based_without_numbered_release_commitments(self):
     for statement in (
-      "No public installable application release has",
-      "unreleased development",
-      "Older commits and locally built development snapshots",
-      "**Unsupported**",
-      "**None published; none currently supported.**",
-      "**not a supported production build**",
-      "**only the newest published stable application version**",
-      "ends support for all older stable application versions immediately",
-      "no overlapping,",
-      "backport window",
-      "source-only GitHub Release",
-      "Private vulnerability reports are welcome for any version",
+      "## Source maintenance and security support",
+      "source code on `main`",
+      "Git commit",
+      "Older commits and locally built development",
+      "do **not** receive guaranteed maintenance",
+      "no newest-stable-version policy",
+      "Private vulnerability reports are welcome for any checkout",
+      "no formal Semantic",
+      "not a release schedule or support promise",
     ):
       with self.subTest(statement=statement):
-        self.assertIn(statement, normalized)
-    self.assertIn("**Publication state: UNRELEASED.**", self.notes)
-    self.assertIn("**NOT RELEASE READY**", self.notes)
-    self.assertIn("The current checked-in product version is `0.1.0`",
-                  RELEASE_VERSIONING.read_text(encoding="utf-8"))
+        self.assertIn(statement, self.policy)
+    self.assertIn("does **not** use a public Semantic Versioning policy", self.metadata)
+    self.assertIn("no need to create `vX.Y.Z` tags", self.metadata)
+    self.assertNotIn("only the newest published stable application version", self.policy)
 
-  def test_upgrade_is_not_a_scanner_bypass_or_preference_reset(self):
-    for phrase in (
-      "trusted-source upgrade and rollback guide",
-      "ClamAV scan-before-open", "signature freshness",
-      "file-integrity checks", "macOS quarantine",
-      "user-selected PDF opener", "Preserve custom",
-      "PDF associations", "avoid using the old build",
+  def test_manual_upgrades_preserve_scanner_and_user_settings(self):
+    for marker in (
+      "trusted source checkout", "upgrade and rollback guide",
+      "Finder actions", "selected PDF associations", "quarantine",
+      "signature freshness", "ClamAV", "scan-before-open",
+      "file-integrity", "user preferences",
     ):
-      with self.subTest(phrase=phrase):
-        self.assertIn(phrase, self.policy)
-    for link in (
-      "docs/release-notes.md", "docs/release-versioning.md",
-      "docs/upgrade-process.md",
-    ):
-      self.assertTrue((ROOT / link).is_file(), link)
+      with self.subTest(marker=marker):
+        self.assertIn(marker.lower(), self.policy.lower())
+    for relative in ("docs/release-versioning.md", "docs/upgrade-process.md",
+                     "docs/application-update-delivery.md"):
+      self.assertTrue((ROOT / relative).is_file(), relative)
 
-  def test_support_policy_is_discoverable_and_ci_enforced(self):
-    self.assertIn("[Supported application versions](../SECURITY.md#supported-versions)",
-                  DOC_INDEX.read_text(encoding="utf-8"))
-    ci_text = CI.read_text(encoding="utf-8")
-    self.assertIn("  scanner-tests:", ci_text)
-    self.assertIn("tests/general/supported-application-versions.py -v", ci_text)
+  def test_policy_is_discoverable_and_ci_enforced(self):
+    idx = DOC_INDEX.read_text(encoding="utf-8")
+    self.assertIn(
+      "(../SECURITY.md#source-maintenance-and-security-support)", idx)
+    self.assertIn("tests/general/supported-application-versions.py -v",
+                  CI.read_text(encoding="utf-8"))
+    for match in re.findall(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", self.policy):
+      parsed = urlsplit(match)
+      if not parsed.scheme and not parsed.netloc and parsed.path:
+        self.assertTrue((ROOT / parsed.path).is_file(), match)
 
 
 if __name__ == "__main__":

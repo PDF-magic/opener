@@ -1,49 +1,33 @@
 # Security Policy
 
-## Supported Versions
+## Source maintenance and security support
 
-**Current status (2026-11-01): No public installable application release has
-been published.** The checked-in native application and browser extension
-identify themselves as `0.1.0`, but that is an **unreleased development
-version**, not a supported production release. The support classifications
-below apply to the **PDF Magic Opener application**, not to ClamAV's separate
-engine or signature-database support policy.
+PDF Magic Opener is maintained as **source code on `main`**, not through
+numbered public application releases. There is **no public installable
+production application or browser extension release**, no formal Semantic
+Versioning scheme, no planned GitHub Releases distribution, and no
+automatic application updater. Build tools may still require version
+metadata; those internal values are not a release schedule or support promise.
 
-| Application version / installation | Maintenance and security-fix support |
-| --- | --- |
-| Current `main` source (`0.1.0`, unreleased) | Active development and private security-report triage; **not a supported production build**. Changes and tests on `main` do not certify any public installation. |
-| Older commits and locally built development snapshots (including earlier `0.1.0` builds) | **Unsupported**. No security-fix backports, maintenance guarantees, or compatibility support for those historical builds. |
-| Published stable native macOS application versions | **None published; none currently supported.** |
-| Production browser extension or Safari extension packages | **None published; none currently supported.** Development-only integrations are not covered by an application support promise. |
+The current `main` source is under active development. An exact Git commit
+SHA identifies a particular checkout for troubleshooting, reproduction, and
+security investigation. Older commits and locally built development
+snapshots do **not** receive guaranteed maintenance, backports, or security
+fixes. There is no newest-stable-version policy, supported-version matrix,
+long-term-support window, or commitment to keep older builds working.
 
-**Policy for future releases:** Once an installable stable native application
-is publicly released and its distribution gate is explicitly cleared, **only
-the newest published stable application version** will receive regular
-maintenance and security fixes. Publishing a successor ends support for all
-older stable application versions immediately; there is **no overlapping,
-long-term-support, or backport window** by default. Prereleases, development
-snapshots, and historical source commits are never supported production
-versions. Any exception must be explicitly published in this table and the
-release notes before it can be relied upon. A `vX.Y.Z` source tag or a
-source-only GitHub Release does **not** alone establish an installable,
-supported application release. No application release or automatic-updater
-availability is implied by this forward-looking policy.
+**Private vulnerability reports are welcome for any checkout**, including
+older source snapshots. Maintainers may investigate and address defects in
+the current source tree without promising a patch or response deadline for
+a particular historical commit.
 
-Users of older builds should review the [release notes](docs/release-notes.md)
-and [versioning scheme](docs/release-versioning.md), then follow the
-[trusted-source upgrade and rollback guide](docs/upgrade-process.md) when a
-newer version is available. Do not bypass or weaken the ClamAV scan-before-open
-gate, antivirus signature freshness, file-integrity checks, macOS quarantine,
-or user-selected PDF opener to keep an older build running. Preserve custom
-settings, scanner data, Finder actions, and PDF associations during migration.
-If a verified safe upgrade is unavailable, avoid using the old build to open
-untrusted PDFs rather than disabling protections.
-
-**Private vulnerability reports are welcome for any version**, including
-unsupported builds. Reporting does not mean that an older version will be
-patched or that a remediation deadline is guaranteed; maintainers can assess
-impact and address issues on the current development tree or latest supported
-release as applicable. Follow the confidential reporting instructions below.
+To update, review a [trusted source checkout](docs/application-update-delivery.md)
+and follow the [upgrade and rollback guide](docs/upgrade-process.md).
+Preserve user preferences, Finder actions, selected PDF associations,
+quarantine, signature freshness, and the mandatory ClamAV **scan-before-open**
+and file-integrity checks. If a safe update is unavailable, avoid opening
+untrusted PDFs with an old development snapshot rather than weakening safety
+protections.
 
 ## Report a security vulnerability
 

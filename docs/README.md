@@ -33,7 +33,7 @@ General installation, application, browser, and operational guides remain in thi
 
 - [Upgrade PDF Magic Opener](upgrade-process.md) — safely reinstall a trusted newer version, verify migration, and recover from a failed upgrade without resetting preferences.
 
-- [Supported application versions](../SECURITY.md#supported-versions) — current support status for older development builds and the policy for future stable releases.
+- [Source maintenance and security support](../SECURITY.md#source-maintenance-and-security-support) — current-source maintenance, security reporting, and no guaranteed support for historical development builds.
 
 - [Choose a PDF browser](select-browser.md) — select a verified post-scan browser in Settings or use the installed custom-application chooser.
 
@@ -71,7 +71,7 @@ The CI documentation check verifies that pages in these feature folders retain k
 
 - [Development release notes](release-notes.md) — public notes about the current unreleased source tree, including security protections and distribution limits.
 
-For distribution policy, see the [release versioning scheme](release-versioning.md), including stable tags and component versions.
+For technical build metadata without a product release-versioning scheme, see [build metadata](release-versioning.md). Git commit SHAs identify source checkouts.
 
 - [Firefox WebExtension API watch](firefox-api-watch.md) — review upstream Firefox API and manifest compatibility changes without mutating the inactive extension.
 

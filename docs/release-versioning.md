@@ -1,81 +1,47 @@
-# Release versioning scheme (opener-1135)
+# Build metadata (no product release versioning)
 
-PDF Magic Opener uses **Semantic Versioning 2.0** for its **product release**
-identity. A release has a three-part version `MAJOR.MINOR.PATCH`; an eligible
-stable Git tag is **`vX.Y.Z`**, for example `v0.1.0` or `v1.2.3`.
-The leading `v` belongs to the Git tag, **not** to package or application
-version fields. Each number is a nonnegative decimal integer without leading
-zeros (except `0`). Never reuse or move a published release tag.
+PDF Magic Opener does **not** use a public Semantic Versioning policy,
+numbered release schedule, Git release tags, or a supported-version matrix.
+The source checkout is identified by its **Git commit SHA**. Changes to
+`main` and its commit history are the source of truth, and a commit is
+not an installable public release.
 
-## When to increment versions
+## Required build metadata
 
-- **MAJOR**: increment for a breaking change after `1.0.0`, such as
-  incompatible configuration, public API, extension/native message contract,
-  or documented scan-and-open behavior. Reset MINOR and PATCH to zero.
-- **MINOR**: increment for backward-compatible features; reset PATCH to zero.
-  While the project is at `0.x.y` (still pre-1.0 development), also increment
-  MINOR for changes that break a development interface and disclose those
-  changes in release notes. Do not claim pre-1.0 API stability.
-- **PATCH**: increment for backward-compatible bug, security, or documentation
-  fixes that warrant a release without introducing incompatible behavior.
-  Describe security consequences and any upgrade requirements in the notes.
+Certain tools require a syntactically valid version field even when
+no formal product versioning is used:
 
-Use the **highest** increment required by the complete release, not one
-version per commit or PR. A fix for a security issue is not automatically a
-PATCH if it intentionally breaks compatibility. A release version does not
-prove that a protection profile, browser interception route, or distribution
-channel is active.
-
-## Keep version identifiers aligned
-
-Before creating a release tag, update these tracked declarations to exactly
-the same `X.Y.Z` version:
-
-| Component | Version source |
+| Component | Technical field |
 | --- | --- |
-| Native macOS app and embedded Safari extension (Debug and Release) | `MARKETING_VERSION` entries in `PDFMagicOpener.xcodeproj/project.pbxproj`, which supply `CFBundleShortVersionString` |
+| Native macOS application and bundled Safari extension | `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `PDFMagicOpener.xcodeproj/project.pbxproj`, consumed by `CFBundleShortVersionString` / `CFBundleVersion` |
 | Chromium/Firefox WebExtension | `version` in `extensions/webextension/manifest.json` |
-| WebExtension development/package metadata | `version` in `extensions/webextension/package.json` |
+| WebExtension build/package tooling | `version` in `extensions/webextension/package.json` |
 
-The macOS `CURRENT_PROJECT_VERSION` / `CFBundleVersion` is a separate
-numeric **build** identifier. Advance it for each newly distributed macOS
-build in accordance with Apple's channel requirements; it need not equal the
-product's `X.Y.Z` and must not be silently reset when increasing MAJOR,
-MINOR, or PATCH. Browser store versioning and separately approved updates
-must meet each channel's requirements before publication.
+These are **required technical identifiers**, not announcements or promises
+of support. The checked-in `0.1.0` is a development placeholder; it does
+not mean a downloadable production build has been released. Preserve
+well-formed metadata and keep fields compatible with build and package
+requirements. Do not remove them, fabricate a supported release, or advance
+them solely to imply public product progress.
 
-The current checked-in product version is `0.1.0`; that declaration alone
-does **not** certify any released binary. Do not modify version numbers
-just to exercise a development build.
+There is no requirement to classify commits as MAJOR, MINOR, or PATCH, and
+no need to create `vX.Y.Z` tags for ordinary source changes. Any legacy
+source-only release gate is separate from the source-checkout installation
+process and **is not a planned distribution channel**. It is **NOT RELEASE READY**
+and must remain fail-closed rather than publish unapproved binaries. No
+stable or prerelease tags are needed for routine source updates.
 
-## Stable tags and publication
+## Safe source updates
 
-1. Finish the changes and version metadata bump in reviewed PRs. Record the
-   user-visible changes, any breaking migration steps, and scanner-safety
-   implications in the release notes. Preserve saved user preferences,
-   quarantine, signature freshness, and scan-before-open gates.
-2. Confirm the repository's
-   [release gate](release-gate.md) and
-   [browser distribution audit](browser-extension-distribution.md).
-   Distribution is currently **NOT RELEASE READY**; the guarded release
-   workflow must still fail closed. CI success does not authorize signing or
-   distributing unsigned browser/macOS artifacts.
-3. After distribution prerequisites are separately approved, create an
-   immutable `vX.Y.Z` tag at the **exact current `main` commit**, and invoke
-   the existing manual guarded workflow with that tag. It checks the exact
-   commit, required CI, and matching product version metadata before it can
-   publish a **source-only** GitHub Release. It does not create tags or ship
-   signed applications or store packages.
+Review the exact Git commit, changed behavior, possible migration needs,
+and scanner safety before updating from a complete trusted source
+checkout. Preserve user settings, default PDF-handler choices, Finder
+customizations, quarantine, signature freshness, file-integrity checks,
+and the native scan-before-open gate. See the
+[manual update policy](application-update-delivery.md) and
+[upgrade instructions](upgrade-process.md).
 
-Prerelease identifiers (such as `v1.0.0-rc.1`), build metadata
-(`+build`), and other nonstable tags are **not accepted** by the current
-stable source-release gate. A future prerelease distribution process requires
-a separately reviewed workflow that explicitly labels prereleases and
-satisfies the same scanner and distribution safeguards; do not use a stable
-release to publish preview binaries.
-
-ClamAV **engine versions** and antivirus **signature/database versions** are
-independent of the PDF Magic Opener product version. Their supported-engine
-and freshness policies remain enforced separately. See
-[signature update process](scanner/signature-update-process.md) and
-[upgrade process](upgrade-process.md).
+ClamAV engine and signature-database versions still follow their own
+compatibility and freshness requirements; discontinuing **product release
+versioning** does not weaken those scanner checks. See
+[signature updates](scanner/signature-update-process.md).
