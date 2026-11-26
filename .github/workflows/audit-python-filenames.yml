@@ -1,4 +1,4 @@
-name: Audit Python filename migration
+name: Prepare Python filename candidate
 on:
   push:
     branches: [shoeshine]
@@ -6,65 +6,38 @@ on:
 permissions:
   contents: read
 jobs:
-  audit:
+  candidate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Inspect module imports and references
+      - name: Generate candidate
+        run: python3 scripts/prepare-python-filenames.py ${{ matrix.batch }}
+      - name: Check syntax and import contracts
+        if: matrix.batch == 0
         run: |
-          python3 - <<'PY'
-          import ast, collections, pathlib, re, subprocess
-          paths = [pathlib.Path(p.decode()) for p in subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0") if p]
-          modules = {p.stem for p in paths if p.suffix == ".py" and "_" in p.stem and p.name != "__init__.py"}
-          names = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(modules))) + r")\b")
-          types = collections.Counter()
-          special = []
-          for p in paths:
-              if p.name == "audit-python-filenames.yml":
-                  continue
-              try:
-                  s = p.read_text(encoding="utf-8")
-              except (UnicodeError, OSError):
-                  continue
-              if not names.search(s):
-                  continue
-              types[p.suffix] += 1
-              if p.suffix == ".py":
-                  try:
-                      tree = ast.parse(s)
-                  except SyntaxError as e:
-                      print("PARSE_ERROR", p, str(e))
-                      continue
-                  for node in ast.walk(tree):
-                      if isinstance(node, (ast.Import, ast.ImportFrom)):
-                          if not names.search(ast.get_source_segment(s, node) or ""):
-                              continue
-                          kind = ("from" if isinstance(node, ast.ImportFrom) else "import")
-                          if isinstance(node, ast.ImportFrom) and not names.search(node.module or ""):
-                              kind = "from-package"
-                          if isinstance(node, ast.Import) and any("." in a.name and not a.asname for a in node.names):
-                              kind = "unaliased-dotted"
-                          if getattr(node, "level", 0):
-                              kind = "relative"
-                          types[kind] += 1
-                          if kind not in ("from", "import"):
-                              print("SPECIAL", p, node.lineno, ast.unparse(node))
-                      elif isinstance(node, ast.Constant) and isinstance(node.value, str) and names.search(node.value):
-                          v = node.value
-                          if ".py" in v and "\n" not in v:
-                              types["path-literal"] += 1
-                          elif re.search(r"(?m)^\s*(from|import)\s", v):
-                              types["embedded-code"] += 1
-                              print("EMBEDDED", p, node.lineno, repr(v)[:300])
-                          elif "." in v or v in modules:
-                              types["module-string"] += 1
-                              print("STRING", p, node.lineno, repr(v)[:220])
-              else:
-                  for i,line in enumerate(s.splitlines(),1):
-                      if names.search(line) and not re.search(r"\b(?:" + "|".join(map(re.escape, sorted(modules))) + r")\.py\b",line):
-                          print("NON_PATH", p, i, line[:200])
-          print("COUNTS", dict(types))
-          PY
+          python3 -m compileall -q .
+          bash -n install-allow-and-open.sh
+          PYTHONPATH=. python3 -c "import importlib; importlib.import_module('module-loader'); import file_launcher; assert file_launcher.__file__.endswith('file-launcher.py')"
+      - name: Install reviewed dependencies
+        if: matrix.batch == 0
+        run: python3 -m pip install -r requirements-enhanced-pdf.txt 'pymupdf==2.0' 'Pillow==11.3.0' 'cryptography==46.0.4'
+      - name: Exercise affected regression suites
+        if: matrix.batch == 0
+        env:
+          PYTHONPATH: .
+        run: |
+          python3 tests/general/ci-test-scope.py -v
+          python3 tests/maximum/network-isolation.py -v
+          python3 tests/maximum/child-process-restriction.py -v
+          python3 tests/maximum/isolated-renderer.py -v
+          python3 tests/general/timed-pdf-structure-analysis.py -v
+          python3 tests/pdf/action-chains.py -v
+          python3 tests/file/launcher.py -v
+          python3 tests/general/legacy-scan-scripts.py -v
