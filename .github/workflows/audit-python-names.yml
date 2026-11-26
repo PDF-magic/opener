@@ -1,0 +1,32 @@
+name: Audit Python filename references
+on:
+  push:
+    branches: [shoeshine]
+    paths: [.github/workflows/audit-python-names.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventory module references
+        run: |
+          python3 - <<'PY'
+          import pathlib, subprocess, re
+          files = [pathlib.Path(p.decode()) for p in subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0") if p]
+          for path in files:
+              if path.name == "audit-python-names.yml":
+                  continue
+              try:
+                  content = path.read_text()
+              except (UnicodeError, OSError):
+                  continue
+              for line, value in enumerate(content.splitlines(), 1):
+                  if "maximum_network_isolation" in value:
+                      print("REFERENCE", path, line, value.strip())
+          print("AUDIT_COMPLETE")
+          PY
