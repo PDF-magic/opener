@@ -20,6 +20,7 @@ BLOCK_MESSAGE = "Scanner filesystem isolation is unavailable; opening was stoppe
 # not. Metadata traversal is not permission to read document contents.
 # The single target is a literal for files, a subtree for application bundles.
 # Extracted temporary files live only in the private per-invocation scratch.
+# Homebrew ClamAV verifies database signatures with its installed public certs.
 PROFILE = """(version 1)
 (deny default)
 (allow process-exec (literal (param "SCANNER")))
@@ -41,11 +42,13 @@ PROFILE = """(version 1)
     (subpath "/opt/homebrew/opt")
     (subpath "/opt/homebrew/Cellar")
     (subpath "/opt/homebrew/share")
+    (subpath "/opt/homebrew/etc/clamav/certs")
     (subpath "/usr/local/bin")
     (subpath "/usr/local/lib")
     (subpath "/usr/local/opt")
     (subpath "/usr/local/Cellar")
     (subpath "/usr/local/share")
+    (subpath "/usr/local/etc/clamav/certs")
     (subpath "/usr/local/clamav")
     (subpath (param "DATABASE"))
     (literal (param "TARGET"))

@@ -140,7 +140,11 @@ jobs:
     # macOS Safari PDF renderer, not the WebKit engine or a mocked handoff.
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.cleanup_queued_runs != true)
     name: Real Safari PDF viewer behavior
-    runs-on: macos-latest
+    # Keep the mandatory live viewer check on an explicit supported baseline.
+    # macos-26-arm64 / Safari 27.2 returned blank PDF captures via both
+    # WebDriver and native window capture (PR #816, run 45856985309).
+    # Re-evaluate macOS 26 before moving this job back to macos-latest.
+    runs-on: macos-15
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4

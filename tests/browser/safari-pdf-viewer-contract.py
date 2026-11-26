@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Guard that Safari PDF verification uses a real browser and isolated files."""
+import ast
 from pathlib import Path
 import re
 import unittest
@@ -33,7 +34,19 @@ class SafariViewerContractTests(unittest.TestCase):
         self.assertIn("raise AssertionError(", harness)
         self.assertNotIn("pytest.skip", harness)
         self.assertNotIn("unittest.skip", harness)
-        self.assertNotIn("return 0", harness)
+        # A zero pixel fraction is failure evidence, not a successful exit.
+        # Reject integer success returns throughout the harness and any early
+        # return from either live verification entry point.
+        tree = ast.parse(harness)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Return) and isinstance(node.value, ast.Constant):
+                self.assertFalse(type(node.value.value) is int and node.value.value == 0,
+                                 "Integer success return in Safari harness")
+        for name in ("verify_real_safari", "verify_real_safari_once"):
+            function = next(node for node in tree.body
+                            if isinstance(node, ast.FunctionDef) and node.name == name)
+            self.assertFalse(any(isinstance(node, ast.Return) for node in ast.walk(function)),
+                             f"Early return from {name}")
         self.assertIn('python3 tests/browser/safari-pdf-viewer.py --self-test', ci)
 
     def test_fixtures_are_inline_local_and_no_user_state_mutates(self):
