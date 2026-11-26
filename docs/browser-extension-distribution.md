@@ -96,7 +96,7 @@ and registering the native host through the existing reviewed opt-in procedure,
 run the read-only audit against the *actual* registration manifests:
 
 ```sh
-node scripts/verify_published_extension_ids.mjs \
+node scripts/verify-published-extension-ids.mjs \
   --published /path/to/confirmed-public-ids.json \
   --chromium-host "/path/to/installed/NativeMessagingHosts/org.pdfmagic.opener.json"
 ```

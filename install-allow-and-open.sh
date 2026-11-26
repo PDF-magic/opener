@@ -318,7 +318,7 @@ fi
 # Reconcile only the old and new scan-handler registrations; leave the user
 # selected default PDF application and unrelated app registrations untouched.
 python3 "$script_dir/scripts/reconcile_pdf_handler_registration.py" \
-    "$app" "$legacy_app" "$script_dir/scripts/list_registered_pdf_openers.swift"
+    "$app" "$legacy_app" "$script_dir/scripts/list-registered-pdf-openers.swift"
 # Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate_update_agent.py"
 # The migrator has verified the agent; reconcile its live launchd label so

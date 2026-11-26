@@ -119,7 +119,7 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
     def test_installer_integrates_after_bundle_verification_and_before_prompt(self):
         source = (ROOT / "install-allow-and-open.sh").read_text()
         self.assertIn('scripts/reconcile_pdf_handler_registration.py', source)
-        self.assertIn('scripts/list_registered_pdf_openers.swift', source)
+        self.assertIn('scripts/list-registered-pdf-openers.swift', source)
         self.assertNotIn('lsregister -f "$app"', source)
         self.assertLess(source.index('scripts/verify_pdf_opener_bundle.py'),
                         source.index('mv "$app" "$installed_app"'))
@@ -132,7 +132,7 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
         self.assertNotIn("target-app.txt", helper)
         self.assertNotIn('"-kill"', helper)
         self.assertIn('withBundleIdentifier: "local.studio.brave-pdf-opener"',
-                      (ROOT / "scripts/list_registered_pdf_openers.swift").read_text())
+                      (ROOT / "scripts/list-registered-pdf-openers.swift").read_text())
 
     def test_lookup_decodes_fixed_enumerator_and_rejects_bad_json(self):
         enumerator = Path("/trusted/list.swift")
