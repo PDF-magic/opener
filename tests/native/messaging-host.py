@@ -18,8 +18,8 @@ SOURCE = ROOT / "native-messaging" / "Host.swift"
 STATUS_SOURCE = ROOT / "native-messaging" / "HostStatus.swift"
 CALLER_SOURCE = ROOT / "native-messaging" / "CallerOrigin.swift"
 ADMISSION_SOURCE = ROOT / "native-messaging" / "NativeCallerAdmission.swift"
-CALLER_TEST = ROOT / "test-caller-origin.swift"
-STATUS_TEST = ROOT / "test-native-host-status.swift"
+CALLER_TEST = ROOT / "tests/native/caller-origin.swift"
+STATUS_TEST = ROOT / "tests/native/host-status.swift"
 
 
 def frame(message):

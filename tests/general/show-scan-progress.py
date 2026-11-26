@@ -81,7 +81,7 @@ class ShowScanProgressTests(unittest.TestCase):
     self.assertIn("B20000000000000000000001,", phase)
     self.assertIn('"$script_dir/PDFMagicOpenerApp/ScanProgressPreference.swift"', installer)
     self.assertIn("tests/general/show-scan-progress.py -v", ci)
-    self.assertIn("test-show-scan-progress.swift", ci)
+    self.assertIn("tests/scan/show-progress.swift", ci)
     self.assertIn("tests/native/hidden-scan-progress.py", ci)
     self.assertIn("brave-pdf-opener.swift scan-progress-view.swift PDFMagicOpenerApp/ScanProgressPreference.swift", ci)
 

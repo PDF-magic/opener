@@ -137,7 +137,7 @@ Never modify a user's existing Safari extension preferences for this test.
 Compile the read-only probe on macOS:
 
 ```sh
-xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o /tmp/TestSafariExtensionActivation
+xcrun swiftc -parse-as-library -warnings-as-errors tests/browser/safari-extension-activation.swift -o /tmp/TestSafariExtensionActivation
 /tmp/TestSafariExtensionActivation --self-test
 ```
 

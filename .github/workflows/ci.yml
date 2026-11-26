@@ -1110,7 +1110,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/native/messaging-host.py -v
       - name: Verify optional sanitized-copy destination selection without saving
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift test-maximum-safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D MAXIMUM_DESTINATION_TESTING maximum_safe_copy_destination.swift tests/maximum/safe-copy-destination.swift -o "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           "$RUNNER_TEMP/TestMaximumSafeCopyDestination"
           xcrun swiftc -parse-as-library -warnings-as-errors maximum_safe_copy_destination.swift -o "$RUNNER_TEMP/MaximumSafeCopyDestination"
       - name: Verify Built-in scanner defaults on macOS
@@ -1215,7 +1215,7 @@ jobs:
           PYTHONPATH=. python3 tests/browser/preferences-deep-link.py --verify-built-app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Debug/PDFMagicOpener.app"
       - name: Compile and self-test read-only Safari activation probe
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors test-safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
+          xcrun swiftc -parse-as-library -warnings-as-errors tests/browser/safari-extension-activation.swift -o "$RUNNER_TEMP/TestSafariExtensionActivation"
           "$RUNNER_TEMP/TestSafariExtensionActivation" --self-test
       - name: Package and verify unsigned Safari Web Extension host app
         run: |
@@ -1304,7 +1304,7 @@ jobs:
           "$RUNNER_TEMP/TestNotifyOnFailedScan"
       - name: Verify browser connection-health snapshots are never scanner authorization
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-connection-health.swift -o "$RUNNER_TEMP/TestDownloadConnectionHealth"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/connection-health.swift -o "$RUNNER_TEMP/TestDownloadConnectionHealth"
           "$RUNNER_TEMP/TestDownloadConnectionHealth"
       - name: Verify Show Only Warnings saved preference and fail-open warning visibility
         run: |
@@ -1312,7 +1312,7 @@ jobs:
           "$RUNNER_TEMP/TestShowOnlyWarnings"
       - name: Verify isolated download scan-result display preference
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-download-scan-results.swift -o "$RUNNER_TEMP/TestDownloadScanResults"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/download/scan-results.swift -o "$RUNNER_TEMP/TestDownloadScanResults"
           "$RUNNER_TEMP/TestDownloadScanResults"
       - name: Verify opt-in successful scan notifications in isolated user defaults
         run: |
@@ -1369,7 +1369,7 @@ jobs:
           PYTHONPATH=. python3 tests/general/cross-process-configuration.py -v
       - name: Verify shared scan-progress setting uses isolated user defaults
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift test-show-scan-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/scan/show-progress.swift -o "$RUNNER_TEMP/TestShowScanProgress"
           "$RUNNER_TEMP/TestShowScanProgress"
           xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/ScanProgressPreference.swift tests/configuration/initial.swift -o "$RUNNER_TEMP/TestInitialConfiguration"
           "$RUNNER_TEMP/TestInitialConfiguration"
@@ -1450,7 +1450,7 @@ jobs:
           if python3 scripts/verify_pdf_opener_bundle.py "$app"; then exit 1; fi
       - name: Compile and test reusable AppKit scan-result summary
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors scan-result-summary-view.swift test-scan-result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
+          xcrun swiftc -parse-as-library -warnings-as-errors scan-result-summary-view.swift tests/scan/result-summary.swift -o "$RUNNER_TEMP/TestScanResultSummary"
           "$RUNNER_TEMP/TestScanResultSummary"
           PYTHONPATH=. python3 tests/scan/result-summary-component.py -v
       - name: Verify direct native scanner and origin processes on macOS

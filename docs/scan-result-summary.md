@@ -25,7 +25,7 @@ introduces the reusable component only; it does not activate a new result window
 or alter the installed Built-in scanning flow.
 
 `tests/scan/result-summary-component.py` checks canonical status parity and
-read-only constraints; `test-scan-result-summary.swift` verifies rendering,
+read-only constraints; `tests/scan/result-summary.swift` verifies rendering,
 accessibility, independent instances and reset behavior on macOS. Both are
 included in required CI.
 

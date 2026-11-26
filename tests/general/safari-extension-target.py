@@ -156,7 +156,7 @@ class SafariExtensionTargetTests(unittest.TestCase):
       subprocess.run([
         "xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors",
         str(SAFARI / "SafariWebExtensionHandler.swift"),
-        str(ROOT / "test-safari-native-messaging.swift"),
+        str(ROOT / "tests/browser/safari-native-messaging.swift"),
         "-o", str(binary)
       ], check=True)
       subprocess.run([str(binary)], check=True)
