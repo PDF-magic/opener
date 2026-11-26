@@ -50,7 +50,7 @@ class ManualActionTests(unittest.TestCase):
   def test_ci_executes_both_action_tests(self):
     ci = CI.read_text()
     self.assertIn("python3 tests/general/manual-update-actions.py -v", ci)
-    self.assertIn("test-manual-update-actions.swift", ci)
+    self.assertIn("tests/updates/manual-actions.swift", ci)
 
 if __name__ == "__main__":
   unittest.main()

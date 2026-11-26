@@ -105,7 +105,7 @@ class UpdateFailureTests(unittest.TestCase):
     self.assertNotIn("URLSession", model)
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("python3 tests/signature/update-failures.py -v", ci)
-    self.assertIn("test-signature-update-failures.swift", ci)
+    self.assertIn("tests/signature/update-failures.swift", ci)
 
 
 if __name__ == "__main__":

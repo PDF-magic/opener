@@ -40,9 +40,9 @@ class StaleSignatureWarningTests(unittest.TestCase):
     def test_native_age_boundary_is_in_macos_ci_and_linux_guard(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/general/stale-signature-warning.py -v", ci)
-        self.assertIn("test-stale-signature-warning.swift", ci)
+        self.assertIn("tests/signature/stale-warning.swift", ci)
         self.assertIn("xcrun swiftc -parse-as-library -warnings-as-errors", ci)
-        native = (ROOT / "test-stale-signature-warning.swift").read_text()
+        native = (ROOT / "tests/signature/stale-warning.swift").read_text()
         self.assertIn("48 * 60 * 60 + 1", native)
         self.assertIn("48 * 60 * 60]", native)
         self.assertIn("cannot be verified", native)

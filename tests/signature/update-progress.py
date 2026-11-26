@@ -136,7 +136,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
                           "write(to:", "removeItem(", "downloadTask"):
             self.assertNotIn(forbidden, reader)
         self.assertEqual(project.count("path = SignatureUpdateProgress.swift;"), 1)
-        self.assertIn("test-signature-update-progress.swift", ci)
+        self.assertIn("tests/signature/update-progress.swift", ci)
         self.assertIn("python3 tests/signature/update-progress.py -v", ci)
 
     def test_active_marker_is_only_display_metadata(self):

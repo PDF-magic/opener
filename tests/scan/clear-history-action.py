@@ -69,7 +69,7 @@ class ClearHistoryActionTests(unittest.TestCase):
     self.assertIn('B21400000000000000000001', PROJECT)
     self.assertIn('B21400000000000000000002', PROJECT)
     self.assertIn('tests/scan/clear-history-action.py -v', CI)
-    self.assertIn('test-clear-scan-history.swift -lsqlite3', CI)
+    self.assertIn('tests/scan/clear-history.swift -lsqlite3', CI)
     self.assertIn('PDFMagicOpenerApp/ClearScanHistory.swift', CI)
     self.assertIn('macos-build:', CI)
     self.assertIn('scanner-tests:', CI)

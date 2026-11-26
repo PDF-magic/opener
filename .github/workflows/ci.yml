@@ -1129,31 +1129,31 @@ jobs:
         run: PYTHONPATH=. python3 tests/signature/directory-permissions.py -v
       - name: Test read-only ClamAV signature revision parsing
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift test-manual-update-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift PDFMagicOpenerApp/SignatureUpdateProgress.swift PDFMagicOpenerApp/UpdatesSettingsView.swift tests/updates/manual-actions.swift -o "$RUNNER_TEMP/TestManualUpdateActions"
           "$RUNNER_TEMP/TestManualUpdateActions"
       - name: Verify safe native signature timestamp status reading
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/signature/update-status.swift -o "$RUNNER_TEMP/TestSignatureUpdateStatus"
           "$RUNNER_TEMP/TestSignatureUpdateStatus"
       - name: Exercise read-only recent scan-history retrieval using synthetic SQLite rows
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift test-recent-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift tests/scan/recent-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestRecentScanHistory"
           "$RUNNER_TEMP/TestRecentScanHistory"
       - name: Exercise confirmed history deletion with synthetic private SQLite files
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift test-clear-scan-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ClearScanHistory.swift tests/scan/clear-history.swift -lsqlite3 -o "$RUNNER_TEMP/TestClearScanHistory"
           "$RUNNER_TEMP/TestClearScanHistory"
       - name: Exercise automatic native scan-history retention with private synthetic SQLite rows
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ScanHistoryRetention.swift test-scan-history-retention.swift -lsqlite3 -o "$RUNNER_TEMP/TestScanHistoryRetention"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/RecentScanHistory.swift PDFMagicOpenerApp/ScanHistoryRetention.swift tests/scan/history-retention.swift -lsqlite3 -o "$RUNNER_TEMP/TestScanHistoryRetention"
           "$RUNNER_TEMP/TestScanHistoryRetention"
       - name: Verify native stale-signature warning at the scanner age boundary
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-stale-signature-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/signature/stale-warning.swift -o "$RUNNER_TEMP/TestStaleSignatureWarning"
           "$RUNNER_TEMP/TestStaleSignatureWarning"
       - name: Verify native signature-update failure metadata safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift test-signature-update-failures.swift -o "$RUNNER_TEMP/TestSignatureUpdateFailures"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateStatus.swift tests/signature/update-failures.swift -o "$RUNNER_TEMP/TestSignatureUpdateFailures"
           "$RUNNER_TEMP/TestSignatureUpdateFailures"
       - name: Verify on-open, live and manual browser refresh actions
         run: |
@@ -1170,7 +1170,7 @@ jobs:
           "$RUNNER_TEMP/TestAtomicConfigurationWriter"
       - name: Verify native signature-update progress metadata safely
         run: |
-          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateProgress.swift test-signature-update-progress.swift -o "$RUNNER_TEMP/TestSignatureUpdateProgress"
+          xcrun swiftc -parse-as-library -warnings-as-errors PDFMagicOpenerApp/SignatureUpdateProgress.swift tests/signature/update-progress.swift -o "$RUNNER_TEMP/TestSignatureUpdateProgress"
           "$RUNNER_TEMP/TestSignatureUpdateProgress"
       - name: Build SwiftUI application target without registering PDF handling
         run: |
