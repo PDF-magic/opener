@@ -5,16 +5,16 @@ on:
     paths:
       - tests/fixtures/pdf/external_launch_action_corpus.py
       - tests/pdf/external-launch-action-corpus.py
-      - pdf_external_launch_actions.py
-      - pdf_automatic_actions.py
+      - src/pdf/pdf_external_launch_actions.py
+      - src/pdf/pdf_automatic_actions.py
       - .github/workflows/pdf-external-launch-corpus.yml
   push:
     branches: [main]
     paths:
       - tests/fixtures/pdf/external_launch_action_corpus.py
       - tests/pdf/external-launch-action-corpus.py
-      - pdf_external_launch_actions.py
-      - pdf_automatic_actions.py
+      - src/pdf/pdf_external_launch_actions.py
+      - src/pdf/pdf_automatic_actions.py
       - .github/workflows/pdf-external-launch-corpus.yml
   workflow_dispatch:
 

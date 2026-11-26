@@ -8,11 +8,11 @@ No files are read, PDFs parsed, scanners run, or user preferences modified.
 from dataclasses import dataclass, field
 from enum import Enum
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisStage, FindingCode, FindingSeverity, StageOutcome,
     StructuredAnalysisFindings, MAX_PAGE_NUMBER, MAX_PDF_OBJECT_NUMBER,
 )
-from enhanced_finding_explanations import explain_analysis_findings
+from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 
 
 class IncompleteStageReason(str, Enum):

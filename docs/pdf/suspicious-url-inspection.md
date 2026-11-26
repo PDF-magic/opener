@@ -1,6 +1,6 @@
 # Suspicious embedded PDF URL inspection (opener-0292)
 
-The **inactive** Enhanced-stage inspector in `pdf_suspicious_urls.py` reviews
+The **inactive** Enhanced-stage inspector in `src/pdf/pdf_suspicious_urls.py` reviews
 embedded URL-bearing PDF objects without opening, downloading, resolving, or
 executing any destination. Call `inspect_pdf_suspicious_urls(pdf_bytes)` on
 immutable in-memory bytes. This is **not** part of the installed Built-in

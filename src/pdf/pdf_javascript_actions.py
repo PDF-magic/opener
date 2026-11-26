@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import re
 import zlib
 
-from pdf_automatic_actions import (
+from src.pdf.pdf_automatic_actions import (
     PDFAutomaticActionError, inspect_pdf_automatic_actions,
 )
 

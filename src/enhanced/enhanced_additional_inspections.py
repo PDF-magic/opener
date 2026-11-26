@@ -9,11 +9,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StructuredAnalysisFindings,
 )
-from enhanced_finding_explanations import explain_analysis_findings
+from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 
 
 class FollowUpInspection(str, Enum):

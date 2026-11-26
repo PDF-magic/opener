@@ -9,8 +9,8 @@ from unittest.mock import patch
 from pypdf import PdfReader
 
 from tests.fixtures.pdf.encrypted_pdf_collection import ENCRYPTED_REFERENCE_PDFS
-from pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
-from unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
+from src.pdf.pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
+from src.pdf.unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
 
 
 ROOT = Path(__file__).resolve().parents[2]

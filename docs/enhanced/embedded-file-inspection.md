@@ -1,6 +1,6 @@
 # Enhanced PDF embedded-file inspection (opener-0285)
 
-`enhanced_embedded_files.py` provides an **independent, fail-closed inspection
+`src/enhanced/enhanced_embedded_files.py` provides an **independent, fail-closed inspection
 stage**, not an alternate PDF opener. It enumerates embedded file specifications
 in the catalog's EmbeddedFiles name tree, document/page associated-file arrays,
 and page FileAttachment annotations. Each discovered embedded stream is decoded

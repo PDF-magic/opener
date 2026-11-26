@@ -90,7 +90,7 @@ def inspect_pdf_embedded_object_sizes(contents: bytes) -> PDFEmbeddedObjectSizes
         parse_pdf_structure(contents)
         from pypdf import PdfReader
         from pypdf.generic import DictionaryObject, IndirectObject, StreamObject
-        from enhanced_embedded_files import _resolve, _specifications
+        from src.enhanced.enhanced_embedded_files import _resolve, _specifications
 
         reader = PdfReader(BytesIO(contents), strict=True)
         if reader.is_encrypted or reader.xref_objStm:

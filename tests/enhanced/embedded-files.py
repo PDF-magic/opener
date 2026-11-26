@@ -12,7 +12,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject
 
-import enhanced_embedded_files as inspector
+import src.enhanced.enhanced_embedded_files as inspector
 
 
 def sample_pdf(*attachments):

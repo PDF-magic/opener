@@ -10,7 +10,7 @@ import unittest
 
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
-from pdf_embedded_object_sizes import PDFEmbeddedObjectSizes, inspect_pdf_embedded_object_sizes
+from src.pdf.pdf_embedded_object_sizes import PDFEmbeddedObjectSizes, inspect_pdf_embedded_object_sizes
 import benchmarks.many_embedded_objects_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]

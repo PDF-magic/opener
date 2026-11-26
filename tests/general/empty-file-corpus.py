@@ -13,7 +13,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from pdf_format_identification import UNDETERMINED, identify_pdf_format
+from src.pdf.pdf_format_identification import UNDETERMINED, identify_pdf_format
 from pdf_structure_parser import (
     PDFStructureFailureCode,
     PDFStructureParseFailure,

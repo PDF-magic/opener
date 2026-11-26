@@ -17,14 +17,14 @@ from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 from effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity, StageAnalysis,
     StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_blocking_policy import (
+from src.enhanced.enhanced_blocking_policy import (
     BlockingDisposition, determine_blocking_findings,
 )
-from pdf_javascript_actions import (
+from src.pdf.pdf_javascript_actions import (
     PDFJavaScriptInspectionError, inspect_pdf_javascript_actions,
 )
 from protection_policy_definitions import (

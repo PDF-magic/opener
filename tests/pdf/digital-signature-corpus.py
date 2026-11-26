@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.serialization import pkcs7
 from pypdf import PdfReader
 
 from tests.fixtures.pdf.digital_signature_corpus import signed_pdf_corpus
-from pdf_document_permissions import inspect_pdf_document_permissions
+from src.pdf.pdf_document_permissions import inspect_pdf_document_permissions
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 

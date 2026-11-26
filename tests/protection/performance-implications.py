@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 import unittest
 
-from enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-from enhanced_analysis_timing import AdditionalAnalysisTimer
+from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
+from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 from protection_performance_evidence import (
     PerformanceSampleGroup, build_report, encode_report,

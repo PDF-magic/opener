@@ -12,7 +12,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from pdf_format_identification import (
+from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, identify_pdf_format, identify_pdf_header,
 )
 from pdf_structure_parser import (

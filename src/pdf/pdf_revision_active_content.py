@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from io import BytesIO
 import re
 
-from pdf_incremental_revisions import (
+from src.pdf.pdf_incremental_revisions import (
     MAX_PDF_BYTES, _END, _OBJECT, _read_xref, inspect_pdf_incremental_revisions,
 )
 

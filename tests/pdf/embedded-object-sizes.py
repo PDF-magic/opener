@@ -13,8 +13,8 @@ from pypdf import PdfWriter
 from pypdf.generic import (
     DecodedStreamObject, DictionaryObject, NameObject, NumberObject,
 )
-import pdf_embedded_object_sizes as stage
-from pdf_embedded_object_sizes import (
+import src.pdf.pdf_embedded_object_sizes as stage
+from src.pdf.pdf_embedded_object_sizes import (
     BLOCK_MESSAGE, PDFEmbeddedObjectSizeError, PDFEmbeddedObjectSizes,
     inspect_pdf_embedded_object_sizes,
 )

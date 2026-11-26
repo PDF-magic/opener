@@ -1,6 +1,6 @@
 # Structured Enhanced PDF analysis findings (opener-0297)
 
-`enhanced_analysis_findings.py` defines a **reporting contract** for future
+`src/enhanced/enhanced_analysis_findings.py` defines a **reporting contract** for future
 Enhanced PDF inspection stages. It deliberately does not parse documents,
 choose or activate protection profiles, run ClamAV, grant a clean scan verdict,
 remove quarantine, or open a PDF.
@@ -35,7 +35,7 @@ consumers that only need the existing fields.
 Example for a **future** inspection producer:
 
 ```python
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StageAnalysis, StageOutcome, StructuredAnalysisFindings,
 )

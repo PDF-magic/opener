@@ -1,7 +1,7 @@
 # Unsupported PDF features — response policy (opener-0254)
 
 The installed scanner remains the only active protection gate. The definitions
-in `unsupported_pdf_features.py` specify what **must happen if a trusted PDF
+in `src/pdf/unsupported_pdf_features.py` specify what **must happen if a trusted PDF
 inspection step cannot fully inspect a feature**. They do not inspect a PDF,
 recognize features, select a profile, or claim that additional validators exist.
 

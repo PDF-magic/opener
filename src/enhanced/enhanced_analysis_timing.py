@@ -7,7 +7,7 @@ installed Built-in malware scanner, quarantine, cache, or application handoff.
 from dataclasses import dataclass
 import time
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisStage, MAX_REPORTED_STAGES, StageAnalysis, StageOutcome,
 )
 

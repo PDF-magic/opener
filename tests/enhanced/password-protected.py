@@ -16,7 +16,7 @@ from effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-from pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
+from src.pdf.pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, FailureDisposition, PolicyControl,
@@ -24,7 +24,7 @@ from protection_policy_definitions import (
 )
 from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
 from scan_results import ScanResultStatus
-from unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
+from src.pdf.unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
 
 
 ROOT = Path(__file__).resolve().parents[2]

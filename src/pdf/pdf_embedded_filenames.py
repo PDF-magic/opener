@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from io import BytesIO
 import unicodedata
 
-from enhanced_embedded_files import (
+from src.enhanced.enhanced_embedded_files import (
     MAX_NAME_TREE_NODES, _specifications,
 )
 from pdf_structure_parser import parse_pdf_structure

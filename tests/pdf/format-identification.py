@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from pdf_format_identification import (
+from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, PDFFormatStatus, identify_pdf_format,
     identify_pdf_header,
 )
@@ -79,7 +79,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
                     self.assertIs(identify_pdf_format(path), UNDETERMINED)
             self.assertIs(identify_pdf_format(None), UNDETERMINED)
             self.assertEqual(source.read_bytes(), b"%PDF-2.0\ntest")
-            with patch("pdf_format_identification.os.open", side_effect=PermissionError("/private/secret.pdf")):
+            with patch("src.pdf.pdf_format_identification.os.open", side_effect=PermissionError("/private/secret.pdf")):
                 result = identify_pdf_format(source)
                 self.assertIs(result, UNDETERMINED)
                 self.assertNotIn("secret", repr(result))
@@ -107,7 +107,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
                 def fileno(self):
                     return self.source.fileno()
 
-            with patch("pdf_format_identification.os.fdopen",
+            with patch("src.pdf.pdf_format_identification.os.fdopen",
                        side_effect=lambda *args, **kwargs: BoundedReader(real_fdopen(*args, **kwargs))):
                 result = identify_pdf_format(source)
             self.assertEqual(reads, [9])

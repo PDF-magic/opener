@@ -1,17 +1,17 @@
-name: Prepare passive analysis layout
+name: Validate passive analysis relocation
 
 on:
   push:
     branches: [shoeshine]
     paths:
-      - scripts/prepare-analysis-layout.py
+      - src/**
       - .github/workflows/prepare-analysis-layout.yml
 
 permissions:
   contents: read
 
 jobs:
-  prepare:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -22,4 +22,74 @@ jobs:
         with:
           python-version: "3.11"
       - run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt 'Pillow==11.3.0' 'cryptography==46.0.4'
-      - run: python3 scripts/prepare-analysis-layout.py
+      - name: Run affected PDF and Enhanced analysis suites
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q src
+          python3 tests/enhanced/additional-inspections.py -v
+          python3 tests/enhanced/analysis-findings.py -v
+          python3 tests/enhanced/analysis-timing.py -v
+          python3 tests/enhanced/blocking-policy.py -v
+          python3 tests/enhanced/embedded-files.py -v
+          python3 tests/enhanced/finding-explanations.py -v
+          python3 tests/enhanced/finding-object-references.py -v
+          python3 tests/enhanced/inconclusive-results.py -v
+          python3 tests/enhanced/javascript-action-profile.py -v
+          python3 tests/enhanced/legitimate-forms.py -v
+          python3 tests/enhanced/password-protected.py -v
+          python3 tests/enhanced/profile-embedded-attachments.py -v
+          python3 tests/enhanced/structural-benchmark.py -v
+          python3 tests/general/combined-scan-results.py -v
+          python3 tests/general/document-security-report.py -v
+          python3 tests/general/empty-file-corpus.py -v
+          python3 tests/general/unsupported-pdf-features.py -v
+          python3 tests/pdf/action-chains.py -v
+          python3 tests/pdf/annotations.py -v
+          python3 tests/pdf/automatic-actions.py -v
+          python3 tests/pdf/automatic-external-requests.py -v
+          python3 tests/pdf/behavior-classification.py -v
+          python3 tests/pdf/cross-reference-parsing.py -v
+          python3 tests/pdf/declared-metadata.py -v
+          python3 tests/pdf/decompression-requirements.py -v
+          python3 tests/pdf/deep-object-references.py -v
+          python3 tests/pdf/digital-signature-corpus.py -v
+          python3 tests/pdf/document-permissions.py -v
+          python3 tests/pdf/embedded-executable-content.py -v
+          python3 tests/pdf/embedded-file-corpus.py -v
+          python3 tests/pdf/embedded-file-types.py -v
+          python3 tests/pdf/embedded-filenames.py -v
+          python3 tests/pdf/embedded-object-sizes.py -v
+          python3 tests/pdf/encrypted-documents.py -v
+          python3 tests/pdf/encryption-policy.py -v
+          python3 tests/pdf/external-launch-action-corpus.py -v
+          python3 tests/pdf/external-launch-actions.py -v
+          python3 tests/pdf/form-actions.py -v
+          python3 tests/pdf/format-identification.py -v
+          python3 tests/pdf/incorrectly-named-files.py -v
+          python3 tests/pdf/incremental-corpus.py -v
+          python3 tests/pdf/incremental-revisions.py -v
+          python3 tests/pdf/interactive-form-corpus.py -v
+          python3 tests/pdf/invalid-headers-corpus.py -v
+          python3 tests/pdf/javascript-action-corpus.py -v
+          python3 tests/pdf/javascript-actions.py -v
+          python3 tests/pdf/malformed-structures.py -v
+          python3 tests/pdf/malformed-xref-corpus.py -v
+          python3 tests/pdf/many-embedded-objects-benchmark.py -v
+          python3 tests/pdf/object-relationships.py -v
+          python3 tests/pdf/oversized-stream-corpus.py -v
+          python3 tests/pdf/repeated-structures.py -v
+          python3 tests/pdf/revision-active-content.py -v
+          python3 tests/pdf/rich-media.py -v
+          python3 tests/pdf/stream-lengths.py -v
+          python3 tests/pdf/structure-ambiguity.py -v
+          python3 tests/pdf/suspicious-urls.py -v
+          python3 tests/pdf/unicode-metadata-corpus.py -v
+          python3 tests/pdf/unsupported-feature-inspection.py -v
+          python3 tests/pdf/unusual-object-counts.py -v
+          python3 tests/pdf/xfa-forms.py -v
+          python3 tests/protection/maximum-malformed-pdf.py -v
+          python3 tests/protection/maximum-unsupported-feature.py -v
+          python3 tests/protection/performance-implications.py -v
+          python3 tests/security/truncated-pdfs.py -v

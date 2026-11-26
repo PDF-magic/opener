@@ -2,7 +2,7 @@
 
 The optional `pdf_rich_media.inspect_pdf_rich_media(bytes)` stage identifies
 rich-media content beyond the existing `/Subtype /RichMedia` annotation
-category, which is already recognized by `pdf_annotations.py` (merged PR
+category, which is already recognized by `src/pdf/pdf_annotations.py` (merged PR
 #191). It looks for referenced or indexed orphan `/RichMediaContent`
 dictionaries, `/RichMediaConfiguration` objects, and media asset name-tree
 file specifications. It also recognizes `/RichMediaSettings` dictionaries,

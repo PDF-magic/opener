@@ -8,7 +8,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-from pdf_revision_active_content import (
+from src.pdf.pdf_revision_active_content import (
     BLOCK_MESSAGE, PDFHistoricalActiveContent,
     PDFHistoricalActiveContentError, inspect_pdf_revision_active_content,
 )
@@ -119,7 +119,7 @@ class PDFHistoricalActiveTests(unittest.TestCase):
     def test_resource_limits_and_metadata_validation(self):
         old = append_revision(self.original, 6, b"<< /S /JavaScript /JS (secret) >>")
         current = append_revision(old, 6, b"<< /Marker /Safe >>")
-        import pdf_revision_active_content as stage
+        import src.pdf.pdf_revision_active_content as stage
         with patch.object(stage, "MAX_REVISIONS", 2):
             with self.assertRaises(PDFHistoricalActiveContentError):
                 inspect_pdf_revision_active_content(current)

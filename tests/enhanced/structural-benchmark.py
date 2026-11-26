@@ -108,7 +108,7 @@ class EnhancedStructureBenchmarkTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("enhanced_structure_benchmark", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
-        timing = (ROOT / "enhanced_analysis_timing.py").read_text(encoding="utf-8")
+        timing = (ROOT / "src/enhanced/enhanced_analysis_timing.py").read_text(encoding="utf-8")
         self.assertNotIn("enhanced_structure_benchmark", timing)
         self.assertTrue((ROOT / "docs/enhanced/structural-benchmark.md").is_file())
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

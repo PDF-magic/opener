@@ -13,8 +13,8 @@ from pypdf import PdfReader
 from pypdf.generic import StreamObject
 
 from tests.fixtures.pdf.embedded_file_corpus import EMBEDDED_FILE_PDFS, _document_with_embedded_files
-import enhanced_embedded_files as inspector
-from pdf_embedded_file_types import inspect_pdf_embedded_file_types
+import src.enhanced.enhanced_embedded_files as inspector
+from src.pdf.pdf_embedded_file_types import inspect_pdf_embedded_file_types
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

@@ -11,7 +11,7 @@ from enum import Enum
 from io import BytesIO
 import re
 
-from unsupported_pdf_features import (
+from src.pdf.unsupported_pdf_features import (
     ENCRYPTED_RESPONSE,
     INCOMPLETE_RESPONSE,
     UnsupportedPDFResponse,

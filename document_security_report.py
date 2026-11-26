@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from combined_scan_results import CombinedScanReport
-from enhanced_analysis_findings import FindingCode, FindingSeverity
+from src.enhanced.enhanced_analysis_findings import FindingCode, FindingSeverity
 from scan_results import ScanResultStatus
 
 

@@ -8,7 +8,7 @@ import unittest
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject, NullObject
 
-from pdf_object_relationships import (
+from src.pdf.pdf_object_relationships import (
     MAX_RELATIONSHIP_DEPTH, PDFObjectRelationshipError,
     inspect_pdf_object_relationships,
 )

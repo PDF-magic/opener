@@ -10,7 +10,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, EncodedStreamObject, NameObject
 
-import pdf_embedded_executable_content as inspector
+import src.pdf.pdf_embedded_executable_content as inspector
 
 
 def pdf_with_streams(*streams, indirect_only=False):

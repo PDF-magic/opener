@@ -11,11 +11,11 @@ from pypdf import PdfReader
 from pypdf.generic import StreamObject
 
 from tests.fixtures.pdf.interactive_form_corpus import INTERACTIVE_FORM_PDFS, _document_with_field
-from pdf_form_actions import inspect_pdf_form_actions
-from pdf_unsupported_feature_inspection import (
+from src.pdf.pdf_form_actions import inspect_pdf_form_actions
+from src.pdf.pdf_unsupported_feature_inspection import (
     UnsupportedPDFFeature, inspect_pdf_unsupported_features,
 )
-from pdf_xfa_forms import inspect_pdf_xfa_forms
+from src.pdf.pdf_xfa_forms import inspect_pdf_xfa_forms
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]

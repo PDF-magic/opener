@@ -12,7 +12,7 @@ from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, TextStringObject, NumberObject,
 )
 
-from pdf_automatic_actions import (
+from src.pdf.pdf_automatic_actions import (
     MAX_ACTIONS, PDFAutomaticActionError, PDFAutomaticActionInspection,
     inspect_pdf_automatic_actions,
 )
@@ -233,7 +233,7 @@ class PDFAutomaticActionTests(unittest.TestCase):
 
     def test_no_scanner_activation_or_user_preference_mutation(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        module = (ROOT / "pdf_automatic_actions.py").read_text(encoding="utf-8")
+        module = (ROOT / "src/pdf/pdf_automatic_actions.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_automatic_actions", scanner)
         self.assertNotIn("pdf_automatic_actions", (ROOT / "effective_protection_policy.py").read_text())

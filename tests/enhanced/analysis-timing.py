@@ -7,8 +7,8 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock
 
-from enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-from enhanced_analysis_timing import (
+from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
+from src.enhanced.enhanced_analysis_timing import (
     AdditionalAnalysisTimer, AdditionalAnalysisTiming,
     AdditionalAnalysisTimingError, BLOCK_MESSAGE, MAX_ELAPSED_NS, StageTiming,
 )

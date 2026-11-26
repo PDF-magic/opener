@@ -10,7 +10,7 @@ from combined_scan_results import (
     CombinedScanReport,
     combine_scan_results,
 )
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding,
     AnalysisStage,
     FindingCode,

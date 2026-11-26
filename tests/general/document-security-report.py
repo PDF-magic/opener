@@ -10,7 +10,7 @@ from document_security_report import (
     MAX_DISPLAYED_SIGNATURES,
     create_document_security_report,
 )
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding,
     AnalysisStage,
     FindingCode,

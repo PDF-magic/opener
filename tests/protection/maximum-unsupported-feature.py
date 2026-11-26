@@ -22,7 +22,7 @@ from effective_protection_policy import (
     resolve_effective_policy,
 )
 import maximum_sanitized_copy as sanitizer
-from pdf_unsupported_feature_inspection import (
+from src.pdf.pdf_unsupported_feature_inspection import (
     UnsupportedPDFFeature,
     inspect_pdf_unsupported_features,
 )

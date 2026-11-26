@@ -124,7 +124,7 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
     scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     module = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
-    relationships = (ROOT / "pdf_object_relationships.py").read_text(
+    relationships = (ROOT / "src/pdf/pdf_object_relationships.py").read_text(
       encoding="utf-8"
     )
     self.assertNotIn("pdf_structure_parser", scanner)

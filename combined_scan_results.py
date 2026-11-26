@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 import re
 
-from enhanced_analysis_findings import StructuredAnalysisFindings
-from enhanced_finding_explanations import explain_analysis_findings
+from src.enhanced.enhanced_analysis_findings import StructuredAnalysisFindings
+from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 from scan_results import ScanResult, ScanResultStatus
 
 

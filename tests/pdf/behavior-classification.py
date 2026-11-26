@@ -11,13 +11,13 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject, TextStringObject
 
-from pdf_behavior_classification import (
+from src.pdf.pdf_behavior_classification import (
     BLOCK_MESSAGE, MAX_OBSERVATIONS, BehaviorClassificationError,
     PDFBehaviorAnalysis, PDFBehaviorDisposition, PDFBehaviorKind,
     PDFBehaviorObservation, PDFBehaviorTrigger,
     classify_external_action_inspection, classify_pdf_behavior,
 )
-from pdf_external_launch_actions import (
+from src.pdf.pdf_external_launch_actions import (
     PDFExternalLaunchInspection, inspect_pdf_external_launch_actions,
 )
 

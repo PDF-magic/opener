@@ -14,7 +14,7 @@ from pypdf.constants import UserAccessPermissions
 from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, NumberObject, TextStringObject,
 )
-from pdf_document_permissions import (
+from src.pdf.pdf_document_permissions import (
     BLOCK_MESSAGE, PDFDocumentPermissions, PDFDocumentPermissionsError,
     _operations, inspect_pdf_document_permissions,
 )
@@ -167,7 +167,7 @@ class PDFPermissionTests(unittest.TestCase):
     def test_installed_scan_gate_and_ci_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        source = (ROOT / "pdf_document_permissions.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf_document_permissions.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_document_permissions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("python3 tests/pdf/document-permissions.py -v", ci)

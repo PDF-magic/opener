@@ -10,12 +10,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StructuredAnalysisFindings,
 )
-from enhanced_additional_inspections import plan_additional_inspections
-from enhanced_inconclusive_results import assess_inconclusive_opening
+from src.enhanced.enhanced_additional_inspections import plan_additional_inspections
+from src.enhanced.enhanced_inconclusive_results import assess_inconclusive_opening
 
 
 class BlockingDisposition(str, Enum):

@@ -17,8 +17,8 @@ import statistics
 import subprocess
 import sys
 
-from enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-from enhanced_analysis_timing import AdditionalAnalysisTimer
+from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
+from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
 from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure, parse_pdf_structure
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 

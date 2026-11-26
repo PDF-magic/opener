@@ -9,7 +9,7 @@ import unittest
 
 from pypdf import PdfReader
 
-from pdf_incremental_revisions import (
+from src.pdf.pdf_incremental_revisions import (
     BLOCK_MESSAGE,
     PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,

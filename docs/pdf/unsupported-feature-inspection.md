@@ -3,7 +3,7 @@
 `pdf_unsupported_feature_inspection.inspect_pdf_unsupported_features(bytes)`
 is a passive, bounded inventory of PDF constructs the current **structural
 analyzer cannot fully inspect**. It complements, but does not replace, the
-fail-closed response contract in `unsupported_pdf_features.py`.
+fail-closed response contract in `src/pdf/unsupported_pdf_features.py`.
 
 ## Feature codes
 

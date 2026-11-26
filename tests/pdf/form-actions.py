@@ -12,7 +12,7 @@ from pypdf import PdfWriter
 from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, NumberObject, TextStringObject,
 )
-from pdf_form_actions import (
+from src.pdf.pdf_form_actions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFFormActionInspectionError,
     inspect_pdf_form_actions,
 )

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import json
 import math
 import statistics
-from enhanced_analysis_timing import AdditionalAnalysisTiming
+from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTiming
 from protection_profiles import ProtectionProfileID
 
 SCHEMA_VERSION = 1

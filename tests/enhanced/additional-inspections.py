@@ -6,11 +6,11 @@ import json
 from pathlib import Path
 import unittest
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity, StageAnalysis,
     StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_additional_inspections import (
+from src.enhanced.enhanced_additional_inspections import (
     AdditionalInspectionPlan, FindingInspectionRequirement, FollowUpInspection,
     plan_additional_inspections,
 )

@@ -20,9 +20,9 @@ from effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
-from pdf_form_actions import inspect_pdf_form_actions
+from src.pdf.pdf_form_actions import inspect_pdf_form_actions
 from pdf_structure_parser import parse_pdf_structure
-from pdf_xfa_forms import inspect_pdf_xfa_forms
+from src.pdf.pdf_xfa_forms import inspect_pdf_xfa_forms
 from protection_policy_definitions import PROTECTION_POLICIES
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
 

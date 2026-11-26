@@ -6,7 +6,7 @@ from pathlib import Path
 import unittest
 
 from pypdf import PdfWriter
-from pdf_incremental_revisions import (
+from src.pdf.pdf_incremental_revisions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )

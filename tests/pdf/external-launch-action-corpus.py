@@ -15,8 +15,8 @@ from pypdf import PdfReader
 from pypdf.generic import DictionaryObject
 
 from tests.fixtures.pdf.external_launch_action_corpus import EXTERNAL_LAUNCH_PDFS, _document_with_launch
-from pdf_automatic_actions import inspect_pdf_automatic_actions
-from pdf_external_launch_actions import inspect_pdf_external_launch_actions
+from src.pdf.pdf_automatic_actions import inspect_pdf_automatic_actions
+from src.pdf.pdf_external_launch_actions import inspect_pdf_external_launch_actions
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]

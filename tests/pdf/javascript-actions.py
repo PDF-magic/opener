@@ -14,7 +14,7 @@ from pypdf.generic import (
     ArrayObject, ByteStringObject, DecodedStreamObject, DictionaryObject,
     EncodedStreamObject, NameObject, TextStringObject,
 )
-from pdf_javascript_actions import (
+from src.pdf.pdf_javascript_actions import (
     MAX_SCRIPT_BYTES, MAX_JAVASCRIPT_ACTIONS, PDFJavaScriptInspection,
     PDFJavaScriptInspectionError, _decode_script, inspect_pdf_javascript_actions,
 )
@@ -245,7 +245,7 @@ class PDFJavaScriptActionTests(unittest.TestCase):
     def test_no_scanner_activation_and_ci_registers_the_stage(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         resolver = (ROOT / "effective_protection_policy.py").read_text(encoding="utf-8")
-        module = (ROOT / "pdf_javascript_actions.py").read_text(encoding="utf-8")
+        module = (ROOT / "src/pdf/pdf_javascript_actions.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_javascript_actions", scanner)
         self.assertNotIn("pdf_javascript_actions", resolver)

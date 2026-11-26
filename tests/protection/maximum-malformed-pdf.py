@@ -24,7 +24,7 @@ from maximum_sanitized_copy import (
     assess_sanitized_pdf_copy,
 )
 import maximum_sanitized_copy as sanitizer
-from pdf_malformed_structures import (
+from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,

@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from scan_results import ScanResultStatus
-from unsupported_pdf_features import (
+from src.pdf.unsupported_pdf_features import (
     ENCRYPTED_RESPONSE,
     ENCRYPTION_BLOCK_REASON,
     GENERIC_BLOCK_REASON,

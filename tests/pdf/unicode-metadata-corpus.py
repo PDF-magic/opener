@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-from pdf_declared_metadata import extract_pdf_declared_metadata
+from src.pdf.pdf_declared_metadata import extract_pdf_declared_metadata
 from pdf_structure_parser import parse_pdf_structure
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 from tests.fixtures.pdf.unicode_metadata_corpus import UNICODE_METADATA_PDFS, _pdf_with_metadata

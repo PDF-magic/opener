@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
-import pdf_structure_ambiguity as inspector
+import src.pdf.pdf_structure_ambiguity as inspector
 
 
 def pdf(objects=None):

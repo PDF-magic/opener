@@ -8,8 +8,8 @@ Each callback returns the original matching `StageAnalysis`; the timer does
 not modify the result or swallow errors.
 
 ```python
-from enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
-from enhanced_analysis_timing import AdditionalAnalysisTimer
+from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
+from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
 
 timer = AdditionalAnalysisTimer((AnalysisStage.pdfStructure,))
 result = timer.measure(

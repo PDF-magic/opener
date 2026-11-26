@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfWriter
-from pdf_malformed_structures import (
+from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFMalformedStructureError,
     PDFMalformedStructureInspection, inspect_pdf_malformed_structures,
 )
@@ -104,7 +104,7 @@ class MalformedStructureTests(unittest.TestCase):
 
     def test_input_and_object_budget_fail_closed(self):
         self.assert_rejected(b"x" * (MAX_PDF_BYTES + 1))
-        with patch("pdf_malformed_structures.MAX_OBJECTS", 1):
+        with patch("src.pdf.pdf_malformed_structures.MAX_OBJECTS", 1):
             self.assert_rejected(sample_pdf())
 
     def test_missing_library_is_not_silently_accepted(self):

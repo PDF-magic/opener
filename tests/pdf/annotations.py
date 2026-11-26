@@ -14,7 +14,7 @@ from pypdf.generic import (
     ArrayObject, DecodedStreamObject, DictionaryObject, FloatObject, NameObject, NumberObject,
     TextStringObject,
 )
-from pdf_annotations import (
+from src.pdf.pdf_annotations import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFAnnotationInspectionError,
     inspect_pdf_annotations,
 )
@@ -136,7 +136,7 @@ class PDFAnnotationTests(unittest.TestCase):
             inspect_pdf_annotations(output.getvalue())
 
     def test_annotation_count_limit_fails_closed(self):
-        from pdf_annotations import MAX_ANNOTATIONS
+        from src.pdf.pdf_annotations import MAX_ANNOTATIONS
         writer = PdfWriter()
         page = writer.add_blank_page(width=100, height=100)
         entry = annotation("Text")

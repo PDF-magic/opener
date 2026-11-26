@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
 
-import enhanced_embedded_files as inspector
+import src.enhanced.enhanced_embedded_files as inspector
 from effective_protection_policy import (
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,

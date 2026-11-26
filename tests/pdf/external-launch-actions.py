@@ -13,7 +13,7 @@ from pypdf import PdfWriter
 from pypdf.generic import (
     ArrayObject, BooleanObject, DictionaryObject, NameObject, TextStringObject,
 )
-from pdf_external_launch_actions import (
+from src.pdf.pdf_external_launch_actions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFExternalLaunchInspectionError,
     inspect_pdf_external_launch_actions,
 )

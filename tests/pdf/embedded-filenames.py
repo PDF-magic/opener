@@ -15,7 +15,7 @@ from pypdf.generic import (
     NumberObject, TextStringObject,
 )
 
-from pdf_embedded_filenames import (
+from src.pdf.pdf_embedded_filenames import (
     BLOCK_MESSAGE, MAX_FILENAME_CHARACTERS, EmbeddedFilenameInspection,
     EmbeddedFilenameInspectionError, inspect_embedded_filenames,
 )
@@ -176,7 +176,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
             self.assert_blocked(REFERENCE_PDFS[0].content)
 
     def test_bounded_limits_and_result_contract(self):
-        import pdf_embedded_filenames as stage
+        import src.pdf.pdf_embedded_filenames as stage
         with patch.object(stage, "MAX_ATTACHMENTS", 1):
             self.assert_blocked(document(build("first.pdf", "second.pdf")))
         with patch.object(stage, "MAX_TOTAL_FILENAME_CHARACTERS", 4):
@@ -193,7 +193,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
 
     def test_ci_contract_and_installed_scanner_noninterference(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        source = (ROOT / "pdf_embedded_filenames.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf_embedded_filenames.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/embedded-filenames.py -v", ci)
         self.assertNotIn("pdf_embedded_filenames", gate)

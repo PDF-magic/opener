@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 import unittest
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     StageAnalysis, StageOutcome, StructuredAnalysisFindings,
 )
-from enhanced_additional_inspections import plan_additional_inspections
-from enhanced_inconclusive_results import assess_inconclusive_opening
-from enhanced_blocking_policy import (
+from src.enhanced.enhanced_additional_inspections import plan_additional_inspections
+from src.enhanced.enhanced_inconclusive_results import assess_inconclusive_opening
+from src.enhanced.enhanced_blocking_policy import (
     BlockingDisposition, EnhancedBlockingPolicy, FindingBlockingDecision,
     determine_blocking_findings, disposition_for_finding,
 )
@@ -229,7 +229,7 @@ class EnhancedBlockingPolicyTests(unittest.TestCase):
     def test_scanner_user_preferences_and_protection_levels_unchanged(self):
         root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
-        policy = (root / "enhanced_blocking_policy.py").read_text()
+        policy = (root / "src/enhanced/enhanced_blocking_policy.py").read_text()
         self.assertNotIn("enhanced_blocking_policy", scanner)
         self.assertIn("check_database()", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)

@@ -1,7 +1,7 @@
 # Passive PDF form-action inspection (opener-0289)
 
 The planned Enhanced protection stage provides
-`inspect_pdf_form_actions(contents: bytes)` in `pdf_form_actions.py`.
+`inspect_pdf_form_actions(contents: bytes)` in `src/pdf/pdf_form_actions.py`.
 It recognizes **/SubmitForm**, **/ResetForm**, and **/ImportData**
 actions in indexed PDF objects, including form widgets, page actions, and
 `/Next` chains. It validates required file targets, field selectors,

@@ -16,7 +16,7 @@ from pypdf.generic import IndirectObject, StreamObject
 from tests.fixtures.pdf.oversized_stream_corpus import (
     OVERSIZED_STREAM_PDFS, STREAM_LIMIT, _embedded_pdf,
 )
-from pdf_embedded_object_sizes import (
+from src.pdf.pdf_embedded_object_sizes import (
     LARGE_DECLARED_BYTES, LARGE_DECODED_BYTES, LARGE_ENCODED_BYTES,
     inspect_pdf_embedded_object_sizes,
 )

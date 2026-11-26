@@ -1,6 +1,6 @@
 # Passive automatic PDF action inspection (opener-0286)
 
-The optional Enhanced inspection module \`pdf_automatic_actions.py\` accepts
+The optional Enhanced inspection module \`src/pdf/pdf_automatic_actions.py\` accepts
 **in-memory PDF bytes** and parses them with the strict, pinned pypdf parser
 from [opener-0283](https://github.com/PDF-magic/opener/pull/179).
 It examines the catalog's \`/OpenAction\` and \`/AA\` hooks, document-level

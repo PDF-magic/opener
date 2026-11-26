@@ -13,8 +13,8 @@ from pypdf.generic import DictionaryObject
 from tests.fixtures.pdf.javascript_action_corpus import (
     JAVASCRIPT_ACTION_PDFS, _document_with_action,
 )
-from pdf_automatic_actions import inspect_pdf_automatic_actions
-from pdf_javascript_actions import inspect_pdf_javascript_actions
+from src.pdf.pdf_automatic_actions import inspect_pdf_automatic_actions
+from src.pdf.pdf_javascript_actions import inspect_pdf_javascript_actions
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

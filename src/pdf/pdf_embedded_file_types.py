@@ -8,7 +8,7 @@ files, executes attachments or authorizes opening the containing PDF.
 from dataclasses import dataclass, field
 from io import BytesIO
 
-from enhanced_embedded_files import _extract, _resolve, _specifications
+from src.enhanced.enhanced_embedded_files import _extract, _resolve, _specifications
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
 
 

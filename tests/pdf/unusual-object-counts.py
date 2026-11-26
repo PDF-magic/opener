@@ -11,7 +11,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 
-from pdf_unusual_object_counts import (
+from src.pdf.pdf_unusual_object_counts import (
     HIGH_OBJECT_COUNT, HIGH_OBJECTS_PER_PAGE, PDFUnusualObjectCountError,
     PDFUnusualObjectCounts, inspect_pdf_unusual_object_counts,
 )
@@ -167,7 +167,7 @@ class PDFUnusualObjectCountTests(unittest.TestCase):
 
     def test_isolated_from_scanner_preferences_and_network(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        source = (ROOT / "pdf_unusual_object_counts.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf_unusual_object_counts.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("pdf_unusual_object_counts", scanner)

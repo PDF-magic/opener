@@ -5,12 +5,12 @@ from pathlib import Path
 import json
 import unittest
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     MAX_PDF_OBJECT_GENERATION, StageAnalysis, StageOutcome,
     StructuredAnalysisFindings,
 )
-from enhanced_finding_explanations import explain_analysis_findings
+from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 
 
 ROOT = Path(__file__).resolve().parents[2]

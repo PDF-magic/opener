@@ -12,7 +12,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import (ArrayObject, ByteStringObject, DictionaryObject,
                            NameObject, TextStringObject)
-from pdf_suspicious_urls import (
+from src.pdf.pdf_suspicious_urls import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, MAX_URLS, PDFSuspiciousURLInspectionError,
     inspect_pdf_suspicious_urls,
 )
@@ -109,7 +109,7 @@ class PDFSuspiciousURLTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_utf16_and_utf8_bytes_inspected_without_leaking(self):
-        from pdf_suspicious_urls import _classify_url
+        from src.pdf.pdf_suspicious_urls import _classify_url
         self.assertEqual(
             _classify_url(ByteStringObject(b"https://example.org")), set()
         )

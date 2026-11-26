@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 
-from enhanced_analysis_findings import (
+from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, FindingCode, FindingSeverity, StructuredAnalysisFindings,
 )
 

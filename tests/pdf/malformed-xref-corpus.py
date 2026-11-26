@@ -7,7 +7,7 @@ import re
 import unittest
 
 from tests.fixtures.pdf.malformed_xref_pdf_collection import MALFORMED_XREF_PDFS
-from pdf_malformed_structures import (
+from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,

@@ -104,7 +104,7 @@ def inspect_pdf_automatic_external_requests(contents: bytes) -> PDFAutomaticExte
             ArrayObject, ByteStringObject, DictionaryObject, IndirectObject,
             NameObject, StreamObject, TextStringObject,
         )
-        from pdf_suspicious_urls import _classify_url, _read_url
+        from src.pdf.pdf_suspicious_urls import _classify_url, _read_url
     except (ImportError, OSError):
         raise PDFAutomaticExternalRequestError(_ERROR) from None
 
