@@ -28,6 +28,7 @@ ENV = {
 LINUX_PROBE = r'''
 import errno, os, subprocess, sys, threading
 sys.path.insert(0, sys.argv[1])
+__import__('src.module-loader')
 from importlib import import_module
 apply_linux_child_process_denial = import_module("maximum-network-isolation").apply_linux_child_process_denial
 apply_linux_child_process_denial()

@@ -34,10 +34,10 @@ class TroubleshootingDocsTests(unittest.TestCase):
 
   def test_real_diagnostics_and_recovery_paths(self):
     references = (
-      ("install-allow-and-open.sh", "install-allow-and-open.sh"),
-      ("Repair Installation.command", "Repair Installation.command"),
-      ("update-malware-signatures.sh", "update-malware-signatures.sh"),
-      ("pdf-handler-status.py", "pdf-handler-status.py"),
+      ("scripts/installation/install-allow-and-open.sh", "scripts/installation/install-allow-and-open.sh"),
+      ("scripts/installation/repair-installation.command", "scripts/installation/repair-installation.command"),
+      ("update-malware-signatures.sh", "src/scanner/update-malware-signatures.sh"),
+      ("pdf-handler-status.py", "src/native/handler/pdf-handler-status.py"),
       ("select-browser.md", "docs/select-browser.md"),
       ("browser-unsupported-routes.md", "docs/browser-unsupported-routes.md"),
     )

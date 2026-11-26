@@ -6,7 +6,7 @@ scanner and actual application launcher are deliberately mocked: no unscanned
 PDF may be opened and no user's PDF handler, profile or preferences are changed.
 """
 
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 import importlib.util
 from pathlib import Path
 import stat
@@ -122,6 +122,10 @@ def scenario(path, label, verdict, *, verified=True, timeout=False):
             stack.enter_context(patch.object(opener, "launch_clean_file", side_effect=launch))
             stack.enter_context(patch.object(opener, "scan_engine_version", return_value=None))
             stack.enter_context(patch.object(opener, "read_signature_database_version", return_value=None))
+            # The fake scanner has no executable or signature database on disk.
+            # Real Seatbelt enforcement is covered by the scanner sandbox suite.
+            stack.enter_context(patch.object(opener, "confined_scanner",
+                                            side_effect=lambda command, *, scan: nullcontext((command, {}))))
             stack.enter_context(patch.object(opener.subprocess, "run", side_effect=scan))
 
             if verdict == 0 and verified and not timeout:

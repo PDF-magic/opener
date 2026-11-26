@@ -23,6 +23,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     temp = tempfile.TemporaryDirectory(prefix="opener-vulnerabilities-")
     self.addCleanup(temp.cleanup)
     self.root = Path(temp.name)
+    (self.root / "requirements").mkdir()
     self.expected = {("pypdf", "6.21.4")}
     self.report = self.root / "report.json"
 

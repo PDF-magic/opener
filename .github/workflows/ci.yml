@@ -1596,7 +1596,7 @@ jobs:
       - name: Query and validate installed macOS applications
         run: |
           xcrun swiftc -parse-as-library -warnings-as-errors src/native/installed-applications.swift -o "$RUNNER_TEMP/InstalledApplications"
-          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING src/native/installed-applications.swift tests/system/installed-applications.swift -o "$RUNNER_TEMP/TestInstalledApplications"
+          xcrun swiftc -parse-as-library -warnings-as-errors -D INSTALLED_APPS_TESTING src/native/installed-applications.swift tests/system/installed-applications-check.swift -o "$RUNNER_TEMP/TestInstalledApplications"
           "$RUNNER_TEMP/TestInstalledApplications"
           if "$RUNNER_TEMP/InstalledApplications" >/dev/null 2>&1; then exit 1; fi
           if "$RUNNER_TEMP/InstalledApplications" " " >/dev/null 2>&1; then exit 1; fi

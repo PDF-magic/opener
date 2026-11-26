@@ -12,8 +12,21 @@ BOOTSTRAP = (
     b"    from pathlib import Path as _BenchmarkPath\n"
     b"    _benchmark_sys.path.insert(0, str(_BenchmarkPath(__file__).resolve().parents[1]))\n\n"
 )
-PACKAGE_IMPORT = b"from benchmarks.pdf_parser_memory_benchmark import synthetic_pdf"
-LEGACY_IMPORT = b"from pdf_parser_memory_benchmark import synthetic_pdf"
+PACKAGE_IMPORT = (
+    b"__import__('src.module-loader')\n"
+    b"from benchmarks.pdf_parser_memory_benchmark import synthetic_pdf\n"
+    b"__import__('src.module-loader')\n"
+    b"from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure\n"
+    b"__import__('src.module-loader')\n"
+    b"from timed_pdf_structure_analysis import parse_pdf_structure_timed"
+)
+LEGACY_IMPORT = (
+    b"from pdf_parser_memory_benchmark import synthetic_pdf\n"
+    b"from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES, PDFStructure\n"
+    b"from timed_pdf_structure_analysis import parse_pdf_structure_timed"
+)
+LEGACY_MEDIUM = "medium_pdf_benchmark.py"
+LEGACY_FIXTURE = "pdf_parser_memory_benchmark.py"
 
 
 def legacy_medium(source):
@@ -29,13 +42,14 @@ def compare(baseline, candidate):
     packaged = (baseline / "benchmarks" / MEDIUM).is_file()
     old_dir = baseline / "benchmarks" if packaged else baseline
     for name in (MEDIUM, FIXTURE):
-        old = (old_dir / name).read_bytes()
+        old_name = name if packaged else {MEDIUM: LEGACY_MEDIUM, FIXTURE: LEGACY_FIXTURE}[name]
+        old = (old_dir / old_name).read_bytes()
         new = (candidate / name).read_bytes()
         if not packaged and name == MEDIUM:
             new = legacy_medium(new)
         if old != new:
             raise ValueError(f"Incomparable benchmark source: {name}")
-    return f"benchmarks/{MEDIUM}" if packaged else MEDIUM
+    return f"benchmarks/{MEDIUM}" if packaged else LEGACY_MEDIUM
 
 
 if __name__ == "__main__":
