@@ -19,7 +19,7 @@ class InstallationDocsTests(unittest.TestCase):
     )[0]
 
   def test_retains_scanner_install_command(self):
-    self.assertIn("bash install-allow-and-open.sh", self.installation)
+    self.assertIn("bash scripts/installation/install-allow-and-open.sh", self.installation)
     self.assertIn("**Allow and Open**", self.installation)
 
   def test_discoverable_installation_path_matches_real_installer(self):
@@ -30,7 +30,7 @@ class InstallationDocsTests(unittest.TestCase):
     installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     self.assertIn("[source installation instructions](docs/installation-path.md)", self.installation)
     self.assertIn("[Install PDF Magic Opener from source](installation-path.md)", index)
-    self.assertIn("bash install-allow-and-open.sh", guide)
+    self.assertIn("bash scripts/installation/install-allow-and-open.sh", guide)
     self.assertIn("Do not treat CI-built unsigned ZIPs as", guide)
     self.assertIn("not a self-contained clean-Mac installer", guide)
     self.assertIn("Do not disable Gatekeeper", guide)

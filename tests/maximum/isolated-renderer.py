@@ -219,6 +219,7 @@ class MaximumRendererTests(unittest.TestCase):
         script = "\n".join((
             "import errno, socket, sys",
             "sys.path.insert(0, sys.argv[1])",
+            "__import__('src.module-loader')",
             "outbound = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
             "bound = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
             'from importlib import import_module',

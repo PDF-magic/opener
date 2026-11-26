@@ -18,7 +18,7 @@ class UpgradeDocumentationTests(unittest.TestCase):
     def test_documented_entry_point_and_prerequisites(self):
         for item in (
             "macOS 13", "complete, trusted", "Allow and Open",
-            "xcode-select --install", "bash install-allow-and-open.sh",
+            "xcode-select --install", "bash scripts/installation/install-allow-and-open.sh",
             "never with sudo", "not an in-app application",
         ):
             with self.subTest(item=item):

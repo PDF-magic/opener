@@ -20,7 +20,7 @@ class ApplicationUpdateDeliveryTests(unittest.TestCase):
     for required in (
       "user-initiated", "complete trusted checkout", "PDF-magic/opener",
       "no background", "no published binary update channel",
-      "bash install-allow-and-open.sh", "normal user", "macOS 13",
+      "bash scripts/installation/install-allow-and-open.sh", "normal user", "macOS 13",
       "finish any active scans", "post-install verification",
       "upgrade procedure", "rollback",
     ):
