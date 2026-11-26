@@ -42,7 +42,7 @@ for filename in filter(None, paths):
     aliases = sorted(n[:-3].replace("-", "_") for n in moves)
     for name, destination in moves.items():
       updated = updated.replace(repr(name), repr(destination))
-    updated = updated.replace("class _FilenameFinder:", "_ROOT_ALIASES = frozenset(" + repr(aliases + ["maximum-network-isolation"]) + ")\n_FILES['maximum-network-isolation'] = _FILES['maximum_network_isolation']\n\n\nclass _FilenameFinder:")
+    updated = updated.replace("class _FilenameFinder:", "_ROOT_ALIASES = frozenset(" + repr(aliases + ["maximum-network-isolation"]) + ")\n_FILES['maximum-network-isolation'] = 'src/protection/maximum-network-isolation.py'\n\n\nclass _FilenameFinder:")
     updated = updated.replace("matches = Path(entry).resolve() == source.parent", "directory = Path(entry).resolve()\n                matches = directory == source.parent or (fullname in _ROOT_ALIASES and directory == _ROOT)")
   elif filename in moves:
     updated = updated.replace("os.path.dirname(os.path.realpath(__file__))", "os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))")
