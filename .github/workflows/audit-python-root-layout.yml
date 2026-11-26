@@ -1,35 +1,41 @@
-name: Audit Python root layout
+name: Validate Python source relocation
 on:
   push:
     branches: [shoeshine]
     paths:
       - .github/workflows/audit-python-root-layout.yml
+      - scripts/prepare-python-root-layout.py
 permissions:
   contents: read
 jobs:
-  audit:
-    runs-on: ubuntu-latest
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - run: |
-          python3 - <<'PY'
-          import pathlib, re, subprocess
-          root = pathlib.Path(".")
-          names = sorted(p.name for p in root.glob("*.py"))
-          pattern = re.compile("|".join(re.escape(n) for n in names))
-          files = subprocess.check_output(["git","ls-files","-z"]).decode().split("\0")
-          for filename in filter(None,files):
-              p = pathlib.Path(filename)
-              if p.suffix not in (".py",".sh",".swift",".md",".yml",".yaml",".json",".mjs",".js",".command"):
-                  continue
-              if p.name in ("module-loader.py","audit-python-root-layout.yml"):
-                  continue
-              try:
-                  for i,line in enumerate(p.read_text().splitlines(),1):
-                      if pattern.search(line) or ("import_module(" in line and "maximum-" in line):
-                          print(f"REF {filename}:{i}: {line.strip()}")
-              except UnicodeDecodeError:
-                  pass
-          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare candidate
+        run: python3 scripts/prepare-python-root-layout.py
+      - name: Install test dependencies
+        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt 'Pillow==11.3.0'
+      - name: Validate source paths and isolated worker regressions
+        env:
+          PYTHONPATH: .
+        run: |
+          python3 -m compileall -q src tests
+          python3 tests/maximum/isolated-analysis.py -v
+          python3 tests/general/timed-pdf-structure-analysis.py -v
+          python3 tests/maximum/generated-content-marking.py -v
+          python3 tests/maximum/save-sanitized-pdf-action.py -v
+          python3 tests/pdf/stream-lengths.py -v
+          python3 tests/protection/stage-resource-budgets.py -v
+          python3 tests/general/ci-test-scope.py -v
+          python3 tests/maximum/network-isolation.py -v
