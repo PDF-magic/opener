@@ -141,7 +141,7 @@ class BrowserColdStartTests(unittest.TestCase):
                 check=True, timeout=20, capture_output=True, text=True,
             )
 
-            harness = root / "test-cold-start.swift"
+            harness = root / "cold-start-harness.swift"
             harness.write_text(before + HARNESS_SOURCE)
             binary = root / "cold-start-test"
             subprocess.run(

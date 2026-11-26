@@ -48,7 +48,7 @@ class QuarantineRemovalInventoryTests(unittest.TestCase):
                      "native-messaging/Host.swift", ".github/workflows/ci.yml"]:
             self.assertTrue(audit.runtime_path(path), path)
         for path in ["tests/general/retain-os-quarantine.py",
-                     "test-browser-download-monitoring.swift",
+                     "tests/browser/download-monitoring.swift",
                      "docs/macos-quarantine-removal-inventory.md",
                      "tools/audit_quarantine_removal.py", "secrets/browser-credentials.py",
                      ".env", "user-private-key.pem"]:

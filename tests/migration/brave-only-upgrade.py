@@ -290,7 +290,7 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
           baseline[str(path)], str(path),
         )
     self.assertIn(
-      "test-application-upgrade-preferences.swift",
+      "tests/preferences/application-upgrade.swift",
       (ROOT / ".github/workflows/ci.yml").read_text(),
     )
 

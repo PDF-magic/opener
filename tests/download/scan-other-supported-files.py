@@ -58,7 +58,7 @@ class ScanOtherSupportedFilesTests(unittest.TestCase):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     self.assertIn("PYTHONPATH=. python3 tests/download/scan-other-supported-files.py -v", ci)
     self.assertIn(
-        "PDFMagicOpenerApp/ScanProgressPreference.swift test-scan-other-supported-files.swift",
+        "PDFMagicOpenerApp/ScanProgressPreference.swift tests/scan/other-supported-files.swift",
         ci,
     )
     self.assertIn("macos-build:", ci)

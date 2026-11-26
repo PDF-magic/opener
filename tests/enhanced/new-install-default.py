@@ -90,7 +90,7 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
         scanner = SCANNER.read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("New installation recommendation", scanner)
-        config_test = (ROOT / "test-policy-settings-upgrade.swift").read_text(
+        config_test = (ROOT / "tests/protection/policy-upgrade.swift").read_text(
             encoding="utf-8"
         )
         self.assertIn("built-in", config_test)
