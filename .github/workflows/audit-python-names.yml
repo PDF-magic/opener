@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python3 -m pip install -r requirements-enhanced-pdf.txt
+      - run: python3 -m pip install -r requirements-enhanced-pdf.txt 'pymupdf==2.0'
       - name: Verify renamed module and security regression tests
         env:
           PYTHONPATH: .
