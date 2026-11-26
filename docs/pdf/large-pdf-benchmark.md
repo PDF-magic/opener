@@ -8,7 +8,7 @@ traversal of every content stream** takes on two **16 MiB+** inert PDFs:
 - `single-large-stream`: one page, a real content stream containing 17 MiB of harmless whitespace.
 - `many-large-pages`: 256 pages with independent 64 KiB content streams.
 
-Run from the repository root after installing `requirements-enhanced-pdf.txt`:
+Run from the repository root after installing `requirements/requirements-enhanced-pdf.txt`:
 
 ```sh
 python3 benchmarks/large-pdf-benchmark.py --case all --runs 3

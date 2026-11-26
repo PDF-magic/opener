@@ -136,7 +136,7 @@ class PDFRecursionDepthTests(unittest.TestCase):
                         parser.index("pages = reader.pages"))
         self.assertNotIn("pdf_structure_parser", gate)
         self.assertIn("python3 tests/pdf/recursion-depth.py -v", workflow)
-        self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
+        self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt", workflow)
 
 
 if __name__ == "__main__":

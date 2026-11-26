@@ -83,14 +83,14 @@ class InstallationConsentTests(unittest.TestCase):
                 self.assertNotIn(forbidden, source)
 
     def test_root_rejected_before_all_installer_operations(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         root_guard = source.index('if [ "$EUID" -eq 0 ]; then')
         self.assertLess(root_guard, source.index('script_dir='))
         self.assertIn("Do not run the PDF Magic Opener installer as root", source)
         self.assertNotIn("sudo ", source.split("\n", 1)[-1].split("script_dir=", 1)[1])
 
     def test_brew_is_gated_by_existing_binary_check_and_real_consent(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         start = source.index("if ! [ -x /opt/homebrew/bin/clamscan ]")
         end = source.index("\nfi", start)
         fallback = source[start:end]
@@ -107,7 +107,7 @@ class InstallationConsentTests(unittest.TestCase):
         self.assertNotIn(command, source[:start])
 
     def test_normal_installer_path_and_scan_gates_remain_present(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         for anchor in (
             'migration_attempt="$(python3 "$script_dir/scripts/migration-state.py"',

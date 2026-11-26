@@ -31,5 +31,5 @@ continues to use `--alert-encrypted=yes`; actual integration of any new
 optional parsing stages requires separately reviewed isolation and budgets.
 
 Run `python3 test-pdf-encryption-policy.py -v` after installing the reviewed
-`requirements-enhanced-pdf.txt` pin. CI runs this regression after its
+`requirements/requirements-enhanced-pdf.txt` pin. CI runs this regression after its
 existing PDF structure tests.

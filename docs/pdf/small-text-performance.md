@@ -9,7 +9,7 @@ From the repository root, install the repository's reviewed optional PDF parser
 dependency and run:
 
 ```sh
-python3 -m pip install -r requirements-enhanced-pdf.txt
+python3 -m pip install -r requirements/requirements-enhanced-pdf.txt
 PYTHONPATH=. python3 benchmarks/small-text-pdf-benchmark.py --samples 5
 ```
 

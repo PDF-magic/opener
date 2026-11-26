@@ -31,7 +31,7 @@ jobs:
           python-version: "3.11"
       - name: Install test-only pinned parser and signing dependency
         run: |
-          python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+          python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
           python3 -m pip install --disable-pip-version-check 'cryptography==46.0.4'
       - name: Validate signed documents and fail-closed passive interpretation
         run: PYTHONPATH=. python3 tests/pdf/digital-signature-corpus.py -v

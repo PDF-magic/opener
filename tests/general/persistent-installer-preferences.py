@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class PersistentInstallerPreferenceTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     match = re.search(
       r"python3 - \"\$install_dir/target-app\.txt\" <<'TARGET_APP'\n(.*?)\nTARGET_APP",
       installer,

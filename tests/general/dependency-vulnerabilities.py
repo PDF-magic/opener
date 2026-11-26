@@ -33,7 +33,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     return {"name": name, "version": version, "vulns": vulns or []}
 
   def test_current_and_legacy_pins_come_from_license_review(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.4\n")
+    (self.root / "requirements/requirements-enhanced-pdf.txt").write_text("# optional\npypdf==6.21.4\n")
     versions = {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
                 ("Pillow", "11.3.0"), ("cryptography", "46.0.4"),
                 ("PyMuPDF", "2.0")}
@@ -73,7 +73,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
       audit.verify_report(self.report, expected, 0, True)
 
   def test_missing_or_ambiguous_renderer_pin_is_rejected(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("pypdf==6.21.4\n")
+    (self.root / "requirements/requirements-enhanced-pdf.txt").write_text("pypdf==6.21.4\n")
     for versions in (
         {("pypdf", "6.21.4"), ("pypdf", "5.9.0")},
         {("pypdf", "6.21.4"), ("pypdf", "5.9.0"),
@@ -136,7 +136,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
     self.assertIn("Run alternating, independent 5-sample comparisons", workflow)
 
   def test_unreviewed_active_pin_is_rejected(self):
-    (self.root / "requirements-enhanced-pdf.txt").write_text("other==9.9\n")
+    (self.root / "requirements/requirements-enhanced-pdf.txt").write_text("other==9.9\n")
     with mock.patch.object(audit.licenses, "check", return_value=self.expected | {("pymupdf", "2.0"), ("pypdf", "5.9.0")}):
       with self.assertRaises(audit.VulnerabilityAuditError):
         audit.pins(self.root)

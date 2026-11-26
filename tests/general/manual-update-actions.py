@@ -5,7 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEW = ROOT / "PDFMagicOpenerApp" / "UpdatesSettingsView.swift"
-UPDATE = ROOT / "update-malware-signatures.sh"
+UPDATE = ROOT / "src/scanner/update-malware-signatures.sh"
 SCAN = ROOT / "src/scan/scan-and-open.py"
 CI = ROOT / ".github/workflows/ci.yml"
 

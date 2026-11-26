@@ -9,8 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-REPAIR = ROOT / "Repair Installation.command"
-INSTALLER = ROOT / "install-allow-and-open.sh"
+REPAIR = ROOT / "scripts/installation/repair-installation.command"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
 
 
 class RepairInstallationTests(unittest.TestCase):
@@ -18,15 +18,17 @@ class RepairInstallationTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="opener-repair-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        self.repair = self.root / REPAIR.name
+        installation = self.root / "scripts/installation"
+        installation.mkdir(parents=True)
+        self.repair = installation / REPAIR.name
         shutil.copyfile(REPAIR, self.repair)
         self.repair.chmod(0o755)
         scripts = self.root / "scripts"
-        scripts.mkdir()
+        scripts.mkdir(exist_ok=True)
         for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# test fixture only\n", encoding="utf-8")
         self.marker = self.root / "installer-ran"
-        self.installer = self.root / INSTALLER.name
+        self.installer = installation / INSTALLER.name
         self.installer.write_text(
             '#!/bin/bash\nprintf "called" > "' + str(self.marker) + '"\n',
             encoding="utf-8",
@@ -110,8 +112,8 @@ class RepairInstallationTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         doc = (ROOT / "docs/repair-installation.md").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("Repair Installation.command", readme)
-        self.assertIn("Repair Installation.command", doc)
+        self.assertIn("repair-installation.command", readme)
+        self.assertIn("repair-installation.command", doc)
         self.assertIn("REPAIR", doc)
         self.assertIn("tests/general/repair-installation.py -v", ci)
         self.assertTrue(REPAIR.is_file())

@@ -147,7 +147,7 @@ class NativeHelperUninstallTests(unittest.TestCase):
 
   def test_ci_guide_installer_and_rollback_integration(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    installer = (ROOT / "install-allow-and-open.sh").read_text()
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
     recovery = (ROOT / "scripts/preserve-existing-opener.py").read_text()
     guide = (ROOT / "docs/uninstall-procedure.md").read_text()
     self.assertIn("tests/general/retire-helpers.py -v", ci)

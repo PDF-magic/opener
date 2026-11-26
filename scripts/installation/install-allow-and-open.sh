@@ -8,7 +8,7 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
-script_dir="$(cd "$(dirname "$0")" && pwd)"
+script_dir="$(cd "$(dirname "$0")/../.." && pwd -P)"
 export PYTHONPATH="$script_dir"
 install_dir="$HOME/Library/Application Support/Studio/allow-and-open"
 workflow="$HOME/Library/Services/Allow and Open.workflow/Contents/document.wflow"
@@ -142,7 +142,7 @@ else:
     with os.fdopen(fd, 'w', encoding='ascii') as stream:
         stream.write('com.brave.Browser\n')
 TARGET_APP
-cp "$script_dir/allow-and-open.sh" "$script_dir/src/scan/scan-and-open.py" "$script_dir/src/module-loader.py" "$script_dir/src/native/launch/file-launcher.py" "$script_dir/src/browser/browser-registry.py" "$script_dir/src/scan/scan-results.py" "$script_dir/src/scanner/scanner-argument-validation.py" "$script_dir/src/scanner/scanner-concurrency-validation.py" "$script_dir/src/scanner/scanner-filesystem-sandbox.py" "$script_dir/src/scan/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$script_dir/src/scanner/signature-update-status.py" "$install_dir/"
+cp "$script_dir/src/scan/allow-and-open.sh" "$script_dir/src/scan/scan-and-open.py" "$script_dir/src/module-loader.py" "$script_dir/src/native/launch/file-launcher.py" "$script_dir/src/browser/browser-registry.py" "$script_dir/src/scan/scan-results.py" "$script_dir/src/scanner/scanner-argument-validation.py" "$script_dir/src/scanner/scanner-concurrency-validation.py" "$script_dir/src/scanner/scanner-filesystem-sandbox.py" "$script_dir/src/scan/record-scan-origin.py" "$script_dir/src/scanner/update-malware-signatures.sh" "$script_dir/src/scanner/signature-update-status.py" "$install_dir/"
 # Deploy the read-only status display beside its Launch Services lookup.
 cp "$script_dir/src/native/handler/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"

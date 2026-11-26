@@ -95,7 +95,7 @@ class ExistingSignatureDatabaseTests(unittest.TestCase):
             self.assertEqual(detector.detect_existing_signature_database(self.database), "unsafe")
 
     def test_installer_runs_detection_before_mutation_and_ci_tracks_it(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         marker = 'python3 "$script_dir/scripts/installation/existing-signature-database.py" "$install_dir/signatures"'
         self.assertIn(marker, installer)
         self.assertLess(installer.index(marker), installer.index('mkdir -p "$install_dir/signatures"'))

@@ -105,7 +105,7 @@ class RetainOperatingSystemQuarantineTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase.lower(), guide.lower())
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('codesign --force --sign - "$app"', installer)
         self.assertIn("Ad hoc signing is **not** a Developer ID", guide)
         source = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")

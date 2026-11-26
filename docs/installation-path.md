@@ -35,7 +35,7 @@ From Terminal, as the ordinary macOS user, at the **root of the trusted
 checkout**:
 
 ```sh
-bash install-allow-and-open.sh
+bash scripts/installation/install-allow-and-open.sh
 ```
 
 The installer runs the read-only prerequisite checks first, then uses its

@@ -50,13 +50,13 @@ class StaleSignatureWarningTests(unittest.TestCase):
         self.assertIn("addingTimeInterval(-20)", native)
 
     def test_scan_gate_agent_and_customization_are_unchanged(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
         gate = (ROOT / "src/scan/scan-and-open.py").read_text()
         self.assertNotIn("freshnessWarning", gate)
-        updater = (ROOT / "update-malware-signatures.sh").read_text()
+        updater = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertNotIn("freshnessWarning", updater)
         self.assertIn("last-successful-update", updater)
 

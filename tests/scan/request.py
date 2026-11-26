@@ -91,7 +91,7 @@ class ScanRequestApplicationTests(unittest.TestCase):
         self.assertEqual(target.read_text(), "preserve me")
 
     def test_gate_passes_native_and_finder_origin_without_losing_paths(self):
-        original = (ROOT / "allow-and-open.sh").read_text()
+        original = (ROOT / "src/scan/allow-and-open.sh").read_text()
         original_call = 'exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"'
         self.assertEqual(original.count(original_call), 1)
         temporary = Path(self.temp.name)

@@ -103,10 +103,10 @@ class PDFFilenameTests(unittest.TestCase):
 
     def test_shared_finder_and_native_shell_gate_preserves_literal_pdf_argument(self):
         """The shell entry point forwards one literal argument, not a command string."""
-        source = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8")
         original = 'exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"'
         self.assertEqual(source.count(original), 1)
-        gate = self.root / "allow-and-open.sh"
+        gate = self.root / "src/scan/allow-and-open.sh"
         gate.write_text(
             source.replace(original, 'exec /bin/bash "$script_dir/capture.sh" "$@"'),
             encoding="utf-8",

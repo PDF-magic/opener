@@ -117,7 +117,7 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
     def test_installer_integrates_after_bundle_verification_and_before_prompt(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text()
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         self.assertIn('scripts/reconcile-pdf-handler-registration.py', source)
         self.assertIn('scripts/list-registered-pdf-openers.swift', source)
         self.assertNotIn('lsregister -f "$app"', source)

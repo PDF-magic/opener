@@ -2,7 +2,7 @@
 
 **Decision: retain pypdf, update reviewed pin to 6.21.4.** The parser was introduced by [PR #179](https://github.com/PDF-magic/opener/pull/179)
 for optional, strict Enhanced PDF structure inspection. The dependency is
-**exactly pinned** as `pypdf==6.21.4` in `requirements-enhanced-pdf.txt`.
+**exactly pinned** as `pypdf==6.21.4` in `requirements/requirements-enhanced-pdf.txt`.
 This decision confirms that selection; it neither adds a competing parser
 nor enables the planned Enhanced profile.
 
@@ -46,7 +46,7 @@ Run after installing the optional candidates **in a disposable environment**
 and independently checking their licenses:
 
 ```sh
-python3 -m pip install -r requirements-enhanced-pdf.txt
+python3 -m pip install -r requirements/requirements-enhanced-pdf.txt
 python3 benchmarks/pdf-parser-memory-benchmark.py --parser pypdf --pages 512 --stream-bytes 4194304
 # Optionally, in an isolated evaluation environment with pikepdf and PyMuPDF:
 python3 benchmarks/pdf-parser-memory-benchmark.py --parser all --pages 512 --stream-bytes 4194304

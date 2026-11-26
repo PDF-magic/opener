@@ -22,7 +22,7 @@ class UpdateFailureTests(unittest.TestCase):
     self.fake.write_text('#!/bin/sh\necho "private path /somewhere" >&2\nexit "$FAKE_EXIT"\n')
     self.fake.chmod(0o700)
     self.script = Path(temporary.name) / "updater.sh"
-    original = (ROOT / "update-malware-signatures.sh").read_text()
+    original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
     self.assertIn(PATHS, original)
     # Synthetic update tests bypass only the separately tested ClamAV
     # stage-load probe in their disposable updater copy.
@@ -74,7 +74,7 @@ class UpdateFailureTests(unittest.TestCase):
     self.assertTrue((self.stamps / "last-attempted-update").is_file())
 
   def test_failure_is_never_raw_stderr_or_user_content(self):
-    original = (ROOT / "update-malware-signatures.sh").read_text()
+    original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
     self.assertIn('trap cleanup EXIT', original)
     self.assertIn('record_failure "$status"', original)
     self.assertIn('local status=$?', original)
@@ -85,7 +85,7 @@ class UpdateFailureTests(unittest.TestCase):
     scanner = (ROOT / "src/scan/scan-and-open.py").read_text()
     self.assertNotIn("last-failed-update", scanner)
     self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
-    installer = (ROOT / "install-allow-and-open.sh").read_text()
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
     self.assertIn('python3 "$script_dir/scripts/migrate-update-agent.py"', installer)
     migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
     self.assertIn('"StartInterval": 14400', migrator)

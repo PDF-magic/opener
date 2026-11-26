@@ -57,7 +57,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/structure-ambiguity.py -v
 
       - name: pdf / pdf-automatic-external-requests / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-automatic-external-requests / Detect network-targeting actions reached from automatic triggers
         run: PYTHONPATH=. python3 tests/pdf/automatic-external-requests.py -v
       - name: pdf / pdf-automatic-external-requests / Preserve form action inspection regressions
@@ -68,13 +68,13 @@ jobs:
         run: PYTHONPATH=. python3 tests/enhanced/password-protected.py -v
 
       - name: pdf / pdf-document-permissions / Install pinned optional PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-embedded-file-types / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-embedded-filenames / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-embedded-object-sizes / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-form-actions / Install maintained PDF parser
         run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
       - name: pdf / pdf-incremental-revisions / Install PDF parser used by the Enhanced inspection suites
@@ -85,13 +85,13 @@ jobs:
         run: PYTHONPATH=. python3 tests/pdf/incremental-corpus.py -v
 
       - name: pdf / pdf-repeated-structures / Install pinned optional PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-unsupported-feature-inspection / Install pinned optional PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: pdf / pdf-unsupported-feature-inspection / Preserve unusual object-count inspection
         run: PYTHONPATH=. python3 tests/pdf/unusual-object-counts.py -v
       - name: pdf / pdf-unusual-object-counts / Install pinned Enhanced PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
   protection-policy-tests:
     needs: detect-scope
     if: needs.detect-scope.outputs.run_policy == 'true'
@@ -109,7 +109,7 @@ jobs:
           PYTHONPATH=. python3 tests/general/structured-protection-policy.py -v
           PYTHONPATH=. python3 tests/general/effective-protection-policy.py -v
       - name: policy / clamav-structural-success-priority / Install the pinned passive PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: policy / clamav-structural-success-priority / Ensure structural success cannot override a ClamAV detection
         run: PYTHONPATH=. python3 tests/scan/and-open.py -v -k structural_success_cannot_override_clamav_detection
 

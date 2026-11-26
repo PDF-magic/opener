@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pinned PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Validate real external /Launch PDFs without executing actions
         run: PYTHONPATH=. python3 tests/pdf/external-launch-action-corpus.py -v
       - name: Preserve passive external and automatic-action inspection regressions

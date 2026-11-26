@@ -76,7 +76,7 @@ class PDFHandlerStatusTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_installer_displays_status_after_optional_restoration_offer(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('cp "$script_dir/src/native/handler/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
         offer = installer.index('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"')

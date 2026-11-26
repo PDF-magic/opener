@@ -126,7 +126,7 @@ class PDFStreamLengthTests(unittest.TestCase):
     self.assertNotIn("get_data(", module)
     self.assertIn("strict=True", (ROOT / "src/pdf/pdf-structure-parser.py").read_text())
     self.assertIn("python3 tests/pdf/stream-lengths.py -v", workflow)
-    self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt",
+    self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt",
                   workflow)
 
 

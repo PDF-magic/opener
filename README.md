@@ -291,7 +291,7 @@ settings. Notification toggles and alert delivery are separate future work.
 This main preferences interface is **not** a replacement for the
 installed AppKit PDF handler. It has a separate bundle identifier, does not
 register PDF document types or accept document opens, and is not installed
-by `install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
+by `scripts/installation/install-allow-and-open.sh`. The existing ClamAV scan, quarantine,
 verification, selected application, and Finder behavior are unchanged.
 
 The SwiftUI application also includes an **About PDF Magic Opener** command
@@ -313,7 +313,7 @@ and public-release limitations, see the [source installation instructions](docs/
 Install local malware scanning for the existing **Allow and Open** Finder action and native PDF opening (requires Apple command line tools; Homebrew is used to provision ClamAV only when a supported installed scanner is not found). See the [ClamAV Homebrew dependency decision](docs/clamav-homebrew-decision.md) for the packaging rationale and supported non-Homebrew installations:
 
 ```sh
-bash install-allow-and-open.sh
+bash scripts/installation/install-allow-and-open.sh
 ```
 
 Brave is the default PDF destination, **not an installation prerequisite**.
@@ -326,7 +326,7 @@ An unavailable destination blocks opening without bypassing the scan gate or
 silently overwriting a saved application choice.
 
 To **Repair Installation** from the same complete, trusted source checkout,
-double-click `Repair Installation.command` in Finder or run
+double-click `scripts/installation/repair-installation.command` in Finder or run
 `./Repair\ Installation.command` in Terminal. This explicit, confirmed
 action reruns the existing safe installer to restore missing or damaged
 managed application components; it does not force-reinstall a detected
@@ -1014,7 +1014,7 @@ Each scan request records three origin flags (Finder, browser, or other desktop 
 
 | File | Purpose |
 | --- | --- |
-| `install-allow-and-open.sh` | Install the scan gate, native app, Finder action integration, and signature update agent |
+| `scripts/installation/install-allow-and-open.sh` | Install the scan gate, native app, Finder action integration, and signature update agent |
 | `src/native/launch/brave-pdf-opener.swift` | Native PDF open handler with scan progress and duplicate-open prevention |
 | `allow-and-open.sh` | Shared shell entry point for the scan gate |
 | `scan-and-open.py` | Validate signatures, scan files, preserve quarantine on failure, and open clean files |

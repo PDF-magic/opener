@@ -21,19 +21,19 @@ IMPORT_GATE = (
 
 
 class PythonSourceLayoutTests(unittest.TestCase):
-    def test_no_root_python_sources(self):
+    def test_no_root_source_or_runtime_files(self):
         tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
         names = [Path(name.decode()) for name in tracked.split(b"\0") if name]
         self.assertEqual([str(name) for name in names
-                          if len(name.parts) == 1 and name.suffix == ".py"], [])
+                          if len(name.parts) == 1 and name.suffix in (".py", ".swift", ".sh", ".command", ".txt")], [])
 
     def test_scanner_imports_from_checkout_and_flat_installation(self):
         env = {**os.environ, "PYTHONPATH": "", "PYTHONDONTWRITEBYTECODE": "1"}
         subprocess.run([sys.executable, "-I", "-B", "-c", IMPORT_GATE, str(GATE)],
                        check=True, cwd="/", env=env)
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         copy_line = next(line for line in installer.splitlines()
-                         if line.startswith('cp "$script_dir/allow-and-open.sh"'))
+                         if line.startswith('cp "$script_dir/src/scan/allow-and-open.sh"'))
         sources = re.findall(r'"\$script_dir/([^"]+\.py)"', copy_line)
         self.assertIn("src/module-loader.py", sources)
         self.assertIn("src/scan/scan-and-open.py", sources)

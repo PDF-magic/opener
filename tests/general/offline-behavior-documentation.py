@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DOC = ROOT / "docs/offline-behavior.md"
 INDEX = ROOT / "docs/README.md"
 SCANNER = ROOT / "src/scan/scan-and-open.py"
-UPDATER = ROOT / "update-malware-signatures.sh"
+UPDATER = ROOT / "src/scanner/update-malware-signatures.sh"
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 

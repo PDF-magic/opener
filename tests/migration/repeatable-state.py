@@ -128,7 +128,7 @@ class MigrationStateTests(unittest.TestCase):
     self.assertNotIn(str(self.home), done.stderr)
 
   def test_installer_only_records_completion_after_final_operations(self):
-    installer = (ROOT / "install-allow-and-open.sh").read_text()
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
     begin = 'migration_attempt="$(python3 "$script_dir/scripts/migration-state.py" --home "$HOME" begin)"'
     finish = 'python3 "$script_dir/scripts/migration-state.py" --home "$HOME" complete "$migration_attempt"'
     self.assertIn(begin, installer)

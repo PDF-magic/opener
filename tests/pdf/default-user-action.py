@@ -22,7 +22,7 @@ class PDFDefaultUserActionTests(unittest.TestCase):
         subprocess.run(["bash", "-n", str(script)], check=True)
 
     def test_installer_exposes_action_without_overwriting_existing_user_action(self):
-        script = (ROOT / "install-allow-and-open.sh").read_text()
+        script = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         self.assertIn('swiftc -parse-as-library -O "$script_dir/src/native/handler/make-pdf-magic-default.swift"', script)
         self.assertIn('"$app/Contents/MacOS/MakePDFMagicDefault"', script)
         self.assertIn('action="$HOME/Applications/Make PDF Magic Opener Default.command"', script)

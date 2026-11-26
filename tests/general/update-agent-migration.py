@@ -114,7 +114,7 @@ class UpdateAgentMigrationTests(unittest.TestCase):
         self.assertEqual(self.external.read_bytes(), b"unrelated user data\n")
 
     def test_installer_migrates_after_verifying_bundle_before_bootout(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         migration = 'python3 "$script_dir/scripts/migrate-update-agent.py"'
         self.assertEqual(installer.count(migration), 1)
         self.assertLess(installer.index('python3 "$script_dir/scripts/verify-pdf-opener-bundle.py"'),
@@ -220,7 +220,7 @@ class SingleActiveUpdateAgentTests(unittest.TestCase):
                 self.assertEqual(state["boots"], 1)
 
     def test_installer_migrates_before_one_scoped_reconciliation(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         migrate = 'python3 "$script_dir/scripts/migrate-update-agent.py"'
         reconcile = 'python3 "$script_dir/scripts/reconcile-update-agent.py"'
         self.assertEqual(installer.count(reconcile), 1)

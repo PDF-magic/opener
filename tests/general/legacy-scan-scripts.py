@@ -89,11 +89,11 @@ class ExistingScanScriptsTests(unittest.TestCase):
     self.assertEqual(self.run_detector().returncode, 1)
 
   def test_installer_probes_before_any_installed_script_replacement(self):
-    installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     invocation = 'python3 "$script_dir/scripts/detect-existing-scan-scripts.py" "$install_dir"'
     self.assertIn(invocation, installer)
     self.assertLess(installer.index(invocation), installer.index('mkdir -p "$install_dir/signatures"'))
-    self.assertLess(installer.index(invocation), installer.index('cp "$script_dir/allow-and-open.sh"'))
+    self.assertLess(installer.index(invocation), installer.index('cp "$script_dir/src/scan/allow-and-open.sh"'))
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertIn("PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v", workflow)
 

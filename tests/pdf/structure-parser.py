@@ -108,14 +108,14 @@ class PDFStructureParserTests(unittest.TestCase):
     def test_parser_does_not_activate_profile_or_mutate_existing_safety_gate(self):
         scanner = (ROOT / "src/scan/scan-and-open.py").read_text(encoding="utf-8")
         module = (ROOT / "src/pdf/pdf-structure-parser.py").read_text(encoding="utf-8")
-        requirements = (ROOT / "requirements-enhanced-pdf.txt").read_text(encoding="utf-8")
+        requirements = (ROOT / "requirements/requirements-enhanced-pdf.txt").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)
         self.assertNotIn("pypdf", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
         self.assertIn("pypdf==6.21.4", requirements)
-        self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
+        self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt", workflow)
         self.assertIn("python3 tests/pdf/structure-parser.py -v", workflow)
         for forbidden in ("subprocess.", "remove_quarantine(", "launch_clean_file(",
                           "UserDefaults", "Path(", "open(", "write_text(", "os.environ"):

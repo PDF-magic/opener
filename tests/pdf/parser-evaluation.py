@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class PDFParserEvaluationTests(unittest.TestCase):
   def test_selected_dependency_is_exact_and_license_is_checked(self):
-    requirements = (ROOT / "requirements-enhanced-pdf.txt").read_text()
+    requirements = (ROOT / "requirements/requirements-enhanced-pdf.txt").read_text()
     active = [line.strip() for line in requirements.splitlines()
               if line.strip() and not line.lstrip().startswith("#")]
     self.assertEqual(active, ["pypdf==6.21.4"])
@@ -72,7 +72,7 @@ class PDFParserEvaluationTests(unittest.TestCase):
     self.assertIn("python3 tests/pdf/structure-parser.py -v", ci)
     self.assertIn("python3 benchmarks/pdf-parser-memory-benchmark.py --parser pypdf", ci)
     self.assertNotIn("pypdf==5.9.0", ci)
-    self.assertEqual(ci.count("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt"), 2)
+    self.assertEqual(ci.count("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt"), 2)
 
 
 if __name__ == "__main__":

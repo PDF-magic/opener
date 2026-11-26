@@ -136,7 +136,7 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
     self.assertIn("strict=True", module)
     self.assertIn("MAX_STRUCTURE_INPUT_BYTES", module)
     self.assertIn("python3 tests/pdf/cross-reference-parsing.py -v", workflow)
-    self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", workflow)
+    self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt", workflow)
 
 
 if __name__ == "__main__":

@@ -15,8 +15,8 @@ third-party applications, compiled external binaries, or untracked local files.
 | [`tests/general/retain-os-quarantine.py`](../tests/general/retain-os-quarantine.py) | Negative assertions against `os.removexattr`/`xattr`; macOS-only `os.setxattr`/`os.getxattr` | Tests that tagged PDFs retain their extended attribute after fresh, cached, and blocked scans | **Test assertions and fixture setup, not production deletion** |
 | [`maximum-sanitized-copy.py`](../src/sanitization/maximum-sanitized-copy.py) | `preserve_quarantine` policy | Declares that future sanitized output must preserve quarantine | **Preservation contract, not a removal** |
 
-The [`allow-and-open.sh`](../allow-and-open.sh) entry point delegates to the
-scanner. The [`install-allow-and-open.sh`](../install-allow-and-open.sh)
+The [`allow-and-open.sh`](../src/scan/allow-and-open.sh) entry point delegates to the
+scanner. The [`scripts/installation/install-allow-and-open.sh`](../scripts/installation/install-allow-and-open.sh)
 installer deploys the scanner and native components. Neither of these inspected
 shell entry points strips `com.apple.quarantine`. Keep the legacy hook for
 compatibility; do not delete it in an inventory-only change.

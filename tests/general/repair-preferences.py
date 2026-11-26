@@ -19,8 +19,8 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
-REPAIR = ROOT / "Repair Installation.command"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
+REPAIR = ROOT / "scripts/installation/repair-installation.command"
 MIGRATOR = ROOT / "scripts/migrate-update-agent.py"
 sys.dont_write_bytecode = True
 

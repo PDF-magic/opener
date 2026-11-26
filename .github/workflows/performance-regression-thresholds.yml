@@ -45,7 +45,7 @@ jobs:
           # comparable even when the security-reviewed parser pin changes.
       - name: Install pinned parser requirements once for both checkouts
         working-directory: candidate
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Run alternating, independent 5-sample comparisons and enforce limits
         shell: bash
         run: |

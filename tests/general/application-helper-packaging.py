@@ -17,7 +17,7 @@ spec = importlib.util.spec_from_file_location("package_application_helpers", PAC
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
 PROJECT = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
 
 

@@ -44,7 +44,7 @@ class PreserveSignatureDatabaseTests(unittest.TestCase):
         self.fake = self.root / "fake-freshclam"
         self.fake.write_text(FAKE)
         self.fake.chmod(0o700)
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(CANDIDATES, script)
         self.script = self.root / "update.sh"
         # Synthetic update tests bypass only the separately tested ClamAV

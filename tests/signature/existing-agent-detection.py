@@ -133,7 +133,7 @@ class ExistingAgentDetectionTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
 
     def installer_plist_registration(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         match = re.search(
             r"python3 - \"\$app\" \"\$install_dir\" \"\$app_name\" <<'CONFIG'\n(.*?)\nCONFIG",
             installer, re.DOTALL,
@@ -171,7 +171,7 @@ class ExistingAgentDetectionTests(unittest.TestCase):
         self.assertEqual(self.plist.read_bytes(), before)
 
     def test_installer_detects_before_writing_and_preserves_existing_plist(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         self.assertIn('agent_state="$(python3 "$script_dir/scripts/installation/signature-update-launchagent.py")"', installer)
         self.assertIn('except FileExistsError:', installer)
         self.assertIn('os.O_CREAT | os.O_EXCL', installer)

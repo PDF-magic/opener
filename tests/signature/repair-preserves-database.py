@@ -18,9 +18,9 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
-REPAIR = ROOT / "Repair Installation.command"
-UPDATER = ROOT / "update-malware-signatures.sh"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
+REPAIR = ROOT / "scripts/installation/repair-installation.command"
+UPDATER = ROOT / "src/scanner/update-malware-signatures.sh"
 FRESHCLAM_CANDIDATES = (
     "/opt/homebrew/bin/freshclam /usr/local/bin/freshclam "
     "/usr/local/clamav/bin/freshclam"
@@ -139,7 +139,7 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
             'script_dir="$(cd "$(dirname "$0")" && pwd)"\n'
             'install_dir="$HOME/Library/Application Support/Studio/allow-and-open"\n'
             'mkdir -p "$install_dir/signatures"\n'
-            'cp "$script_dir/update-malware-signatures.sh" "$install_dir/"\n'
+            'cp "$script_dir/src/scanner/update-malware-signatures.sh" "$install_dir/"\n'
             'bash "$install_dir/update-malware-signatures.sh"\n'
         )
         (self.checkout / INSTALLER.name).write_text(fixture, encoding="utf-8")
@@ -262,7 +262,7 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
     def test_real_install_and_updater_guards_are_still_required(self):
         self.assertIn('mkdir -p "$install_dir/signatures"', self.installerSource)
         self.assertIn('bash "$install_dir/update-malware-signatures.sh"', self.installerSource)
-        self.assertIn('"$script_dir/update-malware-signatures.sh"', self.installerSource)
+        self.assertIn('"$script_dir/src/scanner/update-malware-signatures.sh"', self.installerSource)
         self.assertIn('exec /bin/bash "$installer"', self.repairSource)
         self.assertIn('if [ "$response" != "REPAIR" ]; then', self.repairSource)
         self.assertIn('/bin/cp -pR "$signature_dir/." "$stage_dir/"',

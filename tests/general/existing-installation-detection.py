@@ -90,7 +90,7 @@ class ExistingInstallationDetectionTests(unittest.TestCase):
         self.assertTrue(app.is_dir())
 
     def test_ids_match_current_repository_metadata(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         project = (ROOT / "PDFMagicOpener.xcodeproj/project.pbxproj").read_text()
         self.assertIn("local.studio.brave-pdf-opener", installer)
         self.assertIn("local.studio.pdfmagicopener.swiftui", project)

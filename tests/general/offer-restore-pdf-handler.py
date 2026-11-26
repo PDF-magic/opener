@@ -96,7 +96,7 @@ class PDFDefaultRestorationTests(unittest.TestCase):
                 self.assertIn("Cannot verify", messages[-1])
 
     def test_installer_uses_offer_without_unconditional_default_change(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         self.assertIn('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"', installer)
         self.assertIn('"$install_dir/identify-pdf-handler"', installer)
         self.assertIn('"$script_dir/src/native/handler/set-pdf-default-handler.swift" "$app"', installer)

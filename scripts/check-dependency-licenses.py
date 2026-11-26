@@ -13,7 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = "docs/dependency-licenses.json"
-REQUIREMENTS = "requirements-enhanced-pdf.txt"
+REQUIREMENTS = "requirements/requirements-enhanced-pdf.txt"
 BROWSER_PACKAGE = "extensions/webextension/package.json"
 
 # Changing a pin or licensing choice requires explicit review here AND in the
@@ -117,7 +117,7 @@ def check(root=ROOT):
   for field in ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies"):
     if package.get(field):
       raise LicenseReviewError("Unreviewed WebExtension dependency: " + field)
-  installer = (root / "install-allow-and-open.sh").read_text(encoding="utf-8")
+  installer = (root / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
   # The reviewed package route requires a validated Homebrew executable and
   # a separate explicit controlling-terminal approval before installation.
   approved_brew_route = (

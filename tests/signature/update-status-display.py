@@ -63,7 +63,7 @@ class SignatureStatusDisplayTests(unittest.TestCase):
         self.assertIn("xcrun swiftc -parse-as-library -warnings-as-errors", ci)
 
     def test_no_change_to_updater_or_fail_closed_scan_gate(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"StartInterval": 14400', migrator)

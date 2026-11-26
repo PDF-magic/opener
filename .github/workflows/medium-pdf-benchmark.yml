@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install the reviewed PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Verify workload, measurement contract and scanner isolation
         run: PYTHONPATH=. python3 tests/performance/medium-pdf.py -v
       - name: Time the real supervised medium-PDF parser

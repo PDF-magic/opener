@@ -143,7 +143,7 @@ class FixedHelperPathsTests(unittest.TestCase):
         self.assertEqual(selected.read_bytes(), b"%PDF-1.4\n")
 
     def test_finder_shell_wrapper_uses_fixed_system_interpreter(self):
-        source = (ROOT / "allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "src/scan/allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('/usr/bin/python3 "$script_dir/record-scan-origin.py" "$@"', source)
         self.assertIn('exec /usr/bin/python3 "$script_dir/scan-and-open.py" "$@"', source)
         self.assertNotIn("env python3", source)

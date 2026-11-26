@@ -23,7 +23,7 @@ versions. ClamAV engine and signature updates are independent of app updates.
    repository root run:
 
    ```sh
-   bash install-allow-and-open.sh
+   bash scripts/installation/install-allow-and-open.sh
    ```
 
 3. Follow the [upgrade procedure](upgrade-process.md) for installer results,

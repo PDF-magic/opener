@@ -85,7 +85,7 @@ class HomebrewDetectionTests(unittest.TestCase):
         self.assertEqual((target.read_bytes(), target.stat().st_mtime_ns), before)
 
     def test_installer_checks_availability_only_when_scanner_missing(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertIn('brew_executable="$(python3 "$script_dir/scripts/detect-homebrew.py")"', source)
         self.assertIn('"$brew_executable" install clamav', source)
         self.assertNotIn("\n    brew install clamav\n", source)

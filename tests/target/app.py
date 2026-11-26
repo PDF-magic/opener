@@ -19,7 +19,7 @@ spec = importlib.util.spec_from_file_location('scan_and_open_target', ROOT / 'sr
 opener = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(opener)
 
-INSTALLER = (ROOT / 'install-allow-and-open.sh').read_text()
+INSTALLER = (ROOT / 'scripts/installation/install-allow-and-open.sh').read_text()
 MARKER = "python3 - \"$install_dir/target-app.txt\" <<'TARGET_APP'\n"
 assert INSTALLER.count(MARKER) == 1
 INIT = INSTALLER.split(MARKER, 1)[1].split('\nTARGET_APP\n', 1)[0]

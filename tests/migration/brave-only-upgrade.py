@@ -16,7 +16,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
 BUNDLE_ID = "local.studio.brave-pdf-opener"
 APP_NAME = "PDF Magic Opener.app"
 AGENT_NAME = "local.studio.pdf-malware-signatures.plist"

@@ -17,7 +17,7 @@ The workflow derives **every explicitly reviewed Python version** from the
 license gate's checked CI requirements and workflow installs, then writes two
 scoped temporary manifests (never committed):
 
-- **Current optional Enhanced parser** (`requirements-enhanced-pdf.txt`):
+- **Current optional Enhanced parser** (`requirements/requirements-enhanced-pdf.txt`):
   a **blocking** audit, including resolver-selected transitive dependencies.
   Any published vulnerability, malformed/incomplete scan, scanner failure or
   unreachable advisory service fails CI. This parser is not part of the

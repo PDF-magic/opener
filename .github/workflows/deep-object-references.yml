@@ -15,6 +15,6 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install reviewed PDF parser
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Validate deep object reference corpus
         run: PYTHONPATH=. python3 tests/pdf/deep-object-references.py -v

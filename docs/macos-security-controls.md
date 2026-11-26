@@ -39,14 +39,14 @@ that the file is harmless, or that opening outside PDF Magic Opener is blocked.
 
 The source of truth is [the scan gate](../src/scan/scan-and-open.py), its
 [launcher](../src/native/launch/file-launcher.py), and the
-[Finder wrapper](../allow-and-open.sh). See also the
+[Finder wrapper](../src/scan/allow-and-open.sh). See also the
 [quarantine-removal audit](macos-quarantine-removal-inventory.md),
 [quarantined-PDF test](open-quarantined-pdf.md), and
 [unscannable-file regression](unscannable-quarantine.md).
 
 ## Installation signing is not Gatekeeper approval
 
-The [installer](../install-allow-and-open.sh) currently signs the locally
+The [installer](../scripts/installation/install-allow-and-open.sh) currently signs the locally
 built PDF document-handler app using **ad hoc signing**
 (`codesign --force --sign -`). Ad hoc signing is **not** a Developer ID
 signature and does **not** notarize the app. Do not describe this installation

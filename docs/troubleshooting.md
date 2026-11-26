@@ -13,7 +13,7 @@ scanner flags to make a blocked file open.
 
 | Symptom | What to check or do | Safety boundary |
 | --- | --- | --- |
-| **Installation cannot start, or a prerequisite is missing** | Confirm macOS 13+, Apple command-line tools, and an installed supported ClamAV binary. Read the installer's specific prerequisite message and the [installation prerequisites](installation-prerequisites.md). If needed, run `xcode-select --install` yourself before retrying the trusted `bash install-allow-and-open.sh` installer as your normal user. | Never run the installer with `sudo`, bypass its Homebrew consent, or assume passing a preliminary check proves the scanner works. |
+| **Installation cannot start, or a prerequisite is missing** | Confirm macOS 13+, Apple command-line tools, and an installed supported ClamAV binary. Read the installer's specific prerequisite message and the [installation prerequisites](installation-prerequisites.md). If needed, run `xcode-select --install` yourself before retrying the trusted `bash scripts/installation/install-allow-and-open.sh` installer as your normal user. | Never run the installer with `sudo`, bypass its Homebrew consent, or assume passing a preliminary check proves the scanner works. |
 | **ClamAV is missing or cannot initialize** | Verify installation using the trusted installer and the [ClamAV post-install checks](clamav-post-install-verification.md). A fresh, explicit scan attempt is required after restoring the prerequisite. | Missing or failed scanner means **blocked**, not clean; no fallback application is authorized. |
 | **Malware signatures are unavailable, incomplete, or older than 48 hours** | Check **Settings → Updates** for the recorded last successful definition check. From the complete trusted installation source, use `update-malware-signatures.sh` or the existing explicit updater action; confirm success before starting a **new** scan. See [signature limitations](scanner/signature-limitations.md). | The timestamp alone is not a scan verdict. Never backdate freshness records, delete protections, or treat a failed update as successful. |
 | **A PDF is blocked for detected malware or suspicious content** | Treat the warning as a stop: leave the file unopened and quarantined. Obtain a trusted replacement or ask the sender to verify the source. | Do not force-open, ignore the finding, remove quarantine, or relabel malware as a mere scanner failure. |
@@ -27,7 +27,7 @@ scanner flags to make a blocked file open.
 ## Repair a damaged installation
 
 From a **complete trusted source checkout**, use the interactive
-`Repair Installation.command` action and type its required `REPAIR`
+`scripts/installation/repair-installation.command` action and type its required `REPAIR`
 confirmation only if you intend to repair installed components. See
 [Repair Installation](repair-installation.md) before proceeding.
 This is not an automatic or privileged recovery method, and a failed repair

@@ -13,7 +13,7 @@ class UpgradeDocumentationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.guide = DOC.read_text(encoding="utf-8")
-        cls.installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        cls.installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
 
     def test_documented_entry_point_and_prerequisites(self):
         for item in (

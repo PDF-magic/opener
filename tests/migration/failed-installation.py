@@ -73,7 +73,7 @@ class FailedInstallationTests(unittest.TestCase):
         self.assertTrue((recovery / "scan-and-open.py").exists())
 
     def test_failed_app_swap_restores_previous_bundle_and_legacy_name(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         extracted = re.search(r"(?ms)^rollback_installation\(\) \{\n.*?^\}", installer)
         self.assertIsNotNone(extracted)
         for legacy in (False, True):
@@ -115,9 +115,9 @@ exit 9
                 self.assertFalse(stage.exists())
 
     def test_installer_snapshots_before_overwriting_programs_and_defers_legacy_rename(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         self.assertLess(installer.index('preserve-existing-opener.py" snapshot'),
-                        installer.index('cp "$script_dir/allow-and-open.sh"'))
+                        installer.index('cp "$script_dir/src/scan/allow-and-open.sh"'))
         self.assertLess(installer.index('verify-pdf-opener-bundle.py" "$app"'),
                         installer.index("legacy.rename(destination)"))
         self.assertLess(installer.index("legacy.rename(destination)"),

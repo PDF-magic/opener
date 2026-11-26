@@ -27,7 +27,7 @@ class InstallationDocsTests(unittest.TestCase):
     self.assertTrue(guide_path.is_file())
     guide = guide_path.read_text(encoding="utf-8")
     index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
-    installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     self.assertIn("[source installation instructions](docs/installation-path.md)", self.installation)
     self.assertIn("[Install PDF Magic Opener from source](installation-path.md)", index)
     self.assertIn("bash install-allow-and-open.sh", guide)

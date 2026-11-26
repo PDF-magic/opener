@@ -65,9 +65,9 @@ class BrowserRegistryTests(unittest.TestCase):
         self.assertEqual(len(identifiers), len(registry.SUPPORTED_BROWSER_BUNDLE_IDS))
 
     def test_registry_is_deployed_with_launcher(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         line = next(line for line in installer.splitlines()
-                    if line.startswith('cp "$script_dir/allow-and-open.sh"'))
+                    if line.startswith('cp "$script_dir/src/scan/allow-and-open.sh"'))
         self.assertIn('"$script_dir/src/native/launch/file-launcher.py"', line)
         self.assertIn('"$script_dir/src/browser/browser-registry.py"', line)
 

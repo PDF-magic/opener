@@ -27,7 +27,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
             'exit "$FAKE_EXIT"\n'
         )
         self.fake.chmod(0o700)
-        original = (ROOT / "update-malware-signatures.sh").read_text()
+        original = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(SCANNER_PATHS, original)
         self.script = self.root / "test-update.sh"
         # Synthetic update tests bypass only the separately tested ClamAV
@@ -140,7 +140,7 @@ class SignatureUpdateProgressTests(unittest.TestCase):
         self.assertIn("python3 tests/signature/update-progress.py -v", ci)
 
     def test_active_marker_is_only_display_metadata(self):
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn('progress_record="$(/bin/date +%s) $$"', script)
         self.assertIn('trap cleanup EXIT', script)
         self.assertIn('cleanup_progress', script)

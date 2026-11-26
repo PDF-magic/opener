@@ -1,7 +1,7 @@
 # Explicit dependency-installation consent (opener-0960)
 
 The PDF Magic Opener installer is a **per-user installer**, not a privileged
-system installer. Invoke `bash install-allow-and-open.sh` as an ordinary user.
+system installer. Invoke `bash scripts/installation/install-allow-and-open.sh` as an ordinary user.
 It refuses to run with root privileges, including through `sudo`, before
 touching application bundles, LaunchAgents, Finder services, or preferences.
 

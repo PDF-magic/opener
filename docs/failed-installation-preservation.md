@@ -1,6 +1,6 @@
 # Preserve a working opener on failed migration (opener-0946)
 
-The standalone `install-allow-and-open.sh` installer retains the previously
+The standalone `scripts/installation/install-allow-and-open.sh` installer retains the previously
 installed PDF scan-handler app until **all** migration and post-install steps
 succeed. A failed bundle build or migration restores the existing app and its
 original legacy filename when applicable, then re-registers the restored app.

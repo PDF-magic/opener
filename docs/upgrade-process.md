@@ -26,7 +26,7 @@ updater. ClamAV malware-definition updates are separate from application upgrade
 From the root of that complete checkout, in Terminal, run:
 
 ```sh
-bash install-allow-and-open.sh
+bash scripts/installation/install-allow-and-open.sh
 ```
 
 The existing installer diagnoses prerequisites before changing installation

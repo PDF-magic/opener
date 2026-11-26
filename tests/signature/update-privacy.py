@@ -48,7 +48,7 @@ class SignatureUpdatePrivacyTests(unittest.TestCase):
         self.fake.write_text(FAKE_FRESHCLAM)
         self.fake.chmod(0o700)
 
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn(UPDATER_CANDIDATES, script)
         # Bypass only the independently tested database-load probe in this copy.
         begin = script.index("# BEGIN staged database verification (opener-0386)")
@@ -99,7 +99,7 @@ class SignatureUpdatePrivacyTests(unittest.TestCase):
         self.assertNotIn("URLSession", view)
 
     def test_ci_covers_privacy_without_changing_local_scan_gate(self):
-        script = (ROOT / "update-malware-signatures.sh").read_text()
+        script = (ROOT / "src/scanner/update-malware-signatures.sh").read_text()
         self.assertIn('"$updater" --config-file="$install_dir/freshclam.conf" --datadir="$stage_dir" </dev/null &', script)
         self.assertIn('if [ "$#" -ne 0 ]; then', script)
         ci = (ROOT / ".github/workflows/ci.yml").read_text()

@@ -12,7 +12,7 @@ verdict. The dedicated regression test parses the existing safe reference PDF
 collection and pypdf-generated documents.
 
 Install this *optional* dependency with
-`python3 -m pip install -r requirements-enhanced-pdf.txt`. The pinned version
+`python3 -m pip install -r requirements/requirements-enhanced-pdf.txt`. The pinned version
 was reviewed against the 2026-10-27 release; regularly update this pin after
 security review.
 

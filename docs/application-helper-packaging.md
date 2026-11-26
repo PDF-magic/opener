@@ -24,7 +24,7 @@ installed helper binaries or user preferences remain unchanged.
 
 **Important security and lifecycle boundary:** The original PDF handler
 `PDFOpener` and its `MakePDFMagicDefault` companion remain separately
-installed by `install-allow-and-open.sh`, with their existing distinct
+installed by `scripts/installation/install-allow-and-open.sh`, with their existing distinct
 bundle identity. The staged preferences app does **not** register PDF
 document types, install or activate browser native messaging, run scanners,
 claim scan health, remove quarantine, or make itself a PDF opener. The

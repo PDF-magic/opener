@@ -205,7 +205,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install reviewed optional PDF parser dependency
-        run: python3 -m pip install --disable-pip-version-check --requirement requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check --requirement requirements/requirements-enhanced-pdf.txt
       - name: Verify real macOS filesystem sandbox and timed parser
         run: PYTHONPATH=. python3 tests/general/timed-pdf-structure-analysis.py -v
 
@@ -285,7 +285,7 @@ jobs:
       - name: Detect pre-existing scan entry points without changing installation state
         run: PYTHONPATH=. python3 tests/general/legacy-scan-scripts.py -v
       - name: Check shell syntax
-        run: bash -n install-allow-and-open.sh allow-and-open.sh update-malware-signatures.sh scripts/installation/make-pdf-magic-default.command
+        run: bash -n scripts/installation/install-allow-and-open.sh src/scan/allow-and-open.sh src/scanner/update-malware-signatures.sh scripts/installation/make-pdf-magic-default.command
       - name: Enforce documented dependency update ownership and review process
         run: PYTHONPATH=. python3 tests/general/dependency-updates.py -v
       - name: Exercise dependency update fail-closed and audit regressions
@@ -313,7 +313,7 @@ jobs:
       - name: Detect interrupted installation migrations and verify safe retries
         run: PYTHONPATH=. python3 tests/migration/repeatable-state.py -v
       - name: Install maintained PDF parser for isolated Enhanced structure tests
-        run: python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+        run: python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
       - name: Classify embedded PDF file types without executing attachments
         run: PYTHONPATH=. python3 tests/pdf/embedded-file-types.py -v
       - name: Verify strict PDF structure parsing with the maintained library
@@ -464,7 +464,7 @@ jobs:
         run: PYTHONPATH=. python3 tests/protection/ci-safety-contract.py -v
       - name: Inspect embedded PDF attachments under the planned Enhanced policy
         run: |
-          python3 -m pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt
+          python3 -m pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt
           PYTHONPATH=. python3 tests/enhanced/embedded-files.py -v
       - name: Test Enhanced policy with a PDF containing embedded attachments
         run: PYTHONPATH=. python3 tests/enhanced/profile-embedded-attachments.py -v

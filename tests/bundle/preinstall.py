@@ -130,7 +130,7 @@ class PreinstallBundleTests(unittest.TestCase):
       self.verify()
 
   def test_installer_validates_signed_staging_before_replacing_installed_app(self):
-    source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
     for needed in (
       "mktemp -d",
       'codesign --force --sign - "$app"',
@@ -147,7 +147,7 @@ class PreinstallBundleTests(unittest.TestCase):
     )
     self.assertLess(
       source.index('python3 "$script_dir/scripts/preserve-existing-opener.py" snapshot'),
-      source.index('cp "$script_dir/allow-and-open.sh"'),
+      source.index('cp "$script_dir/src/scan/allow-and-open.sh"'),
     )
     self.assertIn('mv "$bundle_stage_dir/previous.app" "$installed_app"', source)
     self.assertLess(source.index('mv "$app" "$installed_app"'),

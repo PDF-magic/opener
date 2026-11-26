@@ -118,7 +118,7 @@ class InstallationPrerequisiteTests(unittest.TestCase):
             compiler.assert_not_called()
 
     def test_installer_preflights_before_mutation_and_keeps_existing_safety(self):
-        installer = (ROOT / "install-allow-and-open.sh").read_text()
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         self.assertIn('scripts/report-install-prerequisites.py', installer)
         preflight = installer.index('scripts/report-install-prerequisites.py')
         self.assertLess(preflight, installer.index('scripts/installation/signature-update-launchagent.py'))

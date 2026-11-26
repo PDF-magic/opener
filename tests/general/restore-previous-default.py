@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ACTION = (ROOT / "PDFMagicOpenerApp" / "PDFDefaultApplicationSettingsView.swift").read_text()
 GENERAL = (ROOT / "PDFMagicOpenerApp" / "GeneralSettingsView.swift").read_text()
 HISTORY = (ROOT / "src/native/handler/pdf-handler-history.swift").read_text()
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text()
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
 CI = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
 
 

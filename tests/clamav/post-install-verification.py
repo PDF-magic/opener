@@ -144,7 +144,7 @@ class PostInstallClamAVTests(unittest.TestCase):
         self.assertIn("1\\.(?:4|5)\\.[0-9]+", helper.VERSION.pattern)
 
     def test_installer_verifies_after_package_install_before_installed_file_changes(self):
-        source = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        source = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         consent = 'python3 "$script_dir/scripts/confirm-clamav-install.py"'
         provisioning = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
         verify = 'python3 "$script_dir/scripts/verify-installed-clamav.py"'

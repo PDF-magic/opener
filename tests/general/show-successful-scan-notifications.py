@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PREF = (ROOT / "PDFMagicOpenerApp" / "ScanProgressPreference.swift").read_text()
 GENERAL = (ROOT / "PDFMagicOpenerApp" / "GeneralSettingsView.swift").read_text()
 OPENER = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text()
-INSTALLER = (ROOT / "install-allow-and-open.sh").read_text()
+INSTALLER = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
 CI = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
 
 

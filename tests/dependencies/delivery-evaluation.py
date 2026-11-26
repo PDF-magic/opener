@@ -66,7 +66,7 @@ class DependencyDeliveryDecisionTests(unittest.TestCase):
             self.assertTrue(all(path.endswith(".swift") for path in sources))
 
     def test_updater_retains_independent_staged_freshclam(self):
-        updater = (ROOT / "update-malware-signatures.sh").read_text(encoding="utf-8")
+        updater = (ROOT / "src/scanner/update-malware-signatures.sh").read_text(encoding="utf-8")
         self.assertIn("for candidate in /opt/homebrew/bin/freshclam", updater)
         self.assertIn('run_freshclam_with_network_recovery "$updater"', updater)
         self.assertIn('"$scanner" --database="$stage_dir"', updater)
@@ -74,16 +74,16 @@ class DependencyDeliveryDecisionTests(unittest.TestCase):
         self.assertIn('Another signature update is running', updater)
 
     def test_optional_parser_stays_out_of_active_installation(self):
-        requirements = (ROOT / "requirements-enhanced-pdf.txt").read_text(encoding="utf-8")
+        requirements = (ROOT / "requirements/requirements-enhanced-pdf.txt").read_text(encoding="utf-8")
         versions = [line.strip() for line in requirements.splitlines()
                     if line.strip() and not line.lstrip().startswith("#")]
         self.assertEqual(len(versions), 1)
         self.assertRegex(versions[0], r"^pypdf==[0-9]+\.[0-9]+\.[0-9]+$")
-        installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text(encoding="utf-8")
         self.assertNotIn("pip install", installer)
         self.assertNotIn("requirements-enhanced-pdf", installer)
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        self.assertIn("pip install --disable-pip-version-check -r requirements-enhanced-pdf.txt", ci)
+        self.assertIn("pip install --disable-pip-version-check -r requirements/requirements-enhanced-pdf.txt", ci)
         self.assertIn("python3 tests/dependencies/delivery-evaluation.py -v", ci)
 
 

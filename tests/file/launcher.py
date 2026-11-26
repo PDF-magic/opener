@@ -223,9 +223,9 @@ class FileLauncherTests(unittest.TestCase):
                         source.rindex("    remove_quarantine(path)"))
 
     def test_installer_deploys_launch_module_with_scanner(self):
-        script = (ROOT / "install-allow-and-open.sh").read_text()
+        script = (ROOT / "scripts/installation/install-allow-and-open.sh").read_text()
         line = next(line for line in script.splitlines()
-                    if line.startswith('cp "$script_dir/allow-and-open.sh"'))
+                    if line.startswith('cp "$script_dir/src/scan/allow-and-open.sh"'))
         self.assertIn('"$script_dir/src/scan/scan-and-open.py"', line)
         self.assertIn('"$script_dir/src/native/launch/file-launcher.py"', line)
         self.assertIn('"$install_dir/"', line)

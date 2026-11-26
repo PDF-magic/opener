@@ -35,7 +35,7 @@ class CITestScopeTests(unittest.TestCase):
     def test_shared_security_and_workflow_changes_select_every_suite(self):
         for path in (
             "scan-and-open.py", "protection-policy-definitions.py",
-            "requirements-enhanced-pdf.txt", ".github/workflows/ci.yml",
+            "requirements/requirements-enhanced-pdf.txt", ".github/workflows/ci.yml",
             "scripts/ci-test-scope.py",
         ):
             with self.subTest(path=path):

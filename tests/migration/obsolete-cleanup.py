@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install-allow-and-open.sh"
+INSTALLER = ROOT / "scripts/installation/install-allow-and-open.sh"
 
 
 def recovery_handler():
