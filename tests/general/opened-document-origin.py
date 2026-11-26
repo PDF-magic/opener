@@ -185,6 +185,7 @@ class OpenedDocumentOriginTests(unittest.TestCase):
         self.assertEqual(self.rows(), [])
 
     def test_scanner_and_user_preferences_are_unchanged(self):
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         scanner_source = (root / "scan-and-open.py").read_text(encoding="utf-8")

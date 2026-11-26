@@ -13,7 +13,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "signature_update_launchagent", ROOT / "scripts/installation/signature_update_launchagent.py"
+    "signature_update_launchagent", ROOT / "scripts/installation/signature-update-launchagent.py"
 )
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -120,7 +120,7 @@ class ExistingAgentDetectionTests(unittest.TestCase):
 
         def invoke():
             return subprocess.run(
-                [sys.executable, str(ROOT / "scripts/installation/signature_update_launchagent.py")],
+                [sys.executable, str(ROOT / "scripts/installation/signature-update-launchagent.py")],
                 env=env, capture_output=True, text=True, timeout=5,
             )
 
@@ -172,7 +172,7 @@ class ExistingAgentDetectionTests(unittest.TestCase):
 
     def test_installer_detects_before_writing_and_preserves_existing_plist(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn('agent_state="$(python3 "$script_dir/scripts/installation/signature_update_launchagent.py")"', installer)
+        self.assertIn('agent_state="$(python3 "$script_dir/scripts/installation/signature-update-launchagent.py")"', installer)
         self.assertIn('except FileExistsError:', installer)
         self.assertIn('os.O_CREAT | os.O_EXCL', installer)
         self.assertLess(installer.index('agent_state="$(python3'), installer.index("with os.fdopen(fd, 'wb')"))

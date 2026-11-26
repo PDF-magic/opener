@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
+__import__('module-loader')
 import benchmarks.scanned_pdf_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]

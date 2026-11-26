@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-  "retire_installed_helpers", ROOT / "scripts/retire_installed_helpers.py")
+  "retire_installed_helpers", ROOT / "scripts/retire-installed-helpers.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -148,15 +148,15 @@ class NativeHelperUninstallTests(unittest.TestCase):
   def test_ci_guide_installer_and_rollback_integration(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     installer = (ROOT / "install-allow-and-open.sh").read_text()
-    recovery = (ROOT / "scripts/preserve_existing_opener.py").read_text()
+    recovery = (ROOT / "scripts/preserve-existing-opener.py").read_text()
     guide = (ROOT / "docs/uninstall-procedure.md").read_text()
     self.assertIn("tests/general/retire-helpers.py -v", ci)
-    self.assertIn('retire_installed_helpers.py" --record-install', installer)
+    self.assertIn('retire-installed-helpers.py" --record-install', installer)
     self.assertIn('".pdf-magic-native-helpers.json"', recovery)
-    self.assertIn("python3 scripts/retire_installed_helpers.py --remove", guide)
+    self.assertIn("python3 scripts/retire-installed-helpers.py --remove", guide)
     self.assertIn("already disconnected", guide)
     self.assertNotIn("rm -rf", guide)
-    self.assertNotIn("shutil.rmtree", (ROOT / "scripts/retire_installed_helpers.py").read_text())
+    self.assertNotIn("shutil.rmtree", (ROOT / "scripts/retire-installed-helpers.py").read_text())
 
 
 if __name__ == "__main__":

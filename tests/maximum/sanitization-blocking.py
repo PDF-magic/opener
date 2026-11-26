@@ -14,6 +14,7 @@ from pypdf.generic import (
     NumberObject, StreamObject, TextStringObject,
 )
 
+__import__('module-loader')
 import maximum_sanitized_copy as sanitizer
 
 
@@ -305,6 +306,7 @@ class UnsupportedSanitizationTests(unittest.TestCase):
         self.assertNotIn("maximum_sanitized_copy", scan)
         self.assertNotIn("assess_sanitized_pdf_copy", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

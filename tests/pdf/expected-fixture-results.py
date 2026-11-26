@@ -90,7 +90,7 @@ class ExpectedFixtureResultTests(unittest.TestCase):
 
     # The signer generates an ephemeral private key only in its dedicated test.
     # Inspect its source identifiers without invoking key generation here.
-    signature_source = (ROOT / "tests/fixtures/pdf/digital_signature_corpus.py").read_text(encoding="utf-8")
+    signature_source = (ROOT / "tests/fixtures/pdf/digital-signature-corpus.py").read_text(encoding="utf-8")
     self.assertEqual(entries["digital-signature"], SIGNED_IDS)
     for identifier in SIGNED_IDS:
       self.assertIn('"' + identifier + '"', signature_source)
@@ -98,6 +98,7 @@ class ExpectedFixtureResultTests(unittest.TestCase):
   def test_expectation_details_agree_with_fixture_metadata(self):
     entries = {(item["collection"], item["id"]): item
                for item in self.records["fixtures"]}
+    __import__('module-loader')
     from tests.fixtures.pdf.reference_pdf_collection import (
       REFERENCE_PDFS, INCORRECTLY_NAMED_FILES, INVALID_PDF_HEADERS,
       INCREMENTAL_REFERENCE_PDFS,

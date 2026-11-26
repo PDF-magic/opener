@@ -46,7 +46,7 @@ class SignatureStatusDisplayTests(unittest.TestCase):
         for prohibited in (
             "Process(", "URLSession", "downloadTask", "UserDefaults",
             "freshclam --", "write(to:", "removeItem", "createFile",
-            "subprocess", "clamscan(", "signature_update_status.py",
+            "subprocess", "clamscan(", "signature-update-status.py",
         ):
             with self.subTest(prohibited=prohibited):
                 self.assertNotIn(prohibited, reader)
@@ -64,7 +64,7 @@ class SignatureStatusDisplayTests(unittest.TestCase):
 
     def test_no_change_to_updater_or_fail_closed_scan_gate(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"StartInterval": 14400', migrator)
         self.assertIn('"RunAtLoad": True', migrator)

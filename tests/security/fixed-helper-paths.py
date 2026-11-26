@@ -13,8 +13,11 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
+__import__('module-loader')
 import file_launcher
+__import__('module-loader')
 import maximum_process_termination as worker
+__import__('module-loader')
 import maximum_sanitizer_process as sanitizer
 
 spec = importlib.util.spec_from_file_location("fixed_helper_scanner_gate", ROOT / "scan-and-open.py")

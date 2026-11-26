@@ -37,8 +37,8 @@ jobs:
           set -euo pipefail
           app="$RUNNER_TEMP/PDFMagicOpenerReleaseDerived/Build/Products/Release/PDFMagicOpener.app"
           stage="$RUNNER_TEMP/PDFMagicOpenerReleasePackage"
-          python3 scripts/package_application_helpers.py --app "$app" --output-dir "$stage"
-          python3 scripts/package_application_helpers.py --verify "$stage/PDFMagicOpener.app"
+          python3 scripts/package-application-helpers.py --app "$app" --output-dir "$stage"
+          python3 scripts/package-application-helpers.py --verify "$stage/PDFMagicOpener.app"
           test ! -e "$app/Contents/Helpers"
           test ! -e "$stage/PDFMagicOpener.app/Contents/Helpers/PDFOpener"
           test ! -e "$stage/PDFMagicOpener.app/Contents/Helpers/MakePDFMagicDefault"
@@ -63,7 +63,7 @@ jobs:
               "Archive must contain exactly one application bundle"
           )
           PY
-          python3 scripts/package_application_helpers.py --verify "$extracted/PDFMagicOpener.app"
+          python3 scripts/package-application-helpers.py --verify "$extracted/PDFMagicOpener.app"
           test -x "$extracted/PDFMagicOpener.app/Contents/MacOS/PDFMagicOpener"
           test ! -e "$extracted/PDFMagicOpener.app/Contents/Helpers/PDFOpener"
           test ! -e "$extracted/PDFMagicOpener.app/Contents/Helpers/MakePDFMagicDefault"

@@ -2,12 +2,16 @@
 """Scan selected local files while retaining macOS quarantine protections."""
 from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
+__import__('module-loader')
 from scanner_concurrency_validation import validate_scanner_concurrency_limit
+__import__('module-loader')
 from scanner_filesystem_sandbox import (
     BLOCK_MESSAGE as SCANNER_SANDBOX_BLOCK_MESSAGE,
     ScannerFilesystemSandboxError, confined_scanner,
 )
+__import__('module-loader')
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
+__import__('module-loader')
 from scanner_argument_validation import (
     InvalidScannerArguments, validate_scanner_arguments,
     validate_scanner_version_arguments, validated_file_size_options,
@@ -16,6 +20,7 @@ from functools import wraps
 from dataclasses import dataclass, field
 import fcntl
 import hashlib
+__import__('module-loader')
 from file_launcher import (PDF_DEFAULT_BROWSER_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_UNAVAILABLE_MESSAGE,
                            PDF_TARGET_VERIFICATION_MESSAGE,
@@ -1191,6 +1196,7 @@ def scan_and_open_generated_copy(item, offer):
     """
     # Optional Maximum dependencies are imported only after a generated
     # copy is explicitly requested, never on ordinary Built-in scans.
+    __import__('module-loader')
     from maximum_generated_rescan import verified_generated_pdf_bytes
     generated_bytes = verified_generated_pdf_bytes(offer)
     if generated_bytes is None:
@@ -1223,6 +1229,7 @@ def scan_generated_copy_without_open(item, offer):
     signature freshness, concurrency, policy and file-integrity checks. It
     cannot use a cached clean verdict or authorize opening a document.
     """
+    __import__('module-loader')
     from maximum_generated_rescan import verified_generated_pdf_bytes
     generated_bytes = verified_generated_pdf_bytes(offer)
     if generated_bytes is None:

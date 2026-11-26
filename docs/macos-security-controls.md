@@ -38,7 +38,7 @@ that the file is harmless, or that opening outside PDF Magic Opener is blocked.
    **macOS may still prevent opening**, independently of the scan result.
 
 The source of truth is [the scan gate](../scan-and-open.py), its
-[launcher](../file_launcher.py), and the
+[launcher](../file-launcher.py), and the
 [Finder wrapper](../allow-and-open.sh). See also the
 [quarantine-removal audit](macos-quarantine-removal-inventory.md),
 [quarantined-PDF test](open-quarantined-pdf.md), and

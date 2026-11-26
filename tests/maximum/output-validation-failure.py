@@ -14,9 +14,13 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
+__import__('module-loader')
 import maximum_sanitized_copy as sanitizer
+__import__('module-loader')
 from maximum_sanitized_structure import SanitizedPDFStructure
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )

@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+"""Conservative dependency-group selection for PDF-magic/opener CI.
+
+Unknown paths and shared scanner/security infrastructure deliberately select
+the full suite. This is a group-level dependency map, not filename-only
+workflow triggers; central workflows always start and retain a final gate.
+"""
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+# Relocated tests run in place. Map known subsystem folders to their
+# historical dependency categories; unknown paths conservatively run all groups.
+def _normalize_changed_path(path):
+    path = path.replace("\\", "/")
+    parts = path.split("/")
+    if len(parts) == 3 and parts[0] == "tests" and parts[2].endswith(".py"):
+        if parts[1] in {
+            "pdf", "enhanced", "maximum", "protection", "scan", "scanner", "clamav"
+        }:
+            return f"test-{parts[1]}-{parts[2]}"
+    return path
+
+
+GROUPS = ("pdf", "policy", "maximum", "macos")
+ALL_GROUPS = frozenset(GROUPS)
+
+SHARED_SECURITY_FILES = frozenset({
+    "scan-and-open.py",
+    "scan-results.py",
+    "scan_request.py",
+    "protection-profiles.py",
+    "protection-policy-definitions.py",
+    "install-allow-and-open.sh",
+    "allow-and-open.sh",
+    "update-malware-signatures.sh",
+    "requirements-enhanced-pdf.txt",
+})
+
+CONFIG_FILES = frozenset({
+    "pyproject.toml", "setup.cfg", "tox.ini", "Makefile",
+    "Pipfile", "Pipfile.lock", ".python-version",
+})
+
+MACOS_TESTS = frozenset({
+    "test-scan-progress-component.py",
+    "test-maximum-filesystem-sandbox.py",
+    "test-maximum-child-process-restriction.py",
+    "test-maximum-isolated-renderer.py",
+    "test-maximum-isolated-analysis.py",
+    "test-maximum-process-termination.py",
+    "test-maximum-memory-limits.py",
+    "test-maximum-sanitizer-memory-limits.py",
+    "test-maximum-sanitizer-time-limits.py",
+    "test-maximum-sanitizer-network-denial.py",
+    "test-maximum-sanitized-copy.py",
+    "test-maximum-generated-rescan.py",
+    "test-maximum-password-protected.py",
+    "test-maximum-safe-copy-handoff.py",
+    "test-maximum-sanitized-structure.py",
+    "test-maximum-network-isolation.py",
+})
+
+MACOS_MAXIMUM_FILES = frozenset({
+    "maximum-filesystem-sandbox.py",
+    "maximum-isolated-renderer.py",
+    "maximum-render-worker.py",
+    "maximum-network-isolation.py",
+    "maximum-sanitizer-process.py",
+    "maximum-process-termination.py",
+    "maximum-isolated-analysis.py",
+    "maximum-isolated-worker.py",
+    "maximum-memory-limits.py",
+    "maximum-sanitized-copy.py",
+    "maximum-generated-rescan.py",
+    "maximum-safe-copy-handoff.py",
+    "maximum-sanitized-structure.py",
+})
+
+TESTED_DOCS = {
+    "docs/maximum/renderer-selection.md": "maximum",
+    "docs/pdf-parser-evaluation.md": "pdf",
+}
+
+
+def _documentation_only(path):
+    if path in {"README.md", "CONTRIBUTING.md", "CHANGELOG.md"}:
+        return True
+    return path.startswith("docs/") and path.endswith((".md", ".rst"))
+
+
+def select_groups(paths):
+    """Return affected suites; unknown/shared changes conservatively run all."""
+    normalized = {_normalize_changed_path(str(path)) for path in paths}
+    if not normalized:
+        return ALL_GROUPS
+
+    for path in normalized:
+        name = Path(path).name
+        if (
+            path.startswith(".github/workflows/")
+            or path.startswith(".github/scripts/")
+            or path.startswith("scripts/")
+            or name.startswith("requirements")
+            or path in CONFIG_FILES
+            or path in SHARED_SECURITY_FILES
+        ):
+            return ALL_GROUPS
+
+    groups = set()
+    for path in normalized:
+        if path in TESTED_DOCS:
+            groups.add(TESTED_DOCS[path])
+            continue
+        if _documentation_only(path):
+            continue
+
+        name = Path(path).name
+        if path.startswith("PDFMagicOpenerApp/") or path.startswith("PDFMagicOpener.xcodeproj/"):
+            groups.add("macos")
+            continue
+        if path.endswith((".swift", ".entitlements", ".sb", ".applescript")):
+            groups.add("macos")
+            continue
+        if name in MACOS_TESTS or name in MACOS_MAXIMUM_FILES:
+            groups.update(("maximum", "macos"))
+            continue
+
+        if name.startswith(("pdf_", "pdf-")) or name.startswith("test-pdf-") or name == "pdf-parser-memory-benchmark.py":
+            groups.add("pdf")
+            continue
+        if name.startswith(("enhanced_", "enhanced-")) or name.startswith("test-enhanced-"):
+            groups.update(("pdf", "policy"))
+            continue
+        if (
+            name.startswith(("protection_", "protection-"))
+            or name.startswith("test-protection-")
+            or name.startswith("test-scan-")
+            or name.startswith("test-detection-")
+            or name.startswith("test-clamav-")
+            or name in {
+                "test-scan-and-open.py", "test-combined-scan-results.py",
+                "test-document-security-report.py", "test-effective-policy-display.py",
+                "test-stable-finding-identifiers.py",
+            }
+        ):
+            groups.add("policy")
+            continue
+        if name.startswith(("maximum_", "maximum-")) or name.startswith("test-maximum-") or name == "test-opened-document-origin.py":
+            groups.add("maximum")
+            continue
+
+        # New or unclassified source/test files are not silently omitted.
+        return ALL_GROUPS
+
+    return frozenset(groups)
+
+
+def changed_paths(base_sha, head_sha):
+    if not base_sha or not head_sha:
+        raise ValueError("missing comparison SHAs")
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--no-renames", base_sha, head_sha],
+        check=True, capture_output=True, text=True, timeout=30,
+    )
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def main():
+    if len(sys.argv) != 4:
+        raise SystemExit("usage: ci-test-scope.py BASE_SHA HEAD_SHA GITHUB_OUTPUT")
+    base_sha, head_sha, output_path = sys.argv[1:]
+    reason = "diff"
+    try:
+        paths = changed_paths(base_sha, head_sha)
+        if not paths:
+            reason = "empty-diff; conservative full suite"
+            groups = ALL_GROUPS
+        else:
+            groups = select_groups(paths)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        paths = []
+        groups = ALL_GROUPS
+        reason = "diff-unavailable; conservative full suite"
+
+    with Path(output_path).open("a", encoding="utf-8") as output:
+        for group in GROUPS:
+            output.write(f"run_{group}={'true' if group in groups else 'false'}\n")
+        output.write(f"changed_file_count={len(paths)}\n")
+        output.write(f"scope_reason={reason}\n")
+
+    selected = ", ".join(f"{group}={'yes' if group in groups else 'no'}" for group in GROUPS)
+    print(f"CI dependency scope: {selected}; changed files={len(paths)}; reason={reason}")
+
+
+if __name__ == "__main__":
+    main()

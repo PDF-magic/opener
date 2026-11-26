@@ -10,12 +10,17 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import StreamObject
 
+__import__('module-loader')
 from tests.fixtures.pdf.interactive_form_corpus import INTERACTIVE_FORM_PDFS, _document_with_field
+__import__('module-loader')
 from src.pdf.pdf_form_actions import inspect_pdf_form_actions
+__import__('module-loader')
 from src.pdf.pdf_unsupported_feature_inspection import (
     UnsupportedPDFFeature, inspect_pdf_unsupported_features,
 )
+__import__('module-loader')
 from src.pdf.pdf_xfa_forms import inspect_pdf_xfa_forms
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]

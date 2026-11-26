@@ -10,10 +10,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ExceptionDisposition,
@@ -21,7 +23,9 @@ from src.protection.protection_exception_policy import (
     ProtectionExceptionNotSupported,
     request_protection_exception,
 )
+__import__('module-loader')
 from protection_policy_definitions import BASELINE_CONTROLS, PROTECTION_POLICIES
+__import__('module-loader')
 from protection_profiles import PROTECTION_PROFILES
 
 ROOT = Path(__file__).resolve().parents[2]

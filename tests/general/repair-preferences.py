@@ -21,7 +21,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install-allow-and-open.sh"
 REPAIR = ROOT / "Repair Installation.command"
-MIGRATOR = ROOT / "scripts/migrate_update_agent.py"
+MIGRATOR = ROOT / "scripts/migrate-update-agent.py"
 sys.dont_write_bytecode = True
 
 
@@ -63,7 +63,7 @@ class RepairPreferencesTests(unittest.TestCase):
         self.repair.chmod(0o755)
         scripts = self.checkout / "scripts"
         scripts.mkdir()
-        for name in ("report_install_prerequisites.py", "confirm_clamav_install.py"):
+        for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# test fixture\n", encoding="utf-8")
         self.marker = self.root / "repair-ran"
         self.fixture = self.checkout / "simulate-managed-initializers.py"
@@ -231,7 +231,7 @@ class RepairPreferencesTests(unittest.TestCase):
         self.assertIn("os.O_EXCL", self.target)
         self.assertIn("os.O_EXCL", self.freshclam)
         self.assertIn("os.O_EXCL", self.agent)
-        self.assertIn('scripts/migrate_update_agent.py', self.installer)
+        self.assertIn('scripts/migrate-update-agent.py', self.installer)
 
     def test_new_ci_suite_covers_explicit_repair_preference_preservation(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()

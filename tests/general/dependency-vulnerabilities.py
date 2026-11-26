@@ -10,7 +10,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "dependency_vulnerability_audit", ROOT / "scripts/dependency_vulnerability_audit.py")
+    "dependency_vulnerability_audit", ROOT / "scripts/dependency-vulnerability-audit.py")
 # The audit script imports the existing scripts directory's licensing gate.
 import sys
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -127,7 +127,7 @@ class DependencyVulnerabilityTests(unittest.TestCase):
 
   def test_security_pin_upgrade_keeps_paired_benchmark_environment_equal(self):
     workflow = (ROOT / ".github/workflows/performance-regression-thresholds.yml").read_text()
-    self.assertIn("python3 candidate/scripts/compare_benchmark_layout.py baseline candidate",
+    self.assertIn("python3 candidate/scripts/compare-benchmark-layout.py baseline candidate",
                   workflow)
     self.assertIn('python3 "$BASELINE_BENCHMARK" --runs 5',
                   workflow)

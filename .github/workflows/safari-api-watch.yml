@@ -40,4 +40,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Check WebKit release feed for new Safari extension API changes
-        run: python3 scripts/safari_api_watch.py
+        run: python3 scripts/safari-api-watch.py

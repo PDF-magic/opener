@@ -8,6 +8,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from scanner_concurrency_validation import (
     MAX_PERMITTED_CONCURRENT_SCANS,
     validate_scanner_concurrency_limit,
@@ -75,7 +76,7 @@ class ScannerConcurrencyLimitTests(unittest.TestCase):
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
         prefs = (ROOT / "PDFMagicOpenerApp/ScanProgressPreference.swift").read_text(encoding="utf-8")
-        validator = (ROOT / "src/configuration/configuration_validation.py").read_text(encoding="utf-8")
+        validator = (ROOT / "src/configuration/configuration-validation.py").read_text(encoding="utf-8")
         self.assertIn("MAX_CONCURRENT_SCANS = 2", gate)
         self.assertIn("validate_scanner_concurrency_limit(MAX_CONCURRENT_SCANS)", gate)
         self.assertIn("for index in range(MAX_CONCURRENT_SCANS):", gate)

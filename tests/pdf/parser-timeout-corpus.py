@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
+__import__('module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES,
     MAX_STRUCTURE_OBJECTS,
@@ -19,6 +20,7 @@ from pdf_structure_parser import (
     PDFStructureParseError,
     parse_pdf_structure,
 )
+__import__('module-loader')
 from timed_pdf_structure_analysis import (
     ANALYSIS_TIMEOUT_SECONDS,
     BLOCK_MESSAGE,

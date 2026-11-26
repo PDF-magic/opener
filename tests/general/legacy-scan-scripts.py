@@ -9,7 +9,7 @@ import unittest
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-DETECTOR = ROOT / "scripts/detect_existing_scan_scripts.py"
+DETECTOR = ROOT / "scripts/detect-existing-scan-scripts.py"
 module_spec = importlib.util.spec_from_file_location("legacy_scan_script_detector", DETECTOR)
 detector = importlib.util.module_from_spec(module_spec)
 module_spec.loader.exec_module(detector)
@@ -90,7 +90,7 @@ class ExistingScanScriptsTests(unittest.TestCase):
 
   def test_installer_probes_before_any_installed_script_replacement(self):
     installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-    invocation = 'python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"'
+    invocation = 'python3 "$script_dir/scripts/detect-existing-scan-scripts.py" "$install_dir"'
     self.assertIn(invocation, installer)
     self.assertLess(installer.index(invocation), installer.index('mkdir -p "$install_dir/signatures"'))
     self.assertLess(installer.index(invocation), installer.index('cp "$script_dir/allow-and-open.sh"'))

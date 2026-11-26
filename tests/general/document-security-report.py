@@ -4,12 +4,15 @@
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from src.scan.combined_scan_results import combine_scan_results
+__import__('module-loader')
 from src.scan.document_security_report import (
     DocumentSecurityReport,
     MAX_DISPLAYED_SIGNATURES,
     create_document_security_report,
 )
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding,
     AnalysisStage,
@@ -19,6 +22,7 @@ from src.enhanced.enhanced_analysis_findings import (
     StageOutcome,
     StructuredAnalysisFindings,
 )
+__import__('module-loader')
 from scan_results import ScanResult, ScanResultStatus
 
 
@@ -260,6 +264,7 @@ class DocumentSecurityReportTests(unittest.TestCase):
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("create_document_security_report", scanner)
 
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

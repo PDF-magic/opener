@@ -10,9 +10,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True
+__import__('module-loader')
 from browser_registry import SUPPORTED_BROWSERS as BROWSERS
 
 selected = os.environ.get("PDF_MAGIC_TEST_BROWSER")

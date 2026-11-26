@@ -18,19 +18,23 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
     FailureDisposition,
     PROTECTION_POLICIES,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

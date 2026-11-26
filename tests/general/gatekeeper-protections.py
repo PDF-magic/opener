@@ -16,7 +16,7 @@ import unittest
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_SPEC = importlib.util.spec_from_file_location(
-    "gatekeeper_quarantine_audit", ROOT / "tools" / "audit_quarantine_removal.py")
+    "gatekeeper_quarantine_audit", ROOT / "tools" / "audit-quarantine-removal.py")
 audit = importlib.util.module_from_spec(AUDIT_SPEC)
 AUDIT_SPEC.loader.exec_module(audit)
 

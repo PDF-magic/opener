@@ -9,11 +9,13 @@ import unittest
 
 from pypdf import PdfReader
 
+__import__('module-loader')
 from src.pdf.pdf_incremental_revisions import (
     BLOCK_MESSAGE,
     PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import (
     INCREMENTAL_REFERENCE_PDFS,
     REFERENCE_PDFS,

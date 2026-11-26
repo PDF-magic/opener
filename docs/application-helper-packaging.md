@@ -6,10 +6,10 @@ then stage a **separate** unsigned `PDFMagicOpener.app` containing the reviewed
 native command-line helper executables:
 
 ```sh
-python3 scripts/package_application_helpers.py \
+python3 scripts/package-application-helpers.py \
   --app /path/to/DerivedData/Build/Products/Debug/PDFMagicOpener.app \
   --output-dir /path/to/unsigned-staging
-python3 scripts/package_application_helpers.py \
+python3 scripts/package-application-helpers.py \
   --verify /path/to/unsigned-staging/PDFMagicOpener.app
 ```
 
@@ -45,13 +45,13 @@ create a portable ZIP with macOS `ditto`, which retains application bundle
 metadata and executable permissions:
 
 ```sh
-python3 scripts/create_release_archive.py \\
+python3 scripts/create-release-archive.py \\
   --app /path/to/unsigned-staging/PDFMagicOpener.app \\
   --output /path/to/output/PDFMagicOpener-unsigned.zip
-python3 scripts/create_release_archive.py \\
+python3 scripts/create-release-archive.py \\
   --verify /path/to/output/PDFMagicOpener-unsigned.zip
 ditto -x -k /path/to/output/PDFMagicOpener-unsigned.zip /path/to/verification
-python3 scripts/package_application_helpers.py \\
+python3 scripts/package-application-helpers.py \\
   --verify /path/to/verification/PDFMagicOpener.app
 ```
 

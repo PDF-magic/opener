@@ -15,8 +15,11 @@ from pypdf.generic import (
     NumberObject, StreamObject, TextStringObject,
 )
 
+__import__('module-loader')
 import maximum_sanitized_copy as copies
+__import__('module-loader')
 from maximum_active_content_removal import remove_active_pdf_functionality
+__import__('module-loader')
 from maximum_generated_rescan import verified_generated_pdf_bytes
 
 
@@ -160,6 +163,7 @@ class OCRBoundaryTests(unittest.TestCase):
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("maximum_sanitized_copy", scanner)
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

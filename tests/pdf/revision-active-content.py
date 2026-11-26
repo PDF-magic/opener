@@ -8,10 +8,12 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.pdf.pdf_revision_active_content import (
     BLOCK_MESSAGE, PDFHistoricalActiveContent,
     PDFHistoricalActiveContentError, inspect_pdf_revision_active_content,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -119,6 +121,7 @@ class PDFHistoricalActiveTests(unittest.TestCase):
     def test_resource_limits_and_metadata_validation(self):
         old = append_revision(self.original, 6, b"<< /S /JavaScript /JS (secret) >>")
         current = append_revision(old, 6, b"<< /Marker /Safe >>")
+        __import__('module-loader')
         import src.pdf.pdf_revision_active_content as stage
         with patch.object(stage, "MAX_REVISIONS", 2):
             with self.assertRaises(PDFHistoricalActiveContentError):
@@ -138,6 +141,7 @@ class PDFHistoricalActiveTests(unittest.TestCase):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_revision_active_content", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

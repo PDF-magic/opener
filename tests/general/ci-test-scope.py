@@ -5,6 +5,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+__import__('module-loader')
 from ci_test_scope import ALL_GROUPS, select_groups
 
 
@@ -28,14 +29,14 @@ class CITestScopeTests(unittest.TestCase):
         self.assertEqual(select_groups(["tests/maximum/isolated-renderer.py"]), {"maximum", "macos"})
 
     def test_native_maximum_changes_select_portable_and_macos_tests(self):
-        self.assertEqual(select_groups(["maximum_sanitized_copy.py"]), {"maximum", "macos"})
+        self.assertEqual(select_groups(["maximum-sanitized-copy.py"]), {"maximum", "macos"})
         self.assertEqual(select_groups(["tests/maximum/isolated-renderer.py"]), {"maximum", "macos"})
 
     def test_shared_security_and_workflow_changes_select_every_suite(self):
         for path in (
-            "scan-and-open.py", "protection_policy_definitions.py",
+            "scan-and-open.py", "protection-policy-definitions.py",
             "requirements-enhanced-pdf.txt", ".github/workflows/ci.yml",
-            "scripts/ci_test_scope.py",
+            "scripts/ci-test-scope.py",
         ):
             with self.subTest(path=path):
                 self.assertEqual(select_groups([path]), ALL_GROUPS)

@@ -1,6 +1,6 @@
 # Interactive-form PDF security corpus (opener-1039)
 
-`tests/fixtures/pdf/interactive_form_corpus.py` generates three deterministic, in-memory,
+`tests/fixtures/pdf/interactive-form-corpus.py` generates three deterministic, in-memory,
 one-page PDF documents with genuine interactive **AcroForm** structures.
 The fixtures are not static drawings masquerading as forms.
 

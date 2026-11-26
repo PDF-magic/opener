@@ -11,7 +11,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import maximum_memory_limits as limits
+__import__('module-loader')
 from maximum_isolated_analysis import WORKER_MEMORY_MIB
 
 
@@ -86,7 +88,7 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
                 limits._tighten_limit(resource.RLIMIT_AS, invalid)
 
     def test_worker_applies_guard_before_parser_import_and_never_changes_gate(self):
-        worker = (ROOT / "maximum_isolated_worker.py").read_text()
+        worker = (ROOT / "maximum-isolated-worker.py").read_text()
         self.assertIn("impose_maximum_worker_memory_limit()", worker)
         self.assertLess(worker.index("impose_maximum_worker_memory_limit()"),
                         worker.index("from importlib import import_module"))
@@ -95,23 +97,24 @@ class MaximumMemoryLimitsTests(unittest.TestCase):
         self.assertNotIn("maximum_memory_limits", scanner)
         self.assertNotIn("maximum_isolated_worker", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
 
     @unittest.skipUnless(sys.platform == "linux", "Linux hard RLIMIT_AS validation")
     def test_real_os_rejects_allocation_beyond_worker_ceiling(self):
-        script = """
-import sys
-sys.path.insert(0, sys.argv[1])
-from maximum_memory_limits import impose_maximum_worker_memory_limit, WORKER_MEMORY_BYTES
-impose_maximum_worker_memory_limit()
-try:
-    bytearray(WORKER_MEMORY_BYTES * 2)
-except MemoryError:
-    print('memory-ceiling-enforced')
-    raise SystemExit(0)
-raise SystemExit(3)
-"""
+        script = "\nimport sys\nsys.path.insert(0, sys.argv[1])\n__import__('module-loader'); from maximum_memory_limits import impose_maximum_worker_memory_limit, WORKER_MEMORY_BYTES\nimpose_maximum_worker_memory_limit()\ntry:\n    bytearray(WORKER_MEMORY_BYTES * 2)\nexcept MemoryError:\n    print('memory-ceiling-enforced')\n    raise SystemExit(0)\nraise SystemExit(3)\n"
+
+
+
+
+
+
+
+
+
+
+
         completed = subprocess.run(
             [sys.executable, "-I", "-B", "-c", script, str(ROOT)],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15,
@@ -122,19 +125,19 @@ raise SystemExit(3)
 
     def test_real_worker_bootstraps_under_limits_without_pdf_input(self):
         # Only type names appear in diagnostics; never emit user paths/PDF bytes.
-        script = """
-import sys
-sys.path.insert(0, sys.argv[1])
-try:
-    from maximum_isolated_worker import _apply_limits
-    _apply_limits()
-    print('memory-ready')
-    import pypdf
-    print('parser-ready')
-except BaseException as error:
-    print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))
-    raise SystemExit(2)
-"""
+        script = "\nimport sys\nsys.path.insert(0, sys.argv[1])\ntry:\n    __import__('module-loader'); from maximum_isolated_worker import _apply_limits\n    _apply_limits()\n    print('memory-ready')\n    import pypdf\n    print('parser-ready')\nexcept BaseException as error:\n    print('bootstrap-failed:' + type(error).__name__ + ':' + str(error))\n    raise SystemExit(2)\n"
+
+
+
+
+
+
+
+
+
+
+
+
         completed = subprocess.run(
             [sys.executable, "-I", "-B", "-c", script, str(ROOT)],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15,
@@ -145,7 +148,7 @@ except BaseException as error:
 
     def test_real_worker_disarms_macos_watchdog_on_shutdown(self):
         # A successful worker disarms the real-time watchdog before teardown.
-        worker = (ROOT / "maximum_isolated_worker.py").read_text()
+        worker = (ROOT / "maximum-isolated-worker.py").read_text()
         self.assertIn("signal.setitimer(signal.ITIMER_REAL, 0)", worker)
         self.assertLess(
             worker.index("code = main()"),

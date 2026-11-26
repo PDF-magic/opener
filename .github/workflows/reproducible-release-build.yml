@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Verify two clean browser release builds are byte-identical
-        run: python3 scripts/build_reproducible_release.py --output-dir "$RUNNER_TEMP/reproducible-candidates"
+        run: python3 scripts/build-reproducible-release.py --output-dir "$RUNNER_TEMP/reproducible-candidates"
       - name: Regression-test reproducibility and fail-closed safety
         run: PYTHONPATH=. python3 tests/general/reproducible-release-build.py -v
       - name: Retain unsigned CI build evidence for review

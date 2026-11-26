@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('module-loader')
 from browser_registry import SUPPORTED_BROWSERS
 
 ROOT = Path(__file__).resolve().parents[2]

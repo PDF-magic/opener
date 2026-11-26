@@ -10,7 +10,9 @@ import unittest
 
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
+__import__('module-loader')
 from src.pdf.pdf_embedded_object_sizes import PDFEmbeddedObjectSizes, inspect_pdf_embedded_object_sizes
+__import__('module-loader')
 import benchmarks.many_embedded_objects_benchmark as benchmark
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,7 +84,7 @@ class EmbeddedObjectsBenchmarkTests(unittest.TestCase):
 
   def test_cli_and_ci_are_opt_in_and_production_scan_gate_unchanged(self):
     completed = subprocess.run(
-      [sys.executable, str(ROOT / "benchmarks/many_embedded_objects_benchmark.py"), "--samples", "3"],
+      [sys.executable, str(ROOT / "benchmarks/many-embedded-objects-benchmark.py"), "--samples", "3"],
       cwd=ROOT, capture_output=True, text=True, check=True, timeout=90,
     )
     report = json.loads(completed.stdout)
@@ -93,7 +95,7 @@ class EmbeddedObjectsBenchmarkTests(unittest.TestCase):
     self.assertIn("if not cached_clean(cache_id):", scanner)
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertIn("PYTHONPATH=. python3 tests/pdf/many-embedded-objects-benchmark.py -v", ci)
-    self.assertIn("PYTHONPATH=. python3 benchmarks/many_embedded_objects_benchmark.py --samples 3", ci)
+    self.assertIn("PYTHONPATH=. python3 benchmarks/many-embedded-objects-benchmark.py --samples 3", ci)
     self.assertTrue((ROOT / "docs/pdf/many-embedded-objects-benchmark.md").is_file())
 
 

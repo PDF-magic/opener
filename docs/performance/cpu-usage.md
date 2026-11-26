@@ -11,7 +11,7 @@ From the repository root, with the existing trusted ClamAV installation and its
 signature database already available, run:
 
 ```sh
-python3 benchmarks/cpu_usage_benchmark.py --scanner /opt/homebrew/bin/clamscan --samples 5
+python3 benchmarks/cpu-usage-benchmark.py --scanner /opt/homebrew/bin/clamscan --samples 5
 ```
 
 Use `--database /path/to/existing/signatures` if the default signature

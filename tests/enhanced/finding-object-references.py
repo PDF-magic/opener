@@ -5,11 +5,13 @@ from pathlib import Path
 import json
 import unittest
 
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     MAX_PDF_OBJECT_GENERATION, StageAnalysis, StageOutcome,
     StructuredAnalysisFindings,
 )
+__import__('module-loader')
 from src.enhanced.enhanced_finding_explanations import explain_analysis_findings
 
 

@@ -13,6 +13,7 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+__import__('module-loader')
 import safari_api_watch as watch
 
 NOW = datetime(2026, 11, 10, tzinfo=timezone.utc)
@@ -118,7 +119,7 @@ class SafariAPIWatchTests(unittest.TestCase):
     self.assertIn("schedule:", workflow)
     self.assertIn("workflow_dispatch:", workflow)
     self.assertIn("tests/general/safari-api-watch.py -v", workflow)
-    self.assertIn("scripts/safari_api_watch.py", workflow)
+    self.assertIn("scripts/safari-api-watch.py", workflow)
     self.assertIn("github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", workflow)
     self.assertIn("contents: read", workflow)
     self.assertNotIn("secrets.", workflow)

@@ -3,6 +3,7 @@
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from scanner_argument_validation import validated_file_size_options
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -29,7 +30,7 @@ class ScannerDefaultsSummaryTests(unittest.TestCase):
 
   def test_presented_limits_match_the_real_fail_closed_gate(self):
     source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-    argv = (ROOT / "scanner_argument_validation.py").read_text(encoding="utf-8")
+    argv = (ROOT / "scanner-argument-validation.py").read_text(encoding="utf-8")
     for contract in (
         "PDF_SCAN_TIMEOUT = 30 * 60",
         "MAX_FILE_SIZE = 512 * 1024 * 1024",

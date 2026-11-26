@@ -3,14 +3,14 @@ name: Embedded-file PDF security corpus
 on:
   pull_request:
     paths:
-      - tests/fixtures/pdf/embedded_file_corpus.py
+      - tests/fixtures/pdf/embedded-file-corpus.py
       - tests/pdf/embedded-file-corpus.py
       - docs/pdf/embedded-file-corpus.md
       - .github/workflows/pdf-embedded-file-corpus.yml
   push:
     branches: [main]
     paths:
-      - tests/fixtures/pdf/embedded_file_corpus.py
+      - tests/fixtures/pdf/embedded-file-corpus.py
       - tests/pdf/embedded-file-corpus.py
       - docs/pdf/embedded-file-corpus.md
       - .github/workflows/pdf-embedded-file-corpus.yml

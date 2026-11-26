@@ -12,9 +12,13 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import StreamObject
 
+__import__('module-loader')
 from tests.fixtures.pdf.embedded_file_corpus import EMBEDDED_FILE_PDFS, _document_with_embedded_files
+__import__('module-loader')
 import src.enhanced.enhanced_embedded_files as inspector
+__import__('module-loader')
 from src.pdf.pdf_embedded_file_types import inspect_pdf_embedded_file_types
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

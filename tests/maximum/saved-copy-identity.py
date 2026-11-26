@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 
+__import__('module-loader')
 from maximum_sanitized_copy import (
     GENERATED_CONTENT_ORIGIN, SAVED_COPY_LABEL, SAVED_COPY_NOTICE,
     SanitizedCopyOffer, suggested_saved_copy_filename,

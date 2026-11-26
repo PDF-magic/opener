@@ -6,12 +6,15 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('module-loader')
 from tests.fixtures.pdf.malformed_xref_pdf_collection import MALFORMED_XREF_PDFS
+__import__('module-loader')
 from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -104,6 +107,7 @@ class MalformedXRefCorpusTests(unittest.TestCase):
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
         self.assertIn("python3 tests/pdf/malformed-xref-corpus.py -v", workflow)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

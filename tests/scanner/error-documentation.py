@@ -5,7 +5,9 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('module-loader')
 from scan_results import ScanResultStatus
+__import__('module-loader')
 from src.scanner.scanner_failure_policy import (
   SCANNER_FAILURE_RESPONSES,
   UNKNOWN_SCANNER_FAILURE_RESPONSE,

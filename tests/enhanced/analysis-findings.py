@@ -5,6 +5,7 @@ from dataclasses import FrozenInstanceError
 import json
 import unittest
 
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity,
     MAX_FINDINGS_PER_STAGE, StageAnalysis, StageOutcome,

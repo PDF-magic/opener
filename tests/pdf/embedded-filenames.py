@@ -15,10 +15,12 @@ from pypdf.generic import (
     NumberObject, TextStringObject,
 )
 
+__import__('module-loader')
 from src.pdf.pdf_embedded_filenames import (
     BLOCK_MESSAGE, MAX_FILENAME_CHARACTERS, EmbeddedFilenameInspection,
     EmbeddedFilenameInspectionError, inspect_embedded_filenames,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -176,6 +178,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
             self.assert_blocked(REFERENCE_PDFS[0].content)
 
     def test_bounded_limits_and_result_contract(self):
+        __import__('module-loader')
         import src.pdf.pdf_embedded_filenames as stage
         with patch.object(stage, "MAX_ATTACHMENTS", 1):
             self.assert_blocked(document(build("first.pdf", "second.pdf")))
@@ -193,7 +196,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
 
     def test_ci_contract_and_installed_scanner_noninterference(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        source = (ROOT / "src/pdf/pdf_embedded_filenames.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf-embedded-filenames.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/embedded-filenames.py -v", ci)
         self.assertNotIn("pdf_embedded_filenames", gate)
@@ -201,6 +204,7 @@ class EmbeddedFilenameTests(unittest.TestCase):
         for forbidden in ("subprocess.run(", "get_data(", "remove_quarantine(",
                           "launch_clean_file(", "write_text(", "eval(", "exec("):
             self.assertNotIn(forbidden, source)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

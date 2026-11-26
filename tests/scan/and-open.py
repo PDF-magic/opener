@@ -13,6 +13,7 @@ import time
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from file_launcher import NATIVE_LAUNCHER
 
 sys.dont_write_bytecode = True
@@ -484,7 +485,9 @@ with module.active_scan_lock(bytes.fromhex(sys.argv[3])):
         quarantine.assert_not_called()
 
     def test_structural_success_cannot_override_clamav_detection(self):
+        __import__('module-loader')
         from pdf_structure_parser import parse_pdf_structure
+        __import__('module-loader')
         from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
         # A genuine successful structure parse is evidence only, never a clean

@@ -17,6 +17,7 @@ from pypdf.generic import (
     NameObject, NumberObject, TextStringObject,
 )
 
+__import__('module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -247,6 +248,7 @@ class InteractiveFormFixtureTests(unittest.TestCase):
         self.assertTrue(offer.rasterized)
         self.assertTrue(offer.needs_separate_scan)
         self.assertFalse(offer.permits_open)
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

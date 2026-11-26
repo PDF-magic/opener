@@ -11,7 +11,7 @@ in preferences or the command-line opening interface.
 User-editable flags could suppress encrypted-file and limit alerts, exclude
 untrusted content, or bypass mandatory scanning. The existing
 `scan-and-open.py` builds the fixed arguments for PDF and non-PDF inputs,
-and `scanner_argument_validation.py` rejects altered or additional options
+and `scanner-argument-validation.py` rejects altered or additional options
 before launching ClamAV. It passes file names after a literal `--`, with
 no shell option expansion.
 

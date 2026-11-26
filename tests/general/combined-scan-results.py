@@ -5,11 +5,13 @@ import json
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from src.scan.combined_scan_results import (
     MAX_CLAMAV_DETECTION_NAMES,
     CombinedScanReport,
     combine_scan_results,
 )
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding,
     AnalysisStage,
@@ -19,6 +21,7 @@ from src.enhanced.enhanced_analysis_findings import (
     StageOutcome,
     StructuredAnalysisFindings,
 )
+__import__('module-loader')
 from scan_results import ScanResult, ScanResultStatus
 
 
@@ -185,6 +188,7 @@ class CombinedScanResultsTests(unittest.TestCase):
         self.assertIn("decision = decide_opening(detection)", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
 
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

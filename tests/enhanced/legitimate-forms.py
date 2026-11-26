@@ -16,14 +16,20 @@ from pypdf.generic import (
     TextStringObject,
 )
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from src.pdf.pdf_form_actions import inspect_pdf_form_actions
+__import__('module-loader')
 from pdf_structure_parser import parse_pdf_structure
+__import__('module-loader')
 from src.pdf.pdf_xfa_forms import inspect_pdf_xfa_forms
+__import__('module-loader')
 from protection_policy_definitions import PROTECTION_POLICIES
+__import__('module-loader')
 from protection_profiles import BASELINE_SAFETY_CHECKS, ProtectionProfileID
 
 

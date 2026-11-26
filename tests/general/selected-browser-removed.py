@@ -9,7 +9,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import src.browser.browser_preference_selector as selector
+__import__('module-loader')
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True

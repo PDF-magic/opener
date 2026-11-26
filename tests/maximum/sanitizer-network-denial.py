@@ -9,7 +9,9 @@ from unittest.mock import patch
 
 from importlib import import_module
 isolation = import_module("maximum-network-isolation")
+__import__('module-loader')
 import maximum_sanitizer_memory_launcher as launcher
+__import__('module-loader')
 import maximum_sanitizer_process as sanitizer
 
 ENV = {

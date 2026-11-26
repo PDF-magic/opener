@@ -6,7 +6,7 @@ not identify it as the actual recommended default yet.
 
 The installed scanner currently enforces only **Built-in ClamAV**, and the
 named Standard, Enhanced and Maximum profiles are non-selectable previews.
-`protection_policy_definitions.py` still describes required Enhanced PDF
+`protection-policy-definitions.py` still describes required Enhanced PDF
 structure validation and optional isolated analysis as **planned**.
 The shared reference-PDF suite in `test-reference-pdf-profiles.py` explicitly
 rejects all three named policies. Individual Enhanced inspector tests and

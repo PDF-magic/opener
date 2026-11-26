@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "uninstall_signature_launchagent", ROOT / "scripts/installation/uninstall_signature_launchagent.py")
+    "uninstall_signature_launchagent", ROOT / "scripts/installation/uninstall-signature-launchagent.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -164,7 +164,7 @@ class SignatureLaunchAgentUninstallTests(unittest.TestCase):
         with patch.object(mod.os, "geteuid", return_value=0):
             with self.assertRaises(mod.AgentRemovalRefused):
                 mod.remove_signature_launchagent(self.home, remove=True, run=FakeLaunchctl())
-        code = (ROOT / "scripts/installation/uninstall_signature_launchagent.py").read_text()
+        code = (ROOT / "scripts/installation/uninstall-signature-launchagent.py").read_text()
         self.assertNotIn("shell=True", code)
         self.assertNotIn("rm -", code)
         self.assertNotIn("brew uninstall", code)
@@ -174,7 +174,7 @@ class SignatureLaunchAgentUninstallTests(unittest.TestCase):
     def test_uninstall_guide_and_ci_integrate_explicit_safe_removal(self):
         guide = (ROOT / "docs/uninstall-procedure.md").read_text()
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("python3 scripts/installation/uninstall_signature_launchagent.py --remove", guide)
+        self.assertIn("python3 scripts/installation/uninstall-signature-launchagent.py --remove", guide)
         self.assertIn("local.studio.pdf-malware-signatures.plist.before-uninstall", guide)
         self.assertIn("PYTHONPATH=. python3 tests/signature/uninstall-agent.py -v", workflow)
         self.assertIn("Verify guided uninstall procedure and safety boundaries", workflow)

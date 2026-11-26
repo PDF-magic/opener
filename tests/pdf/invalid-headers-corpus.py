@@ -12,12 +12,15 @@ from pathlib import Path
 import tempfile
 import unittest
 
+__import__('module-loader')
 from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, identify_pdf_format, identify_pdf_header,
 )
+__import__('module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode, PDFStructureParseFailure, parse_pdf_structure_result,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import INVALID_PDF_HEADERS, REFERENCE_PDFS
 
 

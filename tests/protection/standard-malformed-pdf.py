@@ -11,17 +11,20 @@ from hashlib import sha256
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode,
     PDFStructureParseFailure,
     parse_pdf_structure_result,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
@@ -29,7 +32,9 @@ from protection_policy_definitions import (
     PolicyControl,
     protection_policy_definition,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

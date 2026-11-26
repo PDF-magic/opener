@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.missing_dependency_policy import (
     MISSING_DEPENDENCY_RESPONSES,
     UNKNOWN_MISSING_DEPENDENCY_RESPONSE,
@@ -19,9 +20,11 @@ from src.protection.missing_dependency_policy import (
     MissingDependencyResponse,
     response_for_missing_dependency,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, PROTECTION_POLICIES, PolicyControl,
 )
+__import__('module-loader')
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]

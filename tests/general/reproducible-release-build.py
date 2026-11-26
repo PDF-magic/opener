@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-  "release_builder", ROOT / "scripts/build_reproducible_release.py")
+  "release_builder", ROOT / "scripts/build-reproducible-release.py")
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
@@ -57,12 +57,12 @@ class ReproducibleReleaseTests(unittest.TestCase):
       encoding="utf-8")
     for trigger in ("pull_request:", "merge_group:", "push:"):
       self.assertIn(trigger, workflow)
-    self.assertIn("python3 scripts/build_reproducible_release.py", workflow)
+    self.assertIn("python3 scripts/build-reproducible-release.py", workflow)
     self.assertIn("python3 tests/general/reproducible-release-build.py -v", workflow)
     self.assertIn("contents: read", workflow)
     self.assertNotIn("contents: write", workflow)
     self.assertNotIn("gh release create", workflow)
-    gate = (ROOT / "scripts/require_release_checks.py").read_text(encoding="utf-8")
+    gate = (ROOT / "scripts/require-release-checks.py").read_text(encoding="utf-8")
     self.assertIn('"Reproducible unsigned release candidates",', gate)
 
 

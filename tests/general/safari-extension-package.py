@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-  "safari_package", ROOT / "scripts" / "package_safari_extension.py")
+  "safari_package", ROOT / "scripts" / "package-safari-extension.py")
 safari = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(safari)
 
@@ -139,8 +139,8 @@ class SafariPackageTests(unittest.TestCase):
   def test_ci_publishes_verified_safari_package(self):
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     self.assertIn("python3 tests/general/safari-extension-package.py -v", ci)
-    self.assertIn("scripts/package_safari_extension.py --app", ci)
-    self.assertIn("scripts/package_safari_extension.py --verify", ci)
+    self.assertIn("scripts/package-safari-extension.py --app", ci)
+    self.assertIn("scripts/package-safari-extension.py --verify", ci)
     self.assertIn("pdf-magic-opener-safari-unsigned", ci)
     self.assertIn("actions/upload-artifact@v4", ci)
 

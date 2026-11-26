@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("browser_preference_selector",
-                                               ROOT / "src/browser/browser_preference_selector.py")
+                                               ROOT / "src/browser/browser-preference-selector.py")
 selector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selector)
 
@@ -61,6 +61,7 @@ class BrowserSelectorTests(unittest.TestCase):
                     selector.selector_choices(invalid)
 
     def test_primary_list_requires_exact_supported_registry_membership(self):
+        __import__('module-loader')
         from browser_registry import SUPPORTED_BROWSER_BUNDLE_IDS
 
         rows = [{"bundle_id": identifier, "name": identifier, "installed": True}

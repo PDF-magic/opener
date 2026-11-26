@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import maximum_filesystem_sandbox as sandbox
 
 
@@ -84,6 +85,7 @@ class MaximumFilesystemSandboxTests(unittest.TestCase):
         self.assertNotIn("maximum_filesystem_sandbox", scan_gate)
         self.assertNotIn("maximum_filesystem_sandbox", native)
         self.assertIn("if not cached_clean(cache_id):", scan_gate)
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

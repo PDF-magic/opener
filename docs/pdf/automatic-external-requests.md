@@ -3,8 +3,8 @@
 The optional Enhanced inspector
 `pdf_automatic_external_requests.inspect_pdf_automatic_external_requests(contents)`
 correlates external-request *intent* with PDF automatic action hooks. Existing
-`src/pdf/pdf_automatic_actions.py` finds automatic action types, and
-`src/pdf/pdf_suspicious_urls.py` finds URL risks; neither by itself proves that a
+`src/pdf/pdf-automatic-actions.py` finds automatic action types, and
+`src/pdf/pdf-suspicious-urls.py` finds URL risks; neither by itself proves that a
 URL-bearing action is triggered automatically. This inspector checks that
 specific relationship while remaining strictly passive.
 

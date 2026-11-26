@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
-    "quarantine_removal_audit", ROOT / "tools" / "audit_quarantine_removal.py")
+    "quarantine_removal_audit", ROOT / "tools" / "audit-quarantine-removal.py")
 audit = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(audit)
 
@@ -50,7 +50,7 @@ class QuarantineRemovalInventoryTests(unittest.TestCase):
         for path in ["tests/general/retain-os-quarantine.py",
                      "tests/browser/download-monitoring.swift",
                      "docs/macos-quarantine-removal-inventory.md",
-                     "tools/audit_quarantine_removal.py", "secrets/browser-credentials.py",
+                     "tools/audit-quarantine-removal.py", "secrets/browser-credentials.py",
                      ".env", "user-private-key.pem"]:
             self.assertFalse(audit.runtime_path(path), path)
 

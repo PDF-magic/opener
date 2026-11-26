@@ -12,18 +12,25 @@ from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from src.pdf.pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
+__import__('module-loader')
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, FailureDisposition, PolicyControl,
     PROTECTION_POLICIES,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
+__import__('module-loader')
 from scan_results import ScanResultStatus
+__import__('module-loader')
 from src.pdf.unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
 
 

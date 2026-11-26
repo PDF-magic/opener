@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import file_launcher
 
 ROOT = Path(__file__).resolve().parents[2]

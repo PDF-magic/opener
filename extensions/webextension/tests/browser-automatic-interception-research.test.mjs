@@ -26,7 +26,7 @@ const SOURCES = {
 
 test("all nine browser registry identifiers are represented exactly once", async () => {
   const matrix = await data();
-  const registry = await read("browser_registry.py");
+  const registry = await read("browser-registry.py");
   const supported = {};
   for (const match of registry.matchAll(/^\s*"([a-z]+)": "([A-Za-z0-9.-]+)",?\s*$/gm)) {
     supported[match[1]] = match[2];

@@ -193,7 +193,7 @@ and must not fabricate a clean or failed scan:
 `result: null` distinguishes **absence of any verified scan result** from
 a scan failure, detection, cancellation, or completion. Canonical terminal
 outcomes are defined by the separately enforced scanner in
-`scan_results.py` (`clean`, `malwareDetected`, `incompleteScan`, etc.);
+`scan-results.py` (`clean`, `malwareDetected`, `incompleteScan`, etc.);
 **none is assigned by this unregistered native host**. A scan-result message
 can never replace the scanner's separate verified evidence and PDF-opening
 gate, even if a future implementation reports `clean`.

@@ -4,9 +4,11 @@
 from dataclasses import FrozenInstanceError
 import unittest
 
+__import__('module-loader')
 from src.scan.detection_responses import (
     DetectionAction, DetectionResponse, response_for_detection,
 )
+__import__('module-loader')
 from scan_results import ScanResultStatus
 
 
@@ -81,7 +83,7 @@ class DetectionResponseTests(unittest.TestCase):
 
     def test_policy_definitions_do_not_launch_or_change_scanning(self):
         from pathlib import Path
-        src = (Path(__file__).resolve().parents[2] / "src/scan/detection_responses.py").read_text()
+        src = (Path(__file__).resolve().parents[2] / "src/scan/detection-responses.py").read_text()
         self.assertNotIn("subprocess", src)
         self.assertNotIn("os.system", src)
         self.assertNotIn("launch_clean_file", src)

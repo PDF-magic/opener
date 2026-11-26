@@ -7,7 +7,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import benchmarks.large_pdf_benchmark as benchmark
+__import__('module-loader')
 from tests.fixtures.pdf.large_valid_pdf_corpus import LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES
 
 
@@ -56,7 +58,7 @@ class LargePDFBenchmarkTests(unittest.TestCase):
     self.assertEqual(report["results"][0]["runs"], 2)
     self.assertEqual(len(invocations), 2)
     for args, kwargs in invocations:
-      self.assertEqual(args[1:], [str(ROOT / "benchmarks/large_pdf_benchmark.py"), "--worker",
+      self.assertEqual(args[1:], [str(ROOT / "benchmarks/large-pdf-benchmark.py"), "--worker",
                                   "--case", "single-large-stream", "--runs", "1"])
       self.assertEqual(kwargs, {"capture_output": True, "text": True,
                                 "check": False, "timeout": 90})
@@ -83,7 +85,7 @@ class LargePDFBenchmarkTests(unittest.TestCase):
     self.assertIn("if not cached_clean(cache_id):", scanner)
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     self.assertIn("PYTHONPATH=. python3 tests/pdf/large-pdf-benchmark.py -v", ci)
-    self.assertIn("python3 benchmarks/large_pdf_benchmark.py --case many-large-pages --runs 1", ci)
+    self.assertIn("python3 benchmarks/large-pdf-benchmark.py --case many-large-pages --runs 1", ci)
     docs = (ROOT / "docs/pdf/large-pdf-benchmark.md").read_text(encoding="utf-8")
     for key in ("opener-1075", "parser", "ClamAV", "not", "16 MiB"):
       self.assertIn(key.lower(), docs.lower())

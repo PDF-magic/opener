@@ -10,6 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+__import__('module-loader')
 from scripts.installation.existing_finder_quick_action import detect_existing_finder_quick_action
 
 
@@ -88,7 +89,7 @@ class ExistingFinderQuickActionTests(unittest.TestCase):
         self.contents.mkdir(parents=True)
         self.backup.write_bytes(b"backup")
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts/installation/existing_finder_quick_action.py"), "--home", str(self.home)],
+            [sys.executable, str(ROOT / "scripts/installation/existing-finder-quick-action.py"), "--home", str(self.home)],
             capture_output=True, text=True, timeout=5, check=True,
         )
         self.assertEqual(json.loads(result.stdout), self.state())

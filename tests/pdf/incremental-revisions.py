@@ -6,10 +6,12 @@ from pathlib import Path
 import unittest
 
 from pypdf import PdfWriter
+__import__('module-loader')
 from src.pdf.pdf_incremental_revisions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFIncrementalRevisionError,
     inspect_pdf_incremental_revisions,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -109,6 +111,7 @@ class IncrementalRevisionTests(unittest.TestCase):
         scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_incremental_revisions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

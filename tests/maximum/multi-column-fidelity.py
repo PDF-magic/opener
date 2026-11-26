@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
+__import__('module-loader')
 import maximum_sanitized_copy as copies
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -208,6 +209,7 @@ class MultiColumnFixtureTests(unittest.TestCase):
         self.assertNotIn("maximum-multi-column-fidelity", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
         self.assertIn("python3 tests/maximum/multi-column-fidelity.py -v", workflow)
+        __import__('module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         self.assertTrue(copies.SanitizedCopyOffer(_pdf(), 2).needs_separate_scan)

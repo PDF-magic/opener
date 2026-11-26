@@ -16,7 +16,7 @@ import tempfile
 
 HOST_NAME = "org.pdfmagic.opener"
 MANIFEST_FILENAME = HOST_NAME + ".json"
-# Only independently supported Chromium-family browsers from browser_registry.py.
+# Only independently supported Chromium-family browsers from browser-registry.py.
 # Opera documents using Chrome's native host directory on macOS.
 BROWSER_LOCATIONS = {
     "chrome": "Google/Chrome",

@@ -7,10 +7,12 @@ import unittest
 
 from pypdf import PdfReader
 
+__import__('module-loader')
 from benchmarks.medium_pdf_benchmark import (
   MAX_MEDIUM_BYTES, MAX_RUNS, MEDIUM_PAGES, MIN_MEDIUM_BYTES,
   benchmark_medium_pdf, build_medium_pdf,
 )
+__import__('module-loader')
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -66,7 +68,7 @@ class MediumPDFBenchmarkTests(unittest.TestCase):
                            clock_ns=lambda: 4)
 
   def test_benchmark_is_not_the_scanner_or_an_open_authorization(self):
-    source = (ROOT / "benchmarks/medium_pdf_benchmark.py").read_text()
+    source = (ROOT / "benchmarks/medium-pdf-benchmark.py").read_text()
     scanner = (ROOT / "scan-and-open.py").read_text()
     workflow = (ROOT / ".github/workflows/medium-pdf-benchmark.yml").read_text()
     docs = (ROOT / "docs/performance/medium-pdf.md").read_text()
@@ -77,7 +79,7 @@ class MediumPDFBenchmarkTests(unittest.TestCase):
     self.assertNotIn("remove_quarantine", source)
     self.assertIn("parse_pdf_structure_timed", source)
     self.assertIn("PYTHONPATH=. python3 tests/performance/medium-pdf.py -v", workflow)
-    self.assertIn("python3 benchmarks/medium_pdf_benchmark.py --runs 3", workflow)
+    self.assertIn("python3 benchmarks/medium-pdf-benchmark.py --runs 3", workflow)
     self.assertIn("not end-to-end", docs)
 
 

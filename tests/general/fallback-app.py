@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import file_launcher as launcher
 
 sys.dont_write_bytecode = True

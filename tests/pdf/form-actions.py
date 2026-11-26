@@ -12,6 +12,7 @@ from pypdf import PdfWriter
 from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, NumberObject, TextStringObject,
 )
+__import__('module-loader')
 from src.pdf.pdf_form_actions import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFFormActionInspectionError,
     inspect_pdf_form_actions,
@@ -48,6 +49,7 @@ def pdf_with_action(*actions, placement="open", orphan=False):
 
 class PDFFormActionTests(unittest.TestCase):
     def test_reference_collection_has_no_form_actions(self):
+        __import__('module-loader')
         from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(pdf=sample.identifier):
@@ -143,6 +145,7 @@ class PDFFormActionTests(unittest.TestCase):
         self.assertNotIn("pdf_form_actions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("remove_quarantine(path)", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

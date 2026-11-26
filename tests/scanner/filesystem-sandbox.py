@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import scanner_filesystem_sandbox as sandbox
 
 

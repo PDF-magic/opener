@@ -1,6 +1,6 @@
 # Native messaging byte framing (opener-0617)
 
-The pure Python transport helper `src/native/native_message_framing.py` exposes
+The pure Python transport helper `src/native/native-message-framing.py` exposes
 `read_native_frame(binary_input)` and `write_native_frame(binary_output, body)`
 for browser native messaging. Each message is:
 

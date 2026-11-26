@@ -14,10 +14,12 @@ from pypdf import PdfWriter
 from pypdf.generic import (
   ArrayObject, DictionaryObject, FloatObject, NameObject, TextStringObject,
 )
+__import__('module-loader')
 from src.pdf.pdf_rich_media import (
   BLOCK_MESSAGE, MAX_PDF_BYTES, MAX_MEDIA_ENTRIES, PDFRichMediaInspectionError,
   inspect_pdf_rich_media,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -158,19 +160,21 @@ class PDFRichMediaTests(unittest.TestCase):
       inspect_pdf_rich_media(out.getvalue())
 
   def test_metadata_validation_and_scanner_isolation(self):
+    __import__('module-loader')
     from src.pdf.pdf_rich_media import PDFRichMediaInspection
     for invalid in (-1, True, MAX_MEDIA_ENTRIES + 1):
       with self.subTest(value=invalid), self.assertRaises(ValueError):
         PDFRichMediaInspection(0, 0, 0, invalid)
     scan = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    module = (ROOT / "src/pdf/pdf_rich_media.py").read_text(encoding="utf-8")
+    module = (ROOT / "src/pdf/pdf-rich-media.py").read_text(encoding="utf-8")
     self.assertNotIn("pdf_rich_media", scan)
     self.assertIn("if not cached_clean(cache_id):", scan)
     self.assertIn("python3 tests/pdf/rich-media.py -v", workflow)
     self.assertNotIn("get_data(", module)
     self.assertNotIn("remove_quarantine(", module)
     self.assertNotIn("launch_clean_file(", module)
+    __import__('module-loader')
     from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
     self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

@@ -40,5 +40,5 @@ jobs:
               encoding="ascii",
           )
           PY
-          PYTHONPATH=. python3 benchmarks/cold_warm_scan_benchmark.py \
+          PYTHONPATH=. python3 benchmarks/cold-warm-scan-benchmark.py \
             --scanner /usr/bin/clamscan --database "$benchmark_db" --pairs 3

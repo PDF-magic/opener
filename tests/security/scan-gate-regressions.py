@@ -14,6 +14,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from scanner_argument_validation import InvalidScannerArguments
 
 

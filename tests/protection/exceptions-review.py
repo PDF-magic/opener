@@ -5,6 +5,7 @@ from dataclasses import FrozenInstanceError
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ExceptionDisposition,

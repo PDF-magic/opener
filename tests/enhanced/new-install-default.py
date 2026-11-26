@@ -9,13 +9,16 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy, resolve_effective_policy,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     ControlAvailability, PROTECTION_POLICIES,
 )
+__import__('module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -79,6 +82,7 @@ class EnhancedNewInstallRecommendationTests(unittest.TestCase):
     def test_installer_and_saved_preferences_are_not_modified(self):
         # This PR is strictly an explanatory status in Preferences. The
         # effective policy and existing user selections are not mutated.
+        __import__('module-loader')
         from protection_profiles import BASELINE_SAFETY_CHECKS
         self.assertEqual(
             frozenset(BASELINE_SAFETY_CHECKS),

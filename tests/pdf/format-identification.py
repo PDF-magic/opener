@@ -8,10 +8,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.pdf.pdf_format_identification import (
     NOT_PDF, UNDETERMINED, PDFFormatStatus, identify_pdf_format,
     identify_pdf_header,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -121,7 +123,7 @@ class PDFFormatIdentificationTests(unittest.TestCase):
         self.assertFalse(result.permits_open)
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_format_identification", scanner)
-        policy = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
+        policy = (ROOT / "protection-profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", policy)
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/format-identification.py -v", workflow)

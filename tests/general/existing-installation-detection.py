@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-DETECTOR = ROOT / "scripts/detect_existing_installations.py"
+DETECTOR = ROOT / "scripts/detect-existing-installations.py"
 spec = importlib.util.spec_from_file_location("existing_installations", DETECTOR)
 detector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(detector)

@@ -3,14 +3,14 @@ name: Interactive-form PDF security corpus
 on:
   pull_request:
     paths:
-      - tests/fixtures/pdf/interactive_form_corpus.py
+      - tests/fixtures/pdf/interactive-form-corpus.py
       - tests/pdf/interactive-form-corpus.py
       - docs/pdf/interactive-form-corpus.md
       - .github/workflows/pdf-interactive-form-corpus.yml
   push:
     branches: [main]
     paths:
-      - tests/fixtures/pdf/interactive_form_corpus.py
+      - tests/fixtures/pdf/interactive-form-corpus.py
       - tests/pdf/interactive-form-corpus.py
       - docs/pdf/interactive-form-corpus.md
       - .github/workflows/pdf-interactive-form-corpus.yml

@@ -28,7 +28,7 @@ that PDF Magic Opener has performed this scan.
 | Mozilla Firefox | `org.mozilla.firefox` | Built-in PDF.js when enabled | **No — inactive** | `webRequest.filterResponseData` is documented with grants, but no trusted, complete native scan-and-release integration exists. |
 | Apple Safari | `com.apple.Safari` | Safari's inline PDF display when enabled | **No — inactive** | Safari network rules and native messaging do not establish a scanner-controlled byte hold. |
 
-The identifiers match the [supported browser registry](../browser_registry.py).
+The identifiers match the [supported browser registry](../browser-registry.py).
 The [research capability data](browser-automatic-interception-capabilities.json)
 and the [runtime's disabled reliability policy](../extensions/webextension/src/automatic-interception-capability-matrix.js)
 are the implementation evidence for the **inactive** statuses. All nine rows

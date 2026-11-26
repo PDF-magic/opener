@@ -189,7 +189,7 @@ class SignatureAgentRestartTests(unittest.TestCase):
 
     def test_launch_agent_startup_and_scanner_policy_remain_intact(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+        migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
         self.assertIn('LABEL = "local.studio.pdf-malware-signatures"', migrator)
         self.assertIn('"RunAtLoad": True', migrator)
         self.assertIn('"StartInterval": 14400', migrator)

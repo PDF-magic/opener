@@ -9,10 +9,12 @@ import unittest
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
+__import__('module-loader')
 from tests.fixtures.pdf.malformed_object_stream_corpus import (
     MALFORMED_OBJECT_STREAM_PDFS,
     VALID_OBJECT_STREAM_PDFS,
 )
+__import__('module-loader')
 from pdf_structure_parser import (
     PDFStructure,
     PDFStructureFailureCode,
@@ -21,7 +23,9 @@ from pdf_structure_parser import (
     parse_pdf_structure,
     parse_pdf_structure_result,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

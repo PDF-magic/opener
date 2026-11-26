@@ -16,13 +16,16 @@ import time
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, FailureDisposition, PolicyControl,
     protection_policy_definition,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID
 
 sys.dont_write_bytecode = True

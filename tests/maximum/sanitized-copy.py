@@ -12,6 +12,7 @@ from unittest.mock import patch
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, NameObject, NumberObject
 from PIL import Image
+__import__('module-loader')
 import maximum_sanitized_copy as copies
 
 
@@ -271,6 +272,7 @@ class SanitizedCopyOfferContractTests(unittest.TestCase):
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("maximum_sanitized_copy", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

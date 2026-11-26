@@ -1,6 +1,6 @@
 # Digital-signature PDF security corpus (opener-1040)
 
-The test-only `tests/fixtures/pdf/digital_signature_corpus.py` generator produces two complete,
+The test-only `tests/fixtures/pdf/digital-signature-corpus.py` generator produces two complete,
 one-page PDFs containing **genuine detached CMS/PKCS#7 signatures**: an
 approval-signature widget and a certification-permission example with
 `/Perms /DocMDP`, a `/Sig` field and `/Reference` transform parameters.

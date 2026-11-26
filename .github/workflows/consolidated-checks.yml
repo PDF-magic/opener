@@ -32,7 +32,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-        run: python3 scripts/ci_test_scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+        run: python3 scripts/ci-test-scope.py "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
       - name: Verify actionable failure-report formatting and metadata handling
         run: PYTHONPATH=. python3 tests/general/ci-failure-report.py -v
       - name: Verify dependency-map behavior
@@ -313,10 +313,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import sys
-          import maximum_isolated_renderer as renderer
+          __import__('module-loader'); import maximum_isolated_renderer as renderer
 
           root = Path(renderer.__file__).resolve().parent
-          worker = root / "maximum_render_worker.py"
+          worker = root / "maximum-render-worker.py"
           checks = {
               "python": renderer._trusted_regular_file(
                   str(Path(renderer._sandbox_python_executable()).resolve()),
@@ -386,7 +386,7 @@ jobs:
       - name: mac / performance / Verify Maximum benchmark contract before live conversion
         run: PYTHONPATH=. python3 tests/maximum/sanitization-benchmark.py -v
       - name: mac / performance / Benchmark actual Maximum rasterization and output verification
-        run: PYTHONPATH=. python3 benchmarks/maximum_sanitization_benchmark.py --samples 3
+        run: PYTHONPATH=. python3 benchmarks/maximum-sanitization-benchmark.py --samples 3
       - name: mac / maximum-sanitized-copy / Verify hard sanitizer execution deadline and process-tree cleanup
         run: PYTHONPATH=. python3 tests/maximum/sanitizer-time-limits.py -v
       - name: mac / maximum-sanitized-copy / Verify sanitizer memory ceiling and fail-closed behavior
@@ -475,7 +475,7 @@ jobs:
       - name: Summarize failed jobs and their failing steps
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci_failure_report.py
+        run: python3 scripts/ci-failure-report.py
       - name: Publish downloadable failure summary
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

@@ -55,9 +55,9 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
-          import maximum_isolated_renderer as renderer
+          __import__('module-loader'); import maximum_isolated_renderer as renderer
 
-          worker = Path(renderer.__file__).resolve().with_name("maximum_render_worker.py")
+          worker = Path(renderer.__file__).resolve().with_name("maximum-render-worker.py")
           try:
               command = list(renderer._renderer_command(worker, 0))
           except renderer.MaximumPDFRenderError:
@@ -67,7 +67,7 @@ jobs:
               "import resource, sys",
               "sys.path.insert(0, " + repr(str(worker.parent)) + ")",
               "try:",
-              "    from maximum_isolated_worker import _apply_limits",
+              "    __import__('module-loader'); from maximum_isolated_worker import _apply_limits",
               "except BaseException:",
               "    print('probe-import-failed', flush=True)",
               "    raise SystemExit(2)",

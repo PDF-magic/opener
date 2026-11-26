@@ -13,14 +13,18 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject, StreamObject
 
+__import__('module-loader')
 from tests.fixtures.pdf.oversized_stream_corpus import (
     OVERSIZED_STREAM_PDFS, STREAM_LIMIT, _embedded_pdf,
 )
+__import__('module-loader')
 from src.pdf.pdf_embedded_object_sizes import (
     LARGE_DECLARED_BYTES, LARGE_DECODED_BYTES, LARGE_ENCODED_BYTES,
     inspect_pdf_embedded_object_sizes,
 )
+__import__('module-loader')
 from pdf_structure_parser import PDFStructure, parse_pdf_structure
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

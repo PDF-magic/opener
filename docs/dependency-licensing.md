@@ -1,6 +1,6 @@
 # Dependency licensing review (opener-0959)
 
-The offline reviewer `python3 scripts/check_dependency_licenses.py` checks the
+The offline reviewer `python3 scripts/check-dependency-licenses.py` checks the
 versioned Python dependencies used in GitHub Actions and
 `requirements-enhanced-pdf.txt` against the evidence-backed inventory in
 [dependency-licenses.json](dependency-licenses.json). It also checks that the

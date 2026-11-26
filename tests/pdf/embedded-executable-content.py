@@ -10,6 +10,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, EncodedStreamObject, NameObject
 
+__import__('module-loader')
 import src.pdf.pdf_embedded_executable_content as inspector
 
 
@@ -147,6 +148,7 @@ class EmbeddedExecutableInspectionTests(unittest.TestCase):
         self.assertNotIn("pdf_embedded_executable_content", deployed)
         self.assertIn("check_database()", deployed)
         self.assertIn("if not cached_clean(cache_id):", deployed)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

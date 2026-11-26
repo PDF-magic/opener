@@ -8,7 +8,7 @@ import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("ui_response", ROOT / "benchmarks/ui_responsiveness_benchmark.py")
+SPEC = importlib.util.spec_from_file_location("ui_response", ROOT / "benchmarks/ui-responsiveness-benchmark.py")
 benchmark = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(benchmark)
 
@@ -69,7 +69,7 @@ class UIResponsivenessContracts(unittest.TestCase):
           benchmark.run_once(Path(folder), 0)
 
   def test_no_production_scan_bypass_or_preference_writes(self):
-    source = (ROOT / "benchmarks/ui_responsiveness_benchmark.py").read_text(encoding="utf-8")
+    source = (ROOT / "benchmarks/ui-responsiveness-benchmark.py").read_text(encoding="utf-8")
     for required in ("start_new_session=True", "os.killpg(process.pid, signal.SIGKILL)",
                      "run_once(root, 0)", "process.returncode != 0"):
       self.assertIn(required, source)

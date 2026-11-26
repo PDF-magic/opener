@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from maximum_sanitized_copy import SanitizedCopyOffer
 
 sys.dont_write_bytecode = True
@@ -217,6 +218,7 @@ class GeneratedPDFRescanTests(unittest.TestCase):
 
     def test_unavailable_native_converter_or_optional_parser_never_affects_builtin(self):
         root = Path(__file__).resolve().parents[2]
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         scanner = (root / "scan-and-open.py").read_text(encoding="utf-8")
@@ -236,6 +238,7 @@ class NativeGeneratedPDFRescanTests(unittest.TestCase):
     def test_real_rasterized_pdf_must_reenter_clamav_before_launch(self):
         from io import BytesIO
         from pypdf import PdfWriter
+        __import__('module-loader')
         from maximum_sanitized_copy import attempt_sanitized_pdf_copy
 
         writer = PdfWriter()
@@ -244,6 +247,7 @@ class NativeGeneratedPDFRescanTests(unittest.TestCase):
         writer.write(stream)
         # Test-only supervisor diagnostics: fixed stage names only, never PDF
         # bytes, worker output, file paths, or exception messages.
+        __import__('module-loader')
         import maximum_sanitizer_process as supervisor
         failed_stages = []
 

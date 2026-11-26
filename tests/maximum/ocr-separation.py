@@ -14,7 +14,9 @@ import unittest
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
+__import__('module-loader')
 import maximum_sanitized_copy as copies
+__import__('module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
 
 ROOT = Path(__file__).resolve().parents[2]

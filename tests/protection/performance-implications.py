@@ -4,9 +4,13 @@ import json
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_findings import AnalysisStage, StageAnalysis, StageOutcome
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_timing import AdditionalAnalysisTimer
+__import__('module-loader')
 from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
+__import__('module-loader')
 from src.protection.protection_performance_evidence import (
     PerformanceSampleGroup, build_report, encode_report,
 )

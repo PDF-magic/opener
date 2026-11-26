@@ -51,7 +51,7 @@ class DependencyDeliveryDecisionTests(unittest.TestCase):
         self.assertNotIn("from pypdf import", source)
 
     def test_packaged_helpers_exclude_scanner_engine_and_parser(self):
-        package = ROOT / "scripts/package_application_helpers.py"
+        package = ROOT / "scripts/package-application-helpers.py"
         spec = importlib.util.spec_from_file_location("reviewed_helpers", package)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

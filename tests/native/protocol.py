@@ -7,10 +7,12 @@ import struct
 import subprocess
 import unittest
 
+__import__('module-loader')
 from src.native.native_message_format import (
   InvalidNativeMessage, MAX_MESSAGE_BYTES, decode_native_message,
   encode_native_message,
 )
+__import__('module-loader')
 from src.native.native_message_framing import (
   InvalidNativeFrame, MAX_FRAME_BYTES, read_native_frame, write_native_frame,
 )
@@ -117,7 +119,7 @@ class NativeMessagingProtocolTests(unittest.TestCase):
     write_native_frame(wire, encode_native_message(message))
     self.assertEqual(decode_native_message(read_native_frame(
       io.BytesIO(wire.getvalue()))), message)
-    for name in ("src/native/native_message_framing.py", "src/native/native_message_format.py"):
+    for name in ("src/native/native-message-framing.py", "src/native/native-message-format.py"):
       source = (ROOT / name).read_text(encoding="utf-8")
       for forbidden in ("subprocess.run(", "os.system(", "scan_and_open(",
                         "open_pdf(", "connectNative("):

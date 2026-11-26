@@ -6,15 +6,20 @@ from pathlib import Path
 import json
 import unittest
 
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS, ControlAvailability, FailureDisposition,
     OPTIONAL_CHECKS_BY_PROFILE, PolicyControl, PolicyRequirement,
     PROTECTION_POLICIES, REQUIRED_CHECKS_BY_PROFILE, StructuredProtectionPolicy,
     _inherit_enhanced_requirements,
 )
+__import__('module-loader')
 from protection_stage_resource_budgets import resource_budgets_for_profile
+__import__('module-loader')
 from src.protection.protection_stage_time_limits import stage_limits_for_profile
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy, resolve_effective_policy,
 )

@@ -95,7 +95,7 @@ class RepairSignatureDatabaseTests(unittest.TestCase):
         self.repair = repair
         scripts = self.checkout / "scripts"
         scripts.mkdir()
-        for name in ("report_install_prerequisites.py", "confirm_clamav_install.py"):
+        for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# inert repair test fixture\n", encoding="utf-8")
 
         # Preserve a complete, already-valid main/daily pair and user-defined

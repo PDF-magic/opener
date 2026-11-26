@@ -53,7 +53,7 @@ jobs:
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
         run: |
           set -euo pipefail
-          python3 scripts/notarize_release.py \
+          python3 scripts/notarize-release.py \
             --signed-zip "$RUNNER_TEMP/signed-input/PDFMagicOpener-signed.zip" \
             --output-zip "$RUNNER_TEMP/PDFMagicOpener-notarized.zip"
       - name: Publish only the verified stapled archive

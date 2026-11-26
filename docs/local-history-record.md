@@ -1,6 +1,6 @@
 # Optional local scan history: record format (v1)
 
-`src/scan/scan_history_record.py` defines a **passive, immutable metadata contract** for
+`src/scan/scan-history-record.py` defines a **passive, immutable metadata contract** for
 one scan request. This task does not collect, save, display, transmit, prune,
 or enable local history. History remains optional and off until a later,
 explicitly authorized integration adds opt-in controls and secure local storage.

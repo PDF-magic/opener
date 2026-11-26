@@ -10,7 +10,7 @@ GENERAL = ROOT / "PDFMagicOpenerApp" / "GeneralSettingsView.swift"
 HELPER = ROOT / "PDFMagicOpenerApp" / "DefaultPDFBrowserPreferences.swift"
 PROJECT = ROOT / "PDFMagicOpener.xcodeproj" / "project.pbxproj"
 INSTALLED = ROOT / "select-custom-pdf-application.py"
-REGISTRY = ROOT / "browser_registry.py"
+REGISTRY = ROOT / "browser-registry.py"
 
 
 class GeneralDefaultPDFBrowserSelectorTests(unittest.TestCase):

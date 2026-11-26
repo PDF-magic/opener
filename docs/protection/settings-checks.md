@@ -2,7 +2,7 @@
 
 The three selectable **preview cards** from opener-0327 now explicitly list their included required checks. The card for Standard, Enhanced, or Maximum displays the current baseline controls by name; planned checks appear only in levels where the structured policy includes them. A separate optional label distinguishes optional checks from required checks. Selecting a preview card reveals the individual check explanations and availability statuses, including accessible labels that work with large text.
 
-The underlying, non-executable policy contract in \`protection_policy_definitions.py\` remains authoritative:
+The underlying, non-executable policy contract in \`protection-policy-definitions.py\` remains authoritative:
 
 | Planned level | Required checks | Optional planned checks |
 | --- | --- | --- |

@@ -27,7 +27,7 @@ class ApplicationUpdateDeliveryTests(unittest.TestCase):
       with self.subTest(required=required):
         self.assertIn(required.lower(), self.normalized)
     installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
-    self.assertIn("scripts/report_install_prerequisites.py", installer)
+    self.assertIn("scripts/report-install-prerequisites.py", installer)
     self.assertIn('if [ "$EUID" -eq 0 ]; then', installer)
 
   def test_no_binary_distribution_signing_or_updater_is_planned(self):

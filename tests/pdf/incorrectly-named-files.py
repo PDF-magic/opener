@@ -6,8 +6,11 @@ from pathlib import Path
 import tempfile
 import unittest
 
+__import__('module-loader')
 from src.pdf.pdf_format_identification import PDFFormatStatus, identify_pdf_format
+__import__('module-loader')
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import INCORRECTLY_NAMED_FILES, REFERENCE_PDFS
 
 

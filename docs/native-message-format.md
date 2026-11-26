@@ -5,7 +5,7 @@ It does not register a native messaging host, select a transport, install any
 manifest, grant `nativeMessaging`, authenticate an extension, or enable scanning.
 The native host identifier and host installation are separate checklist tasks.
 
-The native side uses `src/native/native_message_format.py` (`encode_native_message` and
+The native side uses `src/native/native-message-format.py` (`encode_native_message` and
 `decode_native_message`), matching the envelope already used by
 [`extensions/webextension/src/messaging.js`](../extensions/webextension/src/messaging.js).
 Both ends must validate messages independently. The body is exactly one

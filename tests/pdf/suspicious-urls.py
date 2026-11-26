@@ -12,6 +12,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import (ArrayObject, ByteStringObject, DictionaryObject,
                            NameObject, TextStringObject)
+__import__('module-loader')
 from src.pdf.pdf_suspicious_urls import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, MAX_URLS, PDFSuspiciousURLInspectionError,
     inspect_pdf_suspicious_urls,
@@ -59,6 +60,7 @@ def fixture(*urls, location="action"):
 
 class PDFSuspiciousURLTests(unittest.TestCase):
     def test_reference_pdfs_have_no_urls_and_no_open_authorization(self):
+        __import__('module-loader')
         from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(name=sample.identifier):
@@ -109,6 +111,7 @@ class PDFSuspiciousURLTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_utf16_and_utf8_bytes_inspected_without_leaking(self):
+        __import__('module-loader')
         from src.pdf.pdf_suspicious_urls import _classify_url
         self.assertEqual(
             _classify_url(ByteStringObject(b"https://example.org")), set()
@@ -194,6 +197,7 @@ class PDFSuspiciousURLTests(unittest.TestCase):
         scanner = (root / "scan-and-open.py").read_text()
         self.assertNotIn("pdf_suspicious_urls", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

@@ -1,7 +1,7 @@
 # Incremental-update PDF reference corpus — opener-1034
 
 The in-memory `INCREMENTAL_REFERENCE_PDFS` collection in
-`tests/fixtures/pdf/reference_pdf_collection.py` contains three deterministic, innocuous
+`tests/fixtures/pdf/reference-pdf-collection.py` contains three deterministic, innocuous
 PDF 1.4 documents. They are complete documents, not partial xref fragments:
 
 - `incremental-added-metadata`: a second revision indexes new metadata

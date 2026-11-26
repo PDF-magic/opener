@@ -14,10 +14,12 @@ from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, NumberObject, TextStringObject,
 )
 
+__import__('module-loader')
 from src.pdf.pdf_action_chains import (
     MAX_CHAIN_WIDTH, PDFActionChainInspection, PDFActionChainInspectionError,
     inspect_pdf_action_chains,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -209,8 +211,8 @@ class PDFActionChainTests(unittest.TestCase):
 
     def test_scanner_and_preferences_remain_unmodified(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        policy = (ROOT / "src/protection/effective_protection_policy.py").read_text(encoding="utf-8")
-        source = (ROOT / "src/pdf/pdf_action_chains.py").read_text(encoding="utf-8")
+        policy = (ROOT / "src/protection/effective-protection-policy.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf-action-chains.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_action_chains", scanner)
         self.assertNotIn("pdf_action_chains", policy)

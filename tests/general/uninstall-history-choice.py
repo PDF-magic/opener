@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-CHOICE = ROOT / "scripts/installation/ask_scan_history_retention.py"
+CHOICE = ROOT / "scripts/installation/ask-scan-history-retention.py"
 GUIDE = ROOT / "docs/uninstall-procedure.md"
 CI = ROOT / ".github/workflows/ci.yml"
 
@@ -67,8 +67,8 @@ class UninstallHistoryChoiceTests(unittest.TestCase):
 
   def test_guided_uninstall_asks_before_removing_app(self):
     guide = GUIDE.read_text(encoding="utf-8")
-    self.assertIn("python3 scripts/installation/ask_scan_history_retention.py", guide)
-    self.assertLess(guide.index("python3 scripts/installation/ask_scan_history_retention.py"),
+    self.assertIn("python3 scripts/installation/ask-scan-history-retention.py", guide)
+    self.assertLess(guide.index("python3 scripts/installation/ask-scan-history-retention.py"),
                     guide.index("## 2. Restore"))
     self.assertIn("Clear History…", guide)
     self.assertIn("Stop uninstallation", guide)

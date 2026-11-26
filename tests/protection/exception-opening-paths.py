@@ -9,13 +9,16 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.protection_exception_policy import (
     EXCEPTION_SUPPORT_DECISION,
     ProtectionExceptionNotSupported,
     record_exception_rejection_reason,
     request_protection_exception,
 )
+__import__('module-loader')
 from src.protection.protection_failure_exception_boundary import report_protection_block
+__import__('module-loader')
 from src.scanner.scanner_failure_policy import ScannerFailureKind
 
 sys.dont_write_bytecode = True

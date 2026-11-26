@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfWriter
+__import__('module-loader')
 from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE, MAX_PDF_BYTES, PDFMalformedStructureError,
     PDFMalformedStructureInspection, inspect_pdf_malformed_structures,
@@ -44,6 +45,7 @@ class MalformedStructureTests(unittest.TestCase):
             PDFMalformedStructureInspection(1, 1, permits_open=True)
 
     def test_reference_pdf_collection(self):
+        __import__('module-loader')
         from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(sample=sample.identifier):
@@ -122,6 +124,7 @@ class MalformedStructureTests(unittest.TestCase):
         self.assertNotIn("pdf_malformed_structures", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("verify_file_integrity", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

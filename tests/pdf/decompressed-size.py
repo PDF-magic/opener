@@ -10,6 +10,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter, get_configuration
 from pypdf.generic import DecodedStreamObject
 
+__import__('module-loader')
 import pdf_structure_parser as parser
 
 

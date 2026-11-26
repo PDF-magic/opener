@@ -17,8 +17,8 @@ fi
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 installer="$script_dir/install-allow-and-open.sh"
 if [ -L "$installer" ] || [ ! -f "$installer" ] || [ ! -r "$installer" ] ||
-   [ ! -f "$script_dir/scripts/report_install_prerequisites.py" ] ||
-   [ ! -f "$script_dir/scripts/confirm_clamav_install.py" ]; then
+   [ ! -f "$script_dir/scripts/report-install-prerequisites.py" ] ||
+   [ ! -f "$script_dir/scripts/confirm-clamav-install.py" ]; then
     echo "Repair source is incomplete or unsafe. Use a complete PDF Magic Opener checkout." >&2
     exit 1
 fi

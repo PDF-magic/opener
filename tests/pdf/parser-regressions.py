@@ -10,6 +10,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from pdf_structure_parser import (
     PDFStructure,
     PDFStructureFailureCode,
@@ -18,6 +19,7 @@ from pdf_structure_parser import (
     parse_pdf_structure,
     parse_pdf_structure_result,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

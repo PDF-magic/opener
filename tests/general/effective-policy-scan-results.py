@@ -13,10 +13,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID, SELECTED_PROFILE_KEY, UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from scan_results import EFFECTIVE_POLICY_ID, ScanResult
 
 sys.dont_write_bytecode = True
@@ -151,7 +153,7 @@ class EffectivePolicyScanResultsTests(unittest.TestCase):
         scan.assert_not_called()
 
     def test_metadata_is_not_a_policy_switch_or_private_audit_record(self):
-        policy = (ROOT / "protection_policy_definitions.py").read_text(encoding="utf-8")
+        policy = (ROOT / "protection-policy-definitions.py").read_text(encoding="utf-8")
         source = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertIn("not an executable scan policy", policy.lower())
         self.assertNotIn("from protection_policy_definitions import", source)

@@ -6,12 +6,15 @@ import json
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID
+__import__('module-loader')
 from protection_policy_definitions import (
     ControlAvailability,
     PolicyControl,
     PROTECTION_POLICIES,
 )
+__import__('module-loader')
 from protection_stage_resource_budgets import (
     PROTECTION_STAGE_RESOURCES,
     RESOURCE_BUDGET_SCHEMA_VERSION,
@@ -139,7 +142,7 @@ class ProtectionStageBudgetTests(unittest.TestCase):
         document = original.as_document()
         document["memory_mib"]["maximum"] = 1
         self.assertEqual(original.memory_mib.maximum, 256)
-        src = (ROOT / "protection_stage_resource_budgets.py").read_text(encoding="utf-8")
+        src = (ROOT / "protection-stage-resource-budgets.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         self.assertNotIn("protection_stage_resource_budgets", gate)
         self.assertIn("if not cached_clean(cache_id):", gate)

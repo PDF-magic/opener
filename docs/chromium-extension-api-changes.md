@@ -12,7 +12,7 @@ The script uses Python's standard library and fetches only the fixed official
 HTTPS page, with a byte limit and a strict response-format check. It extracts
 posted dates and headings, shows them in the GitHub step summary, and **fails**
 the scheduled/manual job if any item is newer than the maintainer checkpoint
-(`REVIEWED_THROUGH` in `scripts/chromium_extension_api_watch.py`). The initial
+(`REVIEWED_THROUGH` in `scripts/chromium-extension-api-watch.py`). The initial
 checkpoint is **2026-11-01**, after the existing notices published through
 August 2026. Network errors, unexpected redirects, invalid responses, and
 unparseable page formats fail instead of being treated as a clean review.

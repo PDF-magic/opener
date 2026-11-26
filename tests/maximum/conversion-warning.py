@@ -9,7 +9,9 @@ import unittest
 
 from pypdf import PdfWriter
 
+__import__('module-loader')
 import maximum_sanitized_copy as copies
+__import__('module-loader')
 from maximum_safe_copy_handoff import MaximumSafeCopyHandoff
 
 

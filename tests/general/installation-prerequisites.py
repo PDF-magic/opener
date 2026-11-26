@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location(
-    "installation_prerequisites", ROOT / "scripts/report_install_prerequisites.py"
+    "installation_prerequisites", ROOT / "scripts/report-install-prerequisites.py"
 )
 reporter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reporter)
@@ -119,17 +119,17 @@ class InstallationPrerequisiteTests(unittest.TestCase):
 
     def test_installer_preflights_before_mutation_and_keeps_existing_safety(self):
         installer = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn('scripts/report_install_prerequisites.py', installer)
-        preflight = installer.index('scripts/report_install_prerequisites.py')
-        self.assertLess(preflight, installer.index('scripts/installation/signature_update_launchagent.py'))
-        self.assertLess(preflight, installer.index('scripts/migration_state.py'))
+        self.assertIn('scripts/report-install-prerequisites.py', installer)
+        preflight = installer.index('scripts/report-install-prerequisites.py')
+        self.assertLess(preflight, installer.index('scripts/installation/signature-update-launchagent.py'))
+        self.assertLess(preflight, installer.index('scripts/migration-state.py'))
         self.assertLess(preflight, installer.index('brew_executable='))
-        self.assertIn('scripts/detect_homebrew.py', installer)
-        self.assertIn('scripts/reconcile_pdf_handler_registration.py', installer)
+        self.assertIn('scripts/detect-homebrew.py', installer)
+        self.assertIn('scripts/reconcile-pdf-handler-registration.py', installer)
         self.assertIn('python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"', installer)
         self.assertIn('if [ ! -f "$workflow" ]; then', installer)
         self.assertIn('command -v python3', installer)
-        self.assertIn('python3 "$script_dir/scripts/report_install_prerequisites.py"', installer)
+        self.assertIn('python3 "$script_dir/scripts/report-install-prerequisites.py"', installer)
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("tests/general/installation-prerequisites.py -v", workflow)
 

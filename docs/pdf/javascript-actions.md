@@ -6,7 +6,7 @@ to open a file. Standard, Enhanced and Maximum are not selectable.
 
 `pdf_javascript_actions.inspect_pdf_javascript_actions(contents: bytes)`
 reuses the **bounded strict action traversal** from opener-0286 in
-`src/pdf/pdf_automatic_actions.py`, including:
+`src/pdf/pdf-automatic-actions.py`, including:
 - catalog open and additional actions,
 - page, annotation, and AcroForm field additional actions,
 - document-level `/Names /JavaScript` name trees,

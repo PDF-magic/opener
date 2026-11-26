@@ -299,6 +299,7 @@ class FinderQuarantinedApplicationTests(unittest.TestCase):
                 self.assert_quarantine_intact()
 
     def test_native_bundle_launch_does_not_invoke_pdf_browser_preferences(self):
+        __import__('module-loader')
         import file_launcher
         with patch.object(file_launcher, "pdf_target_application",
                           side_effect=AssertionError("PDF preferences were read")), \

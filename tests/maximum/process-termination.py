@@ -9,6 +9,7 @@ import time
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 import maximum_process_termination as guard
 
 
@@ -162,6 +163,7 @@ class MaximumProcessTerminationTests(unittest.TestCase):
                 run_script("import sys; sys.stdin.buffer.read(); print('ok')")
 
     def test_test_diagnostics_have_only_fixed_non_payload_categories(self):
+        __import__('module-loader')
         from maximum_process_termination import MaximumProcessTerminationError
         secret = "Private PDF text and local /Users/name"
         opaque = MaximumProcessTerminationError(secret, category=secret)
@@ -225,6 +227,7 @@ class MaximumProcessTerminationTests(unittest.TestCase):
         from pathlib import Path
         source = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_process_termination", source)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.MAXIMUM].selectable)
 

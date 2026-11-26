@@ -13,27 +13,33 @@ import sys
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 from maximum_sanitized_copy import (
     SanitizationBlockReason,
     assess_sanitized_pdf_copy,
 )
+__import__('module-loader')
 import maximum_sanitized_copy as sanitizer
+__import__('module-loader')
 from src.pdf.pdf_malformed_structures import (
     BLOCK_MESSAGE,
     PDFMalformedStructureError,
     inspect_pdf_malformed_structures,
 )
+__import__('module-loader')
 from pdf_structure_parser import (
     PDFStructureFailureCode,
     PDFStructureParseFailure,
     parse_pdf_structure_result,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
@@ -41,7 +47,9 @@ from protection_policy_definitions import (
     PolicyControl,
     protection_policy_definition,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

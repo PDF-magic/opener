@@ -4,6 +4,7 @@
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from scanner_argument_validation import (
     InvalidScannerArguments,
     validate_scanner_arguments,
@@ -51,7 +52,7 @@ class ScannerParameterDecisionTests(unittest.TestCase):
 
     def test_scan_gate_validates_fixed_flags_before_scanner_execution(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        validator = (ROOT / "scanner_argument_validation.py").read_text(
+        validator = (ROOT / "scanner-argument-validation.py").read_text(
             encoding="utf-8"
         )
         # The active gate now obtains fixed size arguments from the shared
@@ -95,7 +96,7 @@ class ScannerParameterDecisionTests(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         for term in (
             "Decision: scanner parameters are not user-editable",
-            "scanner_argument_validation.py", "saved",
+            "scanner-argument-validation.py", "saved",
             "When to reconsider",
         ):
             self.assertIn(term, doc)

@@ -112,6 +112,7 @@ class OfflineWorkerContractTests(unittest.TestCase):
             self.assertNotIn("maximum_network_isolation", scanner)
             self.assertNotIn("maximum-network-isolation", scanner)
             self.assertIn("if not cached_clean(cache_id):", scanner)
+        __import__('module-loader')
         from protection_profiles import ProtectionProfileID, PROTECTION_PROFILES
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

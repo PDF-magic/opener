@@ -6,6 +6,7 @@ import runpy
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_OBJECTS, PDFStructure, PDFStructureParseError,
     parse_pdf_structure,
@@ -85,7 +86,7 @@ class PDFObjectLimitTests(unittest.TestCase):
     def test_existing_scanner_and_preferences_remain_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        parser = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
+        parser = (ROOT / "pdf-structure-parser.py").read_text(encoding="utf-8")
         self.assertIn("python3 tests/pdf/object-limit.py -v", workflow)
         self.assertIn("total_objects += len(reader.xref_objStm)", parser)
         self.assertNotIn("pdf_structure_parser", scanner)

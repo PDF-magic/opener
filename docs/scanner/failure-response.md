@@ -21,7 +21,7 @@ from fixed, path-free messages, never arbitrary stderr or a document path,
 and failure is never presented as confirmed malware.
 
 An unknown or malformed failure category is treated as `scanFailed`, not
-as `clean`. The module `src/scanner/scanner_failure_policy.py` defines this guidance
+as `clean`. The module `src/scanner/scanner-failure-policy.py` defines this guidance
 for trusted categories only; it does not classify untrusted process output
 or grant file-opening permission. The broader detection-status response
 matrix is scoped to opener-0253.

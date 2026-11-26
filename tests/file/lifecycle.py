@@ -3,6 +3,7 @@
 
 import unittest
 
+__import__('module-loader')
 from src.scan.file_lifecycle import FileState, VALID_TRANSITIONS, can_transition, transition_state
 
 

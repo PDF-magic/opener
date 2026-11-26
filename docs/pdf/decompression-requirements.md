@@ -1,6 +1,6 @@
 # Enhanced PDF decompression-requirement inspection (opener-0296)
 
-The optional `src/pdf/pdf_decompression_requirements.py` stage inspects in-memory PDF bytes
+The optional `src/pdf/pdf-decompression-requirements.py` stage inspects in-memory PDF bytes
 for excessive stream decompression requirements. It is **not wired into the
 installed Built-in ClamAV scanner**, does not select Enhanced or Maximum, and
 never returns a PDF clean/opening verdict (`permits_open` is always false).

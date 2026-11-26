@@ -13,11 +13,14 @@ from pypdf.generic import (
     NumberObject, TextStringObject, StreamObject,
 )
 
+__import__('module-loader')
 import src.pdf.pdf_repeated_structures as stage
+__import__('module-loader')
 from src.pdf.pdf_repeated_structures import (
     DOMINANT_REPEATED_GROUP, MIN_REPEATED_GROUP, PDFRepeatedStructures,
     PDFRepeatedStructuresError, inspect_pdf_repeated_structures,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -137,7 +140,7 @@ class PDFRepeatedStructureTests(unittest.TestCase):
     def test_ci_coverage_and_scanner_isolation_are_explicit(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        module = (ROOT / "src/pdf/pdf_repeated_structures.py").read_text(encoding="utf-8")
+        module = (ROOT / "src/pdf/pdf-repeated-structures.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_repeated_structures", scanner)
         self.assertIn("python3 tests/pdf/repeated-structures.py -v", workflow)
         for forbidden in ("subprocess.", "remove_quarantine(", "launch_clean_file(",

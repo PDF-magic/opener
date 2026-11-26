@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+__import__('module-loader')
 import file_launcher as launcher
 
 

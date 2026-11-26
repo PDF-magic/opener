@@ -3,6 +3,7 @@ import io
 import struct
 import unittest
 
+__import__('module-loader')
 from src.native.native_message_framing import (
   InvalidNativeFrame, MAX_FRAME_BYTES, read_native_frame, write_native_frame,
 )

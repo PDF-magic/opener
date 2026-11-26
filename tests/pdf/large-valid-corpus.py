@@ -9,13 +9,16 @@ import unittest
 
 from pypdf import PdfReader
 
+__import__('module-loader')
 from tests.fixtures.pdf.large_valid_pdf_corpus import (
     LARGE_PDF_MIN_BYTES, LARGE_VALID_PDF_CASES, build_large_valid_pdf,
 )
+__import__('module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES, PDFStructureFailureCode,
     PDFStructureParseFailure, parse_pdf_structure_result,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 

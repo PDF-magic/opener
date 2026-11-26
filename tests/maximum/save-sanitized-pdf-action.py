@@ -6,10 +6,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from maximum_sanitized_copy import (
     CONVERSION_CHANGE_WARNING, GENERATED_CONTENT_ORIGIN, SanitizedCopyOffer,
 )
+__import__('module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
+__import__('module-loader')
 import maximum_save_sanitized_pdf_action as action
 
 
@@ -131,10 +134,11 @@ class SaveSanitizedPDFInterfaceTests(unittest.TestCase):
         self.assertEqual(result.read_bytes(), self.offer.pdf_bytes)
 
     def test_preview_does_not_activate_maximum_or_open_original(self):
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         root = Path(__file__).resolve().parents[2]
-        source = (root / "maximum_save_sanitized_pdf_action.py").read_text()
+        source = (root / "maximum-save-sanitized-pdf-action.py").read_text()
         self.assertIn("return save_sanitized_copy(offer, destination, user_confirmed=True)", source)
         self.assertNotIn("launch_clean_file", source)
         self.assertNotIn("open_required_maximum_safe_copy", source)

@@ -13,11 +13,14 @@ from pypdf import PdfWriter
 from pypdf.generic import (
     DecodedStreamObject, DictionaryObject, NameObject, NumberObject,
 )
+__import__('module-loader')
 import src.pdf.pdf_embedded_object_sizes as stage
+__import__('module-loader')
 from src.pdf.pdf_embedded_object_sizes import (
     BLOCK_MESSAGE, PDFEmbeddedObjectSizeError, PDFEmbeddedObjectSizes,
     inspect_pdf_embedded_object_sizes,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -159,6 +162,7 @@ class EmbeddedObjectSizeTests(unittest.TestCase):
         self.assertNotIn("pdf_embedded_object_sizes", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("python3 tests/pdf/embedded-object-sizes.py -v", workflow)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

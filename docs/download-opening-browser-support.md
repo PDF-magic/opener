@@ -49,7 +49,7 @@ API-family support makes a future integration plausible, but the precise
 `downloads.open` behavior must be verified on that browser and version.
 "Unverified" means no source here establishes the required API. Every row's
 **PDF Magic Opener flow is currently inactive**. These are macOS bundle IDs
-from the [browser registry](../browser_registry.py), not a browser
+from the [browser registry](../browser-registry.py), not a browser
 installation probe or authorization allowlist.
 
 | Browser | macOS bundle ID | Extension `downloads.open` route | Verified native handoff | Current PDF Magic Opener download-opening flow |

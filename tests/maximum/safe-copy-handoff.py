@@ -11,8 +11,11 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfWriter
+__import__('module-loader')
 import maximum_safe_copy_handoff as route
+__import__('module-loader')
 from maximum_sanitized_copy import SanitizedCopyOffer
+__import__('module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
 
 
@@ -354,6 +357,7 @@ class MaximumSafeCopyRoutingTests(unittest.TestCase):
         scanner = (Path(route.__file__).parent / "scan-and-open.py").read_text()
         self.assertIn("def scan_and_open_generated_copy(item, offer):", scanner)
         self.assertNotIn("maximum_safe_copy_handoff", scanner)
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

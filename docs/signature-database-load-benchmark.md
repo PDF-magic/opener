@@ -10,7 +10,7 @@ Use an existing and fully installed ClamAV shared library and signatures.
 From the repository root, for a typical Apple Silicon Homebrew installation:
 
 ```sh
-python3 benchmarks/signature_database_load_benchmark.py \
+python3 benchmarks/signature-database-load-benchmark.py \
   --library /opt/homebrew/opt/clamav/lib/libclamav.dylib --samples 5
 ```
 

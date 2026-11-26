@@ -9,7 +9,9 @@ import zlib
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
+__import__('module-loader')
 from pdf_structure_parser import PDFStructure, PDFStructureParseError, parse_pdf_structure
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -123,8 +125,8 @@ class PDFCrossReferenceParsingTests(unittest.TestCase):
   def test_parser_is_passive_and_ci_executes_real_fixture_tests(self):
     scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    module = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
-    relationships = (ROOT / "src/pdf/pdf_object_relationships.py").read_text(
+    module = (ROOT / "pdf-structure-parser.py").read_text(encoding="utf-8")
+    relationships = (ROOT / "src/pdf/pdf-object-relationships.py").read_text(
       encoding="utf-8"
     )
     self.assertNotIn("pdf_structure_parser", scanner)

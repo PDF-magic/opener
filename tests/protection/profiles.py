@@ -5,6 +5,7 @@ from dataclasses import FrozenInstanceError
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from protection_profiles import (
     BASELINE_SAFETY_CHECKS,
     PROTECTION_PROFILES,

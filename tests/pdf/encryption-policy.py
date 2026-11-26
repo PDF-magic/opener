@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from pypdf import PdfReader, PdfWriter
 
+__import__('module-loader')
 from src.pdf.pdf_encryption_policy import (
     MAX_ENCRYPTION_INSPECTION_BYTES,
     PDFEncryptionInspection,
@@ -17,9 +18,13 @@ from src.pdf.pdf_encryption_policy import (
     PDFEncryptionStatus,
     inspect_pdf_encryption,
 )
+__import__('module-loader')
 from pdf_structure_parser import PDFStructureParseError, parse_pdf_structure
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+__import__('module-loader')
 from scan_results import ScanResultStatus
+__import__('module-loader')
 from src.pdf.unsupported_pdf_features import (
     ENCRYPTED_RESPONSE,
     INCOMPLETE_RESPONSE,
@@ -126,7 +131,7 @@ class PDFEncryptionPolicyTests(unittest.TestCase):
             PDFEncryptionInspection(PDFEncryptionStatus.NOT_ENCRYPTED, ENCRYPTED_RESPONSE)
 
     def test_no_scanner_profile_file_io_or_password_prompt_integration(self):
-        source = (ROOT / "src/pdf/pdf_encryption_policy.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf-encryption-policy.py").read_text(encoding="utf-8")
         gate = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         native = (ROOT / "src/native/launch/brave-pdf-opener.swift").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

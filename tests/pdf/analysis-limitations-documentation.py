@@ -4,6 +4,7 @@
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from pdf_structure_parser import (
   MAX_STRUCTURE_DECOMPRESSED_STREAM_BYTES,
   MAX_STRUCTURE_INPUT_BYTES,

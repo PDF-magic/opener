@@ -12,7 +12,9 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfWriter
+__import__('module-loader')
 from scan_results import ScanResultStatus
+__import__('module-loader')
 import maximum_sanitized_copy as copies
 
 
@@ -189,6 +191,7 @@ class SanitizerReportingTests(unittest.TestCase):
             failure.permits_open = True
 
     def test_current_clamav_status_path_and_user_preferences_unchanged(self):
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()

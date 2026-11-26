@@ -39,10 +39,10 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/PDFMagicOpenerDerived" CODE_SIGNING_ALLOWED=NO build
       - name: Stage reviewed native helper binaries without installation
         run: |
-          python3 scripts/package_application_helpers.py \
+          python3 scripts/package-application-helpers.py \
             --app "$RUNNER_TEMP/PDFMagicOpenerDerived/Build/Products/Release/PDFMagicOpener.app" \
             --output-dir "$RUNNER_TEMP/PDFMagicDeveloperID"
-          python3 scripts/package_application_helpers.py \
+          python3 scripts/package-application-helpers.py \
             --verify "$RUNNER_TEMP/PDFMagicDeveloperID/PDFMagicOpener.app"
       - name: Sign nested executables and verify Developer ID signatures
         shell: bash
@@ -77,15 +77,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain"
           security list-keychains -d user -s "$keychain"
           app="$RUNNER_TEMP/PDFMagicDeveloperID/PDFMagicOpener.app"
-          python3 scripts/sign_developer_id.py --app "$app" \
+          python3 scripts/sign-developer-id.py --app "$app" \
             --team-id "$SIGN_TEAM_ID" --sign "$SIGN_IDENTITY"
-          python3 scripts/sign_developer_id.py --app "$app" \
+          python3 scripts/sign-developer-id.py --app "$app" \
             --team-id "$SIGN_TEAM_ID" --verify-only
           ditto -c -k --sequesterRsrc --keepParent "$app" \
             "$RUNNER_TEMP/pdf-magic-opener-developer-id-signed.zip"
           mkdir -p "$RUNNER_TEMP/signed-roundtrip"
           ditto -x -k "$RUNNER_TEMP/pdf-magic-opener-developer-id-signed.zip" "$RUNNER_TEMP/signed-roundtrip"
-          python3 scripts/sign_developer_id.py \
+          python3 scripts/sign-developer-id.py \
             --app "$RUNNER_TEMP/signed-roundtrip/PDFMagicOpener.app" \
             --team-id "$SIGN_TEAM_ID" --verify-only
       - name: Upload verified signed bundle for restricted release review

@@ -17,7 +17,7 @@ if ! command -v python3 >/dev/null 2>&1; then
     echo "Cannot install PDF Magic Opener: Python 3 is missing. Install Python 3, then retry." >&2
     exit 1
 fi
-python3 "$script_dir/scripts/report_install_prerequisites.py"
+python3 "$script_dir/scripts/report-install-prerequisites.py"
 
 if [ ! -f "$workflow" ]; then
     echo "The existing Allow and Open Quick Action is not installed." >&2
@@ -25,14 +25,14 @@ if [ ! -f "$workflow" ]; then
 fi
 
 # Identify the existing signature updater before changing installed files or schedules.
-agent_state="$(python3 "$script_dir/scripts/installation/signature_update_launchagent.py")"
+agent_state="$(python3 "$script_dir/scripts/installation/signature-update-launchagent.py")"
 if [ "$agent_state" = "existing" ]; then
     echo "Existing signature-update LaunchAgent detected; preserving its configuration."
 fi
 
 # Discover existing scan entry points before touching installed scripts or settings.
 # This preflight never reads or runs existing user-customized script contents.
-python3 "$script_dir/scripts/detect_existing_scan_scripts.py" "$install_dir"
+python3 "$script_dir/scripts/detect-existing-scan-scripts.py" "$install_dir"
 
 # Preserve the installed scan handler across any failure during migration.
 # Snapshot only files this installer overwrites, never user configuration or PDFs.
@@ -78,7 +78,7 @@ rollback_installation() {
             fi
         fi
         if [ "$snapshot_ready" -eq 1 ]; then
-            python3 "$script_dir/scripts/preserve_existing_opener.py" restore "$install_dir" "$install_snapshot" || recovered=0
+            python3 "$script_dir/scripts/preserve-existing-opener.py" restore "$install_dir" "$install_snapshot" || recovered=0
         fi
         if [ "$new_app_installed" -eq 1 ] && [ "$recovered" -eq 1 ]; then
             local restored_app="$installed_app"
@@ -103,30 +103,30 @@ rollback_installation() {
 }
 trap rollback_installation EXIT
 install_snapshot="$(mktemp -d "$HOME/.pdf-magic-opener-rollback.XXXXXXXX")"
-python3 "$script_dir/scripts/preserve_existing_opener.py" snapshot "$install_dir" "$install_snapshot"
+python3 "$script_dir/scripts/preserve-existing-opener.py" snapshot "$install_dir" "$install_snapshot"
 snapshot_ready=1
 
 # Inspect the existing database before creating the directory or starting updates.
 # This only reports presence; the scanner still verifies freshness and safety.
-python3 "$script_dir/scripts/installation/existing_signature_database.py" "$install_dir/signatures"
+python3 "$script_dir/scripts/installation/existing-signature-database.py" "$install_dir/signatures"
 # Journal before installer mutations; the marker never certifies signatures.
-migration_attempt="$(python3 "$script_dir/scripts/migration_state.py" --home "$HOME" begin)"
+migration_attempt="$(python3 "$script_dir/scripts/migration-state.py" --home "$HOME" begin)"
 
 if ! [ -x /opt/homebrew/bin/clamscan ] && ! [ -x /usr/local/bin/clamscan ] && ! [ -x /usr/local/clamav/bin/clamscan ]; then
     # Detect Homebrew before attempting to install ClamAV, failing without
     # modifying existing user settings if the package manager is unavailable.
-    if ! brew_executable="$(python3 "$script_dir/scripts/detect_homebrew.py")"; then
+    if ! brew_executable="$(python3 "$script_dir/scripts/detect-homebrew.py")"; then
         echo "Homebrew detection failed; install Homebrew to set up ClamAV." >&2
         exit 1
     fi
     # Homebrew may request administrator authorization. Require a human at
     # the controlling terminal before any package-manager subprocess runs.
     # Absent or declined consent fails closed; no noninteractive opt-in.
-    python3 "$script_dir/scripts/confirm_clamav_install.py"
+    python3 "$script_dir/scripts/confirm-clamav-install.py"
     HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav
 fi
 # Verify both installed ClamAV commands before touching opener scripts or settings.
-python3 "$script_dir/scripts/verify_installed_clamav.py"
+python3 "$script_dir/scripts/verify-installed-clamav.py"
 mkdir -p "$install_dir/signatures"
 # Preserve the selected PDF target across reinstalls.
 python3 - "$install_dir/target-app.txt" <<'TARGET_APP'
@@ -141,7 +141,7 @@ else:
     with os.fdopen(fd, 'w', encoding='ascii') as stream:
         stream.write('com.brave.Browser\n')
 TARGET_APP
-cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/file_launcher.py" "$script_dir/browser_registry.py" "$script_dir/scan_results.py" "$script_dir/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$script_dir/signature_update_status.py" "$install_dir/"
+cp "$script_dir/allow-and-open.sh" "$script_dir/scan-and-open.py" "$script_dir/module-loader.py" "$script_dir/file-launcher.py" "$script_dir/browser-registry.py" "$script_dir/scan-results.py" "$script_dir/record-scan-origin.py" "$script_dir/update-malware-signatures.sh" "$script_dir/signature-update-status.py" "$install_dir/"
 # Deploy the read-only status display beside its Launch Services lookup.
 cp "$script_dir/pdf-handler-status.py" "$install_dir/pdf-handler-status.py"
 chmod 755 "$install_dir/allow-and-open.sh" "$install_dir/update-malware-signatures.sh"
@@ -260,7 +260,7 @@ CONFIG
 # No installed app is replaced or registered until staged contents, PDF identity,
 # executable permissions, and the ad hoc signature have been checked.
 /usr/bin/codesign --verify "$app"
-python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"
+python3 "$script_dir/scripts/verify-pdf-opener-bundle.py" "$app"
 # The legacy-name migration is deferred until the new bundle is fully verified.
 # A failure after the rename restores its original name and working contents.
 if [ -e "$legacy_app" ] || [ -L "$legacy_app" ]; then
@@ -317,13 +317,13 @@ if [ ! -e "$action" ] && [ ! -L "$action" ]; then
 fi
 # Reconcile only the old and new scan-handler registrations; leave the user
 # selected default PDF application and unrelated app registrations untouched.
-python3 "$script_dir/scripts/reconcile_pdf_handler_registration.py" \
+python3 "$script_dir/scripts/reconcile-pdf-handler-registration.py" \
     "$app" "$legacy_app" "$script_dir/scripts/list-registered-pdf-openers.swift"
 # Validate/migrate trusted existing agent before any launchctl restart.
-python3 "$script_dir/scripts/migrate_update_agent.py"
+python3 "$script_dir/scripts/migrate-update-agent.py"
 # The migrator has verified the agent; reconcile its live launchd label so
 # an older plist registration cannot survive alongside the new registration.
-python3 "$script_dir/scripts/reconcile_update_agent.py"
+python3 "$script_dir/scripts/reconcile-update-agent.py"
 
 python3 - "$workflow" <<'PY'
 import os
@@ -428,8 +428,8 @@ python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py" \
 python3 "$install_dir/pdf-handler-status.py"
 # Record hashes of exactly the installed native executables for safe later removal.
 # This is journalled with other overwritten programs for rollback on failure.
-python3 "$script_dir/scripts/retire_installed_helpers.py" --record-install
+python3 "$script_dir/scripts/retire-installed-helpers.py" --record-install
 # Only record success after all migration operations finish.
-python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"
+python3 "$script_dir/scripts/migration-state.py" --home "$HOME" complete "$migration_attempt"
 echo "Installed local malware scanning for native PDF opening and both Allow and Open actions."
 migration_committed=1

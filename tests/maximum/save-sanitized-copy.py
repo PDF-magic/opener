@@ -6,8 +6,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from maximum_sanitized_copy import SanitizedCopyOffer
+__import__('module-loader')
 from scan_results import EFFECTIVE_POLICY_ID
+__import__('module-loader')
 import maximum_save_sanitized_copy as saving
 
 
@@ -125,6 +128,7 @@ class SaveSanitizedCopyTests(unittest.TestCase):
                 self.assertFalse(self.destination.exists())
 
     def test_installed_maximum_profile_remains_unselectable(self):
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
         scanner = (Path(__file__).resolve().parents[2] / "scan-and-open.py").read_text()

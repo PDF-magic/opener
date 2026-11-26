@@ -10,7 +10,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+__import__('module-loader')
 from scan_results import ScanResultStatus
+__import__('module-loader')
 from src.pdf.unsupported_pdf_features import (
     ENCRYPTED_RESPONSE,
     ENCRYPTION_BLOCK_REASON,
@@ -132,7 +134,7 @@ class UnsupportedPDFFeaturePolicyTests(unittest.TestCase):
         self.assertIn("if not decision.allowed:", gate_source)
         self.assertIn("remove_quarantine(path)", gate_source)
         self.assertIn("if not cached_clean(cache_id):", gate_source)
-        profiles = (ROOT / "protection_profiles.py").read_text(encoding="utf-8")
+        profiles = (ROOT / "protection-profiles.py").read_text(encoding="utf-8")
         self.assertIn("selectable: bool = False", profiles)
 
 

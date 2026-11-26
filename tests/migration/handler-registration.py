@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "scripts/reconcile_pdf_handler_registration.py"
+SOURCE = ROOT / "scripts/reconcile-pdf-handler-registration.py"
 spec = importlib.util.spec_from_file_location("pdf_registration", SOURCE)
 registration = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(registration)
@@ -118,14 +118,14 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
 
     def test_installer_integrates_after_bundle_verification_and_before_prompt(self):
         source = (ROOT / "install-allow-and-open.sh").read_text()
-        self.assertIn('scripts/reconcile_pdf_handler_registration.py', source)
+        self.assertIn('scripts/reconcile-pdf-handler-registration.py', source)
         self.assertIn('scripts/list-registered-pdf-openers.swift', source)
         self.assertNotIn('lsregister -f "$app"', source)
-        self.assertLess(source.index('scripts/verify_pdf_opener_bundle.py'),
+        self.assertLess(source.index('scripts/verify-pdf-opener-bundle.py'),
                         source.index('mv "$app" "$installed_app"'))
         self.assertLess(source.index('mv "$app" "$installed_app"'),
-                        source.index('scripts/reconcile_pdf_handler_registration.py'))
-        self.assertLess(source.index('scripts/reconcile_pdf_handler_registration.py'),
+                        source.index('scripts/reconcile-pdf-handler-registration.py'))
+        self.assertLess(source.index('scripts/reconcile-pdf-handler-registration.py'),
                         source.index('scripts/installation/offer-restore-pdf-handler.py'))
         helper = SOURCE.read_text()
         self.assertNotIn("setDefaultApplication", helper)

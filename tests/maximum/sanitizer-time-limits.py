@@ -9,6 +9,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+__import__('module-loader')
 import maximum_sanitizer_process as sanitizer
 
 

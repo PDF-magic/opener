@@ -112,8 +112,8 @@ those release credentials or operations are part of this task.
 To package an existing unsigned Xcode Debug app from the repository root:
 
 ```sh
-python3 scripts/package_safari_extension.py --app "/path/to/PDFMagicOpener.app" --output-dir "/path/to/artifacts"
-python3 scripts/package_safari_extension.py --verify "/path/to/artifacts/pdf-magic-opener-safari-0.1.0-unsigned.zip"
+python3 scripts/package-safari-extension.py --app "/path/to/PDFMagicOpener.app" --output-dir "/path/to/artifacts"
+python3 scripts/package-safari-extension.py --verify "/path/to/artifacts/pdf-magic-opener-safari-0.1.0-unsigned.zip"
 ```
 
 The package builder rejects unknown files, symlinks, missing or nonexecutable

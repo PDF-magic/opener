@@ -14,10 +14,12 @@ from pypdf.constants import UserAccessPermissions
 from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, NumberObject, TextStringObject,
 )
+__import__('module-loader')
 from src.pdf.pdf_document_permissions import (
     BLOCK_MESSAGE, PDFDocumentPermissions, PDFDocumentPermissionsError,
     _operations, inspect_pdf_document_permissions,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -167,13 +169,14 @@ class PDFPermissionTests(unittest.TestCase):
     def test_installed_scan_gate_and_ci_unchanged(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        source = (ROOT / "src/pdf/pdf_document_permissions.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf-document-permissions.py").read_text(encoding="utf-8")
         self.assertNotIn("pdf_document_permissions", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("python3 tests/pdf/document-permissions.py -v", ci)
         for forbidden in ("decrypt(", "subprocess.", "get_data(", "launch_clean_file(",
                           "remove_quarantine(", "write_text(", "UserDefaults", "os.environ"):
             self.assertNotIn(forbidden, source)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

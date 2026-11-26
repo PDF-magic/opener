@@ -12,6 +12,7 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject
 
+__import__('module-loader')
 import src.enhanced.enhanced_embedded_files as inspector
 
 
@@ -165,6 +166,7 @@ class EmbeddedFileInspectionTests(unittest.TestCase):
         self.assertIn("check_database()", scan_gate)
         self.assertIn("if not cached_clean(cache_id):", scan_gate)
         self.assertIn("remove_quarantine(path)", scan_gate)
+        __import__('module-loader')
         from protection_policy_definitions import (PROTECTION_POLICIES,
                                                    ProtectionProfileID)
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)

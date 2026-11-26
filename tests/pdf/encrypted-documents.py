@@ -8,8 +8,11 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
+__import__('module-loader')
 from tests.fixtures.pdf.encrypted_pdf_collection import ENCRYPTED_REFERENCE_PDFS
+__import__('module-loader')
 from src.pdf.pdf_encryption_policy import PDFEncryptionStatus, inspect_pdf_encryption
+__import__('module-loader')
 from src.pdf.unsupported_pdf_features import ENCRYPTED_RESPONSE, UnsupportedPDFAction
 
 

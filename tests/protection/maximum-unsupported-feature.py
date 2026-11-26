@@ -15,17 +15,21 @@ from unittest.mock import patch
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DictionaryObject, NameObject
 
+__import__('module-loader')
 from src.protection.effective_protection_policy import (
     ACTIVE_PROFILE_ID,
     SELECTED_PROFILE_KEY,
     UnsupportedEffectivePolicy,
     resolve_effective_policy,
 )
+__import__('module-loader')
 import maximum_sanitized_copy as sanitizer
+__import__('module-loader')
 from src.pdf.pdf_unsupported_feature_inspection import (
     UnsupportedPDFFeature,
     inspect_pdf_unsupported_features,
 )
+__import__('module-loader')
 from protection_policy_definitions import (
     BASELINE_CONTROLS,
     ControlAvailability,
@@ -33,6 +37,7 @@ from protection_policy_definitions import (
     PolicyControl,
     protection_policy_definition,
 )
+__import__('module-loader')
 from protection_profiles import ProtectionProfileID, protection_profile_definition
 
 

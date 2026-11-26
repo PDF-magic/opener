@@ -15,10 +15,12 @@ from pypdf.generic import (
     ArrayObject, DictionaryObject, NameObject, NumberObject, TextStringObject,
 )
 
+__import__('module-loader')
 from src.pdf.pdf_automatic_external_requests import (
     MAX_ACTIONS, PDFAutomaticExternalRequestError,
     PDFAutomaticExternalRequests, inspect_pdf_automatic_external_requests,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -243,7 +245,7 @@ class PDFAutomaticExternalRequestTests(unittest.TestCase):
 
     def test_no_change_to_installed_scanner_or_preferences(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        source = (ROOT / "src/pdf/pdf_automatic_external_requests.py").read_text(encoding="utf-8")
+        source = (ROOT / "src/pdf/pdf-automatic-external-requests.py").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/consolidated-checks.yml").read_text(encoding="utf-8")
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertNotIn("pdf_automatic_external_requests", scanner)

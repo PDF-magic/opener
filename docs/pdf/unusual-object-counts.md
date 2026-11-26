@@ -24,8 +24,8 @@ malware or evidence of PDF integrity by themselves. Rich PDFs with annotations,
 fonts, resources, complex graphics, and historical incremental revisions can
 legitimately exceed these thresholds. The relative test is about density
 of indirect objects, not the size of any particular object. Stream sizes
-are inspected separately by `src/pdf/pdf_embedded_object_sizes.py`; xref graph
-correctness and page-tree consistency by `src/pdf/pdf_object_relationships.py`.
+are inspected separately by `src/pdf/pdf-embedded-object-sizes.py`; xref graph
+correctness and page-tree consistency by `src/pdf/pdf-object-relationships.py`.
 
 A frozen `PDFUnusualObjectCounts` contains the active object count,
 parsed page count, highest indexed object number, and fixed anomaly codes.

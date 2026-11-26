@@ -11,12 +11,14 @@ from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject, TextStringObject
 
+__import__('module-loader')
 from src.pdf.pdf_behavior_classification import (
     BLOCK_MESSAGE, MAX_OBSERVATIONS, BehaviorClassificationError,
     PDFBehaviorAnalysis, PDFBehaviorDisposition, PDFBehaviorKind,
     PDFBehaviorObservation, PDFBehaviorTrigger,
     classify_external_action_inspection, classify_pdf_behavior,
 )
+__import__('module-loader')
 from src.pdf.pdf_external_launch_actions import (
     PDFExternalLaunchInspection, inspect_pdf_external_launch_actions,
 )
@@ -152,6 +154,7 @@ class PDFBehaviorClassificationTests(unittest.TestCase):
         self.assertFalse(analysis.permits_open)
 
     def test_reference_pdfs_are_unassessed_not_certified_clean(self):
+        __import__('module-loader')
         from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
         for sample in REFERENCE_PDFS:
             with self.subTest(sample=sample.identifier):
@@ -197,6 +200,7 @@ class PDFBehaviorClassificationTests(unittest.TestCase):
         self.assertNotIn("pdf_behavior_classification", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("remove_quarantine(path)", scanner)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

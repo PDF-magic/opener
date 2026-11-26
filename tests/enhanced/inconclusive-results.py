@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 import unittest
 
+__import__('module-loader')
 from src.enhanced.enhanced_analysis_findings import (
     AnalysisFinding, AnalysisStage, FindingCode, FindingSeverity, StageAnalysis,
     StageOutcome, StructuredAnalysisFindings,
 )
+__import__('module-loader')
 from src.enhanced.enhanced_inconclusive_results import (
     IncompleteStageReason, InconclusiveEvidence, InconclusiveOpeningAssessment,
     InconclusiveOpeningDecision, assess_inconclusive_opening,
@@ -200,12 +202,13 @@ class InconclusiveOpeningTests(unittest.TestCase):
     def test_scanner_quarantine_preferences_and_enhanced_activation_remain_untouched(self):
         root = Path(__file__).resolve().parents[2]
         scanner = (root / "scan-and-open.py").read_text()
-        module = (root / "src/enhanced/enhanced_inconclusive_results.py").read_text()
+        module = (root / "src/enhanced/enhanced-inconclusive-results.py").read_text()
         self.assertNotIn("enhanced_inconclusive_results", scanner)
         self.assertIn("if not cached_clean(cache_id):", scanner)
         self.assertIn("remove_quarantine(path)", scanner)
         self.assertNotIn("launch_clean_file", module)
         self.assertNotIn("subprocess", module)
+        __import__('module-loader')
         from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
         self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

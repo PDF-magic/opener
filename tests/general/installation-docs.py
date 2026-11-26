@@ -35,12 +35,12 @@ class InstallationDocsTests(unittest.TestCase):
     self.assertIn("not a self-contained clean-Mac installer", guide)
     self.assertIn("Do not disable Gatekeeper", guide)
     self.assertIn("Open With → PDF Magic Opener", guide)
-    self.assertIn("scripts/migration_state.py status", guide)
+    self.assertIn("scripts/migration-state.py status", guide)
     self.assertIn("~/Applications/PDF Magic Opener.app", guide)
     self.assertIn("browser inline/embedded PDF viewers", guide)
     self.assertIn('if [ "$EUID" -eq 0 ]; then', installer)
     self.assertIn('if [ ! -f "$workflow" ]; then', installer)
-    self.assertIn('python3 "$script_dir/scripts/report_install_prerequisites.py"', installer)
+    self.assertIn('python3 "$script_dir/scripts/report-install-prerequisites.py"', installer)
     self.assertIn('install_dir="$HOME/Library/Application Support/Studio/allow-and-open"', installer)
 
   def test_brave_is_optional_for_installation(self):

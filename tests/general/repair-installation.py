@@ -23,7 +23,7 @@ class RepairInstallationTests(unittest.TestCase):
         self.repair.chmod(0o755)
         scripts = self.root / "scripts"
         scripts.mkdir()
-        for name in ("report_install_prerequisites.py", "confirm_clamav_install.py"):
+        for name in ("report-install-prerequisites.py", "confirm-clamav-install.py"):
             (scripts / name).write_text("# test fixture only\n", encoding="utf-8")
         self.marker = self.root / "installer-ran"
         self.installer = self.root / INSTALLER.name
@@ -96,7 +96,7 @@ class RepairInstallationTests(unittest.TestCase):
         end = source.index("\nfi", preflight)
         self.assertLess(preflight, installation)
         self.assertLess(installation, end)
-        self.assertIn("scripts/confirm_clamav_install.py", source[preflight:end])
+        self.assertIn("scripts/confirm-clamav-install.py", source[preflight:end])
         self.assertIn("except FileExistsError:", source)
         self.assertIn("ScriptedUpdates yes", source)
         self.assertIn("migration_attempt=", source)

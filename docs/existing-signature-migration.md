@@ -11,7 +11,7 @@ signature directory and selected the correct destination and installed
 ClamAV executable, invoke:
 
 ```sh
-python3 scripts/migrate_signature_files.py \
+python3 scripts/migrate-signature-files.py \
   --source "/verified/legacy/signatures" \
   --destination "/chosen/installed/signatures" \
   --scanner "/opt/homebrew/bin/clamscan"

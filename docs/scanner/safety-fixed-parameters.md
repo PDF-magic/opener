@@ -1,6 +1,6 @@
 # Scanner parameters that must remain safety-fixed (opener-0398)
 
-This is an inventory of the *currently enforced Built-in scan gate*, not a new settings interface. The installed `scan-and-open.py` and `scanner_argument_validation.py` are authoritative. The Advanced Scanning page is read-only. Neither saved preferences, document contents, nor caller-supplied request labels may override the following requirements.
+This is an inventory of the *currently enforced Built-in scan gate*, not a new settings interface. The installed `scan-and-open.py` and `scanner-argument-validation.py` are authoritative. The Advanced Scanning page is read-only. Neither saved preferences, document contents, nor caller-supplied request labels may override the following requirements.
 
 ## Fixed scanner invocation
 

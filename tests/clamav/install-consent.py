@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-HELPER = ROOT / "scripts/confirm_clamav_install.py"
+HELPER = ROOT / "scripts/confirm-clamav-install.py"
 spec = importlib.util.spec_from_file_location("confirm_clamav_install", HELPER)
 approval = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(approval)
@@ -62,7 +62,7 @@ class InstallationConsentTests(unittest.TestCase):
         with patch("builtins.open", side_effect=OSError("no controlling tty")):
             self.assertFalse(approval.confirm_installation())
         with patch("builtins.open", side_effect=OSError), \
-                patch.object(sys, "argv", ["confirm_clamav_install.py"]):
+                patch.object(sys, "argv", ["confirm-clamav-install.py"]):
             with patch.object(sys, "stderr", io.StringIO()) as diagnostic:
                 self.assertEqual(approval.main(), 1)
         self.assertIn("not authorized", diagnostic.getvalue().lower())
@@ -96,12 +96,12 @@ class InstallationConsentTests(unittest.TestCase):
         fallback = source[start:end]
         self.assertIn("[ -x /usr/local/bin/clamscan ]", fallback)
         self.assertIn("[ -x /usr/local/clamav/bin/clamscan ]", fallback)
-        consent = 'python3 "$script_dir/scripts/confirm_clamav_install.py"'
+        consent = 'python3 "$script_dir/scripts/confirm-clamav-install.py"'
         self.assertIn(consent, fallback)
         command = 'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install clamav'
         self.assertIn(command, fallback)
-        self.assertIn("scripts/detect_homebrew.py", fallback)
-        self.assertLess(fallback.index("scripts/detect_homebrew.py"), fallback.index(consent))
+        self.assertIn("scripts/detect-homebrew.py", fallback)
+        self.assertLess(fallback.index("scripts/detect-homebrew.py"), fallback.index(consent))
         self.assertLess(fallback.index(consent), fallback.index(command))
         self.assertEqual(source.count(command), 1)
         self.assertNotIn(command, source[:start])
@@ -110,8 +110,8 @@ class InstallationConsentTests(unittest.TestCase):
         installer = (ROOT / "install-allow-and-open.sh").read_text(encoding="utf-8")
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
         for anchor in (
-            'migration_attempt="$(python3 "$script_dir/scripts/migration_state.py"',
-            'python3 "$script_dir/scripts/installation/existing_signature_database.py"',
+            'migration_attempt="$(python3 "$script_dir/scripts/migration-state.py"',
+            'python3 "$script_dir/scripts/installation/existing-signature-database.py"',
             'python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"',
         ):
             self.assertIn(anchor, installer)

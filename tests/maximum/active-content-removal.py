@@ -12,6 +12,7 @@ from pypdf.generic import (
     StreamObject, TextStringObject,
 )
 
+__import__('module-loader')
 import maximum_active_content_removal as removal
 
 
@@ -336,6 +337,7 @@ class ActiveRemovalTests(unittest.TestCase):
         scan = (root / "scan-and-open.py").read_text()
         self.assertNotIn("maximum_active_content_removal", scan)
         self.assertIn("if not cached_clean(cache_id):", scan)
+        __import__('module-loader')
         from protection_profiles import PROTECTION_PROFILES, ProtectionProfileID
         self.assertFalse(PROTECTION_PROFILES[ProtectionProfileID.MAXIMUM].selectable)
 

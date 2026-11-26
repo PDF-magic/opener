@@ -10,7 +10,7 @@ publication until the independent signing and distribution prerequisites pass.
 
 Install Python 3.11+ and Node.js 22, then run from the repository root:
 
-    python3 scripts/build_reproducible_release.py --output-dir /tmp/pdfmagic-candidates
+    python3 scripts/build-reproducible-release.py --output-dir /tmp/pdfmagic-candidates
 
 Use a previously nonexistent output directory. The command copies only an
 explicit allowlist of reviewed manifests, inert assets, icons, and package

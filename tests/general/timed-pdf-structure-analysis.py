@@ -13,11 +13,17 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
+__import__('module-loader')
 from maximum_process_termination import MAX_WALL_SECONDS
+__import__('module-loader')
 from pdf_structure_parser import PDFStructure, MAX_STRUCTURE_INPUT_BYTES
+__import__('module-loader')
 from protection_policy_definitions import PolicyControl
+__import__('module-loader')
 from src.protection.protection_stage_time_limits import STAGE_MAXIMUM_SECONDS
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
+__import__('module-loader')
 import timed_pdf_structure_analysis as timed
 
 
@@ -57,7 +63,7 @@ class TimedPDFStructureTests(unittest.TestCase):
     command, input_data, options = calls[0]
     self.assertIs(input_data, contents)
     self.assertEqual(command[:3], (sys.executable, "-I", "-B"))
-    self.assertTrue(command[-1].endswith("timed_pdf_structure_worker.py"))
+    self.assertTrue(command[-1].endswith("timed-pdf-structure-worker.py"))
     self.assertEqual(
       options["timeout_seconds"],
       timed.ANALYSIS_TIMEOUT_SECONDS,
@@ -136,6 +142,7 @@ class TimedPDFStructureTests(unittest.TestCase):
           timed.parse_pdf_structure_timed(make_pdf())
 
   def test_parser_confinement_policy_is_deny_by_default(self):
+    __import__('module-loader')
     import parser_filesystem_confinement as confinement
     profile = confinement._MACOS_PROFILE
     self.assertIn("(deny default)", profile)
@@ -159,30 +166,30 @@ class TimedPDFStructureTests(unittest.TestCase):
   def test_real_kernel_denies_parser_unrelated_files_and_writes(self):
     # Run a fresh process because Seatbelt/Landlock restrictions are permanent.
     # Probe only synthetic test paths; never attempt to access real user files.
-    probe = """
-from pathlib import Path
-import sys
-sys.path.insert(0, sys.argv[1])
-from parser_filesystem_confinement import confine_parser_filesystem
-confine_parser_filesystem()
-from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES
-private, output, alias = map(Path, sys.argv[2:])
-def blocked_read(path):
-  try:
-    path.read_bytes()
-  except OSError:
-    return True
-  return False
-def blocked_write(path):
-  try:
-    path.write_bytes(b"forbidden")
-  except OSError:
-    return True
-  return False
-raise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0
-    and blocked_read(private) and blocked_read(alias)
-    and blocked_write(output)) else 1)
-"""
+    probe = '\nfrom pathlib import Path\nimport sys\nsys.path.insert(0, sys.argv[1])\n__import__(\'module-loader\'); from parser_filesystem_confinement import confine_parser_filesystem\nconfine_parser_filesystem()\n__import__(\'module-loader\'); from pdf_structure_parser import MAX_STRUCTURE_INPUT_BYTES\nprivate, output, alias = map(Path, sys.argv[2:])\ndef blocked_read(path):\n  try:\n    path.read_bytes()\n  except OSError:\n    return True\n  return False\ndef blocked_write(path):\n  try:\n    path.write_bytes(b"forbidden")\n  except OSError:\n    return True\n  return False\nraise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0\n    and blocked_read(private) and blocked_read(alias)\n    and blocked_write(output)) else 1)\n'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     with tempfile.TemporaryDirectory(prefix="parser-fs-probe-") as temporary:
       folder = Path(temporary)
       private = folder / "private.pdf"
@@ -205,7 +212,7 @@ raise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0
   def test_ci_includes_timeout_tests_but_scanner_is_unmodified(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-    source = (ROOT / "timed_pdf_structure_analysis.py").read_text(
+    source = (ROOT / "timed-pdf-structure-analysis.py").read_text(
       encoding="utf-8"
     )
     self.assertIn("python3 tests/general/timed-pdf-structure-analysis.py -v", ci)
@@ -213,6 +220,7 @@ raise SystemExit(0 if (MAX_STRUCTURE_INPUT_BYTES > 0
     self.assertNotIn("timed_pdf_structure_worker", scanner)
     self.assertNotIn("remove_quarantine(", source)
     self.assertNotIn("launch_clean_file(", source)
+    __import__('module-loader')
     from protection_policy_definitions import PROTECTION_POLICIES, ProtectionProfileID
     self.assertFalse(PROTECTION_POLICIES[ProtectionProfileID.ENHANCED].selectable)
 

@@ -29,7 +29,7 @@ function fullApi() {
 const load = path => readFile(new URL(path, import.meta.url), "utf8");
 
 test("matrix covers every registered macOS browser exactly once", async () => {
-  const registry = await load("../../../browser_registry.py");
+  const registry = await load("../../../browser-registry.py");
   const rows = [...registry.matchAll(/^\s*"([a-z]+)": "([A-Za-z0-9.-]+)",?\s*$/gm)];
   assert.equal(AUTOMATIC_INTERCEPTION_CAPABILITY_MATRIX_VERSION, 1);
   assert.deepEqual(rows.map(row => row[1]), IDS);

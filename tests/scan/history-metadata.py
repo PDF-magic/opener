@@ -8,7 +8,9 @@ import tempfile
 import unittest
 from unittest import mock
 
+__import__('module-loader')
 from src.scan.scan_history_metadata import ScanHistoryStorageError, store_scan_metadata
+__import__('module-loader')
 from scan_results import EFFECTIVE_POLICY_ID, ScanResultStatus
 
 

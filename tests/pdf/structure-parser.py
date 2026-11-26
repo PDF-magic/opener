@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from pypdf import PdfWriter
 
+__import__('module-loader')
 from pdf_structure_parser import (
     MAX_STRUCTURE_INPUT_BYTES,
     MAX_STRUCTURE_PAGES,
@@ -17,6 +18,7 @@ from pdf_structure_parser import (
     PDFStructureParseError,
     parse_pdf_structure,
 )
+__import__('module-loader')
 from tests.fixtures.pdf.reference_pdf_collection import REFERENCE_PDFS
 
 
@@ -105,7 +107,7 @@ class PDFStructureParserTests(unittest.TestCase):
 
     def test_parser_does_not_activate_profile_or_mutate_existing_safety_gate(self):
         scanner = (ROOT / "scan-and-open.py").read_text(encoding="utf-8")
-        module = (ROOT / "pdf_structure_parser.py").read_text(encoding="utf-8")
+        module = (ROOT / "pdf-structure-parser.py").read_text(encoding="utf-8")
         requirements = (ROOT / "requirements-enhanced-pdf.txt").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertNotIn("pdf_structure_parser", scanner)

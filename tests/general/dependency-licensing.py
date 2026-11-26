@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-CHECK = ROOT / "scripts/check_dependency_licenses.py"
+CHECK = ROOT / "scripts/check-dependency-licenses.py"
 spec = importlib.util.spec_from_file_location("check_dependency_licenses", CHECK)
 checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
@@ -107,25 +107,25 @@ class DependencyLicensingTests(unittest.TestCase):
       checker.check(self.root)
     self.edit("install-allow-and-open.sh",
               'HOMEBREW_NO_AUTO_UPDATE=1 "$brew_executable" install unrelated', approved)
-    self.edit("install-allow-and-open.sh", "scripts/detect_homebrew.py", "scripts/untrusted_brew.py")
+    self.edit("install-allow-and-open.sh", "scripts/detect-homebrew.py", "scripts/untrusted_brew.py")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
-    self.edit("install-allow-and-open.sh", "scripts/untrusted_brew.py", "scripts/detect_homebrew.py")
+    self.edit("install-allow-and-open.sh", "scripts/untrusted_brew.py", "scripts/detect-homebrew.py")
     self.edit("install-allow-and-open.sh",
-              'python3 "$script_dir/scripts/confirm_clamav_install.py"',
+              'python3 "$script_dir/scripts/confirm-clamav-install.py"',
               'echo "No consent requested"')
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
     self.edit("install-allow-and-open.sh",
               'echo "No consent requested"',
-              'python3 "$script_dir/scripts/confirm_clamav_install.py"')
+              'python3 "$script_dir/scripts/confirm-clamav-install.py"')
     self.edit("LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE", "INCOMPATIBLE LICENSE")
     with self.assertRaises(checker.LicenseReviewError):
       checker.check(self.root)
 
   def test_ci_uses_license_gate(self):
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
-    self.assertIn("python3 scripts/check_dependency_licenses.py", ci)
+    self.assertIn("python3 scripts/check-dependency-licenses.py", ci)
     self.assertIn("python3 tests/general/dependency-licensing.py -v", ci)
 
 

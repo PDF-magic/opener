@@ -118,12 +118,12 @@ class MigrationCleanupTests(unittest.TestCase):
         completion = source.index("migration_committed=1")
         for required in (
             'mv "$app" "$installed_app"',
-            'python3 "$script_dir/scripts/reconcile_update_agent.py"',
-            'scripts/reconcile_pdf_handler_registration.py',
+            'python3 "$script_dir/scripts/reconcile-update-agent.py"',
+            'scripts/reconcile-pdf-handler-registration.py',
             'python3 - "$workflow" <<\'PY\'',
             'python3 "$script_dir/scripts/installation/offer-restore-pdf-handler.py"',
             'python3 "$install_dir/pdf-handler-status.py"',
-            'python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"',
+            'python3 "$script_dir/scripts/migration-state.py" --home "$HOME" complete "$migration_attempt"',
         ):
             self.assertLess(source.index(required), completion)
         self.assertIn('if [ "$migration_committed" -ne 1 ]', source)

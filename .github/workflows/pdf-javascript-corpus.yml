@@ -3,13 +3,13 @@ name: JavaScript-action PDF security corpus
 on:
   pull_request:
     paths:
-      - tests/fixtures/pdf/javascript_action_corpus.py
+      - tests/fixtures/pdf/javascript-action-corpus.py
       - tests/pdf/javascript-action-corpus.py
       - .github/workflows/pdf-javascript-corpus.yml
   push:
     branches: [main]
     paths:
-      - tests/fixtures/pdf/javascript_action_corpus.py
+      - tests/fixtures/pdf/javascript-action-corpus.py
       - tests/pdf/javascript-action-corpus.py
       - .github/workflows/pdf-javascript-corpus.yml
   workflow_dispatch:

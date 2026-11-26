@@ -4,6 +4,7 @@
 import json
 import unittest
 
+__import__('module-loader')
 from scan_results import ScanResult, ScanResultStatus
 
 

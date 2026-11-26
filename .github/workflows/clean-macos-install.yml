@@ -70,6 +70,6 @@ jobs:
           EXPECTED_TEAM_ID: ${{ inputs.team_id }}
         run: |
           set -euo pipefail
-          python3 scripts/verify_clean_mac_install.py \
+          python3 scripts/verify-clean-mac-install.py \
             --archive "$RUNNER_TEMP/notarized-input/PDFMagicOpener-notarized.zip" \
             --team-id "$EXPECTED_TEAM_ID"

@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "scripts/migration_state.py"
+SOURCE = ROOT / "scripts/migration-state.py"
 spec = importlib.util.spec_from_file_location("migration_state", SOURCE)
 migration = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(migration)
@@ -129,8 +129,8 @@ class MigrationStateTests(unittest.TestCase):
 
   def test_installer_only_records_completion_after_final_operations(self):
     installer = (ROOT / "install-allow-and-open.sh").read_text()
-    begin = 'migration_attempt="$(python3 "$script_dir/scripts/migration_state.py" --home "$HOME" begin)"'
-    finish = 'python3 "$script_dir/scripts/migration_state.py" --home "$HOME" complete "$migration_attempt"'
+    begin = 'migration_attempt="$(python3 "$script_dir/scripts/migration-state.py" --home "$HOME" begin)"'
+    finish = 'python3 "$script_dir/scripts/migration-state.py" --home "$HOME" complete "$migration_attempt"'
     self.assertIn(begin, installer)
     self.assertIn(finish, installer)
     self.assertLess(installer.index(begin), installer.index('"$brew_executable" install clamav'))

@@ -15,10 +15,11 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 import sys
 sys.path.insert(0, str(SCRIPTS))
+__import__('module-loader')
 import package_application_helpers as helpers  # noqa: E402
 
 spec = importlib.util.spec_from_file_location(
-  "create_release_archive", SCRIPTS / "create_release_archive.py")
+  "create_release_archive", SCRIPTS / "create-release-archive.py")
 archive = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(archive)
 
@@ -126,8 +127,8 @@ class ReleaseArchiveTests(unittest.TestCase):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     audit = (ROOT / ".github/workflows/distribution-readiness.yml").read_text(
       encoding="utf-8")
-    self.assertIn("scripts/create_release_archive.py --app", ci)
-    self.assertIn("scripts/create_release_archive.py --verify", ci)
+    self.assertIn("scripts/create-release-archive.py --app", ci)
+    self.assertIn("scripts/create-release-archive.py --verify", ci)
     self.assertIn("ditto -x -k", ci)
     self.assertIn("tests/general/release-archive.py -v", audit)
 

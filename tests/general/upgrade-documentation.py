@@ -23,7 +23,7 @@ class UpgradeDocumentationTests(unittest.TestCase):
         ):
             with self.subTest(item=item):
                 self.assertIn(item, self.guide)
-        self.assertIn("scripts/report_install_prerequisites.py", self.installer)
+        self.assertIn("scripts/report-install-prerequisites.py", self.installer)
         self.assertIn('if [ "$EUID" -eq 0 ]; then', self.installer)
 
     def test_upgrade_does_not_promise_to_replace_security_configuration(self):
@@ -35,21 +35,21 @@ class UpgradeDocumentationTests(unittest.TestCase):
         ):
             with self.subTest(item=item):
                 self.assertIn(item, self.guide)
-        self.assertIn("scripts/confirm_clamav_install.py", self.installer)
-        self.assertIn("scripts/migrate_update_agent.py", self.installer)
-        self.assertIn("scripts/reconcile_update_agent.py", self.installer)
+        self.assertIn("scripts/confirm-clamav-install.py", self.installer)
+        self.assertIn("scripts/migrate-update-agent.py", self.installer)
+        self.assertIn("scripts/reconcile-update-agent.py", self.installer)
         self.assertIn('os.O_WRONLY | os.O_CREAT | os.O_EXCL', self.installer)
-        self.assertIn("scripts/preserve_existing_opener.py", self.installer)
+        self.assertIn("scripts/preserve-existing-opener.py", self.installer)
 
     def test_completion_and_failure_recovery_are_distinct(self):
         for item in (
-            "scripts/migration_state.py status", "complete", "partial",
+            "scripts/migration-state.py status", "complete", "partial",
             "pdf-handler-status.py", "Settings → Updates",
             "failed or interrupted", "rollback", "REPAIR",
         ):
             with self.subTest(item=item):
                 self.assertIn(item, self.guide)
-        self.assertIn('scripts/migration_state.py" --home "$HOME" complete', self.installer)
+        self.assertIn('scripts/migration-state.py" --home "$HOME" complete', self.installer)
         self.assertIn("rollback_installation()", self.installer)
 
     def test_discoverability_and_resolved_local_links(self):

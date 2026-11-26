@@ -4,14 +4,14 @@ on:
   pull_request:
     paths:
       - "scan-and-open.py"
-      - "scanner_filesystem_sandbox.py"
+      - "scanner-filesystem-sandbox.py"
       - "tests/scanner/filesystem-sandbox.py"
       - ".github/workflows/scanner-filesystem-confinement.yml"
   push:
     branches: [main]
     paths:
       - "scan-and-open.py"
-      - "scanner_filesystem_sandbox.py"
+      - "scanner-filesystem-sandbox.py"
       - "tests/scanner/filesystem-sandbox.py"
       - ".github/workflows/scanner-filesystem-confinement.yml"
 

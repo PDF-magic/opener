@@ -6,7 +6,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "ci_failure_report.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "ci-failure-report.py"
 spec = importlib.util.spec_from_file_location("ci_failure_report", SCRIPT)
 report = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(report)

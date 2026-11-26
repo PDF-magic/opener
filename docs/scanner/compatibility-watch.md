@@ -15,7 +15,7 @@ closed; neither a successful version probe nor this watch permits a PDF to open.
 These are **release observation markers**, not a certificate that every macOS
 installation or new release passed end-to-end compatibility acceptance. The
 authoritative support policy is still enforced by `scan-and-open.py` and
-`scripts/verify_installed_clamav.py`. ClamAV signature database revision and
+`scripts/verify-installed-clamav.py`. ClamAV signature database revision and
 the app's product version are **different** from the engine release number.
 
 ## Automated monitoring
@@ -25,7 +25,7 @@ runs every Monday, on manual dispatch, and as an offline contract test in PRs.
 Its scheduled/manual step retrieves the public stable release inventory from
 the official Cisco-Talos ClamAV GitHub repository. It compares the **newest
 stable patch on each currently supported branch** to the reviewed marker in
-`scripts/clamav_compatibility_watch.py` and flags a **newer stable branch**.
+`scripts/clamav-compatibility-watch.py` and flags a **newer stable branch**.
 Missing or malformed inventory, network failure, and unreviewed stable releases
 fail the monitoring job with an actionable review notice. Prereleases do not
 change the stable marker. The inventory is bounded to the latest 100 releases,
@@ -40,7 +40,7 @@ The PR job is deterministic and does **not** depend on the upstream API.
 Run a read-only manual check with:
 
 ```sh
-python3 scripts/clamav_compatibility_watch.py
+python3 scripts/clamav-compatibility-watch.py
 ```
 
 ## Maintainer response to a change

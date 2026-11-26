@@ -55,7 +55,7 @@ Xcode, and from inactive browser-extension scaffolds.
 ## Verify before using
 
 1. Require the installer to exit successfully. From the same source checkout,
-   `python3 scripts/migration_state.py status` is a read-only migration
+   `python3 scripts/migration-state.py status` is a read-only migration
    check. A `partial` state is **not** a completed installation.
 2. Check the intended macOS PDF association using the installed
    `~/Library/Application Support/Studio/allow-and-open/pdf-handler-status.py`

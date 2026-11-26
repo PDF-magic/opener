@@ -9,7 +9,7 @@ ClamAV gate and all **planned** Standard, Enhanced and Maximum levels. Any
 future exception mechanism would need separate security analysis and
 authorization; this task does not introduce one.
 
-The narrow contract in \`src/protection/protection_exception_policy.py\` publishes the
+The narrow contract in \`src/protection/protection-exception-policy.py\` publishes the
 immutable support decision and an always-rejecting exception-request API,
 without inspecting potentially sensitive paths or user-supplied payloads.
 Preferences → Protection presents the unsupported status as accessible,

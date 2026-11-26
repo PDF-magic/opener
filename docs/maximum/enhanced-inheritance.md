@@ -1,7 +1,7 @@
 # Maximum inherits every Enhanced protection requirement (opener-0305)
 
 The **Maximum** planned protection tier is cumulative. In
-`protection_policy_definitions.py`, its immutable required policy
+`protection-policy-definitions.py`, its immutable required policy
 is derived from the validated **Enhanced** policy, rather than copying a
 second independent list of controls.
 

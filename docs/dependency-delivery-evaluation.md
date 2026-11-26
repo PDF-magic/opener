@@ -34,7 +34,7 @@ These are **delivery** properties, not substitutes for scanner safety.
    against a private staged database, validates before promotion and
    preserves the usable live definitions on failure. Do not replace it with
    bundled signature snapshots.
-3. `scripts/package_application_helpers.py` stages only its reviewed native
+3. `scripts/package-application-helpers.py` stages only its reviewed native
    helper allowlist. The separate `PDFOpener` scan-handler bundle, ClamAV,
    FreshClam and `pypdf` are **not** inside this helper package. This
    is not a signed/notarized release installer.
@@ -64,6 +64,6 @@ reimplement those decisions or modify the installer or runtime.
 
 Supporting implementation: `install-allow-and-open.sh`,
 `scan-and-open.py`, `update-malware-signatures.sh`,
-`scripts/package_application_helpers.py`,
+`scripts/package-application-helpers.py`,
 `requirements-enhanced-pdf.txt` and
 `docs/protection/profile-dependencies.md`.

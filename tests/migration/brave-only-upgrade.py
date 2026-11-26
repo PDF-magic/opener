@@ -138,7 +138,7 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
   def upgrade(self):
     # Execute the actual installer's initializers and legacy bundle migration.
     probe = subprocess.run(
-      [sys.executable, str(ROOT / "scripts/detect_existing_scan_scripts.py"), str(self.install)],
+      [sys.executable, str(ROOT / "scripts/detect-existing-scan-scripts.py"), str(self.install)],
       capture_output=True, text=True, timeout=10,
     )
     self.assertEqual(probe.returncode, 0, probe.stderr)
@@ -161,7 +161,7 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
       b"\x89PNG\r\n\x1a\nfixture")
     self.run_python(APP_CONFIG, staged_app, self.install, "PDF Magic Opener")
     verified = subprocess.run(
-      [sys.executable, str(ROOT / "scripts/verify_pdf_opener_bundle.py"), str(staged_app)],
+      [sys.executable, str(ROOT / "scripts/verify-pdf-opener-bundle.py"), str(staged_app)],
       capture_output=True, text=True, timeout=10,
     )
     self.assertEqual(verified.returncode, 0, verified.stderr)
@@ -174,7 +174,7 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
     )
     self.assertEqual(result.returncode, 0, result.stderr)
     agent_result = subprocess.run(
-      [sys.executable, str(ROOT / "scripts/migrate_update_agent.py")],
+      [sys.executable, str(ROOT / "scripts/migrate-update-agent.py")],
       env=dict(os.environ, HOME=str(self.home)),
       capture_output=True, text=True, timeout=10,
     )
@@ -296,12 +296,12 @@ class BraveOnlyUpgradeTests(unittest.TestCase):
 
 
   def test_installer_stages_and_verifies_before_installing_or_registering(self):
-    verify = 'python3 "$script_dir/scripts/verify_pdf_opener_bundle.py" "$app"'
+    verify = 'python3 "$script_dir/scripts/verify-pdf-opener-bundle.py" "$app"'
     self.assertIn(verify, INSTALLER)
     self.assertLess(INSTALLER.index(verify), INSTALLER.index(SWAP_START))
-    self.assertLess(INSTALLER.index(SWAP_START), INSTALLER.index("scripts/reconcile_pdf_handler_registration.py"))
-    self.assertLess(INSTALLER.index('python3 "$script_dir/scripts/migrate_update_agent.py"'),
-                    INSTALLER.index('python3 "$script_dir/scripts/reconcile_update_agent.py"'))
+    self.assertLess(INSTALLER.index(SWAP_START), INSTALLER.index("scripts/reconcile-pdf-handler-registration.py"))
+    self.assertLess(INSTALLER.index('python3 "$script_dir/scripts/migrate-update-agent.py"'),
+                    INSTALLER.index('python3 "$script_dir/scripts/reconcile-update-agent.py"'))
     self.assertIn('bash "$install_dir/update-malware-signatures.sh"', INSTALLER)
     scanner = (ROOT / "scan-and-open.py").read_text()
     self.assertIn("check_database()", scanner)

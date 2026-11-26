@@ -21,7 +21,7 @@ class ScanProgressComponentTests(unittest.TestCase):
         # PDF raster dependencies that are not installed for native UI tests.
         import ast
 
-        module = ast.parse(COMPONENT.with_name("maximum_sanitized_copy.py").read_text())
+        module = ast.parse(COMPONENT.with_name("maximum-sanitized-copy.py").read_text())
         kinds = next(
             node for node in module.body
             if isinstance(node, ast.ClassDef) and node.name == "SanitizerFailureKind"

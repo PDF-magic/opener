@@ -86,8 +86,8 @@ class UpdateFailureTests(unittest.TestCase):
     self.assertNotIn("last-failed-update", scanner)
     self.assertIn("MAX_DATABASE_AGE = 48 * 60 * 60", scanner)
     installer = (ROOT / "install-allow-and-open.sh").read_text()
-    self.assertIn('python3 "$script_dir/scripts/migrate_update_agent.py"', installer)
-    migrator = (ROOT / "scripts/migrate_update_agent.py").read_text()
+    self.assertIn('python3 "$script_dir/scripts/migrate-update-agent.py"', installer)
+    migrator = (ROOT / "scripts/migrate-update-agent.py").read_text()
     self.assertIn('"StartInterval": 14400', migrator)
     self.assertIn('"RunAtLoad": True', migrator)
 

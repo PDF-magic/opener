@@ -10,6 +10,7 @@ import plistlib
 import tempfile
 import unittest
 
+__import__('module-loader')
 from src.browser.browser_release import identify_release, inspect_app_bundle, main
 
 

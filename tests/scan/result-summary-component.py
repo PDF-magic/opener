@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import unittest
 
+__import__('module-loader')
 from scan_results import ScanResultStatus
 
 ROOT = Path(__file__).resolve().parents[2]

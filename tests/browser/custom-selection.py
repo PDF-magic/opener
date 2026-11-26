@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import patch
 
 sys.dont_write_bytecode = True
+__import__('module-loader')
 import file_launcher as launcher
 
 ROOT = Path(__file__).resolve().parents[2]

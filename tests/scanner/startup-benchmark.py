@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+__import__('module-loader')
 from scanner_argument_validation import validated_file_size_options
 import subprocess
 import sys
@@ -12,7 +13,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("scanner_startup_benchmark",
-                                               ROOT / "benchmarks/scanner_startup_benchmark.py")
+                                               ROOT / "benchmarks/scanner-startup-benchmark.py")
 benchmark = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmark)
 
@@ -93,10 +94,10 @@ class BenchmarkTests(unittest.TestCase):
     def test_ci_runs_a_real_isolated_clamscan_benchmark(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("Measure real ClamAV startup on disposable CI signatures", ci)
-        self.assertIn("python3 benchmarks/scanner_startup_benchmark.py", ci)
+        self.assertIn("python3 benchmarks/scanner-startup-benchmark.py", ci)
         self.assertIn("--scanner /usr/bin/clamscan --database", ci)
         self.assertIn("benchmark-never-match", ci)
-        self.assertIn('"/usr/bin/clamscan"', (ROOT / "benchmarks/scanner_startup_benchmark.py").read_text())
+        self.assertIn('"/usr/bin/clamscan"', (ROOT / "benchmarks/scanner-startup-benchmark.py").read_text())
 
     def test_failed_warning_timeout_and_truncated_runs_publish_no_result(self):
         failures = (
@@ -135,7 +136,7 @@ class BenchmarkTests(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("python3 tests/scanner/startup-benchmark.py -v", ci)
         readme = (ROOT / "README.md").read_text()
-        self.assertIn("benchmarks/scanner_startup_benchmark.py", readme)
+        self.assertIn("benchmarks/scanner-startup-benchmark.py", readme)
         self.assertIn("no clamd migration", readme.lower())
 
 
