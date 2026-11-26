@@ -210,22 +210,32 @@ def safari_driver():
             proc.wait(timeout=5)
 
 
-def verify_real_safari():
+class SafariRenderTimeout(AssertionError):
+    """A requested PDF did not produce sufficient visible rendering evidence."""
+
+
+@contextmanager
+def safari_session(driver_port):
+    result = webdriver("POST", driver_port, "/session", {
+        "capabilities": {"alwaysMatch": {"browserName": "safari"}}
+    }, timeout=45)
+    session_id = result["sessionId"]
+    try:
+        yield f"/session/{session_id}", result["capabilities"]
+    finally:
+        # Delete the automation session while the driver is still listening.
+        webdriver("DELETE", driver_port, f"/session/{session_id}", timeout=10)
+
+
+def verify_real_safari_once():
     counts = {}
     server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(counts))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    session_id = None
     try:
-        with safari_driver() as driver_port:
-            result = webdriver("POST", driver_port, "/session", {
-                "capabilities": {"alwaysMatch": {"browserName": "safari"}}
-            }, timeout=45)
-            session_id = result["sessionId"]
-            caps = result["capabilities"]
+        with safari_driver() as driver_port, safari_session(driver_port) as (session, caps):
             if caps.get("browserName", "").lower() != "safari":
                 raise AssertionError("SafariDriver started the wrong browser")
-            session = f"/session/{session_id}"
             webdriver("POST", driver_port, session + "/url", {"url": "about:blank"})
             blank = base64.b64decode(webdriver("GET", driver_port, session + "/screenshot"),
                                      validate=True)
@@ -233,7 +243,7 @@ def verify_real_safari():
                 url = f"http://127.0.0.1:{server.server_port}{route}"
                 webdriver("POST", driver_port, session + "/url",
                           {"url": url}, timeout=45)
-                end = time.monotonic() + 30
+                end = time.monotonic() + 45
                 observed_fraction = 0.0
                 while time.monotonic() < end:
                     current = webdriver("GET", driver_port, session + "/url")
@@ -249,22 +259,30 @@ def verify_real_safari():
                         break
                     time.sleep(0.5)
                 else:
-                    raise AssertionError(
+                    raise SafariRenderTimeout(
                         f"Safari did not visibly render {route} as inline PDF "
-                        f"(requested={counts.get(route, 0)}, color={observed_fraction:.4f})"
+                        f"(requested={counts.get(route, 0)}, color={observed_fraction:.4f}, "
+                        f"current={current!r}, Safari={caps.get('browserVersion', 'unknown')})"
                     )
                 print(f"PASS Safari PDF viewer: {route}, visible {color} page")
             print("PASS real Safari " + str(caps.get("browserVersion", "unknown")) +
                   " PDF viewer; no extension installed or scanner invoked")
     finally:
-        if session_id is not None:
-            try:
-                webdriver("DELETE", driver_port, f"/session/{session_id}", timeout=10)
-            except Exception:
-                pass
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def verify_real_safari(attempt=verify_real_safari_once):
+    # A transient blank Safari automation window must not poison the next
+    # attempt. Start a new driver, session and loopback server exactly once.
+    # Both routes must pass every original assertion in the same attempt.
+    try:
+        attempt()
+    except SafariRenderTimeout as error:
+        print(f"Safari render attempt failed: {error}; retrying with a fresh session",
+              flush=True)
+        attempt()
 
 
 def png_test_image(color):
@@ -328,6 +346,23 @@ def self_test():
         except (AssertionError, ValueError, struct.error, zlib.error) as error:
             if str(error) == "Malformed screenshot was accepted":
                 raise
+    # Retry only a rendering timeout; a second timeout or another failure
+    # remains fatal. An ordinary successful attempt runs only once.
+    from unittest.mock import Mock
+    successful = Mock()
+    verify_real_safari(successful)
+    assert successful.call_count == 1
+    recovered = Mock(side_effect=[SafariRenderTimeout("blank first attempt"), None])
+    verify_real_safari(recovered)
+    assert recovered.call_count == 2
+    for error, expected_calls in ((SafariRenderTimeout, 2), (RuntimeError, 1)):
+        failed = Mock(side_effect=error("synthetic failure"))
+        try:
+            verify_real_safari(failed)
+        except error:
+            assert failed.call_count == expected_calls
+        else:
+            raise AssertionError("Failed Safari verification was accepted")
     print("PASS Safari PDF fixture, local-only server, pixel evidence and fail-closed self-test")
 
 
