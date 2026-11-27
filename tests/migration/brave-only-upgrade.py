@@ -39,7 +39,7 @@ def heredoc(marker, end):
 
 TARGET = heredoc('python3 - "$install_dir/target-app.txt" <<\'TARGET_APP\'\n', "TARGET_APP")
 FRESHCLAM = heredoc('python3 - "$install_dir" <<\'CONFIG\'\n', "CONFIG")
-RENAME = heredoc('python3 - "$legacy_app" "$app" <<\'MIGRATE\'\n', "MIGRATE")
+RENAME = heredoc('python3 - "$legacy_app" "$installed_app" <<\'MIGRATE\'\n', "MIGRATE")
 APP_CONFIG = heredoc('python3 - "$app" "$install_dir" "$app_name" <<\'CONFIG\'\n', "CONFIG")
 FINDER = heredoc('python3 - "$workflow" <<\'PY\'\n', "PY")
 SWAP_START = 'if [ -e "$installed_app" ] || [ -L "$installed_app" ]; then\n'

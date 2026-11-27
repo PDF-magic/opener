@@ -31,6 +31,10 @@ See [installation prerequisites](installation-prerequisites.md) and
 
 ## Install the native scan-gated PDF handler
 
+For installation with optional background updates, double-click
+`scripts/installation/automatic-updates.command` in Finder and type **ENABLE**
+when prompted. See [application updates](application-update-delivery.md).
+
 From Terminal, as the ordinary macOS user, at the **root of the trusted
 checkout**:
 

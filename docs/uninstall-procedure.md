@@ -18,6 +18,10 @@ actions triggered by opening the preferences app.
 
 ## 1. Inspect and back up before changing anything
 
+If you enabled automatic application updates, open
+`scripts/installation/automatic-updates.command` in Finder and type **DISABLE**
+before uninstalling. [Application updates](application-update-delivery.md)
+
 1. Stop opening new PDFs with the native handler, and finish or cancel any
    in-flight scans. Keep Preferences available through the retention decisions in steps 2–4,
    then quit the

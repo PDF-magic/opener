@@ -26,7 +26,7 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
         self.legacy = apps / "Open PDFs in Brave.app"
         self.calls = []
 
-    def reconcile(self, before, after=None, *, fail=None):
+    def reconcile(self, before, after=None, *, fail=None, staging=None):
         inventories = iter([before, [str(self.installed)] if after is None else after])
 
         def lookup():
@@ -38,7 +38,7 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
                 raise subprocess.CalledProcessError(1, args)
             return subprocess.CompletedProcess(args, 0)
 
-        registration.reconcile(self.installed, self.legacy, lookup=lookup, run=run)
+        registration.reconcile(self.installed, self.legacy, lookup=lookup, run=run, staging=staging)
 
     def test_fresh_install_registers_one_handler_without_touching_defaults(self):
         self.reconcile([])
@@ -56,6 +56,15 @@ class PDFHandlerRegistrationTests(unittest.TestCase):
     def test_repeated_install_does_not_unregister_working_app(self):
         self.reconcile([str(self.installed)])
         self.assertEqual(len(self.calls), 1)
+
+    def test_upgrade_withdraws_the_moved_rollback_bundle(self):
+        staging = self.installed.parent / ".pdf-magic-opener-build.fixture"
+        previous = staging / "previous.app"
+        previous.mkdir(parents=True)
+        self.reconcile([str(previous), str(self.installed)], staging=staging)
+        self.assertEqual([call[0][1:] for call in self.calls],
+                         [["-f", str(self.installed)], ["-u", str(previous)]])
+        self.assertTrue(previous.is_dir())
 
     def test_unknown_live_or_stale_registration_blocks_before_side_effects(self):
         foreign = self.installed.parent / "Another Opener.app"

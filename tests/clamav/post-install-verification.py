@@ -44,7 +44,10 @@ class PostInstallClamAVTests(unittest.TestCase):
 
     @staticmethod
     def version_probe(command, *, text, timeout, stderr):
-        assert len(command) == 2 and command[1] == "--version"
+        expected = ["--version"]
+        if Path(command[0]).name == "freshclam":
+            expected.append("--config-file=/dev/null")
+        assert command[1:] == expected
         assert text is True and timeout == 5 and stderr == subprocess.DEVNULL
         return "ClamAV 1.4.3/28760/Thu Oct 31"
 
