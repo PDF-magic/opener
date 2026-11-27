@@ -19,7 +19,7 @@ def embedded_script(marker, terminator):
     return INSTALLER.split(marker, 1)[1].split("\n" + terminator + "\n", 1)[0]
 
 
-MIGRATION = embedded_script('python3 - "$legacy_app" "$app" <<\'MIGRATE\'\n', "MIGRATE")
+MIGRATION = embedded_script('python3 - "$legacy_app" "$installed_app" <<\'MIGRATE\'\n', "MIGRATE")
 PLIST_SCRIPT = embedded_script('python3 - "$app" "$install_dir" "$app_name" <<\'CONFIG\'\n', "CONFIG")
 
 
@@ -42,7 +42,7 @@ def invoke(script, *args, home=None):
 class ApplicationNameTests(unittest.TestCase):
     def test_installer_names_application_and_preserves_identity(self):
         self.assertIn('app_name="PDF Magic Opener"', INSTALLER)
-        self.assertIn('app="$HOME/Applications/$app_name.app"', INSTALLER)
+        self.assertIn('installed_app="$HOME/Applications/$app_name.app"', INSTALLER)
         self.assertIn("local.studio.brave-pdf-opener", INSTALLER)
         self.assertIn("# PDF Magic Opener", (ROOT / "README.md").read_text())
         self.assertIn("PDF Magic Opener — Scanning", (ROOT / "src/scan/scan-progress-view.swift").read_text())
