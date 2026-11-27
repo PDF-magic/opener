@@ -18,7 +18,7 @@ versions. ClamAV engine and signature updates are independent of app updates.
    the source installer, and enables a per-user LaunchAgent after a successful
    install. The usual installation prerequisites and separate ClamAV consent
    still apply.
-3. The LaunchAgent checks at login and hourly while you are signed in. It
+3. The LaunchAgent checks daily at 9 a.m. local time. It
    uses a temporary checkout inside the installed support folder and installs
    only when the commit changes. The installed bundle records its source
    commit. The agent retries failures on a later check. Ongoing scans defer

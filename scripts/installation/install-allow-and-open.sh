@@ -20,6 +20,22 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 python3 "$script_dir/scripts/report-install-prerequisites.py"
 
+# Once the repository updater has been set up, serialize manual and automatic
+# installs against each other and the scan gate. Keep the inode for waiting scans.
+if [ -d "$install_dir/repository-update" ]; then
+    install_lock="$install_dir/repository-update/install.lock"
+    if [ -L "$install_dir/repository-update" ] || [ -L "$install_lock" ] || \
+       { [ -e "$install_lock" ] && [ ! -f "$install_lock" ]; }; then
+        echo "Unsafe application installation lock." >&2
+        exit 1
+    fi
+    exec 9>>"$install_lock"
+    if ! /usr/bin/lockf -t 0 9; then
+        echo "A scan or another installation is in progress. Try again after it finishes." >&2
+        exit 1
+    fi
+fi
+
 if [ ! -f "$workflow" ]; then
     echo "The existing Allow and Open Quick Action is not installed." >&2
     exit 1

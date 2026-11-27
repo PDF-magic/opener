@@ -1285,7 +1285,6 @@ def safe_scan_failure(error):
 
 
 def main(items):
-    watch_parent_lifetime()
     if not items:
         print('No files were selected for scanning.', file=sys.stderr)
         return 1
@@ -1334,7 +1333,8 @@ def main(items):
 
 
 def run_scan_requests(requests):
-    # The optional repository updater holds this lock during installation.
+    watch_parent_lifetime()
+    # The installer holds this lock when the optional updater is configured.
     # In-flight scans finish before an update and new ones wait for it to finish.
     lock = INSTALL_DIR / 'repository-update/install.lock'
     try:

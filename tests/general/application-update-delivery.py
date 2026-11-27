@@ -55,7 +55,7 @@ class ApplicationUpdateDeliveryTests(unittest.TestCase):
         self.assertNotIn(forbidden.lower(), self.normalized)
     self.assertIn("no published binary update channel", self.normalized)
 
-  def test_finder_setup_is_opt_in_and_configures_the_hourly_agent(self):
+  def test_finder_setup_is_opt_in_and_configures_the_daily_agent(self):
     launcher = ROOT / "scripts/installation/automatic-updates.command"
     self.assertTrue(launcher.stat().st_mode & 0o111)
     module = runpy.run_path(str(launcher.with_name("repository-updates.py")))
@@ -77,8 +77,9 @@ class ApplicationUpdateDeliveryTests(unittest.TestCase):
         namespace["check_for_update"].assert_called_once_with(directory, app, interactive=True)
         self.assertEqual(launchctl.call_args.args[0][1], "bootstrap")
       config = plistlib.loads(agent.read_bytes())
-      self.assertEqual(config["StartInterval"], 3600)
-      self.assertTrue(config["RunAtLoad"])
+      self.assertEqual(config["StartCalendarInterval"], {"Hour": 9, "Minute": 0})
+      self.assertNotIn("RunAtLoad", config)
+      self.assertNotIn("StartInterval", config)
       self.assertTrue((directory / "repository-updates.py").is_file())
       self.assertEqual(config["ProgramArguments"][-2:],
                        [str(directory / "repository-updates.py"), "--check"])

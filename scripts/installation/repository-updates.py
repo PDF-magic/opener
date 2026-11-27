@@ -31,12 +31,13 @@ def write_file(path, content):
 
 
 @contextmanager
-def update_lock(directory, name):
+def update_lock(directory):
     directory.mkdir(parents=True, mode=0o700, exist_ok=True)
     info = directory.lstat()
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
         raise RuntimeError("Unsafe application update directory.")
-    fd = os.open(directory / name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    fd = os.open(directory / "update.lock",
+                 os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
@@ -77,16 +78,15 @@ def check_for_update(directory, app, *, interactive=False):
         git("fetch", "--quiet", "--no-tags", "--depth=1", REMOTE, BRANCH, cwd=checkout)
         commit = git("rev-parse", "--verify", "FETCH_HEAD^{commit}", cwd=checkout)
         git("checkout", "--quiet", "--detach", commit, cwd=checkout)
-        with update_lock(directory, "install.lock"):
-            print(f"Installing {commit}", flush=True)
-            subprocess.run(
-                ["/bin/bash", str(checkout / "scripts/installation/install-allow-and-open.sh")],
-                cwd=checkout, check=True, stdin=None if interactive else subprocess.DEVNULL,
-                env={**os.environ, "PDF_MAGIC_SOURCE_COMMIT": commit},
-            )
-            subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)], check=True)
-            if plistlib.loads(metadata_path.read_bytes()).get("PDFMagicSourceCommit") != commit:
-                raise RuntimeError("The installed bundle did not record the fetched commit.")
+        print(f"Installing {commit}", flush=True)
+        subprocess.run(
+            ["/bin/bash", str(checkout / "scripts/installation/install-allow-and-open.sh")],
+            cwd=checkout, check=True, stdin=None if interactive else subprocess.DEVNULL,
+            env={**os.environ, "PDF_MAGIC_SOURCE_COMMIT": commit},
+        )
+        subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)], check=True)
+        if plistlib.loads(metadata_path.read_bytes()).get("PDFMagicSourceCommit") != commit:
+            raise RuntimeError("The installed bundle did not record the fetched commit.")
         print(f"Installed {commit}", flush=True)
 
 
@@ -98,7 +98,7 @@ def configure(home, directory, app):
     arguments = [sys.executable, "-I", str(installed_script), "--check"]
     enabled = agent.is_file()
     print("Automatic updates install code from the official PDF-magic/opener main branch.")
-    print("macOS checks at login and hourly while you’re signed in.")
+    print("macOS checks daily at 9 a.m. local time.")
     choice = input(
         "Type DISABLE to turn off automatic updates, or press Return to exit: " if enabled else
         "Type ENABLE to install the current build and turn on automatic updates, or press Return to exit: "
@@ -106,7 +106,7 @@ def configure(home, directory, app):
     if choice != ("DISABLE" if enabled else "ENABLE"):
         return
 
-    with update_lock(directory, "update.lock"):
+    with update_lock(directory):
         if agent.is_symlink() or agent.exists() != enabled:
             raise RuntimeError("The automatic update configuration changed. Open the setup again.")
         if enabled:
@@ -135,8 +135,7 @@ def configure(home, directory, app):
             "ProgramArguments": arguments,
             "EnvironmentVariables": {"PATH": PATH},
             "ProcessType": "Background",
-            "RunAtLoad": True,
-            "StartInterval": 3600,
+            "StartCalendarInterval": {"Hour": 9, "Minute": 0},
             "StandardOutPath": log,
             "StandardErrorPath": log,
         }))
@@ -157,10 +156,10 @@ def main():
     app = home / "Applications/PDF Magic Opener.app"
     if sys.argv[1:] == ["--check"] and Path(__file__).parent.resolve() == directory.resolve():
         try:
-            with update_lock(directory, "update.lock"):
+            with update_lock(directory):
                 check_for_update(directory, app)
         except BlockingIOError:
-            print("A PDF scan or application update is in progress. Retrying on the next check.", flush=True)
+            print("An application update is in progress. Retrying on the next check.", flush=True)
     elif len(sys.argv) == 1 and sys.stdin.isatty():
         configure(home, directory, app)
     else:
