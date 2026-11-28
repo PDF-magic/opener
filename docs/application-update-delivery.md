@@ -1,16 +1,33 @@
 # Application update delivery policy (opener-1158)
 
-PDF Magic Opener currently uses **user-initiated, source-based updates** for
-the native macOS app and scan-gated PDF handler. There is **no background
-application updater, automatic download, in-app install action, binary update
-feed, or planned signed release channel**. Updates are performed manually from
-a complete trusted source checkout; there is no published binary update channel.
+PDF Magic Opener uses source-based updates for the native macOS app and
+scan-gated PDF handler. Manual updates are the default. You can opt in to
+background updates from the official repository's `main` branch. There is
+no published binary update channel.
 
 The Updates settings pane displays installed application version information.
 Its manual update actions concern **ClamAV definitions**, not application
 versions. ClamAV engine and signature updates are independent of app updates.
 
-## Manual source updates only
+## Enable automatic source updates
+
+1. In Finder, double-click `scripts/installation/automatic-updates.command`
+   from a complete trusted checkout. Terminal opens for the setup prompts.
+2. Finish any active scans, read the source and schedule, then type **ENABLE**.
+   Setup fetches the current commit from the official `main` branch, runs
+   the source installer, and enables a per-user LaunchAgent after a successful
+   install. The usual installation prerequisites and separate ClamAV consent
+   still apply.
+3. The LaunchAgent checks daily at 9 a.m. local time. It
+   uses a temporary checkout inside the installed support folder and installs
+   only when the commit changes. The installed bundle records its source
+   commit. The agent retries failures on a later check. Ongoing scans defer
+   the update. View results in `~/Library/Application Support/Studio/allow-and-open/repository-update/update.log`.
+
+To turn updates off, open the same Finder action and type **DISABLE**. Do
+this before uninstalling the native app.
+
+## Manual source updates
 
 1. Obtain a **complete trusted checkout** from the official
    [PDF-magic/opener repository](https://github.com/PDF-magic/opener).
@@ -29,7 +46,6 @@ versions. ClamAV engine and signature updates are independent of app updates.
 3. Follow the [upgrade procedure](upgrade-process.md) for installer results,
    post-install verification, migration state, safe retry, and rollback. A
    fetched newer checkout alone does not change the installed application.
-   Nothing polls, downloads, launches, or silently installs application code.
 
 The installer must preserve saved preferences, the selected PDF destination,
 ClamAV configuration and definitions, compatible Finder Quick Actions,
@@ -45,9 +61,9 @@ opening an unscanned PDF.
 
 ## No prebuilt release or signing plan
 
-This task does **not** establish GitHub Releases distribution, a downloadable
+This source workflow does **not** establish GitHub Releases distribution, a downloadable
 prebuilt application, Developer ID code signing, notarization, or any automatic
-updater. No signing or notarization pipeline is planned here. The source-based
+binary updater. No signing or notarization pipeline is planned here. The source-based
 installation procedure is development-only and must not be presented as a
 verified production application release.
 
@@ -59,12 +75,10 @@ limitation. Signing and notarization would require a separate decision and
 security review before public binary distribution; they are not prerequisites
 being implemented by this PR.
 
-Git commit SHAs identify source checkouts; the
+Git commit SHAs identify source checkouts. The
 [build metadata requirements](release-versioning.md) do not define public
-releases or an update schedule. The existing source-only release gate is
-not the installation or update channel, and the distribution audit remains
-**NOT RELEASE READY**. An alternative future delivery mechanism would require
-separate approval, threat review, user-consent design, and regression tests.
+releases. The source installer and the opt-in LaunchAgent build directly
+from repository source. The distribution audit remains **NOT RELEASE READY**.
 
 ## Keep independent update streams separate
 

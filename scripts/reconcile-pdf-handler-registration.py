@@ -14,8 +14,8 @@ class RegistrationConflict(RuntimeError):
     pass
 
 
-def check_registrations(paths, installed, legacy):
-    """Only an absent legacy alias may be withdrawn, never another live app."""
+def check_registrations(paths, installed, legacy, staging=None):
+    """Recognize aliases left by the current installation transaction."""
     if not isinstance(paths, list) or any(not isinstance(p, str) for p in paths):
         raise RegistrationConflict("Invalid PDF opener registration inventory.")
     seen = set()
@@ -30,16 +30,26 @@ def check_registrations(paths, installed, legacy):
         if path == legacy and not path.exists() and not path.is_symlink():
             stale.append(path)
             continue
+        if staging is not None and path in (staging / "previous.app", staging / installed.name):
+            stale.append(path)
+            continue
         raise RegistrationConflict("Another PDF opener registration exists; no change made.")
     return stale
 
 
-def reconcile(installed, legacy, *, lookup, run):
+def reconcile(installed, legacy, *, lookup, run, staging=None):
     if installed.name != "PDF Magic Opener.app" or legacy.name != "Open PDFs in Brave.app":
         raise RegistrationConflict("Unexpected PDF opener bundle names.")
     if installed.parent != legacy.parent or not installed.is_dir() or installed.is_symlink():
         raise RegistrationConflict("Installed PDF opener bundle is unavailable or unsafe.")
-    stale = check_registrations(lookup(), installed, legacy)
+    if staging is not None and (
+        staging.parent != installed.parent
+        or not staging.name.startswith(".pdf-magic-opener-build.")
+        or staging.is_symlink()
+        or not staging.is_dir()
+    ):
+        raise RegistrationConflict("Unexpected installation staging directory.")
+    stale = check_registrations(lookup(), installed, legacy, staging)
     # Ensure there is a registered working replacement before withdrawing the alias.
     run([LSREGISTER, "-f", str(installed)], check=True, timeout=30)
     for path in stale:
@@ -58,15 +68,16 @@ def registered_paths(enumerator):
 
 
 def main():
-    if len(sys.argv) != 4:
-        raise SystemExit("Expected installed app, legacy app, and registration enumerator.")
-    installed, legacy, enumerator = map(Path, sys.argv[1:])
+    if len(sys.argv) not in (4, 5):
+        raise SystemExit("Expected installed app, legacy app, registration enumerator, and optional staging directory.")
+    installed, legacy, enumerator = map(Path, sys.argv[1:4])
+    staging = Path(sys.argv[4]) if len(sys.argv) == 5 else None
     home_apps = Path.home() / "Applications"
     if (installed != home_apps / "PDF Magic Opener.app"
             or legacy != home_apps / "Open PDFs in Brave.app"):
         raise SystemExit("Refusing to change registration outside the managed app location.")
     try:
-        reconcile(installed, legacy, lookup=lambda: registered_paths(enumerator),
+        reconcile(installed, legacy, staging=staging, lookup=lambda: registered_paths(enumerator),
                   run=subprocess.run)
     except (RegistrationConflict, OSError, subprocess.SubprocessError) as error:
         raise SystemExit(f"PDF opener registration reconciliation failed: {error}") from error

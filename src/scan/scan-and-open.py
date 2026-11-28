@@ -1285,7 +1285,6 @@ def safe_scan_failure(error):
 
 
 def main(items):
-    watch_parent_lifetime()
     if not items:
         print('No files were selected for scanning.', file=sys.stderr)
         return 1
@@ -1333,10 +1332,33 @@ def main(items):
     return result
 
 
+def run_scan_requests(requests):
+    watch_parent_lifetime()
+    # The installer holds this lock when the optional updater is configured.
+    # In-flight scans finish before an update and new ones wait for it to finish.
+    lock = INSTALL_DIR / 'repository-update/install.lock'
+    try:
+        descriptor = os.open(lock, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return main(requests)
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+            raise OSError('Invalid application update lock')
+        fcntl.flock(descriptor, fcntl.LOCK_SH)
+        return main(requests)
+    finally:
+        os.close(descriptor)
+
+
 if __name__ == '__main__':
     try:
         requests = parse_scan_requests(sys.argv[1:])
     except ValueError:
         print('Invalid browser download identifier; opening was stopped.', file=sys.stderr)
         sys.exit(2)
-    sys.exit(main(requests))
+    try:
+        sys.exit(run_scan_requests(requests))
+    except OSError:
+        print('The application update lock is unavailable; opening was stopped.', file=sys.stderr)
+        sys.exit(1)

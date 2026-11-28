@@ -20,6 +20,22 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 python3 "$script_dir/scripts/report-install-prerequisites.py"
 
+# Once the repository updater has been set up, serialize manual and automatic
+# installs against each other and the scan gate. Keep the inode for waiting scans.
+if [ -d "$install_dir/repository-update" ]; then
+    install_lock="$install_dir/repository-update/install.lock"
+    if [ -L "$install_dir/repository-update" ] || [ -L "$install_lock" ] || \
+       { [ -e "$install_lock" ] && [ ! -f "$install_lock" ]; }; then
+        echo "Unsafe application installation lock." >&2
+        exit 1
+    fi
+    exec 9>>"$install_lock"
+    if ! /usr/bin/lockf -t 0 9; then
+        echo "A scan or another installation is in progress. Try again after it finishes." >&2
+        exit 1
+    fi
+fi
+
 if [ ! -f "$workflow" ]; then
     echo "The existing Allow and Open Quick Action is not installed." >&2
     exit 1
@@ -103,6 +119,8 @@ rollback_installation() {
     exit "$result"
 }
 trap rollback_installation EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 install_snapshot="$(mktemp -d "$HOME/.pdf-magic-opener-rollback.XXXXXXXX")"
 python3 "$script_dir/scripts/preserve-existing-opener.py" snapshot "$install_dir" "$install_snapshot"
 snapshot_ready=1
@@ -234,6 +252,9 @@ info = {
         'LSHandlerRank': 'Owner', 'LSItemContentTypes': ['com.adobe.pdf'],
     }],
 }
+source_commit = os.environ.get('PDF_MAGIC_SOURCE_COMMIT')
+if source_commit:
+    info['PDFMagicSourceCommit'] = source_commit
 with (app / 'Contents/Info.plist').open('wb') as stream:
     plistlib.dump(info, stream)
 agent = {
@@ -269,12 +290,9 @@ if [ -e "$legacy_app" ] || [ -L "$legacy_app" ]; then
 else
     legacy_was_present=0
 fi
-app_name="PDF Magic Opener"
-app="$HOME/Applications/$app_name.app"
-legacy_app="$HOME/Applications/Open PDFs in Brave.app"
 # Keep the established bundle ID and runtime paths while renaming the user-facing app.
 # Only move an existing installation after verifying that it belongs to this project.
-python3 - "$legacy_app" "$app" <<'MIGRATE'
+python3 - "$legacy_app" "$installed_app" <<'MIGRATE'
 import plistlib
 import sys
 from pathlib import Path
@@ -319,7 +337,7 @@ fi
 # Reconcile only the old and new scan-handler registrations; leave the user
 # selected default PDF application and unrelated app registrations untouched.
 python3 "$script_dir/scripts/reconcile-pdf-handler-registration.py" \
-    "$app" "$legacy_app" "$script_dir/scripts/list-registered-pdf-openers.swift"
+    "$app" "$legacy_app" "$script_dir/scripts/list-registered-pdf-openers.swift" "$bundle_stage_dir"
 # Validate/migrate trusted existing agent before any launchctl restart.
 python3 "$script_dir/scripts/migrate-update-agent.py"
 # The migrator has verified the agent; reconcile its live launchd label so

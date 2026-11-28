@@ -29,10 +29,10 @@ class DependencyVerificationError(RuntimeError):
     """Fixed, path-free failure description; never expose tool output."""
 
 
-def command_version(path, *, probe=subprocess.check_output):
+def command_version(path, *, options=(), probe=subprocess.check_output):
     """Query one trusted executable without invoking a scan or parsing stderr."""
     try:
-        output = probe([path, "--version"], text=True, timeout=5,
+        output = probe([path, "--version", *options], text=True, timeout=5,
                        stderr=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError, UnicodeError, ValueError):
         return None
@@ -75,7 +75,9 @@ def verify_installed_dependencies(*, candidates=SCANNER_CANDIDATES,
             "The ClamAV scanner version cannot be verified or is unsupported. "
             "Install ClamAV 1.4 or 1.5 and retry."
         )
-    updater_version = command_version(updater, probe=probe)
+    # FreshClam parses its configuration even when only printing its version.
+    # Use an empty input for this probe so machine-wide configuration is optional.
+    updater_version = command_version(updater, options=("--config-file=/dev/null",), probe=probe)
     if updater_version is None:
         raise DependencyVerificationError(
             "The ClamAV signature updater version cannot be verified or is unsupported. "
